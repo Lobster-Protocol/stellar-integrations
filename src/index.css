@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #3693fb;
+  --color-primary-dark: #2d7ad1;
+  --color-primary-light: #d7e9fe;
+  --color-secondary: #ff8770;
+  --color-secondary-light: #ffe7e2;
+  --color-secondary-dark: #d4705d;
+  --color-bg: #f3f4f7;
+  --color-bg-card: #ffffff;
+  --color-text: #080a0c;
+  --color-text-secondary: #6d7f9c;
+  --color-text-muted: #9ca3af;
+  --color-border: rgba(13, 45, 76, 0.08);
+  --color-success: #82e0ab;
+  --color-error: #ff6370;
+  --color-green: #10b981;
+  --color-red: #ef4444;
+  --color-soroswap: #3b82f6;
+  --color-phoenix: #f97316;
+  --color-aquarius: #9333ea;
+}
+
+html {
+  background: linear-gradient(180deg, rgba(55, 148, 251, 0.08), rgba(255, 135, 112, 0.06) 40%, transparent 100%) fixed,
+    #f3f4f7;
+  color: #080a0c;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', 'Poppins', sans-serif;
+}
+
+/* fix safari flex gap */
+@supports not (gap: 1px) {
+  .flex > * + * { margin-left: 0.5rem; }
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f3f4f7; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+/* .debug-border { outline: 1px solid red; } */
