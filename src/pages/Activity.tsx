@@ -22,6 +22,7 @@ const TYPE_COLORS: Record<ActivityType, string> = {
 
 type Filter = 'all' | ActivityType
 
+// TODO: pagination for long activity feeds
 export default function Activity() {
   const events = useMemo(() => generateActivity(), [])
   const [filter, setFilter] = useState<Filter>('all')

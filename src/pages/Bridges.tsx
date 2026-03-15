@@ -87,7 +87,7 @@ export default function Bridges() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium text-text">{formatUSD(event.amount)} {event.token}</p>
+                <p className="text-sm font-medium text-text">{event.amount.toLocaleString()} {event.token}</p>
                 <div className="flex items-center gap-2 justify-end">
                   <span className="text-xs text-text-muted">{event.date}</span>
                   <span className={cn(

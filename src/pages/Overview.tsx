@@ -11,6 +11,7 @@ export default function Overview() {
   const snapshots = useMemo(() => generateSnapshots(), [])
   const kpis = useMemo(() => computeKPIs(snapshots), [snapshots])
   const last = snapshots[snapshots.length - 1]
+  const [depositOpen, setDepositOpen] = useState(false)
 
   if (!address) {
     return (
@@ -30,8 +31,6 @@ export default function Overview() {
       </div>
     )
   }
-
-  const [depositOpen, setDepositOpen] = useState(false)
 
   if (!kpis) return null
 

@@ -1,6 +1,7 @@
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { shortenAddress, cn } from '../utils/format'
+import lobsterIcon from '../assets/lobster-icon.png'
 
 export default function TopBar() {
   const { address, walletName, connecting, connect, disconnect } = useWallet()
@@ -9,7 +10,10 @@ export default function TopBar() {
   return (
     <div className="h-14 flex items-center justify-between px-6 bg-bg-card/60 backdrop-blur-sm" style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.06)' }}>
       {/* mobile logo (shown only on small screens) */}
-      <div className="lg:hidden text-sm font-semibold text-text">🦞 Lobster</div>
+      <div className="lg:hidden flex items-center gap-1.5">
+        <img src={lobsterIcon} alt="Lobster" className="h-6 w-6" />
+        <span className="text-sm font-semibold text-text">Lobster</span>
+      </div>
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-3">

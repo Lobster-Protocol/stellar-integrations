@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
 import Overview from './pages/Overview'
@@ -20,6 +20,7 @@ export default function App() {
             <Route path="/activity" element={<Activity />} />
             <Route path="/allocation" element={<Allocation />} />
             <Route path="/bridges" element={<Bridges />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

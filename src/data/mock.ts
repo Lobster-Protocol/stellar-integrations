@@ -99,16 +99,10 @@ const POOLS = [
   { name: 'XLM/USDC 0.1%', protocol: 'aquarius' as Protocol },
 ]
 
-const _pickRand = seededRandom(123)
-function pickPool(exclude?: string): typeof POOLS[0] {
-  const available = exclude ? POOLS.filter(p => p.name + p.protocol !== exclude) : POOLS
-  return available[Math.floor(_pickRand() * available.length)]
-}
-
-const _snapRand = seededRandom(777)
-
 // generate daily snapshots
 export function generateSnapshots(): DailySnapshot[] {
+  const rand = seededRandom(777)
+  const pickRand = seededRandom(123)
   const days = 180
   const startDate = new Date('2025-09-15')
   const depositValue = 100000
@@ -125,21 +119,22 @@ export function generateSnapshots(): DailySnapshot[] {
 
     // simulate pool migrations every ~25 days
     if (i > 0 && i % 25 === 0) {
-      currentPool = pickPool(currentPool.name + currentPool.protocol)
+      const available = POOLS.filter(p => p.name + p.protocol !== currentPool.name + currentPool.protocol)
+      currentPool = available[Math.floor(pickRand() * available.length)]
     }
 
-    const dailyFee = value * 0.0003 * (0.7 + _snapRand() * 0.6) // ~0.03% daily fees
+    const dailyFee = value * 0.0003 * (0.7 + rand() * 0.6) // ~0.03% daily fees
     cumulativeFees += dailyFee
-    const dailyIL = value * 0.00008 * _snapRand()
+    const dailyIL = value * 0.00008 * rand()
     cumulativeIL += dailyIL
 
     // token ratio oscillates around 50/50 with drift
-    const baseRatio = 50 + Math.sin(i / 20) * 5 + (_snapRand() - 0.5) * 3
+    const baseRatio = 50 + Math.sin(i / 20) * 5 + (rand() - 0.5) * 3
     const ratio = Math.max(35, Math.min(65, baseRatio))
 
     const token1Value = value * (ratio / 100) // USDC portion
     const token0Value = value - token1Value // XLM portion
-    const xlmPrice = 0.38 + Math.sin(i / 30) * 0.04 + (_snapRand() - 0.5) * 0.02
+    const xlmPrice = 0.38 + Math.sin(i / 30) * 0.04 + (rand() - 0.5) * 0.02
 
     return {
       date: date.toISOString().split('T')[0],
@@ -160,6 +155,7 @@ export function generateSnapshots(): DailySnapshot[] {
 
 // generate activity events
 export function generateActivity(): ActivityEvent[] {
+  const rand = seededRandom(888)
   const events: ActivityEvent[] = []
   const startDate = new Date('2025-09-15')
 
@@ -204,17 +200,17 @@ export function generateActivity(): ActivityEvent[] {
       toPool: `XLM/USDC 0.3%`,
       fromProtocol: fromP as Protocol,
       toProtocol: toP as Protocol,
-      txHash: `${_snapRand().toString(36).slice(2, 10)}...${_snapRand().toString(36).slice(2, 6)}`,
+      txHash: `${rand().toString(36).slice(2, 10)}...${rand().toString(36).slice(2, 6)}`,
       reason,
     })
   })
 
   // arbitrage swaps (roughly every 3-5 days)
-  for (let d = 5; d < 180; d += 3 + Math.floor(_snapRand() * 4)) {
+  for (let d = 5; d < 180; d += 3 + Math.floor(rand() * 4)) {
     const date = new Date(startDate)
     date.setDate(date.getDate() + d)
-    const isXlmToUsdc = _snapRand() > 0.5
-    const amount = 500 + Math.floor(_snapRand() * 2500)
+    const isXlmToUsdc = rand() > 0.5
+    const amount = 500 + Math.floor(rand() * 2500)
 
     events.push({
       id: `swap-${d}`,
@@ -222,13 +218,14 @@ export function generateActivity(): ActivityEvent[] {
       type: 'swap',
       amount,
       token: isXlmToUsdc ? 'XLM' : 'USDC',
-      txHash: `${_snapRand().toString(36).slice(2, 10)}...${_snapRand().toString(36).slice(2, 6)}`,
+      txHash: `${rand().toString(36).slice(2, 10)}...${rand().toString(36).slice(2, 6)}`,
       reason: isXlmToUsdc ? 'Delta rebalance: XLM overweight' : 'Delta rebalance: USDC overweight',
     })
   }
 
   // sort by date
-  events.sort((a, b) => a.date.localeCompare(b.date))
+  // newest first
+  events.sort((a, b) => b.date.localeCompare(a.date))
   return events
 }
 

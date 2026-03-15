@@ -46,7 +46,7 @@ export default function Allocation() {
             <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
             <Tooltip
               contentStyle={{ background: '#fff', border: '1px solid rgba(13,45,76,0.1)', borderRadius: 12, fontSize: 12 }}
-              formatter={(val: any) => [`${Number(val).toFixed(1)}%`]}
+              formatter={(val: any) => [`${(Number(val) * 100).toFixed(1)}%`]}
             />
             <Area type="monotone" dataKey={STRATEGY.token0Symbol} stackId="1" stroke="#3693fb" fill="#3693fb" fillOpacity={0.6} />
             <Area type="monotone" dataKey={STRATEGY.token1Symbol} stackId="1" stroke="#ff8770" fill="#ff8770" fillOpacity={0.5} />
