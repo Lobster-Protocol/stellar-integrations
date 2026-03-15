@@ -1,4 +1,4 @@
-import { type Protocol, getProtocolColor, getProtocolLabel } from '../data/pools'
+import { type Protocol, getProtocolColor, getProtocolLabel } from '../data/mock'
 
 const ProtocolBadge = ({ protocol }: { protocol: Protocol }) => {
   const color = getProtocolColor(protocol)
