@@ -1,5 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { StellarWalletsKit } from '@creit-tech/stellar-wallets-kit'
+import { FreighterModule, FREIGHTER_ID } from '@creit-tech/stellar-wallets-kit/modules/freighter'
+import { xBullModule, XBULL_ID } from '@creit-tech/stellar-wallets-kit/modules/xbull'
+import { AlbedoModule, ALBEDO_ID } from '@creit-tech/stellar-wallets-kit/modules/albedo'
 
 interface WalletCtx {
   address: string | null
@@ -15,9 +18,9 @@ const Ctx = createContext<WalletCtx | null>(null)
 
 // TODO: add WalletConnect module for LOBSTR once we have a project ID
 const WALLETS = [
-  { id: 'freighter', name: 'Freighter' },
-  { id: 'xbull', name: 'xBull' },
-  { id: 'albedo', name: 'Albedo' },
+  { id: FREIGHTER_ID, name: 'Freighter' },
+  { id: XBULL_ID, name: 'xBull' },
+  { id: ALBEDO_ID, name: 'Albedo' },
 ]
 
 export { WALLETS }
@@ -30,7 +33,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // TODO: handle case where wallet extension isn't installed
-    try { StellarWalletsKit.init({ modules: [] }) } catch { /* already init */ }
+    try {
+      StellarWalletsKit.init({
+        modules: [
+          new FreighterModule(),
+          new xBullModule(),
+          new AlbedoModule(),
+        ],
+      })
+    } catch { /* already init */ }
 
     const savedId = localStorage.getItem('lob_wid')
     if (savedId) {
@@ -39,7 +50,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const connect = useCallback(async (walletId?: string) => {
-    const id = walletId || 'freighter'
+    const id = walletId || FREIGHTER_ID
     setConnecting(true)
     try {
       StellarWalletsKit.setWallet(id)
