@@ -28,7 +28,7 @@ export default function Performance() {
       </div>
 
       {/* PnL chart */}
-      <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+      <div className="bg-bg-card rounded-3xl p-5 card">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-text">P&L (%)</h3>
           <span className={cn('text-sm font-semibold', kpis.totalPnlPercent >= 0 ? 'text-green' : 'text-red')}>
@@ -68,7 +68,7 @@ export default function Performance() {
       </div>
 
       {/* fees vs IL chart */}
-      <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+      <div className="bg-bg-card rounded-3xl p-5 card">
         <h3 className="text-sm font-semibold text-text mb-2">Cumulative Fees vs Impermanent Loss</h3>
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={chartData}>

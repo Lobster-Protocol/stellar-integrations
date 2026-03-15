@@ -29,7 +29,7 @@ export default function Bridges() {
       </div>
 
       {/* bridge provider */}
-      <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+      <div className="bg-bg-card rounded-3xl p-5 card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-text">Bridge Provider</h3>
           {/* TODO: support multiple bridge providers */}

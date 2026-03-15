@@ -49,4 +49,14 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-track { background: #f3f4f7; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 
+.card {
+  border: 1px solid rgba(13, 45, 76, 0.08);
+  box-shadow: 0 12px 35px rgba(8, 10, 12, 0.08);
+}
+
+.card-sm {
+  border: 1px solid rgba(13, 45, 76, 0.06);
+  box-shadow: 0 4px 12px rgba(8, 10, 12, 0.05);
+}
+
 /* .debug-border { outline: 1px solid red; } */
