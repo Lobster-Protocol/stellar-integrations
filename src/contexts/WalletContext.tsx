@@ -65,7 +65,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('lob_wname', wName)
     } catch (err: any) {
       console.error('wallet connect failed:', err)
-      // TODO: show toast notification to user
+      console.error('error details:', JSON.stringify(err, null, 2), 'message:', err?.message, 'code:', err?.code)
     } finally {
       setConnecting(false)
     }
