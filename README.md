@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# Lobster Protocol — Stellar Integrations
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Institutional liquidity management dashboard for Stellar DEXs. Built as part of the SCF Integration Track submission.
 
-Currently, two official plugins are available:
+This dashboard connects to the Lobster analytics engine and provides portfolio monitoring, performance tracking, and cross-DEX liquidity management for institutional clients operating on Soroswap, Aquarius, and Phoenix.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What this repo covers
 
-## React Compiler
+This is the frontend layer of the Integration Track submission. It demonstrates wallet connectivity and the institutional dashboard UI. The four ecosystem integrations it prepares for:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Allbridge Core** — programmatic USDC bridging from EVM chains to Stellar
+- **Stellar Broker** — best-execution swap routing across all Stellar liquidity sources
+- **DFNS** — MPC wallet infrastructure for institutional custody
+- **Stellar Wallets Kit** — direct wallet connectivity (Freighter, xBull, Albedo)
 
-## Expanding the ESLint configuration
+The existing Stellar infrastructure (DEX indexer, AMM V2 analytics engine, Soroban smart contracts) was built under the 2025 SCF Build Award and lives in the [main Stellar repo](https://github.com/Lobster-Protocol/Stellar).
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Running locally
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open http://localhost:5173
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Building for production
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
+npm run preview
 ```
+
+## Stack
+
+- React 19 + TypeScript
+- Vite 6
+- Tailwind CSS v4
+- Recharts (charts)
+- Stellar Wallets Kit v2 (wallet connectivity)
+- Stellar SDK
+- Lucide React (icons)
+
+## Project structure
+
+```
+src/
+  components/    Sidebar, TopBar, DepositModal, charts
+  contexts/      WalletContext, NetworkContext
+  pages/         Overview, Performance, Activity, Allocation, Bridges
+  data/          Mock data (will be replaced by indexer API)
+  utils/         Formatting helpers
+tests/           Playwright smoke tests
+```
+
+## Tests
+
+```bash
+npx playwright install chromium
+npx playwright test
+```
+
+## Deployment
+
+Deployed on Vercel. Every push to `main` triggers a redeploy.
+
+## Related repos
+
+- [Lobster-Protocol/Stellar](https://github.com/Lobster-Protocol/Stellar) — DEX indexer, analytics engine, Soroban contracts (2025 Build Award)
+- [lobster-protocol.com](https://www.lobster-protocol.com) — main website
+
+## Team
+
+- **Alexis Mailley** — CEO, quantitative modeling ([LinkedIn](https://linkedin.com/in/alexis-mailley/))
+- **Nathan Hervier** — CTO, Soroban/Rust ([GitHub](https://github.com/Elli610))
+- **Marc Beaudoin** — Lead Quant ([GitHub](https://github.com/MrGabjea))
