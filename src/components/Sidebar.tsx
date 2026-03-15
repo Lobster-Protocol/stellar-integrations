@@ -1,19 +1,20 @@
 import { NavLink } from 'react-router-dom'
+import { LayoutDashboard, TrendingUp, Activity, PieChart, ArrowLeftRight } from 'lucide-react'
 import { cn } from '../utils/format'
 import lobsterLogo from '../assets/lobster-logo.png'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Overview', icon: '◻' },
-  { to: '/performance', label: 'Performance', icon: '◈' },
-  { to: '/activity', label: 'Activity', icon: '◇' },
-  { to: '/allocation', label: 'Allocation', icon: '◆' },
-  { to: '/bridges', label: 'Bridges', icon: '◁' },
+  { to: '/', label: 'Overview', icon: LayoutDashboard },
+  { to: '/performance', label: 'Performance', icon: TrendingUp },
+  { to: '/activity', label: 'Activity', icon: Activity },
+  { to: '/allocation', label: 'Allocation', icon: PieChart },
+  { to: '/bridges', label: 'Bridges', icon: ArrowLeftRight },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <aside className="w-56 shrink-0 hidden lg:flex flex-col bg-bg-card h-screen sticky top-0" style={{ borderRight: '1px solid rgba(13, 45, 76, 0.08)' }}>
-      <div className="p-5 pb-8">
+    <div className="flex flex-col h-full">
+      <div className="p-5 pb-8 hidden lg:block">
         <img src={lobsterLogo} alt="Lobster" className="h-8 w-auto" />
       </div>
 
@@ -23,6 +24,7 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.to === '/'}
+            onClick={onNavigate}
             className={({ isActive }) => cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
               isActive
@@ -30,18 +32,18 @@ export default function Sidebar() {
                 : 'text-text-secondary hover:bg-bg hover:text-text'
             )}
           >
-            <span className="text-base opacity-70">{item.icon}</span>
+            <item.icon size={18} />
             {item.label}
           </NavLink>
         ))}
       </nav>
 
-      <div className="p-4 mx-3 mb-4 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(54, 147, 251, 0.12), rgba(255, 135, 112, 0.08))' }}>
+      <div className="p-4 mx-3 mb-4 rounded-2xl hidden lg:block" style={{ background: 'linear-gradient(135deg, rgba(54, 147, 251, 0.12), rgba(255, 135, 112, 0.08))' }}>
         <p className="text-xs text-text-secondary font-medium mb-1">Need help?</p>
         <a href="https://lobster-protocol.gitbook.io/lobster-documentation/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
           Read the docs →
         </a>
       </div>
-    </aside>
+    </div>
   )
 }

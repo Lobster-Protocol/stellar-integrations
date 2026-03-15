@@ -21,7 +21,7 @@ test('homepage loads and shows sidebar', async ({ page }) => {
   await expect(sidebar).toBeVisible()
 
   // lobster logo should be visible
-  const logo = page.locator('img[alt="Lobster"]')
+  const logo = page.locator('img[alt="Lobster"]').first()
   await expect(logo).toBeVisible()
 
   // connect wallet button should be visible
