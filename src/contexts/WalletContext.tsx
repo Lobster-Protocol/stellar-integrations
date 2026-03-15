@@ -1,38 +1,25 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { StellarWalletsKit } from '@creit-tech/stellar-wallets-kit'
-import { FreighterModule, FREIGHTER_ID } from '@creit-tech/stellar-wallets-kit/modules/freighter'
-import { xBullModule, XBULL_ID } from '@creit-tech/stellar-wallets-kit/modules/xbull'
-import { AlbedoModule, ALBEDO_ID } from '@creit-tech/stellar-wallets-kit/modules/albedo'
+import { FreighterModule } from '@creit-tech/stellar-wallets-kit/modules/freighter'
+import { xBullModule } from '@creit-tech/stellar-wallets-kit/modules/xbull'
+import { AlbedoModule } from '@creit-tech/stellar-wallets-kit/modules/albedo'
 
 interface WalletCtx {
   address: string | null
   walletName: string | null
   connecting: boolean
-  connect: (walletId?: string) => Promise<void>
+  connect: () => Promise<void>
   disconnect: () => void
-  showPicker: boolean
-  setShowPicker: (v: boolean) => void
 }
 
 const Ctx = createContext<WalletCtx | null>(null)
-
-// TODO: add WalletConnect module for LOBSTR once we have a project ID
-const WALLETS = [
-  { id: FREIGHTER_ID, name: 'Freighter' },
-  { id: XBULL_ID, name: 'xBull' },
-  { id: ALBEDO_ID, name: 'Albedo' },
-]
-
-export { WALLETS }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(() => localStorage.getItem('lob_addr'))
   const [walletName, setWalletName] = useState<string | null>(() => localStorage.getItem('lob_wname'))
   const [connecting, setConnecting] = useState(false)
-  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
-    // TODO: handle case where wallet extension isn't installed
     try {
       StellarWalletsKit.init({
         modules: [
@@ -42,30 +29,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         ],
       })
     } catch { /* already init */ }
-
-    const savedId = localStorage.getItem('lob_wid')
-    if (savedId) {
-      try { StellarWalletsKit.setWallet(savedId) } catch { /* stale session */ }
-    }
   }, [])
 
-  const connect = useCallback(async (walletId?: string) => {
-    const id = walletId || FREIGHTER_ID
+  // use the built-in auth modal — it handles wallet selection + connection
+  const connect = useCallback(async () => {
     setConnecting(true)
     try {
-      StellarWalletsKit.setWallet(id)
-      console.log('connecting to', id)
-      const { address: addr } = await StellarWalletsKit.getAddress()
-      const wName = WALLETS.find(w => w.id === id)?.name || id
+      const { address: addr } = await StellarWalletsKit.authModal()
+      console.log('connected:', addr)
       setAddress(addr)
-      setWalletName(wName)
-      setShowPicker(false)
-      localStorage.setItem('lob_wid', id)
+      setWalletName('Stellar Wallet')
       localStorage.setItem('lob_addr', addr)
-      localStorage.setItem('lob_wname', wName)
+      localStorage.setItem('lob_wname', 'Stellar Wallet')
     } catch (err: any) {
       console.error('wallet connect failed:', err)
-      console.error('error details:', JSON.stringify(err, null, 2), 'message:', err?.message, 'code:', err?.code)
     } finally {
       setConnecting(false)
     }
@@ -74,14 +51,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const disconnect = useCallback(() => {
     setAddress(null)
     setWalletName(null)
-    setShowPicker(false)
-    localStorage.removeItem('lob_wid')
     localStorage.removeItem('lob_addr')
     localStorage.removeItem('lob_wname')
+    StellarWalletsKit.disconnect().catch(() => {})
   }, [])
 
   return (
-    <Ctx.Provider value={{ address, walletName, connecting, connect, disconnect, showPicker, setShowPicker }}>
+    <Ctx.Provider value={{ address, walletName, connecting, connect, disconnect }}>
       {children}
     </Ctx.Provider>
   )

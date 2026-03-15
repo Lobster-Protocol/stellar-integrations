@@ -17,7 +17,7 @@ export default function Portfolio() {
           Connect a Stellar wallet to view and manage your liquidity positions across Soroswap, Aquarius and Phoenix.
         </p>
         <button
-          onClick={() => connect()}
+          onClick={connect}
           className="mt-2 px-6 py-2.5 rounded-full bg-primary hover:bg-primary-dark text-white font-semibold transition-all hover:-translate-y-0.5"
           style={{ boxShadow: '0 10px 25px rgba(54, 147, 251, 0.25)' }}
         >
