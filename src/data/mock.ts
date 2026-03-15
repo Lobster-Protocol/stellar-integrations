@@ -62,20 +62,29 @@ export interface StrategyConfig {
   activePool: string
 }
 
-// --- generate PnL curve with realistic noise ---
+// deterministic pseudo-random so the charts don't jump on every refresh
+function seededRandom(seed: number) {
+  let s = seed
+  return () => {
+    s = (s * 16807 + 0) % 2147483647
+    return (s - 1) / 2147483646
+  }
+}
+
 function generatePnlCurve(days: number, finalPnlPercent: number): number[] {
+  const rand = seededRandom(42)
   const curve: number[] = [0]
   const dailyDrift = finalPnlPercent / days
   const volatility = 0.3
 
   for (let i = 1; i < days; i++) {
-    const noise = (Math.random() - 0.48) * volatility // slight upward bias
+    const noise = (rand() - 0.48) * volatility
     const prev = curve[i - 1]
     let next = prev + dailyDrift + noise
 
     // occasional small drawdowns
-    if (Math.random() < 0.08) {
-      next = prev - Math.random() * 0.4
+    if (rand() < 0.08) {
+      next = prev - rand() * 0.4
     }
     curve.push(next)
   }
@@ -90,10 +99,13 @@ const POOLS = [
   { name: 'XLM/USDC 0.1%', protocol: 'aquarius' as Protocol },
 ]
 
+const _pickRand = seededRandom(123)
 function pickPool(exclude?: string): typeof POOLS[0] {
   const available = exclude ? POOLS.filter(p => p.name + p.protocol !== exclude) : POOLS
-  return available[Math.floor(Math.random() * available.length)]
+  return available[Math.floor(_pickRand() * available.length)]
 }
+
+const _snapRand = seededRandom(777)
 
 // generate daily snapshots
 export function generateSnapshots(): DailySnapshot[] {
@@ -116,18 +128,18 @@ export function generateSnapshots(): DailySnapshot[] {
       currentPool = pickPool(currentPool.name + currentPool.protocol)
     }
 
-    const dailyFee = value * 0.0003 * (0.7 + Math.random() * 0.6) // ~0.03% daily fees
+    const dailyFee = value * 0.0003 * (0.7 + _snapRand() * 0.6) // ~0.03% daily fees
     cumulativeFees += dailyFee
-    const dailyIL = value * 0.00008 * Math.random()
+    const dailyIL = value * 0.00008 * _snapRand()
     cumulativeIL += dailyIL
 
     // token ratio oscillates around 50/50 with drift
-    const baseRatio = 50 + Math.sin(i / 20) * 5 + (Math.random() - 0.5) * 3
+    const baseRatio = 50 + Math.sin(i / 20) * 5 + (_snapRand() - 0.5) * 3
     const ratio = Math.max(35, Math.min(65, baseRatio))
 
     const token1Value = value * (ratio / 100) // USDC portion
     const token0Value = value - token1Value // XLM portion
-    const xlmPrice = 0.38 + Math.sin(i / 30) * 0.04 + (Math.random() - 0.5) * 0.02
+    const xlmPrice = 0.38 + Math.sin(i / 30) * 0.04 + (_snapRand() - 0.5) * 0.02
 
     return {
       date: date.toISOString().split('T')[0],
@@ -192,17 +204,17 @@ export function generateActivity(): ActivityEvent[] {
       toPool: `XLM/USDC 0.3%`,
       fromProtocol: fromP as Protocol,
       toProtocol: toP as Protocol,
-      txHash: `${Math.random().toString(36).slice(2, 10)}...${Math.random().toString(36).slice(2, 6)}`,
+      txHash: `${_snapRand().toString(36).slice(2, 10)}...${_snapRand().toString(36).slice(2, 6)}`,
       reason,
     })
   })
 
   // arbitrage swaps (roughly every 3-5 days)
-  for (let d = 5; d < 180; d += 3 + Math.floor(Math.random() * 4)) {
+  for (let d = 5; d < 180; d += 3 + Math.floor(_snapRand() * 4)) {
     const date = new Date(startDate)
     date.setDate(date.getDate() + d)
-    const isXlmToUsdc = Math.random() > 0.5
-    const amount = 500 + Math.floor(Math.random() * 2500)
+    const isXlmToUsdc = _snapRand() > 0.5
+    const amount = 500 + Math.floor(_snapRand() * 2500)
 
     events.push({
       id: `swap-${d}`,
@@ -210,7 +222,7 @@ export function generateActivity(): ActivityEvent[] {
       type: 'swap',
       amount,
       token: isXlmToUsdc ? 'XLM' : 'USDC',
-      txHash: `${Math.random().toString(36).slice(2, 10)}...${Math.random().toString(36).slice(2, 6)}`,
+      txHash: `${_snapRand().toString(36).slice(2, 10)}...${_snapRand().toString(36).slice(2, 6)}`,
       reason: isXlmToUsdc ? 'Delta rebalance: XLM overweight' : 'Delta rebalance: USDC overweight',
     })
   }
