@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
 import { generateSnapshots, computeKPIs, STRATEGY, formatUSD, getProtocolColor, getProtocolLabel } from '../data/mock'
 import { useWallet } from '../contexts/WalletContext'
 import lobsterIcon from '../assets/lobster-icon.png'
 import { cn } from '../utils/format'
+import DepositModal from '../components/DepositModal'
 
 export default function Overview() {
   const { address, connect } = useWallet()
@@ -30,6 +31,8 @@ export default function Overview() {
     )
   }
 
+  const [depositOpen, setDepositOpen] = useState(false)
+
   if (!kpis) return null
 
   // mini chart data (last 30 days)
@@ -55,6 +58,20 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
+      <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} />
+
+      {/* action bar */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-text">Portfolio</h2>
+        <button
+          onClick={() => setDepositOpen(true)}
+          className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all"
+          style={{ boxShadow: '0 8px 20px rgba(54, 147, 251, 0.2)' }}
+        >
+          + Deposit
+        </button>
+      </div>
+
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard label="Portfolio Value" value={formatUSD(kpis.currentValue)} />
