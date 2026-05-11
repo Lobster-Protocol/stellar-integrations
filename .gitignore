@@ -1,0 +1,47 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Env files — never commit
+.env
+.env.*
+!.env.example
+
+# Local backups
+*.backup-*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+screenshots/
+test-results/
+
+# Local-only notes, archives, and helper scripts
+_docs/
+notes/
+docs/*.md
+docs/*.json
+scripts/*-evidence.mjs
+scripts/*-ground-truth.mjs
+scripts/deploy-*.mjs
+NOTES.md
+CHANGELOG.md
+CLAUDE.md
+.claude/
