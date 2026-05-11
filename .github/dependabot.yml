@@ -1,0 +1,46 @@
+version: 2
+updates:
+  # npm — frontend dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    # Group minor + patch updates together to keep noise low.
+    # Major updates remain as separate PRs because they need review.
+    groups:
+      production-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-minor-patch:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # The wallet kit pulls in the entire @trezor / @walletconnect / viem /
+      # @solana stack via @reown/appkit. Major bumps here are coordinated
+      # with the kit itself, so we don't want individual updates flapping.
+      - dependency-name: "@trezor/*"
+      - dependency-name: "@walletconnect/*"
+      - dependency-name: "@reown/*"
+      - dependency-name: "viem"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    labels:
+      - "ci"
