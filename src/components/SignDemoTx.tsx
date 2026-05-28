@@ -2,8 +2,9 @@ import { useRef, useState } from 'react'
 import { StellarWalletsKit } from '@creit-tech/stellar-wallets-kit'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster'
+import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { networkPassphrase } from '../integrations/lobster/client'
+import { cardStyle } from '../utils/format'
 
 export default function SignDemoTx() {
   const { address, walletName } = useWallet()
@@ -57,10 +58,7 @@ export default function SignDemoTx() {
   return (
     <div
       className="rounded-3xl p-5 bg-bg-card"
-      style={{
-        border: '1px solid rgba(13, 45, 76, 0.08)',
-        boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)',
-      }}
+      style={cardStyle}
     >
       <h3 className="text-sm font-semibold text-text mb-1">Sign a testnet transaction</h3>
       <p className="text-xs text-text-secondary mb-4">
@@ -81,9 +79,9 @@ export default function SignDemoTx() {
             className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {step === 'idle' && `Ping Factory with ${walletName ?? 'wallet'}`}
-            {step === 'building' && 'Building tx…'}
-            {step === 'signing' && 'Awaiting signature…'}
-            {step === 'submitting' && 'Submitting & polling…'}
+            {step === 'building' && 'Building tx...'}
+            {step === 'signing' && 'Awaiting signature...'}
+            {step === 'submitting' && 'Submitting & polling...'}
             {step === 'confirmed' && 'Ping again'}
             {step === 'failed' && 'Retry'}
           </button>

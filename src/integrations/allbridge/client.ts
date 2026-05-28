@@ -18,8 +18,3 @@ export function getAllbridgeSdk(): AllbridgeCoreSdk {
   sdkInstance = new AllbridgeCoreSdk(buildNodeUrls())
   return sdkInstance
 }
-
-// test-only
-export function _resetAllbridgeSdkForTests(): void {
-  sdkInstance = null
-}

@@ -18,7 +18,7 @@ export default function LiveDataMeta({
     return () => window.clearInterval(id)
   }, [])
 
-  const label = dataUpdatedAt ? formatAge(now - dataUpdatedAt) : '—'
+  const label = dataUpdatedAt ? formatAge(now - dataUpdatedAt) : '-'
 
   return (
     <div className="flex items-center gap-2 text-[10px] text-text-muted">

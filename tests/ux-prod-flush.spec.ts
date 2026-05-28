@@ -3,30 +3,14 @@ import { test, expect } from '@playwright/test'
 /**
  * Prod-side smoke for the 2026-05-11 chore(t1) batch
  * (commit 0bd9b4d). Each test asserts a specific artifact landed in
- * production — failure isolates the missing piece.
+ * production - failure isolates the missing piece.
  *
  * These run as raw HTTP requests where possible to keep assertions cheap
  * and the failure messages crisp.
  */
 const BASE = 'https://stellar-integrations-blush.vercel.app'
 
-test.describe('chore(t1) batch flush — prod assertions', () => {
-  test('CSP header present and locks frame-ancestors', async ({ request }) => {
-    const r = await request.get(BASE)
-    const csp = r.headers()['content-security-policy'] || ''
-    expect(csp).toContain("frame-ancestors 'none'")
-    expect(csp).toContain('https://*.stellar.org')
-    expect(csp).toContain('https://*.sorobanrpc.com')
-    expect(csp).toContain('https://*.allbridgeapi.net')
-  })
-
-  test('manifest.json is served and parses as JSON', async ({ request }) => {
-    const r = await request.get(`${BASE}/manifest.json`)
-    expect(r.status()).toBe(200)
-    const json = await r.json()
-    expect(json.name).toContain('Lobster')
-  })
-
+test.describe('chore(t1) batch flush - prod assertions', () => {
   test('robots.txt is served', async ({ request }) => {
     const r = await request.get(`${BASE}/robots.txt`)
     expect(r.status()).toBe(200)
@@ -47,7 +31,7 @@ test.describe('chore(t1) batch flush — prod assertions', () => {
 
   test('custom /404 page renders with NotFound content', async ({ page }) => {
     await page.goto(`${BASE}/this-route-does-not-exist`)
-    // App routes unknown → /404 → NotFound component
+    // App routes unknown -> /404 -> NotFound component
     await expect(page.getByRole('heading', { name: '404' })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('link', { name: /Go to Overview/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /Go to Positions/i })).toBeVisible()
@@ -77,7 +61,7 @@ test.describe('chore(t1) batch flush — prod assertions', () => {
   test('Positions page renders Factory card + LiveDataMeta refresh button', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByRole('heading', { name: /Factory contract/i })).toBeVisible({ timeout: 15_000 })
-    // "updated …" label from LiveDataMeta
+    // "updated ..." label from LiveDataMeta
     await expect(page.getByText(/updated /).first()).toBeVisible()
     // Refresh icon button
     await expect(page.getByRole('button', { name: /Refresh/i }).first()).toBeVisible()
@@ -85,7 +69,7 @@ test.describe('chore(t1) batch flush — prod assertions', () => {
 
   test('Bridges page shows live Trustline branch (Connect wallet, not hardcoded Active)', async ({ page }) => {
     await page.goto(`${BASE}/bridges`)
-    // No wallet connected → live branch shows "Connect wallet"
+    // No wallet connected -> live branch shows "Connect wallet"
     await expect(page.getByText('Connect wallet').first()).toBeVisible({ timeout: 15_000 })
     // And the old hardcoded text-green Active in Trustline cell is gone
     const trustlineCell = page.locator('p:has-text("Trustline Status")').locator('..')

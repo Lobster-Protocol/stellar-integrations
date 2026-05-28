@@ -22,7 +22,7 @@ const validDispatch = {
   evmExecutionAccount: '0x1234567890abcdef1234567890abcdef12345678',
   amount: '50000',
   targetChain: 'ARB' as const,
-  rationale: 'AQUA/USDC pool on Aquarius vs USDC/WETH on Camelot — 0.18% delta after fees.',
+  rationale: 'AQUA/USDC pool on Aquarius vs USDC/WETH on Camelot - 0.18% delta after fees.',
 }
 
 describe('ArbDispatchSchema', () => {

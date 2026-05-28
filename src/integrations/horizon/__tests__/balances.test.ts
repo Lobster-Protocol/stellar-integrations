@@ -22,14 +22,12 @@ vi.mock('../client', () => ({
       forAccount: operationsForAccount,
     }),
   }),
-  _resetHorizonCacheForTests: vi.fn(),
 }))
 
-const { getAccountBalances } = await import('../balances')
-const { getRecentOperations } = await import('../operations')
+const { getAccountBalances, getRecentOperations } = await import('../account')
 
 // Constructing a real NotFoundError without an actual HTTP response is
-// awkward — the SDK constructor takes (message, response). We instantiate
+// awkward - the SDK constructor takes (message, response). We instantiate
 // it with a stub object that's good enough for the SDK to be happy.
 function makeNotFound(): NotFoundError {
   return new NotFoundError('not found', { status: 404 } as never)

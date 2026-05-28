@@ -4,20 +4,7 @@ import type { Network } from '../config/contracts'
 interface NetworkCtx {
   network: Network
   setNetwork: (n: Network) => void
-  rpcUrl: string
-  passphrase: string
 }
-
-const NETWORKS = {
-  testnet: {
-    rpc: 'https://soroban-testnet.stellar.org',
-    passphrase: 'Test SDF Network ; September 2015',
-  },
-  mainnet: {
-    rpc: 'https://mainnet.sorobanrpc.com',
-    passphrase: 'Public Global Stellar Network ; September 2015',
-  },
-} as const
 
 const Ctx = createContext<NetworkCtx | null>(null)
 
@@ -33,10 +20,8 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('lob_network', n)
   }
 
-  const cfg = NETWORKS[network]
-
   return (
-    <Ctx.Provider value={{ network, setNetwork: handleSetNetwork, rpcUrl: cfg.rpc, passphrase: cfg.passphrase }}>
+    <Ctx.Provider value={{ network, setNetwork: handleSetNetwork }}>
       {children}
     </Ctx.Provider>
   )

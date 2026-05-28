@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { generateActivity, getProtocolColor, getProtocolLabel, formatUSD, type ActivityType } from '../data/mock'
-import { cn } from '../utils/format'
+import {  cn, cardStyle } from '../utils/format'
 import OnChainActivityCard from '../components/OnChainActivityCard'
 import MockDataBadge from '../components/MockDataBadge'
 
@@ -55,7 +55,7 @@ export default function Activity() {
         </div>
       </div>
 
-      <div className="bg-bg-card rounded-3xl overflow-hidden" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+      <div className="bg-bg-card rounded-3xl overflow-hidden" style={cardStyle}>
         <div className="divide-y" style={{ borderColor: 'rgba(13, 45, 76, 0.06)' }}>
           {filtered.map(event => (
             <div key={event.id} className="px-5 py-4 hover:bg-bg/30 transition-colors">

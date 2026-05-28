@@ -1,4 +1,4 @@
-// Polyfills MUST stay first — see comment in polyfills.ts.
+// polyfills first, the sdk needs Buffer before anything else imports it
 import './polyfills'
 
 import { StrictMode } from 'react'
@@ -10,10 +10,7 @@ import { NetworkProvider } from './contexts/NetworkContext'
 import App from './App'
 import './index.css'
 
-// Single QueryClient instance, lives for the lifetime of the app.
-// Defaults tuned for our use case: indexer queries are read-mostly, RPC
-// state changes every ~5 s (one ledger), and we don't want exponential
-// retry storms during a Stellar RPC blip.
+// retry once, 30s stale - RPC blips spam otherwise
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

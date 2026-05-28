@@ -20,8 +20,3 @@ export function getHorizonServer(network: Network): Horizon.Server {
   servers.set(network, server)
   return server
 }
-
-// test-only
-export function _resetHorizonCacheForTests(): void {
-  servers.clear()
-}

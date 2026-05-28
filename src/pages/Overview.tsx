@@ -3,12 +3,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis
 import { generateSnapshots, computeKPIs, STRATEGY, formatUSD, getProtocolColor, getProtocolLabel } from '../data/mock'
 import { useWallet } from '../contexts/WalletContext'
 import lobsterIcon from '../assets/lobster-icon.png'
-import { cn } from '../utils/format'
+import {  cn, cardStyle } from '../utils/format'
 import MockDataBadge from '../components/MockDataBadge'
 
-// DepositModal pulls the full Allbridge Core SDK (~1 MB gzip with viem,
-// @walletconnect and @solana transitively). Lazy-loaded so users who
-// never click "+ Deposit" don't pay for it on initial load.
+// lazy - the Allbridge SDK drags in viem/walletconnect/solana, ~1MB. no point
+// loading it until someone actually clicks deposit
 const DepositModal = lazy(() => import('../components/DepositModal'))
 
 export default function Overview() {
@@ -32,7 +31,7 @@ export default function Overview() {
           className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary-dark text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ boxShadow: '0 10px 25px rgba(54, 147, 251, 0.25)' }}
         >
-          {connecting ? 'Connecting…' : 'Connect Wallet'}
+          {connecting ? 'Connecting...' : 'Connect Wallet'}
         </button>
       </div>
     )
@@ -53,7 +52,7 @@ export default function Overview() {
   ]
   const TOKEN_COLORS = ['#3693fb', '#ff8770']
 
-  // protocol distribution (simplified — show active + historical)
+  // protocol distribution (simplified - show active + historical)
   const protocolDist = [
     { name: 'Aquarius', value: 45 },
     { name: 'Soroswap', value: 35 },
@@ -63,7 +62,7 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
-      {/* Suspense kept unconditional so the modal's state survives close→reopen.
+      {/* Suspense kept unconditional so the modal's state survives close->reopen.
           The lazy chunk only resolves once; afterwards toggling `open` is cheap. */}
       <Suspense fallback={null}>
         <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} />
@@ -99,7 +98,7 @@ export default function Overview() {
       {/* main content grid */}
       <div className="grid lg:grid-cols-3 gap-4">
         {/* mini PnL chart */}
-        <div className="lg:col-span-2 bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+        <div className="lg:col-span-2 bg-bg-card rounded-3xl p-5" style={cardStyle}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-text">Portfolio Value (30D)</h3>
             <span className="text-xs text-text-muted">{STRATEGY.name}</span>
@@ -124,7 +123,7 @@ export default function Overview() {
         </div>
 
         {/* current position card */}
-        <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+        <div className="bg-bg-card rounded-3xl p-5" style={cardStyle}>
           <h3 className="text-sm font-semibold text-text mb-4">Active Position</h3>
           <div className="flex items-center gap-2 mb-3">
             <span
@@ -198,7 +197,7 @@ function KPICard({ label, value, sub, color }: { label: string; value: string; s
 
 function DonutCard({ title, data, colors }: { title: string; data: { name: string; value: number }[]; colors: string[] }) {
   return (
-    <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+    <div className="bg-bg-card rounded-3xl p-5" style={cardStyle}>
       <h3 className="text-sm font-semibold text-text mb-4">{title}</h3>
       <div className="flex items-center gap-6">
         <ResponsiveContainer width={120} height={120}>

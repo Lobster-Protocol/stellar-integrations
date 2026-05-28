@@ -24,8 +24,3 @@ export function getSorobanServer(network: Network): rpc.Server {
 export function networkPassphrase(network: Network): string {
   return network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET
 }
-
-// test-only
-export function _resetSorobanCacheForTests(): void {
-  servers.clear()
-}

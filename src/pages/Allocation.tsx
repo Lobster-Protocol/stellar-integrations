@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { generateSnapshots, filterByRange, STRATEGY, getProtocolColor, type Protocol, type TimeRange } from '../data/mock'
 import TimeRangeSelector from '../components/TimeRangeSelector'
 import MockDataBadge from '../components/MockDataBadge'
+import { cardStyle } from '../utils/format'
 
 export default function Allocation() {
   const [range, setRange] = useState<TimeRange>('ALL')
@@ -32,7 +33,7 @@ export default function Allocation() {
       </div>
 
       {/* token delta stacked area */}
-      <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+      <div className="bg-bg-card rounded-3xl p-5" style={cardStyle}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-text">Token Delta</h3>
           <div className="flex items-center gap-4 text-xs">
@@ -57,7 +58,7 @@ export default function Allocation() {
       </div>
 
       {/* protocol timeline */}
-      <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+      <div className="bg-bg-card rounded-3xl p-5" style={cardStyle}>
         <h3 className="text-sm font-semibold text-text mb-4">DEX Distribution Over Time</h3>
 
         {/* visual timeline bar */}
