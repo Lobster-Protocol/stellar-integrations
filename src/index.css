@@ -59,6 +59,11 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 4px 12px rgba(8, 10, 12, 0.05);
 }
 
+/* drop the wallets-kit attribution from the connect modal */
+.stellar-wallets-kit footer {
+  display: none !important;
+}
+
 /* .debug-border { outline: 1px solid red; } */
 
 /* hide the chrome when printing */
