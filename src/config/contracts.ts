@@ -29,6 +29,9 @@ interface NetworkContracts {
     // WASM hash the Factory uses to deploy per-user instances. Not an
     // address; passed as wasm_hash to Factory#deploy_for.
     wasmHash: string
+    // public deployer account used as simulation source for anonymous
+    // reads. empty on mainnet (we require the caller wallet there).
+    readSource: string
   }
 }
 
@@ -52,6 +55,7 @@ const mainnet: NetworkContracts = {
   lobster: {
     factory: '',
     wasmHash: '',
+    readSource: '',
   },
 }
 
@@ -63,6 +67,7 @@ const testnet: NetworkContracts = {
   lobster: {
     factory: 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO',
     wasmHash: '837d3d9f265304e8eea935fe78342eb50e2291a4035048e0bef39431e300dc34',
+    readSource: 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
   },
 }
 

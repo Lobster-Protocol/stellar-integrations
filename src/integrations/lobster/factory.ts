@@ -51,13 +51,10 @@ async function readContract<T = unknown>(
   return scValToNative(sim.result.retval) as T
 }
 
-// public deployer account, used only as a simulation source for anonymous
-// reads. no funds spent: simulateTransaction never broadcasts.
-const TESTNET_READ_SOURCE = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
-
 function readSource(network: Network, override?: string): string {
   if (override) return override
-  if (network === 'testnet') return TESTNET_READ_SOURCE
+  const src = CONTRACTS[network].lobster.readSource
+  if (src) return src
   throw new Error('readSource: pass the wallet address for mainnet reads')
 }
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { generateBridgeEvents, formatUSD } from '../data/mock'
-import { cn } from '../utils/format'
+import {  cn, cardStyle } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useTrustline } from '../integrations/allbridge/hooks'
@@ -22,10 +22,7 @@ export default function Bridges() {
   const totalOut = events.filter(e => e.direction === 'out').reduce((s, e) => s + e.amount, 0)
   const netFlow = totalIn - totalOut
 
-  // Real on-chain trustline check for USDC on the selected network.
-  // The hook gates internally on a non-empty issuer, so testnet (no
-  // Allbridge USDC issuer) returns `data: undefined` and we render
-  // "Not configured" instead of pretending the trustline is live.
+  // live trustline check; testnet has no USDC issuer so data stays undefined there
   const { address } = useWallet()
   const { network } = useNetwork()
   const usdcIssuer = CONTRACTS[network].tokens.usdcIssuer
@@ -40,7 +37,7 @@ export default function Bridges() {
     trustlineLabel = 'Not on testnet'
     trustlineClass = 'text-text-muted'
   } else if (trustlineQuery.isLoading) {
-    trustlineLabel = 'Checking…'
+    trustlineLabel = 'Checking...'
     trustlineClass = 'text-text-muted'
   } else if (trustlineQuery.isError) {
     trustlineLabel = 'Unknown'
@@ -92,7 +89,7 @@ export default function Bridges() {
       </div>
 
       {/* transaction history */}
-      <div className="bg-bg-card rounded-3xl overflow-hidden" style={{ border: '1px solid rgba(13, 45, 76, 0.08)', boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)' }}>
+      <div className="bg-bg-card rounded-3xl overflow-hidden" style={cardStyle}>
         <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.08)' }}>
           <h3 className="text-sm font-semibold text-text">Bridge History</h3>
         </div>

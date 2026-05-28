@@ -22,11 +22,9 @@ vi.mock('../client', () => ({
       forAccount: operationsForAccount,
     }),
   }),
-  _resetHorizonCacheForTests: vi.fn(),
 }))
 
-const { getAccountBalances } = await import('../balances')
-const { getRecentOperations } = await import('../operations')
+const { getAccountBalances, getRecentOperations } = await import('../account')
 
 // Constructing a real NotFoundError without an actual HTTP response is
 // awkward - the SDK constructor takes (message, response). We instantiate
