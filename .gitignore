@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Env files — never commit
+# Env files, never commit
 .env
 .env.*
 !.env.example
@@ -33,7 +33,11 @@ dist-ssr
 screenshots/
 test-results/
 
-# Local-only notes, archives, and helper scripts
+# Local-only working material, never pushed.
+# Convention: a folder named _local/ anywhere in the tree is local-only.
+# Drop notes, scratch docs, anything per-area there and it stays off GitHub.
+_local/
+**/_local/
 _docs/
 notes/
 docs/*.md
@@ -45,3 +49,68 @@ NOTES.md
 CHANGELOG.md
 CLAUDE.md
 .claude/
+AGENTS.md
+.cursor/
+.cursorrules
+.github/copilot-instructions.md
+.aider*
+.continue/
+.windsurf/
+
+# build artefacts not worth committing
+.vercel/
+coverage/
+playwright-report/
+*.tsbuildinfo
+
+# local-only one-shot walkthrough (not a real assertion test)
+tests/demo-walkthrough.spec.ts
+
+# boilerplate meta-docs kept local
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+SECURITY.md
+ARCHITECTURE.md
+ENV.md
+GOVERNANCE.md
+SUPPORT.md
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE.md
+.github/PULL_REQUEST_TEMPLATE/
+.github/CODEOWNERS
+
+# extra agent / IDE configs
+.zed/
+.replit
+.codex/
+.idx/
+.windsurfignore
+.huskyrc*
+
+# framework caches (defensive even when unused)
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
+.astro/
+.docusaurus/
+.cache/
+.parcel-cache/
+.vite/
+
+# OS leaks beyond .DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# backup / swap variants
+*.bak
+*.orig
+*.rej
+*~
+
+# alt lockfiles (we use npm)
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
