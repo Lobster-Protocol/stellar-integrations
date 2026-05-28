@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'https://stellar-integrations-blush.vercel.app'
+const BASE = 'https://stellar-instit.lobster-protocol.com'
 
 const FAKE_WALLET = {
   address: 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',

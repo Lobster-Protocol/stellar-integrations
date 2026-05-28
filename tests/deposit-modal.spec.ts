@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'https://stellar-integrations-blush.vercel.app'
+const BASE = 'https://stellar-instit.lobster-protocol.com'
 
 // The Overview page only renders the "+ Deposit" button when a wallet
 // is connected - otherwise it shows a "Connect your wallet to get
