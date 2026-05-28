@@ -14,7 +14,7 @@ import { test, expect } from '@playwright/test'
  * RPC pipeline, or the react-query -> DOM rendering. Surface
  * proves the whole chain works.
  */
-const BASE = 'https://stellar-integrations-blush.vercel.app'
+const BASE = 'https://stellar-instit.lobster-protocol.com'
 const FACTORY = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO'
 const SOURCE = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 const RPC_URL = 'https://soroban-testnet.stellar.org'

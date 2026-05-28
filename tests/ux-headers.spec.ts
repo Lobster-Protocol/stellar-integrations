@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'https://stellar-integrations-blush.vercel.app'
+const BASE = 'https://stellar-instit.lobster-protocol.com'
 
 // Quick HTTP-only header checks. Raw requests, no browser context.
 

@@ -6,7 +6,7 @@ React frontend that talks to our Soroban contracts on Stellar. Wires up
 the wallets, the bridge and the swap routing around the analytics
 engine.
 
-Live: https://stellar-integrations-blush.vercel.app
+Live: https://stellar-instit.lobster-protocol.com
 
 ## Contracts (testnet)
 
