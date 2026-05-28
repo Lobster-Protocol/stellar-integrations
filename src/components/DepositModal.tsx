@@ -262,7 +262,7 @@ export default function DepositModal({ open, onClose }: Props) {
                 <div className="flex justify-between">
                   <span>You receive</span>
                   <span className="text-text">
-                    {quote ? `${quote.amountOutFloat} USDC` : amount ? '…' : '—'}
+                    {quote ? `${quote.amountOutFloat} USDC` : amount ? '...' : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -274,7 +274,7 @@ export default function DepositModal({ open, onClose }: Props) {
                 <div className="flex justify-between">
                   <span>Trustline</span>
                   {trustlineQuery.isLoading ? (
-                    <span className="text-text-muted">Checking…</span>
+                    <span className="text-text-muted">Checking...</span>
                   ) : trustlineRequired ? (
                     <span className="text-coral font-medium">Will be created</span>
                   ) : (
@@ -313,7 +313,7 @@ export default function DepositModal({ open, onClose }: Props) {
               disabled={!amount || Number(amount) <= 0 || isSubmitting}
               className="w-full py-3 rounded-full bg-primary text-white font-semibold text-sm transition-all hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Building tx…' : isBridge ? 'Bridge & Deposit' : 'Deposit'}
+              {isSubmitting ? 'Building tx...' : isBridge ? 'Bridge & Deposit' : 'Deposit'}
             </button>
           </>
         )}

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Networks } from '@stellar/stellar-sdk'
 import { networkPassphrase } from '../client'
 
-// Test the pure `handleSendResult` helper directly — no need to mock the
+// Test the pure `handleSendResult` helper directly - no need to mock the
 // transaction builder. The async wrapper `submitSignedXdr` just delegates
 // to it once sendTransaction returns.
 import { handleSendResult, TryAgainLaterError, waitForTx, RestoreRequiredError, buildPingTx } from '../factory'

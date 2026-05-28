@@ -39,7 +39,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 function RouteFallback() {
   return (
     <div className="flex items-center justify-center py-20 text-sm text-text-muted">
-      Loading…
+      Loading...
     </div>
   )
 }

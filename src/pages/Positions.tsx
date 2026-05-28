@@ -1,8 +1,8 @@
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useFactoryInfo, useLobsterPositions } from '../integrations/lobster'
+import { useFactoryInfo, useLobsterPositions } from '../integrations/lobster/hooks'
 import { CONTRACTS } from '../config/contracts'
-import { shortenAddress } from '../utils/format'
+import {  shortenAddress, cardStyle } from '../utils/format'
 import SignDemoTx from '../components/SignDemoTx'
 import BalancesCard from '../components/BalancesCard'
 import LiveDataMeta from '../components/LiveDataMeta'
@@ -30,13 +30,10 @@ export default function Positions() {
 
       <BalancesCard />
 
-      {/* Factory card — always shown, sources from on-chain state */}
+      {/* Factory card - always shown, sources from on-chain state */}
       <div
         className="rounded-3xl p-5 bg-bg-card"
-        style={{
-          border: '1px solid rgba(13, 45, 76, 0.08)',
-          boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)',
-        }}
+        style={cardStyle}
       >
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-text">Factory contract</h3>
@@ -64,7 +61,7 @@ export default function Positions() {
             Not deployed on {network} yet.
           </p>
         ) : factoryInfo.isLoading ? (
-          <p className="text-xs text-text-muted">Reading from Soroban RPC…</p>
+          <p className="text-xs text-text-muted">Reading from Soroban RPC...</p>
         ) : factoryInfo.isError ? (
           <p className="text-xs text-coral">
             Read failed: {factoryInfo.error?.message}
@@ -81,10 +78,7 @@ export default function Positions() {
       {/* User positions */}
       <div
         className="rounded-3xl p-5 bg-bg-card"
-        style={{
-          border: '1px solid rgba(13, 45, 76, 0.08)',
-          boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)',
-        }}
+        style={cardStyle}
       >
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-text">Your positions</h3>
@@ -102,7 +96,7 @@ export default function Positions() {
             Connect a wallet to see your positions.
           </p>
         ) : positions.isLoading ? (
-          <p className="text-xs text-text-muted">Loading positions for {shortenAddress(address)}…</p>
+          <p className="text-xs text-text-muted">Loading positions for {shortenAddress(address)}...</p>
         ) : positions.isError ? (
           <p className="text-xs text-coral">
             Read failed: {positions.error?.message}

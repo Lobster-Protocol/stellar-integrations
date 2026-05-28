@@ -1,3 +1,11 @@
+import type { CSSProperties } from 'react'
+
+// the card chrome (border + soft shadow) we reuse on every panel
+export const cardStyle: CSSProperties = {
+  border: '1px solid rgba(13, 45, 76, 0.08)',
+  boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)',
+}
+
 export function shortenAddress(addr: string, chars = 4) {
   if (!addr) return ''
   return addr.slice(0, chars) + '...' + addr.slice(-chars)
@@ -8,11 +16,7 @@ export function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ')
 }
 
-/**
- * Render a Horizon balance string (7-decimal fixed point) in the locale
- * format. Drops trailing zeros to two decimals for legibility above 1
- * unit, keeps up to 7 for sub-unit amounts.
- */
+// horizon balances are 7-decimal fixed point; 2dp above 1, up to 7 below
 export function formatBalance(raw: string): string {
   const n = Number(raw)
   if (!Number.isFinite(n)) return raw

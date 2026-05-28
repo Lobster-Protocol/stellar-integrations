@@ -194,5 +194,5 @@ test('no critical console errors on any page', async ({ page }) => {
   if (critical.length > 0) {
     console.log('Console errors found:', critical)
   }
-  // we just log, don't fail — some errors may come from external scripts
+  // we just log, don't fail - some errors may come from external scripts
 })

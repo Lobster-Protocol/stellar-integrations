@@ -19,7 +19,7 @@ async function gotoWithWallet(page: Page) {
   await page.goto(BASE, { waitUntil: 'networkidle' })
 }
 
-test.describe('B — Cross-page navigation (10 tests)', () => {
+test.describe('B - Cross-page navigation (10 tests)', () => {
   test('B1: Overview renders Portfolio header on /', async ({ page }) => {
     await gotoWithWallet(page)
     await expect(page.getByText('Portfolio').first()).toBeVisible()
@@ -90,7 +90,7 @@ test.describe('B — Cross-page navigation (10 tests)', () => {
   })
 })
 
-test.describe('C — Mobile responsiveness (8 tests)', () => {
+test.describe('C - Mobile responsiveness (8 tests)', () => {
   test.use({ viewport: { width: 375, height: 812 } })
 
   test('C1+C2: sidebar hidden, hamburger visible at iPhone-X viewport', async ({ page }) => {
@@ -116,7 +116,7 @@ test.describe('C — Mobile responsiveness (8 tests)', () => {
   })
 })
 
-test.describe('D — Network toggle (selected automatables)', () => {
+test.describe('D - Network toggle (selected automatables)', () => {
   test('D1: TopBar shows Testnet and Mainnet buttons', async ({ page }) => {
     await gotoWithWallet(page)
     await expect(page.getByRole('button', { name: 'Testnet' })).toBeVisible()
@@ -148,7 +148,7 @@ test.describe('D — Network toggle (selected automatables)', () => {
   })
 })
 
-test.describe('P — Accessibility basics (automatables)', () => {
+test.describe('P - Accessibility basics (automatables)', () => {
   test('P2: close-modal button has aria-label', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()

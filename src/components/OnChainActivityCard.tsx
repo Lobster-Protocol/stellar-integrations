@@ -1,7 +1,8 @@
-import { useAccountOperations } from '../integrations/horizon'
+import { useAccountOperations } from '../integrations/horizon/account'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import LiveDataMeta from './LiveDataMeta'
+import { cardStyle } from '../utils/format'
 
 export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
   const { address } = useWallet()
@@ -15,10 +16,7 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
   return (
     <div
       className="rounded-3xl p-5 bg-bg-card"
-      style={{
-        border: '1px solid rgba(13, 45, 76, 0.08)',
-        boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)',
-      }}
+      style={cardStyle}
     >
       <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
         <h3 className="text-sm font-semibold text-text">Recent on-chain operations</h3>
@@ -33,7 +31,7 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
       </div>
 
       {operations.isLoading ? (
-        <p className="text-xs text-text-muted">Loading…</p>
+        <p className="text-xs text-text-muted">Loading...</p>
       ) : operations.isError ? (
         <p className="text-xs text-coral">
           Read failed: {operations.error?.message}
@@ -59,7 +57,7 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
                 rel="noopener noreferrer"
                 className="font-mono text-[10px] text-primary hover:underline shrink-0"
               >
-                {op.transactionHash.slice(0, 8)}…{op.transactionHash.slice(-6)} ↗
+                {op.transactionHash.slice(0, 8)}...{op.transactionHash.slice(-6)} ↗
               </a>
             </li>
           ))}

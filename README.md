@@ -1,4 +1,4 @@
-# Lobster — Stellar dashboard
+# Lobster Stellar dashboard
 
 [![CI](https://github.com/Lobster-Protocol/stellar-integrations/actions/workflows/ci.yml/badge.svg)](https://github.com/Lobster-Protocol/stellar-integrations/actions/workflows/ci.yml)
 
@@ -7,6 +7,25 @@ the wallets, the bridge and the swap routing around the analytics
 engine.
 
 Live: https://stellar-integrations-blush.vercel.app
+
+## Contracts (testnet)
+
+The Soroban contracts come from [Lobster-Protocol/Stellar](https://github.com/Lobster-Protocol/Stellar)
+(our 2025 Build Award). They're deployed and callable on testnet.
+
+| what | link |
+| --- | --- |
+| Factory | [`CACIPDGS...2LXO`](https://stellar.expert/explorer/testnet/contract/CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO) |
+| deploy | [`f30b3152`](https://stellar.expert/explorer/testnet/tx/f30b315298668c4cc4d9e38856014b0cfcafe6d8179118637684afd0e51e78b1) |
+| create_pool | [`a200fdd2`](https://stellar.expert/explorer/testnet/tx/a200fdd22fb95283ca5f13733fdb3cad8aff1a2bcc1993ad31413c35afab39da) |
+
+Read the state back yourself:
+
+```bash
+stellar contract invoke --id CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO \
+  --source <funded-testnet-key> --network testnet -- get_pool_count
+# 1
+```
 
 ## Stack
 

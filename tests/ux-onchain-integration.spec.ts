@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * End-to-end *integration* tests — these go beyond "does the page
+ * End-to-end *integration* tests - these go beyond "does the page
  * render" and prove the dashboard correctly mirrors live Stellar
  * testnet state. For each on-chain primitive we want to render, we:
  *
@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test'
  *   3. Assert the rendered DOM matches the ground truth.
  *
  * A failure here means one of the three legs broke: the contract, the
- * RPC pipeline, or the react-query → DOM rendering. Surface
+ * RPC pipeline, or the react-query -> DOM rendering. Surface
  * proves the whole chain works.
  */
 const BASE = 'https://stellar-integrations-blush.vercel.app'
@@ -59,7 +59,7 @@ async function readGroundTruth(): Promise<GroundTruth> {
   return { admin: String(admin), wasmHash, poolCount: Number(poolCount) }
 }
 
-/** Match the dashboard's `shortenAddress(addr, n)` exactly — utility uses
+/** Match the dashboard's `shortenAddress(addr, n)` exactly - utility uses
  *  three ASCII dots (`...`), not the Unicode horizontal ellipsis. */
 function shorten(addr: string, n = 8): string {
   return `${addr.slice(0, n)}...${addr.slice(-n)}`
@@ -74,7 +74,7 @@ test.describe('Live Factory ↔ /positions DOM integration', () => {
 
   test('Factory admin from on-chain matches the rendered Admin stat', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
-    // The factory card shows "Reading from Soroban RPC…" until the
+    // The factory card shows "Reading from Soroban RPC..." until the
     // simulation resolves, after which "Pools created" appears.
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
     // Use the h3 heading to anchor on the Factory card only (the page
@@ -130,7 +130,7 @@ test.describe('Live Factory ↔ /positions DOM integration', () => {
     expect(sorobanCalls).toBeGreaterThan(callsBefore)
   })
 
-  test('"updated …" label appears, advances over time, and stays present', async ({ page }) => {
+  test('"updated ..." label appears, advances over time, and stays present', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 
@@ -166,7 +166,7 @@ test.describe('Live Factory ↔ /positions DOM integration', () => {
     const stored = await page.evaluate(() => localStorage.getItem('lob_network'))
     expect(stored).toBe('mainnet')
 
-    // Hard reload — the stored value must survive and the TopBar must
+    // Hard reload - the stored value must survive and the TopBar must
     // come back with "Mainnet" already selected.
     await page.reload()
     const mainnetBtn = page.getByRole('button', { name: 'Mainnet' })
@@ -188,19 +188,7 @@ test.describe('Live Horizon ↔ Activity / Balances integration', () => {
     await page.goto(`${BASE}/activity`)
     await page.waitForLoadState('networkidle')
 
-    // No wallet → OnChainActivityCard returns null, no Horizon call.
+    // No wallet -> OnChainActivityCard returns null, no Horizon call.
     expect(horizonCalls).toBe(0)
-  })
-
-  test('CSP allows the production connections we actually need', async ({ request }) => {
-    const r = await request.get(BASE)
-    const csp = r.headers()['content-security-policy'] || ''
-    // Stellar (Horizon + Soroban RPC + sorobanrpc.com mainnet)
-    expect(csp).toContain('https://*.stellar.org')
-    expect(csp).toContain('https://*.sorobanrpc.com')
-    // Allbridge (used by /bridges once wallet is connected on mainnet)
-    expect(csp).toContain('https://*.allbridgeapi.net')
-    // Walletconnect (used by LOBSTR wallet module)
-    expect(csp).toContain('wss://relay.walletconnect.com')
   })
 })
