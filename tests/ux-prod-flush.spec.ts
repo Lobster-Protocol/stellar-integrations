@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test'
  * These run as raw HTTP requests where possible to keep assertions cheap
  * and the failure messages crisp.
  */
-const BASE = 'https://stellar-integrations-blush.vercel.app'
+const BASE = 'https://stellar-instit.lobster-protocol.com'
 
 test.describe('chore(t1) batch flush - prod assertions', () => {
   test('robots.txt is served', async ({ request }) => {

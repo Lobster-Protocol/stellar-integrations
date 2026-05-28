@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'https://stellar-integrations-blush.vercel.app'
+const BASE = 'https://stellar-instit.lobster-protocol.com'
 
 // test on a mobile viewport
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
