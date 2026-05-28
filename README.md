@@ -63,5 +63,5 @@ scripts/        CLI helpers
 
 ## Security
 
-Reports go to security@lobster-protocol.com, not the public issue
-tracker. See `SECURITY.md`.
+Found something? Email security@lobster-protocol.com rather than
+opening a public issue.
