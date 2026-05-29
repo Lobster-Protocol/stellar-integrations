@@ -2,7 +2,7 @@ import { useAccountOperations } from '../integrations/horizon/account'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import LiveDataMeta from './LiveDataMeta'
-import { cardStyle } from '../utils/format'
+import { cardStyle, stellarExplorer } from '../utils/format'
 
 export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
   const { address } = useWallet()
@@ -10,8 +10,6 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
   const operations = useAccountOperations(network, address, limit)
 
   if (!address) return null
-
-  const explorerBase = `https://stellar.expert/explorer/${network === 'mainnet' ? 'public' : 'testnet'}`
 
   return (
     <div
@@ -52,7 +50,7 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
                 <div className="text-[10px] text-text-muted">{new Date(op.createdAt).toLocaleString()}</div>
               </div>
               <a
-                href={`${explorerBase}/tx/${op.transactionHash}`}
+                href={stellarExplorer(network, 'tx', op.transactionHash)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-mono text-[10px] text-primary hover:underline shrink-0"

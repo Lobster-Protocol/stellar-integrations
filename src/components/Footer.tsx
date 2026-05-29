@@ -1,12 +1,11 @@
 import { useNetwork } from '../contexts/NetworkContext'
 import { CONTRACTS } from '../config/contracts'
-import { shortenAddress } from '../utils/format'
+import { shortenAddress, stellarExplorer } from '../utils/format'
 
 export default function Footer() {
   const { network } = useNetwork()
   const factoryId = CONTRACTS[network].lobster.factory
-  const explorerBase = `https://stellar.expert/explorer/${network === 'mainnet' ? 'public' : 'testnet'}`
-  const factoryExplorer = factoryId ? `${explorerBase}/contract/${factoryId}` : null
+  const factoryExplorer = factoryId ? stellarExplorer(network, 'contract', factoryId) : null
 
   return (
     <footer

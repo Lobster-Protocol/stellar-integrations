@@ -2,7 +2,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useFactoryInfo, useLobsterPositions } from '../integrations/lobster/hooks'
 import { CONTRACTS } from '../config/contracts'
-import {  shortenAddress, cardStyle } from '../utils/format'
+import { shortenAddress, cardStyle, stellarExplorer } from '../utils/format'
 import SignDemoTx from '../components/SignDemoTx'
 import BalancesCard from '../components/BalancesCard'
 import LiveDataMeta from '../components/LiveDataMeta'
@@ -15,9 +15,7 @@ export default function Positions() {
   const positions = useLobsterPositions(network, address)
 
   const factoryId = CONTRACTS[network].lobster.factory
-  const factoryExplorer = factoryId
-    ? `https://stellar.expert/explorer/${network === 'mainnet' ? 'public' : 'testnet'}/contract/${factoryId}`
-    : null
+  const factoryExplorer = factoryId ? stellarExplorer(network, 'contract', factoryId) : null
 
   return (
     <div className="space-y-6">
@@ -114,7 +112,7 @@ export default function Positions() {
         ) : (
           <div className="space-y-2">
             {positions.data.map((p) => {
-              const lobsterExplorer = `https://stellar.expert/explorer/${network === 'mainnet' ? 'public' : 'testnet'}/contract/${p.lobsterAddress}`
+              const lobsterExplorer = stellarExplorer(network, 'contract', p.lobsterAddress)
               return (
                 <div
                   key={p.lobsterAddress}
