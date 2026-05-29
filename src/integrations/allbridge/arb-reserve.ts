@@ -17,16 +17,32 @@ export const ArbDispatchSchema = z.object({
 })
 export type ArbDispatch = z.infer<typeof ArbDispatchSchema>
 
-export interface ArbLeg {
-  direction: 'OUT' | 'IN'
-  txHash?: string
-  status: 'pending' | 'submitted' | 'confirmed' | 'failed'
-}
+// Each leg of a cycle: txHash exists only once a wallet broadcast the tx,
+// reason exists only on a failure. The discriminated `status` lets the UI
+// render without sentinel checks on optional fields.
+export type ArbLegDirection = 'OUT' | 'IN'
+
+export type ArbLeg =
+  | { direction: ArbLegDirection; status: 'pending' }
+  | { direction: ArbLegDirection; status: 'submitted'; txHash: string }
+  | { direction: ArbLegDirection; status: 'confirmed'; txHash: string }
+  | { direction: ArbLegDirection; status: 'failed'; reason?: string }
 
 export interface ArbCycle {
   dispatch: ArbDispatch
   outLeg: ArbLeg
   inLeg: ArbLeg
+}
+
+// The return leg always brings USDC back from the EVM exec account to the
+// Stellar reserve. quote + build share the same reshape; factor it out.
+function dispatchToReturnRequest(dispatch: ArbDispatch): BridgeRequest {
+  return {
+    sourceChain: dispatch.targetChain,
+    amount: dispatch.amount,
+    fromAddress: dispatch.evmExecutionAccount,
+    toAddress: dispatch.stellarReserveAccount,
+  }
 }
 
 export async function quoteReturnLeg(
@@ -35,13 +51,7 @@ export async function quoteReturnLeg(
   trustlineRequired: boolean,
 ) {
   ArbDispatchSchema.parse(dispatch)
-  const req: BridgeRequest = {
-    sourceChain: dispatch.targetChain,
-    amount: dispatch.amount,
-    fromAddress: dispatch.evmExecutionAccount,
-    toAddress: dispatch.stellarReserveAccount,
-  }
-  return quoteBridge(sdk, req, trustlineRequired)
+  return quoteBridge(sdk, dispatchToReturnRequest(dispatch), trustlineRequired)
 }
 
 export async function buildReturnLegTx(
@@ -49,12 +59,7 @@ export async function buildReturnLegTx(
   dispatch: ArbDispatch,
 ): Promise<unknown> {
   ArbDispatchSchema.parse(dispatch)
-  return buildBridgeTx(sdk, {
-    sourceChain: dispatch.targetChain,
-    amount: dispatch.amount,
-    fromAddress: dispatch.evmExecutionAccount,
-    toAddress: dispatch.stellarReserveAccount,
-  })
+  return buildBridgeTx(sdk, dispatchToReturnRequest(dispatch))
 }
 
 // Outbound is scaffolded only - throws loudly if called before the flag flips.
