@@ -1,9 +1,20 @@
 import type { CSSProperties } from 'react'
+import type { Network } from '../config/contracts'
 
 // the card chrome (border + soft shadow) we reuse on every panel
 export const cardStyle: CSSProperties = {
   border: '1px solid rgba(13, 45, 76, 0.08)',
   boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)',
+}
+
+// stellar.expert uses 'public' for mainnet, 'testnet' for testnet
+export function stellarExplorer(
+  network: Network,
+  kind: 'tx' | 'contract' | 'account',
+  id: string,
+): string {
+  const seg = network === 'mainnet' ? 'public' : 'testnet'
+  return `https://stellar.expert/explorer/${seg}/${kind}/${id}`
 }
 
 export function shortenAddress(addr: string, chars = 4) {
