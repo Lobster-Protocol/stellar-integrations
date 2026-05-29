@@ -66,6 +66,14 @@ playwright-report/
 # local-only one-shot walkthrough (not a real assertion test)
 tests/demo-walkthrough.spec.ts
 
+# playwright-mcp browser session artifacts (logs, snapshots, extensions)
+.playwright-mcp/
+/*-snapshot.yml
+/deposit-*.yml
+/post-connect-*.yml
+/expert-tx.yml
+/deposit-modal.yml
+
 # boilerplate meta-docs kept local
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
