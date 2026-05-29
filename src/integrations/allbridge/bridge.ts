@@ -11,9 +11,8 @@ import {
   BridgeRequestSchema,
   type BridgeRequest,
   type EvmSourceChain,
+  BRIDGE_USDC_SYMBOL,
 } from './types'
-
-const USDC_SYMBOL = 'USDC'
 
 function toChainSymbol(c: EvmSourceChain): ChainSymbol {
   switch (c) {
@@ -31,7 +30,7 @@ export async function resolveUsdc(
   chain: ChainSymbol,
 ): Promise<TokenWithChainDetails> {
   const tokens = await sdk.tokensByChain(chain)
-  const usdc = tokens.find((t) => t.symbol === USDC_SYMBOL)
+  const usdc = tokens.find((t) => t.symbol === BRIDGE_USDC_SYMBOL)
   if (!usdc) {
     throw new Error(`USDC not available on ${chain} via Allbridge Core.`)
   }

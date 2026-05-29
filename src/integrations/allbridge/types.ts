@@ -6,6 +6,10 @@ import { z } from 'zod'
 export const EvmSourceChain = z.enum(['ETH', 'ARB', 'BSC'])
 export type EvmSourceChain = z.infer<typeof EvmSourceChain>
 
+// Allbridge SDK returns tokens keyed by their symbol. USDC is the only one
+// we bridge in this app, so the constant lives here next to the chain types.
+export const BRIDGE_USDC_SYMBOL = 'USDC'
+
 // Stellar G-address (Ed25519 public key, base32, 56 chars).
 export const stellarAccountIdRegex = /^G[A-Z2-7]{55}$/
 
