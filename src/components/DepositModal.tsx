@@ -1,11 +1,22 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { X, Check } from 'lucide-react'
+import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { cn } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useBridgeQuote, useTrustline, useBuildBridgeTx } from '../integrations/allbridge/hooks'
-import { CONTRACTS } from '../config/contracts'
-import { BridgeRequestSchema, type BridgeRequest, type EvmSourceChain } from '../integrations/allbridge/types'
+import {
+  useBridgeQuote,
+  useTrustline,
+  useBridgeApprove,
+  useBridgeSend,
+} from '../integrations/allbridge/hooks'
+import { CONTRACTS, EVM_USDC, EVM_EXPLORER_TX } from '../config/contracts'
+import {
+  BridgeRequestSchema,
+  type BridgeRequest,
+  type EvmSourceChain,
+} from '../integrations/allbridge/types'
+import { hasWalletConnectProjectId } from '../integrations/evm/config'
 
 interface Props {
   open: boolean
@@ -25,129 +36,123 @@ const CHAINS: Array<{
 ]
 
 const USDC_ASSET_CODE = 'USDC'
-// trustline issuer is Circle's G-address, not the SAC. Empty on testnet
-// (Allbridge has no testnet deployment).
+
 function usdcIssuerFor(network: 'testnet' | 'mainnet'): string {
   return CONTRACTS[network].tokens.usdcIssuer
 }
 
+function shortAddr(a: string): string {
+  return a.length > 10 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a
+}
+
+type Step =
+  | { phase: 'form' }
+  | { phase: 'approving' }
+  | { phase: 'sending' }
+  | { phase: 'submitted'; hash?: string; sourceChain?: EvmSourceChain }
+  | { phase: 'failed'; msg: string }
+
 export default function DepositModal({ open, onClose }: Props) {
   const [chain, setChain] = useState<(typeof CHAINS)[number]['id']>('stellar')
   const [amount, setAmount] = useState('')
-  const [step, setStep] = useState<'form' | 'building' | 'submitted' | 'failed'>('form')
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [txPreview, setTxPreview] = useState<unknown>(null)
+  const [step, setStep] = useState<Step>({ phase: 'form' })
 
-  const { address } = useWallet()
+  const { address: stellarAddr } = useWallet()
   const { network } = useNetwork()
+
+  const evm = useAccount()
+  const { connectors, connect, isPending: isConnecting } = useConnect()
+  const { disconnect } = useDisconnect()
 
   const selectedChain = CHAINS.find((c) => c.id === chain)!
   const isBridge = selectedChain.bridge
+  const evmChain = isBridge ? (chain as EvmSourceChain) : null
 
   const bridgeRequest: BridgeRequest | null = useMemo(() => {
-    if (!isBridge || !address || !amount) return null
+    if (!evmChain || !stellarAddr || !amount || !evm.address) return null
     try {
       return BridgeRequestSchema.parse({
-        sourceChain: chain as EvmSourceChain,
+        sourceChain: evmChain,
         amount,
-        // EVM address placeholder until wagmi/viem is wired in
-        fromAddress: '0x0000000000000000000000000000000000000000',
-        toAddress: address,
+        fromAddress: evm.address,
+        toAddress: stellarAddr,
       })
     } catch {
       return null
     }
-  }, [chain, amount, address, isBridge])
+  }, [evmChain, amount, stellarAddr, evm.address])
 
   const usdcIssuer = usdcIssuerFor(network)
   const trustlineQuery = useTrustline(
-    usdcIssuer ? address : null,
+    usdcIssuer ? stellarAddr : null,
     USDC_ASSET_CODE,
     usdcIssuer,
     network,
   )
   const trustlineRequired = !!usdcIssuer && trustlineQuery.data === false
   const quoteQuery = useBridgeQuote(bridgeRequest, trustlineRequired)
-  const buildTx = useBuildBridgeTx()
+  const approve = useBridgeApprove()
+  const send = useBridgeSend()
 
   useEffect(() => {
     if (!open) {
-      setStep('form')
+      setStep({ phase: 'form' })
       setAmount('')
-      setErrorMsg(null)
-      setTxPreview(null)
     }
   }, [open])
 
-  // network toggle while modal open: keep amount + chain, reset the rest
   useEffect(() => {
-    if (open) {
-      setStep('form')
-      setTxPreview(null)
-      setErrorMsg(null)
-    }
+    if (open) setStep({ phase: 'form' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [network])
 
   const titleId = useId()
-  const isSubmittingNow = step === 'building'
+  const isWorking = step.phase === 'approving' || step.phase === 'sending'
 
-  // Esc closes the modal, but not mid-build so we don't drop the mutation
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isSubmittingNow) onClose()
+      if (e.key === 'Escape' && !isWorking) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, isSubmittingNow, onClose])
+  }, [open, isWorking, onClose])
 
   if (!open) return null
 
   const handleDeposit = async () => {
-    setErrorMsg(null)
     if (!isBridge) {
-      // Stellar-direct path isn't wired to the Factory yet, so we just
-      // show a clear "demo only" message instead of faking success.
-      setStep('building')
-      setTimeout(() => {
-        setErrorMsg(
-          'Stellar-direct deposits are coming next. The Factory is already live on testnet; we wire up the signing path right after.',
-        )
-        setStep('submitted')
-      }, 1200)
+      // Stellar-direct isn't wired to the Factory yet.
+      setStep({ phase: 'failed', msg: 'Stellar-direct deposits are coming next. The Factory is already live on testnet; we wire up the signing path right after.' })
       return
     }
 
-    if (!bridgeRequest) {
-      setErrorMsg('Connect a wallet and enter an amount.')
+    if (!bridgeRequest || !evmChain || !evm.address) {
+      setStep({ phase: 'failed', msg: 'Connect both wallets and enter an amount.' })
       return
     }
 
-    setStep('building')
     try {
-      const raw = await buildTx.mutateAsync(bridgeRequest)
-      setTxPreview(raw)
-      setErrorMsg(
-        'Bridge transaction prepared. EVM wallet signing arrives in the next phase, mainnet execution after that.',
-      )
-      setStep('submitted')
+      setStep({ phase: 'approving' })
+      await approve.mutateAsync({
+        owner: evm.address,
+        chain: evmChain,
+        tokenAddress: EVM_USDC[evmChain],
+        amount,
+      })
+
+      setStep({ phase: 'sending' })
+      const result = await send.mutateAsync(bridgeRequest)
+      setStep({ phase: 'submitted', hash: result.hash, sourceChain: evmChain })
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Could not build the bridge tx')
-      setStep('failed')
+      const msg = err instanceof Error ? err.message : 'Bridge submission failed'
+      setStep({ phase: 'failed', msg })
     }
   }
 
-  const handleClose = () => {
-    onClose()
-  }
-
-  const isSubmitting = isSubmittingNow
+  const handleClose = () => onClose()
+  const onBackdropClick = () => { if (!isWorking) handleClose() }
   const quote = quoteQuery.data
-
-  const onBackdropClick = () => {
-    if (!isSubmitting) handleClose()
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onBackdropClick}>
@@ -163,26 +168,32 @@ export default function DepositModal({ open, onClose }: Props) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {step === 'submitted' ? (
+        {step.phase === 'submitted' ? (
           <div className="text-center py-6">
             <div className="w-12 h-12 rounded-full bg-green/10 flex items-center justify-center mx-auto mb-4">
               <Check className="text-green" size={22} />
             </div>
             <h3 className="text-lg font-semibold text-text mb-2">
-              {isBridge ? 'Bridge transaction prepared' : 'Deposit initiated'}
+              {isBridge ? 'Bridge tx submitted' : 'Deposit initiated'}
             </h3>
             <p className="text-sm text-text-secondary mb-1">
               {isBridge
                 ? `Bridging ${amount} USDC from ${selectedChain.name.split(' →')[0]}`
                 : `Depositing ${amount} USDC`}
             </p>
-            {isBridge && (
-              <p className="text-xs text-text-muted">
-                {txPreview
-                  ? 'Raw bridge tx ready. Sign and broadcast with your EVM wallet to complete the transfer.'
-                  : 'Estimated bridge time: ~2 min via Allbridge Core'}
-              </p>
+            {step.hash && step.sourceChain && (
+              <a
+                href={EVM_EXPLORER_TX[step.sourceChain](step.hash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline font-mono break-all inline-block mt-2"
+              >
+                {shortAddr(step.hash)}
+              </a>
             )}
+            <p className="text-xs text-text-muted mt-3">
+              Funds land on Stellar in ~2 min via Allbridge Core. Watch your balance.
+            </p>
             <button
               onClick={handleClose}
               className="mt-6 px-6 py-2 rounded-full bg-primary text-white text-sm font-medium"
@@ -190,12 +201,12 @@ export default function DepositModal({ open, onClose }: Props) {
               Done
             </button>
           </div>
-        ) : step === 'failed' ? (
+        ) : step.phase === 'failed' ? (
           <div className="text-center py-6">
-            <h3 className="text-lg font-semibold text-text mb-2">Could not build transaction</h3>
-            <p className="text-sm text-text-secondary mb-4">{errorMsg}</p>
+            <h3 className="text-lg font-semibold text-text mb-2">Could not complete deposit</h3>
+            <p className="text-sm text-text-secondary mb-4">{step.msg}</p>
             <button
-              onClick={() => setStep('form')}
+              onClick={() => setStep({ phase: 'form' })}
               className="px-6 py-2 rounded-full bg-primary text-white text-sm font-medium"
             >
               Retry
@@ -237,6 +248,45 @@ export default function DepositModal({ open, onClose }: Props) {
               </div>
             </div>
 
+            {/* EVM wallet block */}
+            {isBridge && (
+              <div className="mb-4 px-3 py-2.5 rounded-xl bg-bg text-xs space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-text-secondary">EVM wallet</span>
+                  {evm.address ? (
+                    <span className="flex items-center gap-2 text-text font-mono">
+                      {shortAddr(evm.address)}
+                      <button
+                        onClick={() => disconnect()}
+                        className="text-[10px] text-text-muted hover:text-coral"
+                      >
+                        disconnect
+                      </button>
+                    </span>
+                  ) : (
+                    <div className="flex gap-1 flex-wrap">
+                      {connectors.map((c) => (
+                        <button
+                          key={c.uid}
+                          onClick={() => connect({ connector: c })}
+                          disabled={isConnecting}
+                          className="px-2 py-1 rounded-md bg-primary text-white text-[11px] font-medium disabled:opacity-50"
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {!hasWalletConnectProjectId && !evm.address && (
+                  <p className="text-[10px] text-text-muted">
+                    Set VITE_WALLETCONNECT_PROJECT_ID for mobile wallets via WalletConnect.
+                    Injected wallets (MetaMask, Rabby) work without it.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* amount */}
             <div className="mb-4">
               <label className="text-xs text-text-secondary font-medium mb-2 block">Amount (USDC)</label>
@@ -276,7 +326,7 @@ export default function DepositModal({ open, onClose }: Props) {
                   {trustlineQuery.isLoading ? (
                     <span className="text-text-muted">Checking...</span>
                   ) : trustlineRequired ? (
-                    <span className="text-coral font-medium">Will be created</span>
+                    <span className="text-coral font-medium">Required - set it up first</span>
                   ) : (
                     <span className="text-green font-medium">Active</span>
                   )}
@@ -302,18 +352,23 @@ export default function DepositModal({ open, onClose }: Props) {
               </div>
             )}
 
-            {errorMsg && (
-              <div className="mb-3 px-3 py-2 rounded-xl bg-coral/10 text-coral text-xs">
-                {errorMsg}
-              </div>
-            )}
-
             <button
               onClick={handleDeposit}
-              disabled={!amount || Number(amount) <= 0 || isSubmitting}
+              disabled={
+                !amount ||
+                Number(amount) <= 0 ||
+                isWorking ||
+                (isBridge && (!evm.address || network === 'testnet' || trustlineRequired))
+              }
               className="w-full py-3 rounded-full bg-primary text-white font-semibold text-sm transition-all hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Building tx...' : isBridge ? 'Bridge & Deposit' : 'Deposit'}
+              {step.phase === 'approving'
+                ? 'Approving USDC...'
+                : step.phase === 'sending'
+                ? 'Submitting bridge tx...'
+                : isBridge
+                ? 'Bridge & Deposit'
+                : 'Deposit'}
             </button>
           </>
         )}
