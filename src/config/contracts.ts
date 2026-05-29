@@ -53,6 +53,7 @@ const mainnet: NetworkContracts = {
     router: 'CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK',
   },
   lobster: {
+    // not on mainnet yet, lands with the tranche 3 launch
     factory: '',
     wasmHash: '',
     readSource: '',
@@ -60,6 +61,9 @@ const mainnet: NetworkContracts = {
 }
 
 const testnet: NetworkContracts = {
+  // Soroswap / Aquarius / Allbridge are mainnet-only protocols. We leave
+  // these empty on testnet so the UI gates them rather than calling a
+  // non-existent contract.
   tokens: { xlmSac: '', usdcSac: '', usdcIssuer: '' },
   allbridge: { bridge: '', usdcPool: '' },
   soroswap: { factory: '', router: '' },
@@ -89,4 +93,17 @@ export const EVM_EXPLORER_TX: Record<EvmChain, (hash: string) => string> = {
   ETH: (h) => `https://etherscan.io/tx/${h}`,
   ARB: (h) => `https://arbiscan.io/tx/${h}`,
   BSC: (h) => `https://bscscan.com/tx/${h}`,
+}
+
+// Public RPC endpoints we fall back to when the user did not set their own
+// VITE_*_RPC. Allbridge's SDK needs one per EVM chain plus Stellar.
+export const EVM_RPC_FALLBACK: Record<EvmChain, string> = {
+  ETH: 'https://rpc.ankr.com/eth',
+  ARB: 'https://rpc.ankr.com/arbitrum',
+  BSC: 'https://rpc.ankr.com/bsc',
+}
+
+export const STELLAR_RPC_FALLBACK = {
+  soroban: 'https://mainnet.sorobanrpc.com',
+  horizon: 'https://horizon.stellar.org',
 }

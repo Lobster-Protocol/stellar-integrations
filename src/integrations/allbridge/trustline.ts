@@ -18,8 +18,13 @@ export async function hasTrustline(
       const ab = b as { asset_code?: string; asset_issuer?: string }
       return ab.asset_code === assetCode && ab.asset_issuer === assetIssuer
     })
-  } catch {
-    // account missing or network blip - treat as no trustline
-    return false
+  } catch (err) {
+    // 404 = account not yet on chain. Treat as no trustline so the UI
+    // shows "Required" rather than an error toast. Anything else
+    // (network outage, malformed account id) we rethrow so the caller
+    // can render the failure state instead of silently saying "no".
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 404) return false
+    throw err
   }
 }

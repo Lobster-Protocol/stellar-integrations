@@ -38,11 +38,20 @@ export function useTrustline(
 
 export function useBridgeQuote(req: BridgeRequest | null, trustlineRequired: boolean) {
   return useQuery<BridgeQuote>({
-    queryKey: [NS, 'quote', req, trustlineRequired],
+    queryKey: [
+      NS,
+      'quote',
+      req?.sourceChain ?? null,
+      req?.amount ?? null,
+      req?.fromAddress ?? null,
+      req?.toAddress ?? null,
+      trustlineRequired,
+    ],
     queryFn: () => quoteBridge(getAllbridgeSdk(), req!, trustlineRequired),
     enabled: !!req,
     staleTime: STALE_QUOTE,
     refetchInterval: STALE_QUOTE,
+    refetchIntervalInBackground: false,
   })
 }
 
