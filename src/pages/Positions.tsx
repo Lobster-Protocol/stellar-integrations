@@ -2,7 +2,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useFactoryInfo, useLobsterPositions } from '../integrations/lobster/hooks'
 import { CONTRACTS } from '../config/contracts'
-import { shortenAddress, cardStyle, stellarExplorer } from '../utils/format'
+import { shortenAddress, stellarExplorer } from '../utils/format'
 import SignDemoTx from '../components/SignDemoTx'
 import BalancesCard from '../components/BalancesCard'
 import LiveDataMeta from '../components/LiveDataMeta'
@@ -29,10 +29,7 @@ export default function Positions() {
       <BalancesCard />
 
       {/* Factory card - always shown, sources from on-chain state */}
-      <div
-        className="rounded-3xl p-5 bg-bg-card"
-        style={cardStyle}
-      >
+      <div className="rounded-3xl p-5 bg-bg-card card">
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-text">Factory contract</h3>
           <div className="flex items-center gap-3">
@@ -74,10 +71,7 @@ export default function Positions() {
       </div>
 
       {/* User positions */}
-      <div
-        className="rounded-3xl p-5 bg-bg-card"
-        style={cardStyle}
-      >
+      <div className="rounded-3xl p-5 bg-bg-card card">
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-text">Your positions</h3>
           {address && (

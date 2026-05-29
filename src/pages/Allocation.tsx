@@ -1,9 +1,23 @@
 import { useMemo, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { generateSnapshots, filterByRange, STRATEGY, getProtocolColor, type Protocol, type TimeRange } from '../data/mock'
+import {
+  generateSnapshots,
+  filterByRange,
+  STRATEGY,
+  getProtocolColor,
+  computeProtocolTimeShare,
+  type Protocol,
+  type TimeRange,
+} from '../data/mock'
 import TimeRangeSelector from '../components/TimeRangeSelector'
 import MockDataBadge from '../components/MockDataBadge'
-import { cardStyle } from '../utils/format'
+import {
+  TOOLTIP_STYLE,
+  AXIS_TICK,
+  GRID_STROKE,
+  formatMonthDay,
+  formatPercentTick,
+} from '../utils/recharts'
 
 export default function Allocation() {
   const [range, setRange] = useState<TimeRange>('ALL')
@@ -17,12 +31,9 @@ export default function Allocation() {
     [STRATEGY.token1Symbol]: 100 - s.token0Ratio,
   }))
 
-  // count time on each protocol
-  const protocolTime: Record<string, number> = {}
-  for (const s of snapshots) {
-    protocolTime[s.activeProtocol] = (protocolTime[s.activeProtocol] || 0) + 1
-  }
+  const protocolTime = useMemo(() => computeProtocolTimeShare(snapshots), [snapshots])
   const totalDays = snapshots.length
+  const latest = snapshots[snapshots.length - 1]
 
   return (
     <div className="space-y-6">
@@ -33,7 +44,7 @@ export default function Allocation() {
       </div>
 
       {/* token delta stacked area */}
-      <div className="bg-bg-card rounded-3xl p-5" style={cardStyle}>
+      <div className="bg-bg-card rounded-3xl p-5 card">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-text">Token Delta</h3>
           <div className="flex items-center gap-4 text-xs">
@@ -44,11 +55,11 @@ export default function Allocation() {
         </div>
         <ResponsiveContainer width="100%" height={280}>
           <AreaChart data={deltaData} stackOffset="expand">
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(13, 45, 76, 0.06)" />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(d: string) => d.slice(5)} />
-            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} />
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+            <XAxis dataKey="date" tick={AXIS_TICK} axisLine={false} tickLine={false} tickFormatter={formatMonthDay} />
+            <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} tickFormatter={formatPercentTick} />
             <Tooltip
-              contentStyle={{ background: '#fff', border: '1px solid rgba(13,45,76,0.1)', borderRadius: 12, fontSize: 12 }}
+              contentStyle={TOOLTIP_STYLE}
               formatter={(val) => [`${(Number(val) * 100).toFixed(1)}%`]}
             />
             <Area type="monotone" dataKey={STRATEGY.token0Symbol} stackId="1" stroke="#3693fb" fill="#3693fb" fillOpacity={0.6} />
@@ -58,7 +69,7 @@ export default function Allocation() {
       </div>
 
       {/* protocol timeline */}
-      <div className="bg-bg-card rounded-3xl p-5" style={cardStyle}>
+      <div className="bg-bg-card rounded-3xl p-5 card">
         <h3 className="text-sm font-semibold text-text mb-4">DEX Distribution Over Time</h3>
 
         {/* visual timeline bar */}
@@ -93,26 +104,22 @@ export default function Allocation() {
       <div className="grid md:grid-cols-2 gap-4">
         <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)' }}>
           <h3 className="text-sm font-semibold text-text mb-3">Current Token Balances</h3>
-          {(() => {
-            const last = snapshots[snapshots.length - 1]
-            if (!last) return null
-            return (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">{STRATEGY.token0Symbol}</span>
-                  <span className="text-sm text-text font-mono">{last.token0Amount.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">{STRATEGY.token1Symbol}</span>
-                  <span className="text-sm text-text font-mono">{last.token1Amount.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">Ratio</span>
-                  <span className="text-sm text-text">{last.token0Ratio}% / {(100 - last.token0Ratio).toFixed(1)}%</span>
-                </div>
+          {latest && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-text-secondary">{STRATEGY.token0Symbol}</span>
+                <span className="text-sm text-text font-mono">{latest.token0Amount.toLocaleString()}</span>
               </div>
-            )
-          })()}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-text-secondary">{STRATEGY.token1Symbol}</span>
+                <span className="text-sm text-text font-mono">{latest.token1Amount.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-text-secondary">Ratio</span>
+                <span className="text-sm text-text">{latest.token0Ratio}% / {(100 - latest.token0Ratio).toFixed(1)}%</span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)' }}>
           <h3 className="text-sm font-semibold text-text mb-3">Target Delta</h3>

@@ -1,7 +1,7 @@
 import { useAccountBalances } from '../integrations/horizon/account'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { shortenAddress, formatBalance, cardStyle } from '../utils/format'
+import { shortenAddress, formatBalance } from '../utils/format'
 import LiveDataMeta from './LiveDataMeta'
 
 export default function BalancesCard() {
@@ -47,7 +47,7 @@ export default function BalancesCard() {
   }
 
   return (
-    <div className="rounded-3xl p-5 bg-bg-card" style={cardStyle}>
+    <div className="rounded-3xl p-5 bg-bg-card card">
       <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
         <h3 className="text-sm font-semibold text-text">Account balances</h3>
         <div className="flex items-center gap-3">

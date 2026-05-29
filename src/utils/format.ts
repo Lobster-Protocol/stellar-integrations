@@ -1,11 +1,4 @@
-import type { CSSProperties } from 'react'
 import type { Network } from '../config/contracts'
-
-// the card chrome (border + soft shadow) we reuse on every panel
-export const cardStyle: CSSProperties = {
-  border: '1px solid rgba(13, 45, 76, 0.08)',
-  boxShadow: '0 12px 35px rgba(8, 10, 12, 0.08)',
-}
 
 // stellar.expert uses 'public' for mainnet, 'testnet' for testnet
 export function stellarExplorer(
@@ -25,6 +18,14 @@ export function shortenAddress(addr: string, chars = 4) {
 // poor man's clsx
 export function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ')
+}
+
+// activity feed: swaps show a token amount, everything else shows USD
+export function formatActivityAmount(type: string, amount: number, token?: string): string {
+  if (type === 'swap') return `${amount.toLocaleString()} ${token ?? ''}`.trim()
+  if (Math.abs(amount) >= 1_000_000) return `$${(amount / 1_000_000).toFixed(2)}M`
+  if (Math.abs(amount) >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`
+  return `$${amount.toFixed(2)}`
 }
 
 // horizon balances are 7-decimal fixed point; 2dp above 1, up to 7 below
@@ -53,4 +54,15 @@ export function timeSince(dateStr: string) {
     if (count > 0) return `${count}${i.label} ago`
   }
   return 'just now'
+}
+
+// short "Xs ago" / "Xm ago" / "Xh ago" from a raw millisecond delta
+export function formatAgeMs(ms: number): string {
+  if (ms < 1000) return 'just now'
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `${s}s ago`
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.round(m / 60)
+  return `${h}h ago`
 }

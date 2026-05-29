@@ -1,19 +1,11 @@
 import { useMemo } from 'react'
-import { generateBridgeEvents, formatUSD } from '../data/mock'
-import {  cn, cardStyle } from '../utils/format'
+import { generateBridgeEvents, formatUSD, CHAIN_COLORS } from '../data/mock'
+import { cn } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useTrustline } from '../integrations/allbridge/hooks'
 import { CONTRACTS } from '../config/contracts'
 import MockDataBadge from '../components/MockDataBadge'
-
-// chain colors (inspired by the Python dashboard)
-const CHAIN_COLORS: Record<string, string> = {
-  Ethereum: '#627EEA',
-  Arbitrum: '#FF6B35',
-  Base: '#27AE60',
-  Stellar: '#3693fb',
-}
 
 export default function Bridges() {
   const events = useMemo(() => generateBridgeEvents(), [])
@@ -89,7 +81,7 @@ export default function Bridges() {
       </div>
 
       {/* transaction history */}
-      <div className="bg-bg-card rounded-3xl overflow-hidden" style={cardStyle}>
+      <div className="bg-bg-card rounded-3xl overflow-hidden card">
         <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.08)' }}>
           <h3 className="text-sm font-semibold text-text">Bridge History</h3>
         </div>

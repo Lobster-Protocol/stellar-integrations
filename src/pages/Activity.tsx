@@ -1,26 +1,15 @@
 import { useMemo, useState } from 'react'
-import { generateActivity, getProtocolColor, getProtocolLabel, formatUSD, type ActivityType } from '../data/mock'
-import {  cn, cardStyle } from '../utils/format'
+import {
+  generateActivity,
+  getProtocolColor,
+  getProtocolLabel,
+  ACTIVITY_LABELS,
+  ACTIVITY_COLORS,
+  type ActivityType,
+} from '../data/mock'
+import { cn, formatActivityAmount } from '../utils/format'
 import OnChainActivityCard from '../components/OnChainActivityCard'
 import MockDataBadge from '../components/MockDataBadge'
-
-const TYPE_LABELS: Record<ActivityType, string> = {
-  migration: 'Pool Migration',
-  swap: 'Arbitrage Swap',
-  deposit: 'Deposit',
-  withdraw: 'Withdrawal',
-  bridge_in: 'Bridge In',
-  bridge_out: 'Bridge Out',
-}
-
-const TYPE_COLORS: Record<ActivityType, string> = {
-  migration: '#3693fb',
-  swap: '#ff8770',
-  deposit: '#10b981',
-  withdraw: '#ef4444',
-  bridge_in: '#9333ea',
-  bridge_out: '#f97316',
-}
 
 type Filter = 'all' | ActivityType
 
@@ -49,13 +38,13 @@ export default function Activity() {
                 filter === f ? 'bg-primary text-white' : 'bg-bg text-text-secondary hover:text-text'
               )}
             >
-              {f === 'all' ? 'All' : TYPE_LABELS[f as ActivityType]}
+              {f === 'all' ? 'All' : ACTIVITY_LABELS[f as ActivityType]}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="bg-bg-card rounded-3xl overflow-hidden" style={cardStyle}>
+      <div className="bg-bg-card rounded-3xl overflow-hidden card">
         <div className="divide-y" style={{ borderColor: 'rgba(13, 45, 76, 0.06)' }}>
           {filtered.map(event => (
             <div key={event.id} className="px-5 py-4 hover:bg-bg/30 transition-colors">
@@ -63,11 +52,11 @@ export default function Activity() {
                 <div className="flex items-start gap-3">
                   <span
                     className="mt-0.5 w-2 h-2 rounded-full shrink-0"
-                    style={{ background: TYPE_COLORS[event.type] }}
+                    style={{ background: ACTIVITY_COLORS[event.type] }}
                   />
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-text">{TYPE_LABELS[event.type]}</span>
+                      <span className="text-sm font-medium text-text">{ACTIVITY_LABELS[event.type]}</span>
                       {event.type === 'migration' && event.fromProtocol && event.toProtocol && (
                         <span className="text-xs text-text-muted">
                           <span style={{ color: getProtocolColor(event.fromProtocol) }}>{getProtocolLabel(event.fromProtocol)}</span>
@@ -77,7 +66,7 @@ export default function Activity() {
                       )}
                       {event.amount && (
                         <span className="text-xs text-text-secondary font-mono">
-                          {event.type === 'swap' ? `${event.amount.toLocaleString()} ${event.token}` : formatUSD(event.amount)}
+                          {formatActivityAmount(event.type, event.amount, event.token)}
                         </span>
                       )}
                     </div>

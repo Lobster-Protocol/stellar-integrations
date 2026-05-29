@@ -2,7 +2,7 @@ import { useAccountOperations } from '../integrations/horizon/account'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import LiveDataMeta from './LiveDataMeta'
-import { cardStyle, stellarExplorer } from '../utils/format'
+import { stellarExplorer } from '../utils/format'
 
 export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
   const { address } = useWallet()
@@ -12,10 +12,7 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
   if (!address) return null
 
   return (
-    <div
-      className="rounded-3xl p-5 bg-bg-card"
-      style={cardStyle}
-    >
+    <div className="rounded-3xl p-5 bg-bg-card card">
       <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
         <h3 className="text-sm font-semibold text-text">Recent on-chain operations</h3>
         <div className="flex items-center gap-3">
