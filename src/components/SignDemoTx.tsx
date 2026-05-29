@@ -4,7 +4,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { networkPassphrase } from '../integrations/lobster/client'
-import { cardStyle } from '../utils/format'
+import { cardStyle, stellarExplorer } from '../utils/format'
 
 export default function SignDemoTx() {
   const { address, walletName } = useWallet()
@@ -51,9 +51,7 @@ export default function SignDemoTx() {
     }
   }
 
-  const explorerUrl = txHash
-    ? `https://stellar.expert/explorer/${network === 'mainnet' ? 'public' : 'testnet'}/tx/${txHash}`
-    : null
+  const explorerUrl = txHash ? stellarExplorer(network, 'tx', txHash) : null
 
   return (
     <div
