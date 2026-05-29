@@ -37,10 +37,6 @@ const CHAINS: Array<{
 
 const USDC_ASSET_CODE = 'USDC'
 
-function usdcIssuerFor(network: 'testnet' | 'mainnet'): string {
-  return CONTRACTS[network].tokens.usdcIssuer
-}
-
 function shortAddr(a: string): string {
   return a.length > 10 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a
 }
@@ -82,7 +78,7 @@ export default function DepositModal({ open, onClose }: Props) {
     }
   }, [evmChain, amount, stellarAddr, evm.address])
 
-  const usdcIssuer = usdcIssuerFor(network)
+  const usdcIssuer = CONTRACTS[network].tokens.usdcIssuer
   const trustlineQuery = useTrustline(
     usdcIssuer ? stellarAddr : null,
     USDC_ASSET_CODE,
@@ -150,12 +146,13 @@ export default function DepositModal({ open, onClose }: Props) {
     }
   }
 
-  const handleClose = () => onClose()
-  const onBackdropClick = () => { if (!isWorking) handleClose() }
   const quote = quoteQuery.data
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onBackdropClick}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={() => { if (!isWorking) onClose() }}
+    >
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
       <div
         role="dialog"
@@ -195,7 +192,7 @@ export default function DepositModal({ open, onClose }: Props) {
               Funds land on Stellar in ~2 min via Allbridge Core. Watch your balance.
             </p>
             <button
-              onClick={handleClose}
+              onClick={onClose}
               className="mt-6 px-6 py-2 rounded-full bg-primary text-white text-sm font-medium"
             >
               Done
@@ -217,7 +214,7 @@ export default function DepositModal({ open, onClose }: Props) {
             <div className="flex items-center justify-between mb-5">
               <h3 id={titleId} className="text-lg font-semibold text-text">Deposit Funds</h3>
               <button
-                onClick={handleClose}
+                onClick={onClose}
                 aria-label="Close deposit modal"
                 className="text-text-muted hover:text-text text-lg"
               >
