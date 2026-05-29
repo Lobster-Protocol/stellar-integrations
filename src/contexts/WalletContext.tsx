@@ -115,6 +115,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setWalletName(null)
     localStorage.removeItem('lob_addr')
     localStorage.removeItem('lob_wname')
+    // kit may throw if nothing was connected; tearing down anyway, ignore
     StellarWalletsKit.disconnect().catch(() => {})
   }, [])
 

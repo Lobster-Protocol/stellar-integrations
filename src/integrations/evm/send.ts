@@ -23,10 +23,29 @@ export interface EvmTxResult {
   blockNumber: bigint
 }
 
+// Thrown when the inputs to the EVM tx layer are malformed before any wallet
+// call. Mirrors the wrapped-boundary pattern used by lobster/factory.ts.
+export class EvmTxValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'EvmTxValidationError'
+  }
+}
+
+// Thrown when viem/wagmi rejects the broadcast or the receipt poll. The
+// original error is preserved via `cause` so debugging still has the viem
+// stack but callers can switch on `EvmTxSubmitError` for retry/toast UX.
+export class EvmTxSubmitError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options)
+    this.name = 'EvmTxSubmitError'
+  }
+}
+
 type WagmiChainId = (typeof EVM_CHAIN_ID)[EvmChainSymbol]
 
 export function toViemTxArgs(raw: RawEvmTx, chainId: WagmiChainId) {
-  if (!raw.to) throw new Error('Raw EVM tx is missing `to`')
+  if (!raw.to) throw new EvmTxValidationError('Raw EVM tx is missing `to`')
   return {
     chainId,
     to: raw.to as Address,
@@ -37,7 +56,7 @@ export function toViemTxArgs(raw: RawEvmTx, chainId: WagmiChainId) {
 
 async function ensureChain(target: EvmChainSymbol): Promise<WagmiChainId> {
   const account = getAccount(wagmiConfig)
-  if (!account.address) throw new Error('Connect an EVM wallet first')
+  if (!account.address) throw new EvmTxValidationError('Connect an EVM wallet first')
   const targetId = EVM_CHAIN_ID[target]
   if (account.chainId !== targetId) {
     await switchChain(wagmiConfig, { chainId: targetId })
@@ -51,9 +70,15 @@ export async function sendAllbridgeEvmTx(
 ): Promise<EvmTxResult> {
   const chainId = await ensureChain(chainSymbol)
   const args = toViemTxArgs(raw, chainId)
-  const hash = await sendTransaction(wagmiConfig, args)
-  const receipt = await waitForTransactionReceipt(wagmiConfig, { hash })
-  return { hash, blockNumber: receipt.blockNumber }
+  try {
+    const hash = await sendTransaction(wagmiConfig, args)
+    const receipt = await waitForTransactionReceipt(wagmiConfig, { hash })
+    return { hash, blockNumber: receipt.blockNumber }
+  } catch (err) {
+    if (err instanceof EvmTxValidationError) throw err
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new EvmTxSubmitError(`EVM tx failed on ${chainSymbol}: ${msg}`, { cause: err })
+  }
 }
 
 /**
