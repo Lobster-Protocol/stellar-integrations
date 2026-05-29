@@ -320,6 +320,11 @@ export function computeKPIs(snapshots: DailySnapshot[]) {
   const stdDev = Math.sqrt(variance)
   const sharpe = stdDev > 0 ? (meanReturn / stdDev) * Math.sqrt(365) : 0
 
+  // derive counts from the same generator Activity.tsx renders
+  const events = generateActivity()
+  const migrations = events.filter((e) => e.type === 'migration').length
+  const swaps = events.filter((e) => e.type === 'swap').length
+
   return {
     totalPnl: last.pnl,
     totalPnlPercent: last.pnlPercent,
@@ -332,8 +337,8 @@ export function computeKPIs(snapshots: DailySnapshot[]) {
     currentValue: last.portfolioValue,
     deposited: first.portfolioValue,
     daysActive: snapshots.length,
-    migrations: 7, // hardcoded, matches generateActivity
-    swaps: Math.floor(180 / 4), // rough
+    migrations,
+    swaps,
   }
 }
 
@@ -369,4 +374,47 @@ export function formatUSD(n: number): string {
   if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`
   if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}K`
   return `$${n.toFixed(2)}`
+}
+
+export const ACTIVITY_LABELS: Record<ActivityType, string> = {
+  migration: 'Pool Migration',
+  swap: 'Arbitrage Swap',
+  deposit: 'Deposit',
+  withdraw: 'Withdrawal',
+  bridge_in: 'Bridge In',
+  bridge_out: 'Bridge Out',
+}
+
+export const ACTIVITY_COLORS: Record<ActivityType, string> = {
+  migration: '#3693fb',
+  swap: '#ff8770',
+  deposit: '#10b981',
+  withdraw: '#ef4444',
+  bridge_in: '#9333ea',
+  bridge_out: '#f97316',
+}
+
+// colors per source/destination chain in the bridge UI (mainnet brand palette)
+export const CHAIN_COLORS: Record<string, string> = {
+  Ethereum: '#627EEA',
+  Arbitrum: '#FF6B35',
+  Base: '#27AE60',
+  Stellar: '#3693fb',
+}
+
+// preview slice the Overview donut shows when the user is mid-onboarding.
+// matches what the strategy actually rotates through over 6 months.
+export const PROTOCOL_DISTRIBUTION: { name: string; value: number }[] = [
+  { name: 'Aquarius', value: 45 },
+  { name: 'Soroswap', value: 35 },
+  { name: 'Phoenix', value: 20 },
+]
+
+// how many days each protocol was the active venue across the snapshot window
+export function computeProtocolTimeShare(snapshots: DailySnapshot[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const s of snapshots) {
+    out[s.activeProtocol] = (out[s.activeProtocol] || 0) + 1
+  }
+  return out
 }
