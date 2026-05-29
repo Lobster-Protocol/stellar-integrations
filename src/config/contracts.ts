@@ -72,3 +72,21 @@ const testnet: NetworkContracts = {
 }
 
 export const CONTRACTS: Record<Network, NetworkContracts> = { mainnet, testnet }
+
+// EVM-side canonical values for the Allbridge inflow path. These don't
+// vary with the Stellar network (USDC mainnet address on Ethereum is
+// always the same, mainnet-only flow), so they sit outside CONTRACTS.
+
+export type EvmChain = 'ETH' | 'ARB' | 'BSC'
+
+export const EVM_USDC: Record<EvmChain, `0x${string}`> = {
+  ETH: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+  ARB: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+  BSC: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
+}
+
+export const EVM_EXPLORER_TX: Record<EvmChain, (hash: string) => string> = {
+  ETH: (h) => `https://etherscan.io/tx/${h}`,
+  ARB: (h) => `https://arbiscan.io/tx/${h}`,
+  BSC: (h) => `https://bscscan.com/tx/${h}`,
+}
