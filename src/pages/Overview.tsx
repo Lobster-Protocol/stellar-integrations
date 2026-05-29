@@ -1,9 +1,18 @@
 import { useMemo, useState, lazy, Suspense } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
-import { generateSnapshots, computeKPIs, STRATEGY, formatUSD, getProtocolColor, getProtocolLabel } from '../data/mock'
+import {
+  generateSnapshots,
+  computeKPIs,
+  STRATEGY,
+  formatUSD,
+  getProtocolColor,
+  getProtocolLabel,
+  PROTOCOL_DISTRIBUTION,
+} from '../data/mock'
 import { useWallet } from '../contexts/WalletContext'
 import lobsterIcon from '../assets/lobster-icon.png'
-import {  cn, cardStyle } from '../utils/format'
+import { cn } from '../utils/format'
+import { TOOLTIP_STYLE, AXIS_TICK } from '../utils/recharts'
 import MockDataBadge from '../components/MockDataBadge'
 
 // lazy - the Allbridge SDK drags in viem/walletconnect/solana, ~1MB. no point
@@ -52,12 +61,6 @@ export default function Overview() {
   ]
   const TOKEN_COLORS = ['#3693fb', '#ff8770']
 
-  // protocol distribution (simplified - show active + historical)
-  const protocolDist = [
-    { name: 'Aquarius', value: 45 },
-    { name: 'Soroswap', value: 35 },
-    { name: 'Phoenix', value: 20 },
-  ]
   const PROTO_COLORS = [getProtocolColor('aquarius'), getProtocolColor('soroswap'), getProtocolColor('phoenix')]
 
   return (
@@ -98,7 +101,7 @@ export default function Overview() {
       {/* main content grid */}
       <div className="grid lg:grid-cols-3 gap-4">
         {/* mini PnL chart */}
-        <div className="lg:col-span-2 bg-bg-card rounded-3xl p-5" style={cardStyle}>
+        <div className="lg:col-span-2 bg-bg-card rounded-3xl p-5 card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-text">Portfolio Value (30D)</h3>
             <span className="text-xs text-text-muted">{STRATEGY.name}</span>
@@ -111,10 +114,10 @@ export default function Overview() {
                   <stop offset="100%" stopColor="#3693fb" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="date" tick={AXIS_TICK} axisLine={false} tickLine={false} />
               <YAxis hide domain={['dataMin - 500', 'dataMax + 500']} />
               <Tooltip
-                contentStyle={{ background: '#fff', border: '1px solid rgba(13,45,76,0.1)', borderRadius: 12, fontSize: 12 }}
+                contentStyle={TOOLTIP_STYLE}
                 formatter={(val) => [formatUSD(Number(val)), 'Value']}
               />
               <Area type="monotone" dataKey="value" stroke="#3693fb" strokeWidth={2} fill="url(#pnlGrad)" />
@@ -123,7 +126,7 @@ export default function Overview() {
         </div>
 
         {/* current position card */}
-        <div className="bg-bg-card rounded-3xl p-5" style={cardStyle}>
+        <div className="bg-bg-card rounded-3xl p-5 card">
           <h3 className="text-sm font-semibold text-text mb-4">Active Position</h3>
           <div className="flex items-center gap-2 mb-3">
             <span
@@ -173,7 +176,7 @@ export default function Overview() {
       {/* allocation donuts */}
       <div className="grid md:grid-cols-2 gap-4">
         <DonutCard title="Token Allocation" data={tokenAlloc} colors={TOKEN_COLORS} />
-        <DonutCard title="DEX Distribution (time-weighted)" data={protocolDist} colors={PROTO_COLORS} />
+        <DonutCard title="DEX Distribution (time-weighted)" data={PROTOCOL_DISTRIBUTION} colors={PROTO_COLORS} />
       </div>
     </div>
   )
@@ -197,7 +200,7 @@ function KPICard({ label, value, sub, color }: { label: string; value: string; s
 
 function DonutCard({ title, data, colors }: { title: string; data: { name: string; value: number }[]; colors: string[] }) {
   return (
-    <div className="bg-bg-card rounded-3xl p-5" style={cardStyle}>
+    <div className="bg-bg-card rounded-3xl p-5 card">
       <h3 className="text-sm font-semibold text-text mb-4">{title}</h3>
       <div className="flex items-center gap-6">
         <ResponsiveContainer width={120} height={120}>

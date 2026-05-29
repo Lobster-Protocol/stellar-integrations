@@ -6,9 +6,12 @@ interface Props {
   size?: 'sm' | 'md'
 }
 
+const SCORE_GOOD = 75
+const SCORE_OK = 50
+
 function barColor(v: number) {
-  if (v >= 75) return 'bg-green'
-  if (v >= 50) return 'bg-primary'
+  if (v >= SCORE_GOOD) return 'bg-green'
+  if (v >= SCORE_OK) return 'bg-primary'
   return 'bg-secondary'
 }
 

@@ -18,7 +18,6 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
   return (
     <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-bg-card/60 backdrop-blur-sm" style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.06)' }}>
       <div className="flex items-center gap-3">
-        {/* mobile menu btn */}
         <button
           ref={menuButtonRef}
           onClick={onMenuToggle}
@@ -29,12 +28,10 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
         >
           <Menu size={20} />
         </button>
-        {/* mobile logo */}
         <div className="lg:hidden flex items-center gap-1.5">
           <img src={lobsterIcon} alt="Lobster" className="h-6 w-6" />
           <span className="text-sm font-semibold text-text">Lobster</span>
         </div>
-        <div className="hidden lg:block" />
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">

@@ -3,6 +3,14 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { generateSnapshots, computeKPIs, filterByRange, formatUSD, type TimeRange } from '../data/mock'
 import TimeRangeSelector from '../components/TimeRangeSelector'
 import { cn } from '../utils/format'
+import {
+  TOOLTIP_STYLE,
+  AXIS_TICK,
+  GRID_STROKE,
+  formatMonthDay,
+  formatSignedPercentTick,
+  formatUsdTick,
+} from '../utils/recharts'
 import MockDataBadge from '../components/MockDataBadge'
 
 export default function Performance() {
@@ -45,22 +53,22 @@ export default function Performance() {
                 <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(13, 45, 76, 0.06)" />
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: '#9ca3af' }}
+              tick={AXIS_TICK}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(d: string) => d.slice(5)}
+              tickFormatter={formatMonthDay}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: '#9ca3af' }}
+              tick={AXIS_TICK}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+              tickFormatter={formatSignedPercentTick}
             />
             <Tooltip
-              contentStyle={{ background: '#fff', border: '1px solid rgba(13,45,76,0.1)', borderRadius: 12, fontSize: 12 }}
+              contentStyle={TOOLTIP_STYLE}
               formatter={(val) => [`${Number(val).toFixed(2)}%`, 'PnL']}
               labelFormatter={(l) => String(l)}
             />
@@ -74,11 +82,11 @@ export default function Performance() {
         <h3 className="text-sm font-semibold text-text mb-2">Cumulative Fees vs Impermanent Loss</h3>
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(13, 45, 76, 0.06)" />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(d: string) => d.slice(5)} />
-            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => formatUSD(v)} />
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+            <XAxis dataKey="date" tick={AXIS_TICK} axisLine={false} tickLine={false} tickFormatter={formatMonthDay} />
+            <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} tickFormatter={formatUsdTick} />
             <Tooltip
-              contentStyle={{ background: '#fff', border: '1px solid rgba(13,45,76,0.1)', borderRadius: 12, fontSize: 12 }}
+              contentStyle={TOOLTIP_STYLE}
               formatter={(val, name) => [formatUSD(Number(val)), name === 'fees' ? 'Fees earned' : 'IL']}
             />
             <Area type="monotone" dataKey="fees" stroke="#3693fb" strokeWidth={1.5} fill="rgba(54, 147, 251, 0.1)" />
