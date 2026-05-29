@@ -5,6 +5,7 @@ import {
   Messenger,
   type TokenWithChainDetails,
 } from '@allbridge/bridge-core-sdk'
+import type { RawEvmTx } from '../evm/send'
 import {
   type BridgeQuote,
   BridgeRequestSchema,
@@ -83,12 +84,12 @@ export async function quoteBridge(
   }
 }
 
-// Returns a viem-compatible TransactionRequest on EVM sources. Stellar
-// is always the destination here.
+// Returns a raw EVM tx (to/data/value/from) the wallet client can sign.
+// Stellar is always the destination here.
 export async function buildBridgeTx(
   sdk: AllbridgeCoreSdk,
   req: BridgeRequest,
-): Promise<unknown> {
+): Promise<RawEvmTx> {
   BridgeRequestSchema.parse(req)
 
   const sourceChain = toChainSymbol(req.sourceChain)
@@ -104,5 +105,37 @@ export async function buildBridgeTx(
     messenger: Messenger.ALLBRIDGE,
   }
 
-  return sdk.bridge.rawTxBuilder.send(params)
+  return (await sdk.bridge.rawTxBuilder.send(params)) as RawEvmTx
+}
+
+/**
+ * Build the USDC `approve` raw tx the EVM wallet will sign before the
+ * bridge call. Allbridge needs allowance on the bridge contract for the
+ * source chain.
+ */
+export async function buildBridgeApproveTx(
+  sdk: AllbridgeCoreSdk,
+  ownerAddress: string,
+  chain: EvmSourceChain,
+  amount: string,
+): Promise<RawEvmTx> {
+  const sourceUsdc = await resolveUsdc(sdk, toChainSymbol(chain))
+  return (await sdk.bridge.rawTxBuilder.approve({
+    token: sourceUsdc,
+    owner: ownerAddress,
+    amount,
+  })) as RawEvmTx
+}
+
+/**
+ * Address of the Allbridge bridge contract on a given EVM chain. We need
+ * it to read the ERC-20 allowance and decide whether the approve step is
+ * required at all. The SDK surfaces it on the token's chain details.
+ */
+export async function getBridgeSpender(
+  sdk: AllbridgeCoreSdk,
+  chain: EvmSourceChain,
+): Promise<string> {
+  const sourceUsdc = await resolveUsdc(sdk, toChainSymbol(chain))
+  return sourceUsdc.bridgeAddress
 }
