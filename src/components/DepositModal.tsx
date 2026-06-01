@@ -1,6 +1,7 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { StellarWalletsKit } from '@creit-tech/stellar-wallets-kit'
 import { cn, shortenAddress } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
@@ -16,6 +17,8 @@ import {
   type BridgeRequest,
   type EvmSourceChain,
 } from '../integrations/allbridge/types'
+import { buildTrustlineXdr, submitTrustlineTx } from '../integrations/allbridge/trustline'
+import { networkPassphrase } from '../integrations/lobster/client'
 import { hasWalletConnectProjectId } from '../integrations/evm/config'
 
 interface Props {
@@ -48,6 +51,10 @@ export default function DepositModal({ open, onClose }: Props) {
   const [chain, setChain] = useState<(typeof CHAINS)[number]['id']>('stellar')
   const [amount, setAmount] = useState('')
   const [step, setStep] = useState<Step>({ phase: 'form' })
+  const [tl, setTl] = useState<
+    { phase: 'idle' } | { phase: 'creating' } | { phase: 'failed'; msg: string }
+  >({ phase: 'idle' })
+  const tlInFlight = useRef(false)
 
   const { address: stellarAddr } = useWallet()
   const { network } = useNetwork()
@@ -92,6 +99,7 @@ export default function DepositModal({ open, onClose }: Props) {
     if (!open) {
       setStep({ phase: 'form' })
       setAmount('')
+      setTl({ phase: 'idle' })
     }
   }, [open])
 
@@ -167,6 +175,27 @@ export default function DepositModal({ open, onClose }: Props) {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Bridge submission failed'
       setStep({ phase: 'failed', msg })
+    }
+  }
+
+  const handleCreateTrustline = async () => {
+    if (!stellarAddr || !usdcIssuer || tlInFlight.current) return
+    tlInFlight.current = true
+    try {
+      setTl({ phase: 'creating' })
+      const xdr = await buildTrustlineXdr(stellarAddr, USDC_ASSET_CODE, usdcIssuer, network)
+      const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, {
+        networkPassphrase: networkPassphrase(network),
+        address: stellarAddr,
+      })
+      await submitTrustlineTx(signedTxXdr, network)
+      await trustlineQuery.refetch()
+      setTl({ phase: 'idle' })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Trustline creation failed'
+      setTl({ phase: 'failed', msg })
+    } finally {
+      tlInFlight.current = false
     }
   }
 
@@ -347,7 +376,13 @@ export default function DepositModal({ open, onClose }: Props) {
                   {trustlineQuery.isLoading ? (
                     <span className="text-text-muted">Checking...</span>
                   ) : trustlineRequired ? (
-                    <span className="text-coral font-medium">Required - set it up first</span>
+                    <button
+                      onClick={handleCreateTrustline}
+                      disabled={tl.phase === 'creating'}
+                      className="text-coral font-medium underline disabled:opacity-50"
+                    >
+                      {tl.phase === 'creating' ? 'Creating...' : tl.phase === 'failed' ? 'Retry trustline' : 'Create trustline'}
+                    </button>
                   ) : (
                     <span className="text-green font-medium">Active</span>
                   )}
@@ -356,6 +391,9 @@ export default function DepositModal({ open, onClose }: Props) {
                   <div className="mt-2 pt-2 border-t border-text-muted/10 text-coral">
                     Allbridge runs on mainnet only. Switch to mainnet to send a real bridge tx.
                   </div>
+                )}
+                {tl.phase === 'failed' && (
+                  <div className="mt-2 pt-2 border-t border-text-muted/10 text-coral break-words">{tl.msg}</div>
                 )}
               </div>
             )}
