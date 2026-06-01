@@ -48,7 +48,7 @@ test.describe('DepositModal - Allbridge wiring', () => {
     await expect(page.getByRole('button', { name: /Bridge & Deposit/ })).toBeVisible()
   })
 
-  test('Bridge button stays disabled until an amount is entered', async ({ page }) => {
+  test('Bridge button stays disabled without a connected EVM wallet', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()
     await page.getByRole('button', { name: /Ethereum/ }).click()
@@ -56,8 +56,9 @@ test.describe('DepositModal - Allbridge wiring', () => {
     const submitBtn = page.getByRole('button', { name: /Bridge & Deposit/ })
     await expect(submitBtn).toBeDisabled()
 
+    // an amount alone does not unlock it - bridging needs an EVM wallet on mainnet
     await page.getByPlaceholder('0.00').fill('100')
-    await expect(submitBtn).toBeEnabled()
+    await expect(submitBtn).toBeDisabled()
   })
 
   test('on testnet, the modal warns that Allbridge runs on mainnet only', async ({ page }) => {
