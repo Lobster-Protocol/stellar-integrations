@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
   generateActivity,
   getProtocolColor,
@@ -13,9 +13,10 @@ import MockDataBadge from '../components/MockDataBadge'
 
 type Filter = 'all' | ActivityType
 
+const events = generateActivity()
+
 // TODO: pagination for long activity feeds
 export default function Activity() {
-  const events = useMemo(() => generateActivity(), [])
   const [filter, setFilter] = useState<Filter>('all')
 
   const filtered = filter === 'all' ? events : events.filter(e => e.type === filter)

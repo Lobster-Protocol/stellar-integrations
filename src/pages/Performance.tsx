@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { generateSnapshots, computeKPIs, filterByRange, formatUSD, type TimeRange } from '../data/mock'
 import TimeRangeSelector from '../components/TimeRangeSelector'
@@ -13,11 +13,12 @@ import {
 } from '../utils/recharts'
 import MockDataBadge from '../components/MockDataBadge'
 
+const allSnapshots = generateSnapshots()
+const kpis = computeKPIs(allSnapshots)
+
 export default function Performance() {
   const [range, setRange] = useState<TimeRange>('ALL')
-  const allSnapshots = useMemo(() => generateSnapshots(), [])
-  const snapshots = useMemo(() => filterByRange(allSnapshots, range), [allSnapshots, range])
-  const kpis = useMemo(() => computeKPIs(allSnapshots), [allSnapshots])
+  const snapshots = filterByRange(allSnapshots, range)
 
   const chartData = snapshots.map(s => ({
     date: s.date,

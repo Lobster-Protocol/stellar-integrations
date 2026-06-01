@@ -93,7 +93,7 @@ export async function readAllowance(
   })) as bigint
 }
 
-// USDC is 6 decimals on eth/arb/bsc
+// usdc is 6 decimals on eth/arb (bsc is 18 and gated out)
 export function toUsdcBaseUnits(human: string): bigint {
   return parseUnits(human, 6)
 }

@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { generateBridgeEvents, formatUSD, CHAIN_COLORS } from '../data/mock'
 import { cn } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
@@ -7,8 +6,9 @@ import { useTrustline } from '../integrations/allbridge/hooks'
 import { CONTRACTS } from '../config/contracts'
 import MockDataBadge from '../components/MockDataBadge'
 
+const events = generateBridgeEvents()
+
 export default function Bridges() {
-  const events = useMemo(() => generateBridgeEvents(), [])
 
   const totalIn = events.filter(e => e.direction === 'in').reduce((s, e) => s + e.amount, 0)
   const totalOut = events.filter(e => e.direction === 'out').reduce((s, e) => s + e.amount, 0)

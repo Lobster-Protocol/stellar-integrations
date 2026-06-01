@@ -10,9 +10,9 @@ export function stellarExplorer(
   return `https://stellar.expert/explorer/${seg}/${kind}/${id}`
 }
 
-export function shortenAddress(addr: string, chars = 4) {
+export function shortenAddress(addr: string, head = 4, tail = head) {
   if (!addr) return ''
-  return addr.slice(0, chars) + '...' + addr.slice(-chars)
+  return addr.slice(0, head) + '...' + addr.slice(-tail)
 }
 
 // poor man's clsx
