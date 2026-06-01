@@ -19,11 +19,6 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
-      # @stellar-broker/client has a postinstall script that calls yarn.
-      # Install yarn before npm ci or the install fails.
-      - name: Install yarn (postinstall dep)
-        run: npm install -g yarn
-
       - name: Install dependencies
         run: npm ci
 
@@ -36,9 +31,8 @@ jobs:
 
       - name: ESLint
         run: npx eslint .
-        continue-on-error: true  # current code has intentional `any` casts
-                                 # for Recharts formatters (cf doc section 9
-                                 # AI detection avoidance — keep as warnings)
+        continue-on-error: true  # recharts formatter callbacks need a few
+                                 # `any` casts; keep lint as warnings, not blocking
 
       - name: Unit tests (Vitest)
         run: npm run test:unit
@@ -49,6 +43,6 @@ jobs:
       - name: Playwright E2E (against live deploy)
         run: npx playwright test --reporter=list
         env:
-          # tests target https://stellar-integrations-blush.vercel.app
+          # tests target https://stellar-instit.lobster-protocol.com
           # they validate the latest pushed code via Vercel auto-deploy
           PLAYWRIGHT_HEADLESS: 'true'
