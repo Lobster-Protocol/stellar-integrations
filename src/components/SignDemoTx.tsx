@@ -6,9 +6,6 @@ import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer } from '../utils/format'
 
-// Discriminated union: each phase owns only the fields it can populate.
-// Removes the "is txHash defined yet?" sentinel checks the previous
-// 3-useState shape forced on every render branch.
 type State =
   | { phase: 'idle' }
   | { phase: 'building' }
@@ -28,7 +25,7 @@ export default function SignDemoTx() {
 
   const [state, setState] = useState<State>({ phase: 'idle' })
 
-  // re-entrancy guard for rapid double-clicks during submit
+  // double-click guard during submit
   const inFlight = useRef(false)
 
   async function handleClick() {

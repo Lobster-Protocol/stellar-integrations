@@ -48,9 +48,7 @@ export async function quoteBridge(
   const sourceUsdc = await resolveUsdc(sdk, sourceChain)
   const stellarUsdc = await resolveUsdc(sdk, ChainSymbol.SRB)
 
-  // CCTP isn't deployed on Stellar yet, so we use ALLBRIDGE messenger.
-  // Native Circle USDC still arrives on Stellar (issued by the canonical
-  // G-address), so the trustline check stays correct.
+  // no cctp on stellar yet; allbridge messenger still delivers native usdc
   const messenger = Messenger.ALLBRIDGE
   const amountOutFloat = await sdk.getAmountToBeReceived(
     req.amount,
@@ -59,12 +57,10 @@ export async function quoteBridge(
   )
   const gasFee = await sdk.getGasFeeOptions(sourceUsdc, stellarUsdc, messenger)
 
-  // Allbridge advertises ~2 min for USDC -> Stellar. Soft estimate, real
-  // durations vary with EVM congestion.
+  // ~2 min per allbridge, varies with evm congestion
   const estimatedTimeSeconds = 120
 
-  // Some gas fee entries come back without a .float string. Drop them
-  // rather than coerce to "[object Object]".
+  // skip entries without a .float string instead of stringifying objects
   const narrowedGasFee: Record<string, string> = {}
   for (const [k, v] of Object.entries(gasFee)) {
     if (v && typeof v === 'object' && 'float' in v && typeof (v as { float: unknown }).float === 'string') {
@@ -83,8 +79,7 @@ export async function quoteBridge(
   }
 }
 
-// Returns a raw EVM tx (to/data/value/from) the wallet client can sign.
-// Stellar is always the destination here.
+// raw evm tx for the wallet to sign. stellar is always the destination.
 export async function buildBridgeTx(
   sdk: AllbridgeCoreSdk,
   req: BridgeRequest,
@@ -107,11 +102,7 @@ export async function buildBridgeTx(
   return (await sdk.bridge.rawTxBuilder.send(params)) as RawEvmTx
 }
 
-/**
- * Build the USDC `approve` raw tx the EVM wallet will sign before the
- * bridge call. Allbridge needs allowance on the bridge contract for the
- * source chain.
- */
+// usdc approve raw tx for the bridge contract on the source chain
 export async function buildBridgeApproveTx(
   sdk: AllbridgeCoreSdk,
   ownerAddress: string,
@@ -126,11 +117,7 @@ export async function buildBridgeApproveTx(
   })) as RawEvmTx
 }
 
-/**
- * Address of the Allbridge bridge contract on a given EVM chain. We need
- * it to read the ERC-20 allowance and decide whether the approve step is
- * required at all. The SDK surfaces it on the token's chain details.
- */
+// allbridge contract address on `chain`. needed to read the erc-20 allowance.
 export async function getBridgeSpender(
   sdk: AllbridgeCoreSdk,
   chain: EvmSourceChain,

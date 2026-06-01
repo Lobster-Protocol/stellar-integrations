@@ -1,28 +1,37 @@
-// Lobster-side types for the Allbridge integration. The SDK is the source
-// of truth for the wire format; these are the shapes the UI sees.
+// ui-side types for allbridge. the sdk handles the wire format.
 
 import { z } from 'zod'
+import { StrKey } from '@stellar/stellar-sdk'
 
 export const EvmSourceChain = z.enum(['ETH', 'ARB', 'BSC'])
 export type EvmSourceChain = z.infer<typeof EvmSourceChain>
 
-// Allbridge SDK returns tokens keyed by their symbol. USDC is the only one
-// we bridge in this app, so the constant lives here next to the chain types.
+// allbridge keys tokens by symbol; usdc is the only one we bridge
 export const BRIDGE_USDC_SYMBOL = 'USDC'
 
-// Stellar G-address (Ed25519 public key, base32, 56 chars).
+// stellar G-address: Ed25519 public key, base32, 56 chars
 export const stellarAccountIdRegex = /^G[A-Z2-7]{55}$/
 
-// Positive USDC amount as a decimal string. Rejects zero, leading
-// zeros, more than 6 decimals, scientific notation, signs.
+// positive usdc decimal string. rejects zero, leading zeros, >6 decimals, sci notation, signs
 export const positiveAmountRegex = /^(?!0+(\.0+)?$)(0|[1-9]\d{0,17})(\.\d{1,6})?$/
 
-export const BridgeRequestSchema = z.object({
-  sourceChain: EvmSourceChain,
-  amount: z.string().regex(positiveAmountRegex, 'amount must be a positive USDC value'),
-  fromAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'invalid EVM address'),
-  toAddress: z.string().regex(stellarAccountIdRegex, 'invalid Stellar account id'),
-})
+export const BridgeRequestSchema = z
+  .object({
+    sourceChain: EvmSourceChain,
+    amount: z.string().regex(positiveAmountRegex, 'amount must be a positive USDC value'),
+    fromAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'invalid EVM address'),
+    toAddress: z.string().regex(stellarAccountIdRegex, 'invalid Stellar account id'),
+  })
+  // also enforce the Ed25519 checksum so a corrupted G-address can't strand funds
+  .superRefine((val, ctx) => {
+    if (!StrKey.isValidEd25519PublicKey(val.toAddress)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['toAddress'],
+        message: 'Stellar account id fails checksum',
+      })
+    }
+  })
 export type BridgeRequest = z.infer<typeof BridgeRequestSchema>
 
 export interface BridgeQuote {
@@ -37,7 +46,7 @@ export interface BridgeQuote {
 export interface BridgeSubmissionResult {
   status: 'submitted' | 'failed'
   sourceTxHash?: string
-  // populated separately once Allbridge relays the message and Soroban lands
+  // filled after allbridge relays to soroban
   stellarTxHash?: string
   error?: string
 }

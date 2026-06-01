@@ -35,7 +35,7 @@ test.describe('DepositModal - Allbridge wiring', () => {
     await expect(page.getByRole('button', { name: /BNB/ })).toBeVisible()
   })
 
-  test('selecting an EVM source surfaces the Allbridge Core panel', async ({ page }) => {
+  test('selecting an EVM source shows the Allbridge Core panel', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()
     await page.getByRole('button', { name: /Arbitrum/ }).click()

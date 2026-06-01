@@ -60,8 +60,8 @@ describe('buildOutboundLegTx', () => {
     vi.clearAllMocks()
   })
 
-  it('throws because the outbound leg is gated behind a feature flag', async () => {
-    await expect(buildOutboundLegTx()).rejects.toThrow(/not ready yet/)
+  it('throws until the dispatcher is hooked up', async () => {
+    await expect(buildOutboundLegTx()).rejects.toThrow(/outbound leg not ready/)
   })
 })
 

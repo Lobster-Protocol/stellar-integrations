@@ -1,6 +1,6 @@
 export type { Network } from '../../config/contracts'
 
-// Mirrors the on-chain LobsterPools struct returned by the Factory.
+// on-chain LobsterPools struct from the Factory
 export interface LobsterPool {
   lobsterAddress: string
   owner: string

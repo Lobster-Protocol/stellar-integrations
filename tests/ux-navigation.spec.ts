@@ -38,19 +38,19 @@ test.describe('Cross-page navigation', () => {
     await expect(page.getByRole('button', { name: 'All' })).toBeVisible()
   })
 
-  test('Allocation lands on /allocation', async ({ page }) => {
+  test('Allocation navigates to /allocation', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /Allocation/ }).click()
     await expect(page).toHaveURL(/\/allocation$/)
   })
 
-  test('Bridges lands on /bridges and surfaces Allbridge provider info', async ({ page }) => {
+  test('Bridges navigates to /bridges and shows Allbridge provider info', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
     await expect(page).toHaveURL(/\/bridges$/)
   })
 
-  test('Positions lands on /positions and renders the heading', async ({ page }) => {
+  test('Positions navigates to /positions and renders the heading', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: 'Positions', exact: true }).click()
     await expect(page).toHaveURL(/\/positions$/)
@@ -140,7 +140,7 @@ test.describe('Network toggle', () => {
     await expect(page.getByRole('button', { name: 'Testnet' })).toBeVisible()
   })
 
-  test('mainnet on /positions surfaces the not-deployed notice', async ({ page }) => {
+  test('mainnet on /positions shows the not-deployed notice', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Mainnet' }).click()
     await page.getByRole('link', { name: 'Positions', exact: true }).click()
