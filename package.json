@@ -18,10 +18,7 @@
   "dependencies": {
     "@allbridge/bridge-core-sdk": "^3.31.0",
     "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@^2.0.1",
-    "@dfns/sdk": "^0.8.20",
-    "@dfns/sdk-keysigner": "^0.8.20",
     "@soroswap/sdk": "^0.4.0",
-    "@stellar-broker/client": "^0.6.14",
     "@stellar/stellar-sdk": "^14.6.1",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.100.9",

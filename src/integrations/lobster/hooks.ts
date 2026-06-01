@@ -5,8 +5,7 @@ import { getFactoryInfo, getPoolsByUser, buildPingTx, submitSignedXdr, waitForTx
 import type { FactoryInfo, LobsterPool, Network } from './types'
 
 export function useFactoryInfo(network: Network, callerAccount?: string) {
-  // mainnet reads need a caller account; once the user connects we want a
-  // refetch, so it sits in the key
+  // mainnet needs a caller; including it in the key triggers refetch on connect
   return useQuery<FactoryInfo>({
     queryKey: ['lobster', 'factory-info', network, callerAccount ?? null],
     queryFn: () => getFactoryInfo(network, callerAccount),

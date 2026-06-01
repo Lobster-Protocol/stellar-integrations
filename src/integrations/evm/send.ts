@@ -9,8 +9,8 @@ import {
 } from 'wagmi/actions'
 import { wagmiConfig, EVM_CHAIN_ID, type EvmChainSymbol } from './config'
 
-// Structural copy of `EssentialWeb3Transaction` from @allbridge/bridge-core-sdk.
-// Kept local so we don't bind hard to the SDK's deep import path.
+// shape of EssentialWeb3Transaction from the allbridge sdk, redeclared
+// to avoid importing from a deep path
 export interface RawEvmTx {
   from?: string
   to?: string
@@ -23,8 +23,6 @@ export interface EvmTxResult {
   blockNumber: bigint
 }
 
-// Thrown when the inputs to the EVM tx layer are malformed before any wallet
-// call. Mirrors the wrapped-boundary pattern used by lobster/factory.ts.
 export class EvmTxValidationError extends Error {
   constructor(message: string) {
     super(message)
@@ -32,9 +30,6 @@ export class EvmTxValidationError extends Error {
   }
 }
 
-// Thrown when viem/wagmi rejects the broadcast or the receipt poll. The
-// original error is preserved via `cause` so debugging still has the viem
-// stack but callers can switch on `EvmTxSubmitError` for retry/toast UX.
 export class EvmTxSubmitError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options)
@@ -45,7 +40,7 @@ export class EvmTxSubmitError extends Error {
 type WagmiChainId = (typeof EVM_CHAIN_ID)[EvmChainSymbol]
 
 export function toViemTxArgs(raw: RawEvmTx, chainId: WagmiChainId) {
-  if (!raw.to) throw new EvmTxValidationError('Raw EVM tx is missing `to`')
+  if (!raw.to) throw new EvmTxValidationError('raw evm tx missing `to`')
   return {
     chainId,
     to: raw.to as Address,
@@ -56,7 +51,7 @@ export function toViemTxArgs(raw: RawEvmTx, chainId: WagmiChainId) {
 
 async function ensureChain(target: EvmChainSymbol): Promise<WagmiChainId> {
   const account = getAccount(wagmiConfig)
-  if (!account.address) throw new EvmTxValidationError('Connect an EVM wallet first')
+  if (!account.address) throw new EvmTxValidationError('connect an evm wallet first')
   const targetId = EVM_CHAIN_ID[target]
   if (account.chainId !== targetId) {
     await switchChain(wagmiConfig, { chainId: targetId })
@@ -81,11 +76,7 @@ export async function sendAllbridgeEvmTx(
   }
 }
 
-/**
- * Read the current ERC-20 allowance granted to `spender`. We use this to
- * skip the approve step when the user has already authorised the bridge
- * for a sufficient amount on a previous deposit.
- */
+// used to skip approve when the existing allowance already covers the deposit
 export async function readAllowance(
   token: Address,
   owner: Address,
@@ -102,11 +93,7 @@ export async function readAllowance(
   })) as bigint
 }
 
-/**
- * USDC across the chains we bridge from (Ethereum, Arbitrum, BSC) is
- * 6-decimal. Allbridge SDK returns human-readable amounts in `amount`;
- * we scale to base units for the on-chain allowance comparison.
- */
+// USDC is 6 decimals on eth/arb/bsc
 export function toUsdcBaseUnits(human: string): bigint {
   return parseUnits(human, 6)
 }

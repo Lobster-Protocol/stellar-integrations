@@ -53,7 +53,7 @@ const mainnet: NetworkContracts = {
     router: 'CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK',
   },
   lobster: {
-    // not on mainnet yet, lands with the tranche 3 launch
+    // not on mainnet yet
     factory: '',
     wasmHash: '',
     readSource: '',

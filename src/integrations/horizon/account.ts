@@ -78,8 +78,7 @@ export async function getRecentOperations(
   }
 }
 
-// react-query wrappers live with the fetchers they wrap. Balances move
-// faster than the op history, so they get a tighter stale window.
+// balances move faster than op history, so shorter staleTime
 export function useAccountBalances(network: Network, accountId: string | null) {
   return useQuery({
     queryKey: ['horizon', 'balances', network, accountId],

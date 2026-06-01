@@ -2,12 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Networks } from '@stellar/stellar-sdk'
 import { networkPassphrase } from '../client'
 
-// Test the pure `handleSendResult` helper directly - no need to mock the
-// transaction builder. The async wrapper `submitSignedXdr` just delegates
-// to it once sendTransaction returns.
+// handleSendResult is pure; tested directly instead of through submitSignedXdr
 import { handleSendResult, TryAgainLaterError, waitForTx, RestoreRequiredError, buildPingTx } from '../factory'
 
-// Mock the Soroban server for buildPingTx + waitForTx
+// mocked soroban server for buildPingTx + waitForTx
 const simulateTransaction = vi.fn()
 const getTransaction = vi.fn()
 const getAccount = vi.fn()
@@ -93,7 +91,7 @@ describe('buildPingTx', () => {
     await expect(buildPingTx('testnet', TESTNET_SOURCE)).rejects.toThrow(/simulation failed/)
   })
 
-  it('throws RestoreRequiredError when simulation surfaces restorePreamble', async () => {
+  it('throws RestoreRequiredError when simulation returns restorePreamble', async () => {
     simulateTransaction.mockResolvedValueOnce({
       result: { retval: null },
       restorePreamble: { minResourceFee: '1000', transactionData: 'PREAMBLE_DATA' },

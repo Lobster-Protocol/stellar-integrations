@@ -86,6 +86,8 @@ export default function DepositModal({ open, onClose }: Props) {
     network,
   )
   const trustlineRequired = !!usdcIssuer && trustlineQuery.data === false
+  // fail closed: only true when the check resolved to true. loading/error/undefined block the send.
+  const trustlineOk = trustlineQuery.isSuccess && trustlineQuery.data === true
   const quoteQuery = useBridgeQuote(bridgeRequest, trustlineRequired)
   const approve = useBridgeApprove()
   const send = useBridgeSend()
@@ -118,13 +120,39 @@ export default function DepositModal({ open, onClose }: Props) {
 
   const handleDeposit = async () => {
     if (!isBridge) {
-      // Stellar-direct isn't wired to the Factory yet.
-      setStep({ phase: 'failed', msg: 'Stellar-direct deposits are coming next. The Factory is already live on testnet; we wire up the signing path right after.' })
+      // direct stellar path not yet hooked to the factory
+      setStep({ phase: 'failed', msg: 'Stellar direct deposits not available yet. Use the bridge from an EVM chain.' })
       return
     }
 
     if (!bridgeRequest || !evmChain || !evm.address) {
       setStep({ phase: 'failed', msg: 'Connect both wallets and enter an amount.' })
+      return
+    }
+
+    if (network !== 'mainnet') {
+      setStep({ phase: 'failed', msg: 'Allbridge only runs on mainnet. Switch the network first.' })
+      return
+    }
+
+    // BNB usdc is 18-decimal, our allowance scaling assumes 6
+    if (evmChain === 'BSC') {
+      setStep({ phase: 'failed', msg: 'Use Ethereum or Arbitrum. BNB USDC is 18-decimal and not yet wired.' })
+      return
+    }
+
+    // refetch right before send in case the cache is stale
+    const fresh = await trustlineQuery.refetch()
+    if (fresh.data !== true) {
+      setStep({ phase: 'failed', msg: 'Destination has no USDC trustline (or the check did not resolve). Open the trustline on Stellar first, then retry.' })
+      return
+    }
+
+    const ok = window.confirm(
+      `Bridge ${amount} USDC from ${evmChain} to ${shortAddr(stellarAddr ?? '')} on MAINNET.\n\nThis moves real funds. Continue?`,
+    )
+    if (!ok) {
+      setStep({ phase: 'form' })
       return
     }
 
@@ -189,7 +217,7 @@ export default function DepositModal({ open, onClose }: Props) {
               </a>
             )}
             <p className="text-xs text-text-muted mt-3">
-              Funds land on Stellar in ~2 min via Allbridge Core. Watch your balance.
+              Funds arrive on Stellar in ~2 min via Allbridge Core. Watch your balance.
             </p>
             <button
               onClick={onClose}
@@ -355,7 +383,7 @@ export default function DepositModal({ open, onClose }: Props) {
                 !amount ||
                 Number(amount) <= 0 ||
                 isWorking ||
-                (isBridge && (!evm.address || network === 'testnet' || trustlineRequired))
+                (isBridge && (!evm.address || network === 'testnet' || !trustlineOk))
               }
               className="w-full py-3 rounded-full bg-primary text-white font-semibold text-sm transition-all hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
             >

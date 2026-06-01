@@ -114,8 +114,7 @@ export async function getPoolsByUser(
   }))
 }
 
-// Pull the restorePreamble type out of the union variant so the rest of
-// the code keeps full type safety on the field.
+// extract the restorePreamble field type from the simulate union variant
 export type SorobanRestorePreamble = Extract<
   Awaited<ReturnType<rpc.Server['simulateTransaction']>>,
   { restorePreamble: unknown }
