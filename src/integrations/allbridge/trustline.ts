@@ -1,8 +1,12 @@
-// Stellar trustline check for the Allbridge destination side. The SDK
-// doesn't expose this, so we ask Horizon ourselves.
+// Trustline check plus changeTrust build/submit for the Allbridge USDC
+// destination. All Horizon-side; the bridge SDK covers none of this.
 
+import { Asset, Operation, TransactionBuilder, BASE_FEE, Networks } from '@stellar/stellar-sdk'
 import { getHorizonServer } from '../horizon/client'
 import type { Network } from '../lobster/types'
+
+const passphraseFor = (network: Network) =>
+  network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET
 
 export async function hasTrustline(
   accountId: string,
@@ -27,4 +31,32 @@ export async function hasTrustline(
     if (status === 404) return false
     throw err
   }
+}
+
+// Unsigned changeTrust XDR that opens a USDC trustline on the destination.
+// The wallet signs this before any bridged USDC can land, otherwise the
+// funds bounce. Allbridge is mainnet-only, so this only runs on mainnet.
+export async function buildTrustlineXdr(
+  accountId: string,
+  assetCode: string,
+  assetIssuer: string,
+  network: Network,
+): Promise<string> {
+  const server = getHorizonServer(network)
+  const account = await server.loadAccount(accountId)
+  return new TransactionBuilder(account, {
+    fee: BASE_FEE,
+    networkPassphrase: passphraseFor(network),
+  })
+    .addOperation(Operation.changeTrust({ asset: new Asset(assetCode, assetIssuer) }))
+    .setTimeout(180)
+    .build()
+    .toXDR()
+}
+
+export async function submitTrustlineTx(signedXdr: string, network: Network): Promise<string> {
+  const server = getHorizonServer(network)
+  const tx = TransactionBuilder.fromXDR(signedXdr, passphraseFor(network))
+  const res = await server.submitTransaction(tx)
+  return res.hash
 }
