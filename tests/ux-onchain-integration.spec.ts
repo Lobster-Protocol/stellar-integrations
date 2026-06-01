@@ -1,19 +1,7 @@
 import { test, expect } from '@playwright/test'
 
-/**
- * End-to-end *integration* tests - these go beyond "does the page
- * render" and prove the dashboard correctly mirrors live Stellar
- * testnet state. For each on-chain primitive we want to render, we:
- *
- *   1. Compute the ground truth by querying Soroban RPC directly
- *      from the test context (no UI in the loop).
- *   2. Load the production dashboard.
- *   3. Assert the rendered DOM matches the ground truth.
- *
- * A failure here means one of the three legs broke: the contract, the
- * RPC pipeline, or the react-query -> DOM rendering. Surface
- * proves the whole chain works.
- */
+// e2e against live testnet. each test reads the ground truth from
+// soroban rpc, then asserts the prod dashboard renders the same value.
 const BASE = 'https://stellar-instit.lobster-protocol.com'
 const FACTORY = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO'
 const SOURCE = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'

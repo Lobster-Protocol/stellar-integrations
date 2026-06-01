@@ -20,8 +20,7 @@ const NS = 'allbridge'
 const STALE_QUOTE = 30_000
 const STALE_TRUSTLINE = 60_000
 
-// Gated on a non-empty issuer so testnet (no Allbridge USDC issuer)
-// doesn't fire an HTTP request.
+// gated on a non-empty issuer so testnet does not fire an http call
 export function useTrustline(
   accountId: string | null,
   assetCode: string,
@@ -55,11 +54,7 @@ export function useBridgeQuote(req: BridgeRequest | null, trustlineRequired: boo
   })
 }
 
-/**
- * Approve enough USDC for the bridge contract on the source chain, but
- * only if the existing allowance is too small. Returns the tx hash when
- * we actually broadcast, or `null` when allowance was already sufficient.
- */
+// only broadcasts when the current allowance is below the deposit
 export function useBridgeApprove() {
   return useMutation({
     mutationFn: async (req: {
@@ -80,12 +75,7 @@ export function useBridgeApprove() {
   })
 }
 
-/**
- * Build the bridge tx then sign+send it through the connected EVM wallet.
- * Returns the source-chain tx hash once it's mined. The Stellar leg is
- * handled by the Allbridge relayer (~2 min, observable via the explorer
- * link the UI can build from the returned hash).
- */
+// returns the source-chain hash. allbridge relays to stellar (~2 min)
 export function useBridgeSend() {
   return useMutation({
     mutationFn: async (req: BridgeRequest) => {

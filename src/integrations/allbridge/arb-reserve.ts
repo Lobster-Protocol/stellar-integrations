@@ -1,6 +1,4 @@
-// Cross-chain arbitrage flow for the Arb Reserve.
-// The actual trade execution on EVM happens elsewhere (existing bot).
-// This module just builds and signs the bridge legs around it.
+// arb reserve bridge legs. trade execution sits in the evm bot.
 
 import { type AllbridgeCoreSdk } from '@allbridge/bridge-core-sdk'
 import { z } from 'zod'
@@ -17,9 +15,6 @@ export const ArbDispatchSchema = z.object({
 })
 export type ArbDispatch = z.infer<typeof ArbDispatchSchema>
 
-// Each leg of a cycle: txHash exists only once a wallet broadcast the tx,
-// reason exists only on a failure. The discriminated `status` lets the UI
-// render without sentinel checks on optional fields.
 export type ArbLegDirection = 'OUT' | 'IN'
 
 export type ArbLeg =
@@ -34,8 +29,7 @@ export interface ArbCycle {
   inLeg: ArbLeg
 }
 
-// The return leg always brings USDC back from the EVM exec account to the
-// Stellar reserve. quote + build share the same reshape; factor it out.
+// shared by quoteReturnLeg + buildReturnLegTx
 function dispatchToReturnRequest(dispatch: ArbDispatch): BridgeRequest {
   return {
     sourceChain: dispatch.targetChain,
@@ -62,9 +56,7 @@ export async function buildReturnLegTx(
   return buildBridgeTx(sdk, dispatchToReturnRequest(dispatch))
 }
 
-// Outbound is scaffolded only - throws loudly if called before the flag flips.
+// outbound leg: dispatcher not yet hooked up
 export async function buildOutboundLegTx(): Promise<never> {
-  throw new Error(
-    'Arb Reserve outbound leg not ready yet. Dispatcher still being wired in.',
-  )
+  throw new Error('arb reserve outbound leg not ready')
 }

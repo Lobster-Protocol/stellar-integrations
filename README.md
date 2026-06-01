@@ -35,8 +35,7 @@ React 19, Vite 6, Tailwind v4, TypeScript strict.
 `@stellar/stellar-sdk` v14 for Horizon + Soroban RPC.
 `@creit-tech/stellar-wallets-kit` v2 via JSR (Freighter, xBull, Albedo,
 LOBSTR + WalletConnect).
-SDKs in the tree: `@soroswap/sdk`, `@allbridge/bridge-core-sdk`,
-`@stellar-broker/client`, `@dfns/sdk`.
+SDKs in the tree: `@soroswap/sdk`, `@allbridge/bridge-core-sdk`.
 `@tanstack/react-query` for caching, `zod` for runtime checks.
 Playwright + Vitest.
 
