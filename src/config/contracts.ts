@@ -103,7 +103,13 @@ export const EVM_RPC_FALLBACK: Record<EvmChain, string> = {
   BSC: 'https://rpc.ankr.com/bsc',
 }
 
-export const STELLAR_RPC_FALLBACK = {
-  soroban: 'https://mainnet.sorobanrpc.com',
-  horizon: 'https://horizon.stellar.org',
+export const STELLAR_RPC_FALLBACK: Record<Network, { soroban: string; horizon: string }> = {
+  testnet: {
+    soroban: 'https://soroban-testnet.stellar.org',
+    horizon: 'https://horizon-testnet.stellar.org',
+  },
+  mainnet: {
+    soroban: 'https://mainnet.sorobanrpc.com',
+    horizon: 'https://horizon.stellar.org',
+  },
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState, lazy, Suspense } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
 import {
   generateSnapshots,
@@ -19,12 +19,13 @@ import MockDataBadge from '../components/MockDataBadge'
 // loading it until someone actually clicks deposit
 const DepositModal = lazy(() => import('../components/DepositModal'))
 
+const snapshots = generateSnapshots()
+const kpis = computeKPIs(snapshots)
+
 export default function Overview() {
   const { address, connect, connecting } = useWallet()
-  const snapshots = useMemo(() => generateSnapshots(), [])
-  const kpis = useMemo(() => computeKPIs(snapshots), [snapshots])
-  const last = snapshots[snapshots.length - 1]
   const [depositOpen, setDepositOpen] = useState(false)
+  const last = snapshots[snapshots.length - 1]
 
   if (!address) {
     return (

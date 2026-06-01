@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { cn } from '../utils/format'
+import { cn, shortenAddress } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import {
@@ -36,10 +36,6 @@ const CHAINS: Array<{
 ]
 
 const USDC_ASSET_CODE = 'USDC'
-
-function shortAddr(a: string): string {
-  return a.length > 10 ? `${a.slice(0, 6)}...${a.slice(-4)}` : a
-}
 
 type Step =
   | { phase: 'form' }
@@ -149,7 +145,7 @@ export default function DepositModal({ open, onClose }: Props) {
     }
 
     const ok = window.confirm(
-      `Bridge ${amount} USDC from ${evmChain} to ${shortAddr(stellarAddr ?? '')} on MAINNET.\n\nThis moves real funds. Continue?`,
+      `Bridge ${amount} USDC from ${evmChain} to ${shortenAddress(stellarAddr ?? '', 6, 4)} on MAINNET.\n\nThis moves real funds. Continue?`,
     )
     if (!ok) {
       setStep({ phase: 'form' })
@@ -213,7 +209,7 @@ export default function DepositModal({ open, onClose }: Props) {
                 rel="noopener noreferrer"
                 className="text-xs text-primary hover:underline font-mono break-all inline-block mt-2"
               >
-                {shortAddr(step.hash)}
+                {shortenAddress(step.hash, 6, 4)}
               </a>
             )}
             <p className="text-xs text-text-muted mt-3">
@@ -280,7 +276,7 @@ export default function DepositModal({ open, onClose }: Props) {
                   <span className="text-text-secondary">EVM wallet</span>
                   {evm.address ? (
                     <span className="flex items-center gap-2 text-text font-mono">
-                      {shortAddr(evm.address)}
+                      {shortenAddress(evm.address, 6, 4)}
                       <button
                         onClick={() => disconnect()}
                         className="text-[10px] text-text-muted hover:text-coral"

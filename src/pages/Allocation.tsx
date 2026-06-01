@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import {
   generateSnapshots,
@@ -19,10 +19,11 @@ import {
   formatPercentTick,
 } from '../utils/recharts'
 
+const allSnapshots = generateSnapshots()
+
 export default function Allocation() {
   const [range, setRange] = useState<TimeRange>('ALL')
-  const allSnapshots = useMemo(() => generateSnapshots(), [])
-  const snapshots = useMemo(() => filterByRange(allSnapshots, range), [allSnapshots, range])
+  const snapshots = filterByRange(allSnapshots, range)
 
   // token delta chart data
   const deltaData = snapshots.map(s => ({
@@ -31,7 +32,7 @@ export default function Allocation() {
     [STRATEGY.token1Symbol]: 100 - s.token0Ratio,
   }))
 
-  const protocolTime = useMemo(() => computeProtocolTimeShare(snapshots), [snapshots])
+  const protocolTime = computeProtocolTimeShare(snapshots)
   const totalDays = snapshots.length
   const latest = snapshots[snapshots.length - 1]
 
