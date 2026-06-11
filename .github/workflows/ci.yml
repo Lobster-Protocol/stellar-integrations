@@ -37,8 +37,16 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm run test:unit
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        # no --with-deps: the apt half hung the job on every run since may,
+        # and the runner image already ships the chromium libraries
+        run: npx playwright install chromium
 
       - name: Playwright E2E (against live deploy)
         run: npx playwright test --reporter=list
