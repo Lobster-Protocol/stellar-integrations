@@ -13,7 +13,13 @@ export default defineConfig({
   resolve: {
     alias: {
       buffer: 'buffer',
+      // package main is lib/index.js but the bundle is lib/stellarbroker.js.
+      // point to the esm source until upstream fixes the main path.
+      '@stellar-broker/client': '@stellar-broker/client/src/index.js',
     },
+  },
+  optimizeDeps: {
+    exclude: ['@stellar-broker/client'],
   },
   build: {
     rollupOptions: {

@@ -43,27 +43,3 @@ export interface BridgeQuote {
   gasFeeOptions: Record<string, string>
 }
 
-export interface BridgeSubmissionResult {
-  status: 'submitted' | 'failed'
-  sourceTxHash?: string
-  // filled after allbridge relays to soroban
-  stellarTxHash?: string
-  error?: string
-}
-
-export type BridgeStatus =
-  | 'idle'
-  | 'checking-trustline'
-  | 'creating-trustline'
-  | 'awaiting-trustline-sign'
-  | 'building-tx'
-  | 'awaiting-source-sign'
-  | 'submitted'
-  | 'confirmed'
-  | 'failed'
-
-export interface BridgeEvent {
-  status: BridgeStatus
-  message: string
-  txHash?: string
-}
