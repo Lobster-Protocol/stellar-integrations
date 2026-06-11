@@ -55,7 +55,6 @@ export default function Bridges() {
       <div className="bg-bg-card rounded-3xl p-5 card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-text">Bridge Provider</h3>
-          {/* TODO: support multiple bridge providers */}
           <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
             Allbridge Core
           </span>
