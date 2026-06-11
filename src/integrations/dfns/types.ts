@@ -1,5 +1,5 @@
-// browser-side mirror of server/dfns/types.ts; kept in sync by hand
-// because the server tsconfig is not reachable from the app graph
+// hand-kept copy of the relay event kinds, the server tsconfig is not
+// reachable from the app graph
 
 import { z } from 'zod'
 

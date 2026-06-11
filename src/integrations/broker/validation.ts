@@ -9,9 +9,7 @@ const MAX_SLIPPAGE = 0.05
 // implausibly large profit usually means a thin pool or stale quote
 const MAX_ABSOLUTE_PROFIT = 0.5
 
-export type ValidationOk = { ok: true }
-export type ValidationFailure = { ok: false; reason: string }
-export type ValidationResult = ValidationOk | ValidationFailure
+export type ValidationResult = { ok: true } | { ok: false; reason: string }
 
 export function validateBrokerQuote(q: BrokerQuoteResult): ValidationResult {
   if (q.status !== 'success') return { ok: false, reason: `quote status ${q.status}` }

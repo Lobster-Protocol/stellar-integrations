@@ -1,12 +1,4 @@
-// ui-side types for stellar broker. zod schemas validate ws payloads.
-
 import { z } from 'zod'
-
-export const BrokerStatusSchema = z.enum(['disconnected', 'ready', 'quote', 'trade'])
-export type BrokerStatus = z.infer<typeof BrokerStatusSchema>
-
-export const BrokerEventSchema = z.enum(['quote', 'progress', 'paused', 'finished', 'error'])
-export type BrokerEvent = z.infer<typeof BrokerEventSchema>
 
 export const BrokerQuoteStatusSchema = z.enum(['unfeasible', 'rejected', 'success'])
 export type BrokerQuoteStatus = z.infer<typeof BrokerQuoteStatusSchema>

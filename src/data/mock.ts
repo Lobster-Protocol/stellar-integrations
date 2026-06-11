@@ -3,10 +3,8 @@
 // two tokens (XLM/USDC), rotating between Soroswap, Aquarius, Phoenix pools
 
 export type Protocol = 'soroswap' | 'phoenix' | 'aquarius'
-// `swap` is the legacy arbitrage rebalance between pools. `swap_routed`
-// is the user-driven best-execution swap via Stellar Broker (or Soroswap
-// fallback). `sign` is a wallet signature event captured live from the
-// MPC custody backend.
+// swap is the legacy arbitrage rebalance; swap_routed and sign come in
+// live from the routing log and the custody feed
 export type ActivityType =
   | 'migration'
   | 'swap'
@@ -46,11 +44,8 @@ export interface ActivityEvent {
   txHash: string
   reason?: string
   chain?: string
-  // T2 routing + signing extensions
   via?: 'broker' | 'soroswap-fallback'
   signer?: 'wallet-kit' | 'dfns'
-  ledger?: number
-  contract?: string
   soldAsset?: string
   boughtAsset?: string
   soldAmount?: string
