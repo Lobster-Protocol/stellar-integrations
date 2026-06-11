@@ -24,6 +24,13 @@ interface NetworkContracts {
   aquarius: {
     router: string
   }
+  broker: {
+    // https origin; the SDK upgrades the underlying WebSocket itself.
+    endpoint: string
+    // router contract id is not published. extracted from the first
+    // signed quote XDR at runtime, then cached. empty until we see one.
+    router: string
+  }
   lobster: {
     factory: string
     // WASM hash the Factory uses to deploy per-user instances. Not an
@@ -52,6 +59,10 @@ const mainnet: NetworkContracts = {
   aquarius: {
     router: 'CBQDHNBFBZYE4MKPWBSJOPIYLW4SFSXAXUTSXJN76GNKYVYPCKWC6QUK',
   },
+  broker: {
+    endpoint: 'https://api.stellar.broker',
+    router: '',
+  },
   lobster: {
     // not on mainnet yet
     factory: '',
@@ -68,6 +79,7 @@ const testnet: NetworkContracts = {
   allbridge: { bridge: '', usdcPool: '' },
   soroswap: { factory: '', router: '' },
   aquarius: { router: '' },
+  broker: { endpoint: 'https://api.stellar.broker', router: '' },
   lobster: {
     factory: 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO',
     wasmHash: '837d3d9f265304e8eea935fe78342eb50e2291a4035048e0bef39431e300dc34',

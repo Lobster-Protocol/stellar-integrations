@@ -77,7 +77,7 @@ describe('quoteReturnLeg', () => {
     expect(quote.amountInFloat).toBe(validDispatch.amount)
     expect(quote.amountOutFloat).toBe('49.85')
     expect(quote.trustlineRequired).toBe(false)
-    // tokensByChain should be called once for source (ARB) and once for SRB
+    // tokensByChain runs twice: source (ARB) then SRB
     expect(tokensByChain).toHaveBeenCalledTimes(2)
   })
 
