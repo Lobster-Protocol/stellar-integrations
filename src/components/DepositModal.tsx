@@ -105,9 +105,8 @@ export default function DepositModal({ open, onClose }: Props) {
   }, [open])
 
   useEffect(() => {
-    // only reset the step on a network toggle. adding `open` here would
-    // also reset every time the modal re-opens, which the open-clear effect
-    // above already handles cleanly.
+    // only reset the step on a network toggle. resetting on open too would
+    // collide with the open-clear effect above.
     if (open) setStep({ phase: 'form' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [network])
