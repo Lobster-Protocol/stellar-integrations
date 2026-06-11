@@ -18,6 +18,7 @@ import MockDataBadge from '../components/MockDataBadge'
 // lazy - the Allbridge SDK drags in viem/walletconnect/solana, ~1MB. no point
 // loading it until someone actually clicks deposit
 const DepositModal = lazy(() => import('../components/DepositModal'))
+const SwapModal = lazy(() => import('../components/SwapModal'))
 
 const snapshots = generateSnapshots()
 const kpis = computeKPIs(snapshots)
@@ -25,6 +26,7 @@ const kpis = computeKPIs(snapshots)
 export default function Overview() {
   const { address, connect, connecting } = useWallet()
   const [depositOpen, setDepositOpen] = useState(false)
+  const [swapOpen, setSwapOpen] = useState(false)
   const last = snapshots[snapshots.length - 1]
 
   if (!address) {
@@ -70,6 +72,7 @@ export default function Overview() {
           The lazy chunk only resolves once; afterwards toggling `open` is cheap. */}
       <Suspense fallback={null}>
         <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} />
+        <SwapModal open={swapOpen} onClose={() => setSwapOpen(false)} />
       </Suspense>
 
       <MockDataBadge />
@@ -77,13 +80,21 @@ export default function Overview() {
       {/* action bar */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-text">Portfolio</h2>
-        <button
-          onClick={() => setDepositOpen(true)}
-          className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all"
-          style={{ boxShadow: '0 8px 20px rgba(54, 147, 251, 0.2)' }}
-        >
-          + Deposit
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSwapOpen(true)}
+            className="px-5 py-2 rounded-full bg-bg-card border border-text-muted/20 text-text text-sm font-semibold hover:bg-bg transition-all"
+          >
+            Swap
+          </button>
+          <button
+            onClick={() => setDepositOpen(true)}
+            className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all"
+            style={{ boxShadow: '0 8px 20px rgba(54, 147, 251, 0.2)' }}
+          >
+            + Deposit
+          </button>
+        </div>
       </div>
 
       {/* KPI row */}

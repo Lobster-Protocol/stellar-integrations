@@ -6,6 +6,7 @@ import { shortenAddress, stellarExplorer } from '../utils/format'
 import SignDemoTx from '../components/SignDemoTx'
 import BalancesCard from '../components/BalancesCard'
 import LiveDataMeta from '../components/LiveDataMeta'
+import RoutingEngineCard from '../components/RoutingEngineCard'
 
 export default function Positions() {
   const { address } = useWallet()
@@ -27,6 +28,8 @@ export default function Positions() {
       </div>
 
       <BalancesCard />
+
+      <RoutingEngineCard />
 
       {/* Factory card - always shown, sources from on-chain state */}
       <div className="rounded-3xl p-5 bg-bg-card card">
