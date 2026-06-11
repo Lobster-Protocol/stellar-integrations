@@ -1,10 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { StellarWalletsKit } from '@creit-tech/stellar-wallets-kit'
 import { cn, shortenAddress } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
+import { useSigner } from '../contexts/CustodyContext'
 import {
   useBridgeQuote,
   useTrustline,
@@ -58,6 +58,7 @@ export default function DepositModal({ open, onClose }: Props) {
 
   const { address: stellarAddr } = useWallet()
   const { network } = useNetwork()
+  const signer = useSigner()
 
   const evm = useAccount()
   const { connectors, connect, isPending: isConnecting } = useConnect()
@@ -104,6 +105,9 @@ export default function DepositModal({ open, onClose }: Props) {
   }, [open])
 
   useEffect(() => {
+    // only reset the step on a network toggle. adding `open` here would
+    // also reset every time the modal re-opens, which the open-clear effect
+    // above already handles cleanly.
     if (open) setStep({ phase: 'form' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [network])
@@ -184,7 +188,7 @@ export default function DepositModal({ open, onClose }: Props) {
     try {
       setTl({ phase: 'creating' })
       const xdr = await buildTrustlineXdr(stellarAddr, USDC_ASSET_CODE, usdcIssuer, network)
-      const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, {
+      const { signedTxXdr } = await signer.signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
         address: stellarAddr,
       })

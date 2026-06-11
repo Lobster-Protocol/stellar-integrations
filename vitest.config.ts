@@ -13,12 +13,15 @@ export default defineConfig({
   resolve: {
     alias: {
       buffer: 'buffer',
+      // see vite.config.ts: @stellar-broker/client main path is broken upstream.
+      '@stellar-broker/client': '@stellar-broker/client/src/index.js',
     },
   },
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    setupFiles: ['./src/setup-tests.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'server/**/*.{test,spec}.ts'],
     exclude: ['node_modules', 'dist', 'tests'],
   },
 })

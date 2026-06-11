@@ -132,7 +132,7 @@ export class RestoreRequiredError extends Error {
 export async function buildPingTx(
   network: Network,
   fromAddress: string,
-): Promise<string> {
+): Promise<{ xdr: string; restorePreamble?: SorobanRestorePreamble }> {
   const server = getSorobanServer(network)
   const factory = new Contract(getFactoryId(network))
   const source = await server.getAccount(fromAddress)
@@ -148,11 +148,13 @@ export async function buildPingTx(
   if (rpc.Api.isSimulationError(sim)) {
     throw new Error(`Ping tx simulation failed: ${sim.error}`)
   }
+  // archived storage hands back the preamble so the caller restores first.
+  // the restore path is a branch, not an exception (protocol 23).
   if (rpc.Api.isSimulationRestore(sim)) {
-    throw new RestoreRequiredError(sim.restorePreamble)
+    return { xdr: '', restorePreamble: sim.restorePreamble }
   }
   const prepared = rpc.assembleTransaction(tx, sim).build()
-  return prepared.toXDR()
+  return { xdr: prepared.toXDR() }
 }
 
 export class TryAgainLaterError extends Error {

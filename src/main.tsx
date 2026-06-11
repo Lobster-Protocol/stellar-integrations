@@ -9,6 +9,7 @@ import { WagmiProvider } from 'wagmi'
 import { wagmiConfig } from './integrations/evm/config'
 import { WalletProvider } from './contexts/WalletContext'
 import { NetworkProvider } from './contexts/NetworkContext'
+import { CustodyProvider } from './contexts/CustodyContext'
 import App from './App'
 import './index.css'
 
@@ -30,7 +31,9 @@ createRoot(document.getElementById('root')!).render(
         <WagmiProvider config={wagmiConfig}>
           <NetworkProvider>
             <WalletProvider>
-              <App />
+              <CustodyProvider>
+                <App />
+              </CustodyProvider>
             </WalletProvider>
           </NetworkProvider>
         </WagmiProvider>

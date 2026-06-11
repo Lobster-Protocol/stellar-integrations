@@ -2,6 +2,7 @@ import type { RefObject } from 'react'
 import { Menu, LogOut } from 'lucide-react'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
+import { useCustody } from '../contexts/CustodyContext'
 import { shortenAddress, cn } from '../utils/format'
 import lobsterIcon from '../assets/lobster-icon.png'
 
@@ -14,6 +15,7 @@ interface Props {
 export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props) {
   const { address, walletName, connecting, connect, disconnect } = useWallet()
   const { network, setNetwork } = useNetwork()
+  const { mode, dfnsAddress } = useCustody()
 
   return (
     <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-bg-card/60 backdrop-blur-sm" style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.06)' }}>
@@ -62,6 +64,12 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
               <p className="text-[10px] text-text-muted leading-none">{walletName}</p>
               <p className="text-xs text-text font-mono">{shortenAddress(address, 5)}</p>
             </div>
+            {mode === 'dfns' && dfnsAddress && (
+              <div className="hidden sm:block text-right border-l border-text-muted/20 pl-2 ml-1">
+                <p className="text-[10px] text-text-muted leading-none">DFNS</p>
+                <p className="text-xs text-text font-mono">{shortenAddress(dfnsAddress, 5)}</p>
+              </div>
+            )}
             <button
               onClick={disconnect}
               aria-label="Disconnect wallet"

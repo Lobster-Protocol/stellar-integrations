@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
-import { StellarWalletsKit } from '@creit-tech/stellar-wallets-kit'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
+import { useSigner } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer } from '../utils/format'
@@ -19,6 +19,7 @@ const RESTING_PHASES: ReadonlyArray<State['phase']> = ['idle', 'confirmed', 'fai
 export default function SignDemoTx() {
   const { address, walletName } = useWallet()
   const { network } = useNetwork()
+  const signer = useSigner()
 
   const buildPing = useBuildPingTx(network)
   const submit = useSubmitAndWait(network)
@@ -33,10 +34,14 @@ export default function SignDemoTx() {
     inFlight.current = true
     try {
       setState({ phase: 'building' })
-      const xdr = await buildPing.mutateAsync(address)
+      const { xdr, restorePreamble } = await buildPing.mutateAsync(address)
+      if (restorePreamble) {
+        setState({ phase: 'failed', errorMsg: 'Factory storage is archived. A restore tx is needed before this ping.' })
+        return
+      }
 
       setState({ phase: 'signing' })
-      const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, {
+      const { signedTxXdr } = await signer.signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
         address,
       })
@@ -56,8 +61,9 @@ export default function SignDemoTx() {
     }
   }
 
+  const signerLabel = signer.name === 'dfns' ? 'DFNS MPC' : walletName ?? 'wallet'
   const buttonLabel: Record<State['phase'], string> = {
-    idle: `Ping Factory with ${walletName ?? 'wallet'}`,
+    idle: `Ping Factory with ${signerLabel}`,
     building: 'Building tx...',
     signing: 'Awaiting signature...',
     submitting: 'Submitting & polling...',
