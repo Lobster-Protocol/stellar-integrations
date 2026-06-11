@@ -28,6 +28,15 @@ export function formatActivityAmount(type: string, amount: number, token?: strin
   return `$${amount.toFixed(2)}`
 }
 
+// short "Ns ago / Nm ago / Nh ago" given a unix seconds or millis timestamp
+export function formatRelativeAgo(input: { unixSec?: number; ms?: number }): string {
+  const ms = input.ms ?? (input.unixSec ? input.unixSec * 1000 : Date.now())
+  const diffSec = (Date.now() - ms) / 1000
+  if (diffSec < 60) return `${Math.floor(diffSec)}s ago`
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
+  return `${Math.floor(diffSec / 3600)}h ago`
+}
+
 // horizon balances are 7-decimal fixed point; 2dp above 1, up to 7 below
 export function formatBalance(raw: string): string {
   const n = Number(raw)

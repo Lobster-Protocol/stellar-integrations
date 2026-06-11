@@ -3,7 +3,19 @@
 // two tokens (XLM/USDC), rotating between Soroswap, Aquarius, Phoenix pools
 
 export type Protocol = 'soroswap' | 'phoenix' | 'aquarius'
-export type ActivityType = 'migration' | 'swap' | 'deposit' | 'withdraw' | 'bridge_in' | 'bridge_out'
+// `swap` is the legacy arbitrage rebalance between pools. `swap_routed`
+// is the user-driven best-execution swap via Stellar Broker (or Soroswap
+// fallback). `sign` is a wallet signature event captured live from the
+// MPC custody backend.
+export type ActivityType =
+  | 'migration'
+  | 'swap'
+  | 'swap_routed'
+  | 'sign'
+  | 'deposit'
+  | 'withdraw'
+  | 'bridge_in'
+  | 'bridge_out'
 export type TimeRange = '1D' | '1W' | '1M' | '3M' | '6M' | 'ALL'
 
 export interface DailySnapshot {
@@ -34,6 +46,15 @@ export interface ActivityEvent {
   txHash: string
   reason?: string
   chain?: string
+  // T2 routing + signing extensions
+  via?: 'broker' | 'soroswap-fallback'
+  signer?: 'wallet-kit' | 'dfns'
+  ledger?: number
+  contract?: string
+  soldAsset?: string
+  boughtAsset?: string
+  soldAmount?: string
+  boughtAmount?: string
 }
 
 export interface BridgeEvent {
@@ -379,6 +400,8 @@ export function formatUSD(n: number): string {
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   migration: 'Pool Migration',
   swap: 'Arbitrage Swap',
+  swap_routed: 'Routed Swap',
+  sign: 'MPC Signature',
   deposit: 'Deposit',
   withdraw: 'Withdrawal',
   bridge_in: 'Bridge In',
@@ -388,6 +411,8 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
 export const ACTIVITY_COLORS: Record<ActivityType, string> = {
   migration: '#3693fb',
   swap: '#ff8770',
+  swap_routed: '#0ea5e9',
+  sign: '#a855f7',
   deposit: '#10b981',
   withdraw: '#ef4444',
   bridge_in: '#9333ea',
