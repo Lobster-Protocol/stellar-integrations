@@ -3,7 +3,7 @@ import { Networks } from '@stellar/stellar-sdk'
 import { networkPassphrase } from '../client'
 
 // handleSendResult is pure; tested directly instead of through submitSignedXdr
-import { handleSendResult, TryAgainLaterError, waitForTx, RestoreRequiredError, buildPingTx } from '../factory'
+import { handleSendResult, TryAgainLaterError, waitForTx, buildPingTx } from '../factory'
 
 // mocked soroban server for buildPingTx + waitForTx
 const simulateTransaction = vi.fn()
@@ -82,7 +82,7 @@ describe('buildPingTx', () => {
 
   it('returns the assembled XDR when simulation succeeds', async () => {
     simulateTransaction.mockResolvedValueOnce({ result: { retval: null } })
-    const xdr = await buildPingTx('testnet', TESTNET_SOURCE)
+    const { xdr } = await buildPingTx('testnet', TESTNET_SOURCE)
     expect(xdr).toBe('ASSEMBLED_XDR')
   })
 
@@ -91,14 +91,14 @@ describe('buildPingTx', () => {
     await expect(buildPingTx('testnet', TESTNET_SOURCE)).rejects.toThrow(/simulation failed/)
   })
 
-  it('throws RestoreRequiredError when simulation returns restorePreamble', async () => {
+  it('returns the restore preamble instead of throwing when storage is archived', async () => {
     simulateTransaction.mockResolvedValueOnce({
       result: { retval: null },
       restorePreamble: { minResourceFee: '1000', transactionData: 'PREAMBLE_DATA' },
     })
-    await expect(buildPingTx('testnet', TESTNET_SOURCE)).rejects.toBeInstanceOf(
-      RestoreRequiredError,
-    )
+    const { xdr, restorePreamble } = await buildPingTx('testnet', TESTNET_SOURCE)
+    expect(xdr).toBe('')
+    expect(restorePreamble).toEqual({ minResourceFee: '1000', transactionData: 'PREAMBLE_DATA' })
   })
 })
 
