@@ -1,6 +1,4 @@
-// Separate Vitest config, keeping it out of vite.config.ts means the
-// production build (tsc -b + vite build) doesn't need the vitest types at
-// compile time. Vitest picks this file up by default.
+// separate file so the production build never needs the vitest types
 
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'

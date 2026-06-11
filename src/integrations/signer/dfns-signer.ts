@@ -1,8 +1,6 @@
 import type { Signer, SignOpts } from './types'
 
-// posts the unsigned xdr to the hono /dfns/sign endpoint. the service
-// runs the dfns mpc signature, polls until confirmed, then returns
-// the signed envelope as base64 xdr ready to submit.
+// the hono service runs the mpc round and answers with the signed envelope
 export const dfnsSigner: Signer = {
   name: 'dfns',
   async signTransaction(xdr: string, opts: SignOpts) {

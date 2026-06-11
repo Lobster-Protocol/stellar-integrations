@@ -18,21 +18,6 @@ type Filter = 'all' | ActivityType
 
 const mockEvents = generateActivity()
 
-function liveToActivityEvent(e: LiveActivityEntry): ActivityEvent {
-  return {
-    id: e.id,
-    date: e.date,
-    type: e.type,
-    txHash: e.txHash,
-    via: e.via,
-    signer: e.signer,
-    soldAsset: e.soldAsset,
-    boughtAsset: e.boughtAsset,
-    soldAmount: e.soldAmount,
-    boughtAmount: e.boughtAmount,
-  }
-}
-
 const FILTER_OPTIONS: Filter[] = [
   'all',
   'migration',
@@ -61,10 +46,8 @@ export default function Activity() {
     }
   }, [])
 
-  const events = useMemo<ActivityEvent[]>(
-    () => [...liveEntries.map(liveToActivityEvent), ...mockEvents],
-    [liveEntries],
-  )
+  // LiveActivityEntry is a structural subset of ActivityEvent, no mapping needed
+  const events = useMemo<ActivityEvent[]>(() => [...liveEntries, ...mockEvents], [liveEntries])
 
   const filtered = filter === 'all' ? events : events.filter((e) => e.type === filter)
 

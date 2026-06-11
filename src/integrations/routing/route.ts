@@ -1,7 +1,4 @@
-// orchestrator entry for the best-execution path. takes a quote request
-// and an active network, delegates to broker first, drops to the soroswap
-// direct router when the broker has no path. ui-side hooks consume this
-// to keep all routing knowledge out of components.
+// broker first, soroswap direct router when the broker has no path
 
 import { quoteBroker } from '../broker/quote'
 import { quoteSoroswapDirect } from '../broker/soroswap-fallback'

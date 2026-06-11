@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { useNetwork } from '../contexts/NetworkContext'
 import { CONTRACTS } from '../config/contracts'
+import { getRoutingHealth } from '../integrations/routing/health'
 import { readRoutingLog, type RoutingEntry } from '../integrations/broker/routing-log'
 import { formatRelativeAgo } from '../utils/format'
 
@@ -25,9 +26,7 @@ export default function RoutingEngineCard() {
     }
   }, [])
 
-  const partnerConfigured = !!import.meta.env.VITE_STELLAR_BROKER_PARTNER_KEY
-  const brokerEndpoint = c.broker.endpoint
-  const soroswapAvailable = !!c.soroswap.router
+  const health = getRoutingHealth(network)
   const aquariusAvailable = !!c.aquarius.router
 
   return (
@@ -49,12 +48,12 @@ export default function RoutingEngineCard() {
           <div className="flex items-center gap-2">
             <span
               className={`inline-block w-2 h-2 rounded-full ${
-                partnerConfigured ? 'bg-green' : 'bg-text-muted/40'
+                health.brokerEnabled ? 'bg-green' : 'bg-text-muted/40'
               }`}
             />
-            <span className="text-text">{partnerConfigured ? 'partner key set' : 'partner key missing'}</span>
+            <span className="text-text">{health.brokerEnabled ? 'partner key set' : 'partner key missing'}</span>
           </div>
-          <div className="text-text-muted mt-1 truncate">{brokerEndpoint}</div>
+          <div className="text-text-muted mt-1 truncate">{health.brokerEndpoint}</div>
         </div>
 
         <div className="rounded-2xl bg-bg p-3 text-xs">
@@ -62,10 +61,10 @@ export default function RoutingEngineCard() {
           <div className="flex items-center gap-2">
             <span
               className={`inline-block w-2 h-2 rounded-full ${
-                soroswapAvailable ? 'bg-green' : 'bg-text-muted/40'
+                health.fallbackEnabled ? 'bg-green' : 'bg-text-muted/40'
               }`}
             />
-            <span className="text-text">{soroswapAvailable ? 'soroswap router live' : 'soroswap not configured'}</span>
+            <span className="text-text">{health.fallbackEnabled ? 'soroswap router live' : 'soroswap not configured'}</span>
           </div>
           {aquariusAvailable && (
             <div className="text-text-muted mt-1">aquarius router live</div>

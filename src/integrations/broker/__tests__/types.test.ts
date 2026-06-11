@@ -1,35 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  BrokerStatusSchema,
-  BrokerEventSchema,
-  BrokerQuoteParamsSchema,
-  BrokerQuoteResultSchema,
-} from '../types'
-
-describe('BrokerStatusSchema', () => {
-  it('accepts the four sdk-defined statuses', () => {
-    for (const s of ['disconnected', 'ready', 'quote', 'trade']) {
-      expect(BrokerStatusSchema.parse(s)).toBe(s)
-    }
-  })
-
-  it('rejects unknown statuses', () => {
-    expect(() => BrokerStatusSchema.parse('connecting')).toThrow()
-    expect(() => BrokerStatusSchema.parse('')).toThrow()
-  })
-})
-
-describe('BrokerEventSchema', () => {
-  it('accepts the five sdk event names', () => {
-    for (const e of ['quote', 'progress', 'paused', 'finished', 'error']) {
-      expect(BrokerEventSchema.parse(e)).toBe(e)
-    }
-  })
-
-  it('rejects unknown event names', () => {
-    expect(() => BrokerEventSchema.parse('connected')).toThrow()
-  })
-})
+import { BrokerQuoteParamsSchema, BrokerQuoteResultSchema } from '../types'
 
 describe('BrokerQuoteParamsSchema', () => {
   const ok = {

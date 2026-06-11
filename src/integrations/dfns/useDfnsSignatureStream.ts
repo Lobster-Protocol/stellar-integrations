@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import type { DfnsEvent, DfnsEventKind } from './types'
+import { DfnsEventKindSchema, type DfnsEvent, type DfnsEventKind } from './types'
 
 const MAX_EVENTS = 500
 
@@ -28,6 +28,7 @@ export function useDfnsSignatureStream(): DfnsEvent[] {
     const handler = (e: MessageEvent) => {
       try {
         const evt = JSON.parse(e.data) as DfnsEvent
+        if (typeof evt.id !== 'string' || !DfnsEventKindSchema.safeParse(evt.kind).success) return
         setEvents((prev) => [evt, ...prev].slice(0, MAX_EVENTS))
       } catch {
         // server is the source of truth, skip malformed frames silently

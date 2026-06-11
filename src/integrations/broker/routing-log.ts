@@ -1,6 +1,4 @@
-// per-browser routing decision log. lightweight on purpose: routing is
-// driven by the broker server-side, the local log is just a UX trace
-// of what was attempted, not an authoritative audit.
+// per-browser trace of attempted routes, not an authoritative audit
 
 const KEY = 'lob_routing_log'
 const LIVE_KEY = 'lob_activity_live'
@@ -19,7 +17,7 @@ export interface RoutingEntry {
   network: 'testnet' | 'mainnet'
 }
 
-// activity feed mirror entry, kept in sync with src/data/mock.ts ActivityEvent
+// structural subset of the ActivityEvent shape in src/data/mock.ts
 export interface LiveActivityEntry {
   id: string
   date: string
@@ -39,7 +37,9 @@ export function readRoutingLog(): RoutingEntry[] {
     const raw = localStorage.getItem(KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? (parsed as RoutingEntry[]) : []
+    if (!Array.isArray(parsed)) return []
+    // drop non-object rows, the cards dereference fields off each entry
+    return parsed.filter((e) => e && typeof e === 'object') as RoutingEntry[]
   } catch {
     return []
   }
@@ -85,16 +85,9 @@ export function readLiveActivity(): LiveActivityEntry[] {
     const raw = localStorage.getItem(LIVE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? (parsed as LiveActivityEntry[]) : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((e) => e && typeof e === 'object') as LiveActivityEntry[]
   } catch {
     return []
-  }
-}
-
-export function clearRoutingLog(): void {
-  try {
-    localStorage.removeItem(KEY)
-  } catch {
-    // ignore
   }
 }
