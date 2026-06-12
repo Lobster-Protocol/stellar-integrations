@@ -9,7 +9,7 @@ import {
 
 import { CONTRACTS, type Network } from '../../config/contracts'
 
-// ops the broker is allowed to push as part of a swap. plain `payment`
+// ops the broker is allowed to push as part of a swap. a plain payment
 // is not here: a real swap settles via path payments or Soroban router
 // calls, never a bare payment to an arbitrary destination. allowing it
 // would let a hostile broker XDR drain the trader for the full balance.
