@@ -1,0 +1,15 @@
+FROM node:22-slim
+
+WORKDIR /app
+
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci --omit=dev --include=optional
+
+COPY server ./server
+COPY src/config ./src/config
+COPY src/integrations/stellar ./src/integrations/stellar
+COPY tsconfig.json tsconfig.server.json ./
+
+EXPOSE 8787
+
+CMD ["npx", "tsx", "server/index.ts"]
