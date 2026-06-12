@@ -13,9 +13,10 @@
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test",
     "probe:rpc": "node scripts/probe-stellar-rpc.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b",
     "server": "tsx watch server/index.ts",
-    "server:start": "tsx server/index.ts"
+    "server:start": "tsx server/index.ts",
+    "setup:dfns-policies": "tsx scripts/setup-dfns-policies.mts"
   },
   "dependencies": {
     "@allbridge/bridge-core-sdk": "^3.31.0",
@@ -28,16 +29,20 @@
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.100.9",
     "buffer": "^6.0.3",
-    "hono": "4.12.23",
+    "hono": "^4.12.25",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1",
     "recharts": "^3.8.0",
     "tailwindcss": "^4.2.1",
+    "tsx": "4.20.2",
     "viem": "^2.51.3",
     "wagmi": "^2.19.5",
     "zod": "^3.25.76"
+  },
+  "overrides": {
+    "axios": ">=1.15.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -53,8 +58,6 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "jsdom": "^29.1.1",
-    "playwright": "^1.60.0",
-    "tsx": "4.20.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^6.3.0",

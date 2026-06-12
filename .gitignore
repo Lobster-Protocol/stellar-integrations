@@ -17,6 +17,14 @@ dist-ssr
 .env.*
 !.env.example
 
+# private keys and certs, never commit (the relay reads its dfns key from
+# a mounted secret, not the repo)
+*.pem
+*.key
+*.p12
+*.pfx
+*.pkcs8
+
 # Local backups
 *.backup-*
 
@@ -42,6 +50,11 @@ _docs/
 notes/
 docs/*.md
 docs/*.json
+
+# defensive: stray PEM / private key files at any path
+*.pem
+*.key
+*.p12
 scripts/*-evidence.mjs
 scripts/*-ground-truth.mjs
 scripts/deploy-*.mjs
@@ -49,6 +62,7 @@ NOTES.md
 CHANGELOG.md
 CLAUDE.md
 .claude/
+.mcp.json
 AGENTS.md
 .cursor/
 .cursorrules
@@ -65,6 +79,9 @@ playwright-report/
 
 # local-only one-shot walkthrough (not a real assertion test)
 tests/demo-walkthrough.spec.ts
+
+# chrome profile of the real-wallet harness (holds the freighter test key)
+.wallet-test-profile/
 
 # playwright-mcp browser session artifacts (logs, snapshots, extensions)
 .playwright-mcp/
