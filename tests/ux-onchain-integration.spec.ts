@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test'
 
+import { BASE, SOROBAN_RPC, TEST_FACTORY_TESTNET, TEST_SOURCE_TESTNET, shorten } from './fixtures'
+
 // e2e against live testnet. each test reads the ground truth from
 // soroban rpc, then asserts the prod dashboard renders the same value.
-const BASE = 'https://stellar-instit.lobster-protocol.com'
-const FACTORY = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO'
-const SOURCE = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
-const RPC_URL = 'https://soroban-testnet.stellar.org'
+const FACTORY = TEST_FACTORY_TESTNET
+const SOURCE = TEST_SOURCE_TESTNET
+const RPC_URL = SOROBAN_RPC
 
 interface GroundTruth {
   admin: string
@@ -47,13 +48,7 @@ async function readGroundTruth(): Promise<GroundTruth> {
   return { admin: String(admin), wasmHash, poolCount: Number(poolCount) }
 }
 
-/** Match the dashboard's `shortenAddress(addr, n)` exactly - utility uses
- *  three ASCII dots (`...`), not the Unicode horizontal ellipsis. */
-function shorten(addr: string, n = 8): string {
-  return `${addr.slice(0, n)}...${addr.slice(-n)}`
-}
-
-test.describe('Live Factory vs /positions DOM integration', () => {
+test.describe('Live Factory reads match the /positions DOM', () => {
   let truth: GroundTruth
 
   test.beforeAll(async () => {
@@ -143,7 +138,7 @@ test.describe('Live Factory vs /positions DOM integration', () => {
       timeout: 10_000,
     })
     // And the live testnet admin G-address should no longer be visible.
-    await expect(page.locator(`text=${shorten('GA2PK7ZW' + 'HBJOFSGL', 8)}`)).toHaveCount(0)
+    await expect(page.locator(`text=${shorten(SOURCE, 8)}`)).toHaveCount(0)
   })
 
   test('Network toggle persists across reload (localStorage round-trip)', async ({ page, context }) => {
@@ -166,7 +161,7 @@ test.describe('Live Factory vs /positions DOM integration', () => {
   })
 })
 
-test.describe('Live Horizon vs Activity / Balances integration', () => {
+test.describe('Live Horizon reads match Activity and Balances', () => {
   test('OnChainActivityCard is silent when no wallet is connected (no Horizon call)', async ({ page }) => {
     let horizonCalls = 0
     page.on('request', (req) => {

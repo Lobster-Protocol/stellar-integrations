@@ -1,14 +1,9 @@
 import { test, expect } from '@playwright/test'
 
-/**
- * Prod-side smoke for the 2026-05-11 chore(t1) batch
- * (commit 0bd9b4d). Each test asserts a specific artifact landed in
- * production - failure isolates the missing piece.
- *
- * These run as raw HTTP requests where possible to keep assertions cheap
- * and the failure messages crisp.
- */
-const BASE = 'https://stellar-instit.lobster-protocol.com'
+// prod smoke for the 2026-05-11 chore(t1) batch (commit 0bd9b4d). one
+// test per artifact so a regression points straight at the missing piece.
+// raw http where possible to keep assertions cheap and errors specific.
+import { BASE } from './fixtures'
 
 test.describe('chore(t1) batch flush - prod assertions', () => {
   test('robots.txt is served', async ({ request }) => {
