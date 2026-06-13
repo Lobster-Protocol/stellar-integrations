@@ -1,27 +1,9 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'https://stellar-instit.lobster-protocol.com'
+import { gotoWithWallet } from './fixtures'
 
-// The Overview page only renders the "+ Deposit" button when a wallet
-// is connected - otherwise it shows a "Connect your wallet to get
-// started" call-to-action. For the DepositModal tests we simulate a
-// pre-connected wallet by seeding localStorage before the page loads
-// (the WalletContext reads `lob_addr` and `lob_wname` on mount).
-//
-// We use a known testnet G-address (the one generated for this project,
-// lobster-test) - it's a real, fundable account, no PII.
-const FAKE_WALLET = {
-  address: 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
-  name: 'Freighter',
-}
-
-async function gotoWithWallet(page: import('@playwright/test').Page) {
-  await page.addInitScript(([addr, name]) => {
-    localStorage.setItem('lob_addr', addr)
-    localStorage.setItem('lob_wname', name)
-  }, [FAKE_WALLET.address, FAKE_WALLET.name] as const)
-  await page.goto(BASE, { waitUntil: 'networkidle' })
-}
+// Overview only renders "+ Deposit" once a wallet is connected; gotoWithWallet
+// seeds the same lob_addr / lob_wname keys WalletContext reads on mount.
 
 test.describe('DepositModal - Allbridge wiring', () => {
   test('opens from the Overview "+ Deposit" button and shows source picker', async ({ page }) => {

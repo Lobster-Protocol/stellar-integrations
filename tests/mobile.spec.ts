@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'https://stellar-instit.lobster-protocol.com'
+import { BASE } from './fixtures'
 
 // test on a mobile viewport
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
@@ -9,11 +9,11 @@ test('mobile: sidebar is hidden, hamburger menu visible', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'networkidle' })
   await page.screenshot({ path: 'screenshots/mobile-overview.png' })
 
-  // sidebar should be hidden
+  // sidebar hidden on mobile
   const sidebar = page.locator('aside')
   await expect(sidebar).toBeHidden()
 
-  // hamburger button should be visible
+  // hamburger button
   const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first()
   await expect(menuBtn).toBeVisible()
 })

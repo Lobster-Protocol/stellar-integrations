@@ -1,16 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'https://stellar-instit.lobster-protocol.com'
-
-// collect all console errors
-const consoleErrors: string[] = []
-
-test.beforeEach(async ({ page }) => {
-  page.on('console', msg => {
-    if (msg.type() === 'error') consoleErrors.push(msg.text())
-  })
-  page.on('pageerror', err => consoleErrors.push(err.message))
-})
+import { BASE } from './fixtures'
 
 test('homepage loads and shows sidebar', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'networkidle' })
@@ -20,11 +10,9 @@ test('homepage loads and shows sidebar', async ({ page }) => {
   const sidebar = page.locator('aside')
   await expect(sidebar).toBeVisible()
 
-  // lobster logo should be visible
   const logo = page.locator('img[alt="Lobster"]').first()
   await expect(logo).toBeVisible()
 
-  // connect wallet button should be visible
   const connectBtn = page.getByRole('button', { name: 'Connect Wallet' }).first()
   await expect(connectBtn).toBeVisible()
 })
@@ -32,7 +20,7 @@ test('homepage loads and shows sidebar', async ({ page }) => {
 test('overview shows KPI cards when not connected', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'networkidle' })
 
-  // should show the "connect wallet" prompt since no wallet
+  // no wallet, so the "connect wallet" prompt is up
   const prompt = page.getByText('Connect your wallet to get started')
   await expect(prompt).toBeVisible()
 })
@@ -42,15 +30,13 @@ test('performance page loads with charts', async ({ page }) => {
   await page.waitForTimeout(1000) // let recharts render
   await page.screenshot({ path: 'screenshots/02-performance.png', fullPage: true })
 
-  // time range selector should exist
   const allBtn = page.getByText('ALL', { exact: true })
   await expect(allBtn).toBeVisible()
 
-  // PnL heading
   const pnlHeading = page.getByText('P&L (%)')
   await expect(pnlHeading).toBeVisible()
 
-  // chart container should have SVG (recharts renders SVGs)
+  // chart container has SVG (recharts renders SVGs)
   const svgs = page.locator('svg.recharts-surface')
   expect(await svgs.count()).toBeGreaterThan(0)
 })
@@ -62,11 +48,10 @@ test('activity page loads with events', async ({ page }) => {
   const heading = page.getByText('Strategy Activity')
   await expect(heading).toBeVisible()
 
-  // filter buttons
   const allFilter = page.getByText('All', { exact: true })
   await expect(allFilter).toBeVisible()
 
-  // should have activity items
+  // activity items present
   const migrationItems = page.getByText('Pool Migration')
   expect(await migrationItems.count()).toBeGreaterThan(0)
 })
@@ -79,11 +64,9 @@ test('allocation page loads with stacked chart', async ({ page }) => {
   const heading = page.getByText('Token Allocation')
   await expect(heading).toBeVisible()
 
-  // token delta chart
   const deltaHeading = page.getByText('Token Delta')
   await expect(deltaHeading).toBeVisible()
 
-  // DEX distribution
   const dexHeading = page.getByText('DEX Distribution Over Time')
   await expect(dexHeading).toBeVisible()
 })
@@ -95,11 +78,9 @@ test('bridges page loads with flow data', async ({ page }) => {
   const heading = page.getByText('Cross-Chain Bridges')
   await expect(heading).toBeVisible()
 
-  // allbridge provider badge
   const allbridge = page.getByText('Allbridge Core')
   await expect(allbridge).toBeVisible()
 
-  // bridge history
   const historyHeading = page.getByText('Bridge History')
   await expect(historyHeading).toBeVisible()
 })

@@ -48,9 +48,12 @@ jobs:
         # and the runner image already ships the chromium libraries
         run: npx playwright install chromium
 
-      - name: Playwright E2E (against live deploy)
+      # No PLAYWRIGHT_BASE_URL here, so the config serves a local vite build
+      # and runs the specs against the code in this commit: they pass on what
+      # we just built, not on whatever happens to be live. To smoke a real
+      # deploy instead, set
+      # PLAYWRIGHT_BASE_URL=https://stellar-instit.lobster-protocol.com.
+      - name: Playwright E2E (local build of this commit)
         run: npx playwright test --reporter=list
         env:
-          # tests target https://stellar-instit.lobster-protocol.com
-          # they validate the latest pushed code via Vercel auto-deploy
           PLAYWRIGHT_HEADLESS: 'true'

@@ -1,10 +1,14 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = 'https://stellar-instit.lobster-protocol.com'
+import { BASE } from './fixtures'
 
 // Quick HTTP-only header checks. Raw requests, no browser context.
+// Vercel applies these via vercel.json; vite dev never sees them.
+const isLocal = /localhost|127\.0\.0\.1/.test(BASE)
 
 test.describe('HTTP security headers (Vercel config)', () => {
+  test.skip(isLocal, 'vercel-only headers; not applied by vite dev')
+
   test('HSTS header set with max-age >= 1 year', async ({ request }) => {
     const r = await request.get(BASE)
     const hsts = r.headers()['strict-transport-security']
