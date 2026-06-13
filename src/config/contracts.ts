@@ -40,6 +40,8 @@ interface NetworkContracts {
     // reads. empty on mainnet (we require the caller wallet there).
     readSource: string
   }
+  // faucet for funding fresh accounts. empty on mainnet, no faucet there.
+  friendbot: string
 }
 
 const mainnet: NetworkContracts = {
@@ -69,6 +71,7 @@ const mainnet: NetworkContracts = {
     wasmHash: '',
     readSource: '',
   },
+  friendbot: '',
 }
 
 const testnet: NetworkContracts = {
@@ -85,6 +88,7 @@ const testnet: NetworkContracts = {
     wasmHash: '837d3d9f265304e8eea935fe78342eb50e2291a4035048e0bef39431e300dc34',
     readSource: 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
   },
+  friendbot: 'https://friendbot.stellar.org',
 }
 
 export const CONTRACTS: Record<Network, NetworkContracts> = { mainnet, testnet }

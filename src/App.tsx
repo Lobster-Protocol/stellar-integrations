@@ -9,6 +9,7 @@ import Footer from './components/Footer'
 const Overview = lazy(() => import('./pages/Overview'))
 const Performance = lazy(() => import('./pages/Performance'))
 const Activity = lazy(() => import('./pages/Activity'))
+const Audit = lazy(() => import('./pages/Audit'))
 const Allocation = lazy(() => import('./pages/Allocation'))
 const Bridges = lazy(() => import('./pages/Bridges'))
 const Positions = lazy(() => import('./pages/Positions'))
@@ -121,6 +122,7 @@ export default function App() {
                   <Route path="/" element={<Overview />} />
                   <Route path="/performance" element={<Performance />} />
                   <Route path="/activity" element={<Activity />} />
+                  <Route path="/audit" element={<Audit />} />
                   <Route path="/allocation" element={<Allocation />} />
                   <Route path="/bridges" element={<Bridges />} />
                   <Route path="/positions" element={<Positions />} />
