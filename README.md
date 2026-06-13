@@ -35,7 +35,9 @@ React 19, Vite 6, Tailwind v4, TypeScript strict.
 `@stellar/stellar-sdk` v14 for Horizon + Soroban RPC.
 `@creit-tech/stellar-wallets-kit` v2 via JSR (Freighter, xBull, Albedo,
 LOBSTR + WalletConnect).
-SDKs in the tree: `@soroswap/sdk`, `@allbridge/bridge-core-sdk`.
+SDKs in the tree: `@allbridge/bridge-core-sdk`, `@stellar-broker/client`,
+`@dfns/sdk`. Soroswap is called through its on-chain router via
+`@stellar/stellar-sdk`, no dedicated SDK.
 `@tanstack/react-query` for caching, `zod` for runtime checks.
 Playwright + Vitest.
 
@@ -55,7 +57,7 @@ npm run dev              # http://localhost:5173
 | `npm run build` | Type-check then bundle |
 | `npm run preview` | Serve the bundle locally |
 | `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
+| `npm run typecheck` | `tsc -b` |
 | `npm run test:unit` | Vitest |
 | `npm run test:e2e` | Playwright against the live deploy |
 | `npm run probe:rpc` | Sanity-check Stellar RPC reachability |

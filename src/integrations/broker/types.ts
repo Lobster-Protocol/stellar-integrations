@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
 export const BrokerQuoteStatusSchema = z.enum(['unfeasible', 'rejected', 'success'])
-export type BrokerQuoteStatus = z.infer<typeof BrokerQuoteStatusSchema>
 
 // asset format: 'xlm' for native, 'CODE-ISSUER' for classic, C... for soroban tokens
 export const BrokerQuoteParamsSchema = z.object({

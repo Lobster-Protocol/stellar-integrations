@@ -23,12 +23,6 @@ export type ArbLeg =
   | { direction: ArbLegDirection; status: 'confirmed'; txHash: string }
   | { direction: ArbLegDirection; status: 'failed'; reason?: string }
 
-export interface ArbCycle {
-  dispatch: ArbDispatch
-  outLeg: ArbLeg
-  inLeg: ArbLeg
-}
-
 // shared by quoteReturnLeg + buildReturnLegTx
 function dispatchToReturnRequest(dispatch: ArbDispatch): BridgeRequest {
   return {
