@@ -368,7 +368,7 @@ export function filterByRange(snapshots: DailySnapshot[], range: TimeRange): Dai
   return snapshots.filter(s => new Date(s.date) >= cutoff)
 }
 
-// protocol display helpers -- keeping these here since they're used everywhere
+// protocol display helpers. kept here since they're used everywhere
 // (probably should be in utils but too many imports depend on this path already)
 export function getProtocolColor(p: Protocol): string {
   switch (p) {

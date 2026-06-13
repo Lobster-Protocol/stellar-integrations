@@ -53,7 +53,7 @@ function shorten(addr: string, n = 8): string {
   return `${addr.slice(0, n)}...${addr.slice(-n)}`
 }
 
-test.describe('Live Factory ↔ /positions DOM integration', () => {
+test.describe('Live Factory vs /positions DOM integration', () => {
   let truth: GroundTruth
 
   test.beforeAll(async () => {
@@ -166,7 +166,7 @@ test.describe('Live Factory ↔ /positions DOM integration', () => {
   })
 })
 
-test.describe('Live Horizon ↔ Activity / Balances integration', () => {
+test.describe('Live Horizon vs Activity / Balances integration', () => {
   test('OnChainActivityCard is silent when no wallet is connected (no Horizon call)', async ({ page }) => {
     let horizonCalls = 0
     page.on('request', (req) => {
