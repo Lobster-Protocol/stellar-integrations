@@ -1,22 +1,9 @@
 import { test, expect, type Page } from '@playwright/test'
 
-const BASE = 'https://stellar-instit.lobster-protocol.com'
-
-const FAKE_WALLET = {
-  address: 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
-  name: 'Freighter',
-}
+import { gotoWithWallet, BASE } from './fixtures'
 
 async function gotoNoWallet(page: Page) {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
-}
-
-async function gotoWithWallet(page: Page) {
-  await page.addInitScript(([addr, name]) => {
-    localStorage.setItem('lob_addr', addr)
-    localStorage.setItem('lob_wname', name)
-  }, [FAKE_WALLET.address, FAKE_WALLET.name] as const)
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto('/', { waitUntil: 'networkidle' })
 }
 
 test.describe('Cross-page navigation', () => {
@@ -35,7 +22,8 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Activity$/ }).click()
     await expect(page).toHaveURL(/\/activity$/)
-    await expect(page.getByRole('button', { name: 'All' })).toBeVisible()
+    // exact: substring matching also hits "Disconnect wallet" via "all"
+    await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible()
   })
 
   test('Allocation navigates to /allocation', async ({ page }) => {
