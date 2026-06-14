@@ -3,8 +3,8 @@
 [![CI](https://github.com/Lobster-Protocol/stellar-integrations/actions/workflows/ci.yml/badge.svg)](https://github.com/Lobster-Protocol/stellar-integrations/actions/workflows/ci.yml)
 
 React frontend that talks to our Soroban contracts on Stellar. Wires up
-the wallets, the bridge and the swap routing around the analytics
-engine.
+the wallets, the bridge, the swap routing and the DFNS custody backend
+around the analytics engine.
 
 Live: https://stellar-instit.lobster-protocol.com
 
@@ -12,6 +12,10 @@ Live: https://stellar-instit.lobster-protocol.com
 
 The Soroban contracts come from [Lobster-Protocol/Stellar](https://github.com/Lobster-Protocol/Stellar)
 (our 2025 Build Award). They're deployed and callable on testnet.
+
+Soroswap, Aquarius and Allbridge are mainnet-only, so testnet ships the
+lobster Factory alone. Their addresses live under `mainnet` in
+`src/config/contracts.ts`.
 
 | what | link |
 | --- | --- |
@@ -56,10 +60,11 @@ npm run dev              # http://localhost:5173
 | `npm run dev` | Vite dev server |
 | `npm run build` | Type-check then bundle |
 | `npm run preview` | Serve the bundle locally |
+| `npm run server` | Hono DFNS service: signing, webhook, MiCA export |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `tsc -b` |
 | `npm run test:unit` | Vitest |
-| `npm run test:e2e` | Playwright against the live deploy |
+| `npm run test:e2e` | Playwright against a local preview build (set `PLAYWRIGHT_BASE_URL` for a deploy) |
 | `npm run probe:rpc` | Sanity-check Stellar RPC reachability |
 
 ## Layout
@@ -69,9 +74,10 @@ src/
   components/   UI: Sidebar, TopBar, DepositModal, charts
   config/       contracts.ts (addresses by network)
   contexts/     Wallet + Network
-  integrations/ allbridge, lobster, horizon (SDK wrappers + hooks)
-  pages/        Overview, Performance, Activity, Allocation, Bridges, Positions
+  integrations/ allbridge, broker, dfns, evm, horizon, lobster, routing, signer, stellar
+  pages/        Overview, Performance, Activity, Allocation, Bridges, Positions, Audit
   data/         Seeded mock for the strategy preview pages
+server/         Hono service: DFNS signing, webhook, MiCA export, policies
 tests/          Playwright suites
 scripts/        CLI helpers
 ```
@@ -80,7 +86,6 @@ scripts/        CLI helpers
 
 - No address hardcoded outside `src/config/contracts.ts`.
 - No secrets committed. `.env*` is gitignored, `.env.example` shows the keys.
-- Conventional commits.
 
 ## Security
 
