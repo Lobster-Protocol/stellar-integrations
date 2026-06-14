@@ -15,7 +15,7 @@ import { DfnsStellarNetworkSchema } from './dfns/types'
 import { broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData } from './dfns/sign'
 import { inspectSignXdr, readSignGuardConfig, SignGuardRejected } from './dfns/sign-guard'
 import { listPendingApprovals, decideApproval, type ApprovalDecision } from './dfns/approvals'
-import { buildMcaRecords, toEsmaJson, type StellarTxSnapshot, type ExportContext } from './mica-export'
+import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
 import { lookupDti } from './dfns/dti-codes'
 
 const REPLAY_WINDOW_SEC = 300
@@ -309,8 +309,8 @@ app.get('/dfns/audit/export', tokenGuard, (c) => {
     .filter((e) => e.kind.startsWith('wallet.transaction.') || e.kind.startsWith('wallet.transfer.'))
     .map((e) => eventToSnapshot(e))
     .filter((s): s is StellarTxSnapshot => !!s)
-  // one continuous hash chain across every tx, so verifyChain validates the
-  // whole export end to end instead of breaking at each tx boundary.
+  // one continuous hash chain across every tx so the whole export verifies
+  // end to end rather than breaking at each tx boundary.
   const records: ReturnType<typeof buildMcaRecords> = []
   let prevHash: string | null = null
   for (const s of snapshots) {
@@ -318,6 +318,10 @@ app.get('/dfns/audit/export', tokenGuard, (c) => {
     if (recs.length) prevHash = recs[recs.length - 1].recordHash
     records.push(...recs)
   }
+  // never ship a broken audit trail. a corrupt chain means a bug upstream,
+  // and a wrong mica export is worse than a failed request.
+  const broken = verifyChain(records)
+  if (broken !== -1) return c.json({ error: `mica export chain broke at record ${broken}` }, 500)
   return c.body(toEsmaJson(records), 200, {
     'content-type': 'application/json',
     'content-disposition': `attachment; filename="mica-export-${Date.now()}.json"`,
