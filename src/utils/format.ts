@@ -48,23 +48,6 @@ export function formatBalance(raw: string): string {
   return n.toLocaleString('en-US', { maximumFractionDigits: 7, minimumFractionDigits: 4 })
 }
 
-export function timeSince(dateStr: string) {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  // might break for future dates, fix later
-  const intervals = [
-    { label: 'y', seconds: 31536000 },
-    { label: 'mo', seconds: 2592000 },
-    { label: 'd', seconds: 86400 },
-    { label: 'h', seconds: 3600 },
-    { label: 'm', seconds: 60 },
-  ]
-  for (const i of intervals) {
-    const count = Math.floor(seconds / i.seconds)
-    if (count > 0) return `${count}${i.label} ago`
-  }
-  return 'just now'
-}
-
 // short "Xs ago" / "Xm ago" / "Xh ago" from a raw millisecond delta
 export function formatAgeMs(ms: number): string {
   if (ms < 1000) return 'just now'
