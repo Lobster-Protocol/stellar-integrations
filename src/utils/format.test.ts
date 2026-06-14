@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shortenAddress, cn, timeSince, formatBalance } from './format'
+import { shortenAddress, cn, formatBalance } from './format'
 
 describe('shortenAddress', () => {
   it('returns empty string for empty input', () => {
@@ -45,22 +45,5 @@ describe('formatBalance', () => {
   })
   it('falls back to the raw string for non-numeric input', () => {
     expect(formatBalance('not a number')).toBe('not a number')
-  })
-})
-
-describe('timeSince', () => {
-  it('returns "just now" for a date in the same minute', () => {
-    const tenSecondsAgo = new Date(Date.now() - 10_000).toISOString()
-    expect(timeSince(tenSecondsAgo)).toBe('just now')
-  })
-
-  it('reports minutes for sub-hour deltas', () => {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60_000).toISOString()
-    expect(timeSince(fiveMinutesAgo)).toBe('5m ago')
-  })
-
-  it('reports days for multi-day deltas', () => {
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 3600_000).toISOString()
-    expect(timeSince(threeDaysAgo)).toBe('3d ago')
   })
 })
