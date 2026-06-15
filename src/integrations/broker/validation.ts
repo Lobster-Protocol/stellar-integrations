@@ -1,9 +1,6 @@
 import type { BrokerQuoteResult } from './types'
 
-// quote sanity checks run before submitting a confirm. when a lobster
-// analytics http endpoint becomes available, swap the body of this
-// function for a fetch against it and keep the local guards as a fallback
-// when the http call is down.
+// local sanity checks before a confirm. heuristic stand-in until the analytics api is wired.
 
 const MAX_SLIPPAGE = 0.05
 // implausibly large profit usually means a thin pool or stale quote

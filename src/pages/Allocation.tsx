@@ -25,7 +25,6 @@ export default function Allocation() {
   const [range, setRange] = useState<TimeRange>('ALL')
   const snapshots = filterByRange(allSnapshots, range)
 
-  // token delta chart data
   const deltaData = snapshots.map(s => ({
     date: s.date,
     [STRATEGY.token0Symbol]: s.token0Ratio,
@@ -44,7 +43,6 @@ export default function Allocation() {
         <TimeRangeSelector value={range} onChange={setRange} />
       </div>
 
-      {/* token delta stacked area */}
       <div className="bg-bg-card rounded-3xl p-5 card">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-text">Token Delta</h3>
@@ -69,7 +67,6 @@ export default function Allocation() {
         </ResponsiveContainer>
       </div>
 
-      {/* protocol timeline */}
       <div className="bg-bg-card rounded-3xl p-5 card">
         <h3 className="text-sm font-semibold text-text mb-4">DEX Distribution Over Time</h3>
 
@@ -89,7 +86,6 @@ export default function Allocation() {
           ))}
         </div>
 
-        {/* legend */}
         <div className="flex items-center gap-6 text-xs">
           {Object.entries(protocolTime).map(([proto, days]) => (
             <div key={proto} className="flex items-center gap-1.5">
@@ -101,7 +97,6 @@ export default function Allocation() {
         </div>
       </div>
 
-      {/* current position detail */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="bg-bg-card rounded-3xl p-5" style={{ border: '1px solid rgba(13, 45, 76, 0.08)' }}>
           <h3 className="text-sm font-semibold text-text mb-3">Current Token Balances</h3>

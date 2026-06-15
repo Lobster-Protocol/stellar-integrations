@@ -44,14 +44,12 @@ export default function Bridges() {
       <MockDataBadge />
       <h2 className="text-lg font-semibold text-text">Cross-Chain Bridges</h2>
 
-      {/* flow summary */}
       <div className="grid grid-cols-3 gap-4">
         <FlowCard label="Total Inflow" value={formatUSD(totalIn)} color="#10b981" />
         <FlowCard label="Total Outflow" value={formatUSD(totalOut)} color="#ef4444" />
         <FlowCard label="Net Flow" value={`${netFlow >= 0 ? '+' : ''}${formatUSD(netFlow)}`} color={netFlow >= 0 ? '#10b981' : '#ef4444'} />
       </div>
 
-      {/* bridge provider */}
       <div className="bg-bg-card rounded-3xl p-5 card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-text">Bridge Provider</h3>

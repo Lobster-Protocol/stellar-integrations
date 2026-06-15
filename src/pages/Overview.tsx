@@ -57,7 +57,6 @@ export default function Overview() {
     value: s.portfolioValue,
   }))
 
-  // allocation data for donuts
   const tokenAlloc = [
     { name: STRATEGY.token0Symbol, value: last.token0Ratio },
     { name: STRATEGY.token1Symbol, value: 100 - last.token0Ratio },
@@ -77,7 +76,6 @@ export default function Overview() {
 
       <MockDataBadge />
 
-      {/* action bar */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-text">Portfolio</h2>
         <div className="flex items-center gap-2">
@@ -97,7 +95,6 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard label="Portfolio Value" value={formatUSD(kpis.currentValue)} />
         <KPICard
