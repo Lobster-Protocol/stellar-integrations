@@ -22,6 +22,13 @@ describe('getRoutingHealth', () => {
     expect(h.brokerEndpoint).toBe('https://api.stellar.broker')
   })
 
+  it('keeps broker quoting enabled without a partner key (keyless price discovery)', () => {
+    Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', '')
+    const h = getRoutingHealth('mainnet')
+    expect(h.brokerQuoteEnabled).toBe(true)
+    expect(h.brokerEnabled).toBe(false)
+  })
+
   it('reports fallback enabled on mainnet (soroswap router configured)', () => {
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', 'test-partner-key')
     const h = getRoutingHealth('mainnet')

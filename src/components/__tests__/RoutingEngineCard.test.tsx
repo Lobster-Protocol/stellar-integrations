@@ -28,16 +28,17 @@ describe('RoutingEngineCard', () => {
     }
   })
 
-  it('shows partner key missing when VITE_STELLAR_BROKER_PARTNER_KEY is unset', () => {
+  it('shows broker live and no partner-key text when the key is unset', () => {
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', '')
     wrap(<RoutingEngineCard />)
-    expect(screen.getByText(/partner key missing/i)).toBeInTheDocument()
+    expect(screen.getByText(/best execution live/i)).toBeInTheDocument()
+    expect(screen.queryByText(/partner key/i)).not.toBeInTheDocument()
   })
 
-  it('shows partner key set when VITE_STELLAR_BROKER_PARTNER_KEY is set', () => {
+  it('still reads live when the partner key is set', () => {
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', 'test-key')
     wrap(<RoutingEngineCard />)
-    expect(screen.getByText(/partner key set/i)).toBeInTheDocument()
+    expect(screen.getByText(/best execution live/i)).toBeInTheDocument()
   })
 
   it('renders "none yet" when no route entry is in localStorage', () => {

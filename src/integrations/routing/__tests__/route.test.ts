@@ -83,12 +83,24 @@ describe('routeSwap', () => {
     expect(r.source).toBe('none')
   })
 
-  it('skips broker entirely when the partner key is missing', async () => {
+  it('keeps a keyless broker reference quote but settles on soroswap when the partner key is missing', async () => {
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', '')
+    quoteBrokerMock.mockResolvedValueOnce({
+      ts: new Date(),
+      status: 'success',
+      sellingAsset: VALID_PARAMS.sellingAsset,
+      buyingAsset: VALID_PARAMS.buyingAsset,
+      slippageTolerance: 0.02,
+      sellingAmount: '100',
+      estimatedBuyingAmount: '23.45',
+      profit: '0.05',
+    })
     quoteSoroswapMock.mockResolvedValueOnce(234_500_000n)
     const r = await routeSwap(VALID_PARAMS, CTX)
-    expect(quoteBrokerMock).not.toHaveBeenCalled()
+    expect(quoteBrokerMock).toHaveBeenCalled()
     expect(r.source).toBe('soroswap-fallback')
+    // the broker quote rides along as a best-execution reference
+    expect(r.broker?.status).toBe('success')
   })
 
   it('reports none when amount is invalid', async () => {

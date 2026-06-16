@@ -23,27 +23,31 @@ export async function routeSwap(
 ): Promise<RouteResult> {
   const health = getRoutingHealth(ctx.network)
 
-  if (health.brokerEnabled) {
-    const broker = await quoteBroker(params)
-    if (broker && broker.status === 'success') {
-      const check = validateBrokerQuote(broker)
-      if (check.ok) return { source: 'broker', broker }
-      // broker quote failed validation; fall through to soroswap
+  // quoting is keyless, so we ask the broker for a price whenever the endpoint
+  // is set. the same quote becomes the executable route when the partner key
+  // is present, or a best-execution reference next to the soroswap leg when it
+  // is not.
+  let broker: BrokerQuoteResult | undefined
+  if (health.brokerQuoteEnabled) {
+    const quote = await quoteBroker(params)
+    if (quote && quote.status === 'success' && validateBrokerQuote(quote).ok) {
+      broker = quote
+      if (health.brokerEnabled) return { source: 'broker', broker }
     }
   }
 
   if (!health.fallbackEnabled) {
-    return { source: 'none', reason: 'no router available on this network' }
+    return { source: 'none', broker, reason: 'no router available on this network' }
   }
 
   const sellingTokenId = brokerAssetToSac(params.sellingAsset, ctx.network)
   const buyingTokenId = brokerAssetToSac(params.buyingAsset, ctx.network)
   if (!sellingTokenId || !buyingTokenId) {
-    return { source: 'none', reason: 'asset to SAC mapping not available' }
+    return { source: 'none', broker, reason: 'asset to SAC mapping not available' }
   }
 
   const amountInStroops = toStroops(params.sellingAmount)
-  if (!amountInStroops) return { source: 'none', reason: 'invalid amount' }
+  if (!amountInStroops) return { source: 'none', broker, reason: 'invalid amount' }
 
   const buyingStroops = await quoteSoroswapDirect({
     network: ctx.network,
@@ -52,7 +56,7 @@ export async function routeSwap(
     buyingTokenId,
     amountInStroops,
   })
-  if (buyingStroops === null) return { source: 'none', reason: 'no path on soroswap' }
+  if (buyingStroops === null) return { source: 'none', broker, reason: 'no path on soroswap' }
 
   const guard = validateSoroswapQuote({
     sellingStroops: amountInStroops,
@@ -60,10 +64,11 @@ export async function routeSwap(
     sellingAsset: sellingTokenId,
     buyingAsset: buyingTokenId,
   })
-  if (!guard.ok) return { source: 'none', reason: `soroswap quote rejected: ${guard.reason}` }
+  if (!guard.ok) return { source: 'none', broker, reason: `soroswap quote rejected: ${guard.reason}` }
 
   return {
     source: 'soroswap-fallback',
+    broker,
     soroswap: { buyingStroops, buyingAmount: (Number(buyingStroops) / 10_000_000).toString() },
   }
 }

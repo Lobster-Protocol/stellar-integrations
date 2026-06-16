@@ -159,7 +159,7 @@ export default function SwapModal({ open, onClose }: Props) {
 
           {route.isLoading && <p className="text-xs text-text-muted">Routing your swap...</p>}
 
-          {source === 'broker' && broker && (
+          {source !== 'none' && broker && (
             <div className="bg-bg rounded-lg p-3 text-xs space-y-1">
               <div className="flex justify-between">
                 <span className="text-text-muted">Broker estimated receive</span>
@@ -178,6 +178,12 @@ export default function SwapModal({ open, onClose }: Props) {
                   {broker.profit}
                 </span>
               </div>
+              {source === 'soroswap-fallback' && (
+                <p className="text-text-muted pt-1">
+                  Reference quote from Stellar Broker. The trade settles on Soroswap until
+                  the partner key is live.
+                </p>
+              )}
             </div>
           )}
 

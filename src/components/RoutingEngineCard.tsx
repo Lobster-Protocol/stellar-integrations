@@ -48,10 +48,10 @@ export default function RoutingEngineCard() {
           <div className="flex items-center gap-2">
             <span
               className={`inline-block w-2 h-2 rounded-full ${
-                health.brokerEnabled ? 'bg-green' : 'bg-text-muted/40'
+                health.brokerQuoteEnabled ? 'bg-green' : 'bg-text-muted/40'
               }`}
             />
-            <span className="text-text">{health.brokerEnabled ? 'partner key set' : 'partner key missing'}</span>
+            <span className="text-text">{health.brokerQuoteEnabled ? 'best execution live' : 'offline'}</span>
           </div>
           <div className="text-text-muted mt-1 truncate">{health.brokerEndpoint}</div>
         </div>
