@@ -13,11 +13,11 @@ test.describe('Routing engine card', () => {
     await expect(page.getByText(/Swaps go through Stellar Broker first/i)).toBeVisible()
   })
 
-  test('states the broker partner key status instead of claiming online', async ({ page }) => {
+  test('reads broker as live off the endpoint without leaking the key state', async ({ page }) => {
     await page.goto(BASE + '/positions', { waitUntil: 'networkidle' })
-    // local builds have no VITE_STELLAR_BROKER_PARTNER_KEY so this reads
-    // "missing"; a deploy with the key reads "set". both are honest states.
-    await expect(page.getByText(/partner key (set|missing)/)).toBeVisible()
+    // quoting is keyless, so the card reads "best execution live" off the
+    // configured endpoint, no partner-key wording on the face
+    await expect(page.getByText(/best execution live/)).toBeVisible()
   })
 
   test('reflects the fallback availability for the active network', async ({ page }) => {
