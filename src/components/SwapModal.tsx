@@ -157,7 +157,22 @@ export default function SwapModal({ open, onClose }: Props) {
             <p className="text-xs text-coral">Selling and buying must differ.</p>
           )}
 
-          {route.isLoading && <p className="text-xs text-text-muted">Routing your swap...</p>}
+          {!amount && selling !== buying && (
+            <p className="text-xs text-text-muted">
+              Enter an amount to compare the best route across Stellar Broker and Soroswap.
+            </p>
+          )}
+
+          {route.isLoading && (
+            <div
+              role="status"
+              aria-label="Finding the best route"
+              className="bg-bg rounded-lg p-3 space-y-2 animate-pulse"
+            >
+              <div className="h-3 w-2/3 rounded bg-text-muted/15" />
+              <div className="h-3 w-1/2 rounded bg-text-muted/15" />
+            </div>
+          )}
 
           {source !== 'none' && broker && (
             <div className="bg-bg rounded-lg p-3 text-xs space-y-1">

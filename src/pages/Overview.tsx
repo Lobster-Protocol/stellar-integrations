@@ -14,6 +14,7 @@ import lobsterIcon from '../assets/lobster-icon.png'
 import { cn } from '../utils/format'
 import { TOOLTIP_STYLE, AXIS_TICK } from '../utils/recharts'
 import MockDataBadge from '../components/MockDataBadge'
+import Hint from '../components/Hint'
 
 // lazy - the Allbridge SDK drags in viem/walletconnect/solana, ~1MB. no point
 // loading it until someone actually clicks deposit
@@ -103,8 +104,17 @@ export default function Overview() {
           sub={`${kpis.totalPnl >= 0 ? '+' : ''}${formatUSD(kpis.totalPnl)}`}
           color={kpis.totalPnl >= 0 ? '#10b981' : '#ef4444'}
         />
-        <KPICard label="Sharpe Ratio" value={kpis.sharpe.toString()} />
-        <KPICard label="Max Drawdown" value={`${kpis.maxDrawdown}%`} color="#ef4444" />
+        <KPICard
+          label="Sharpe Ratio"
+          value={kpis.sharpe.toString()}
+          hint="Return earned for each unit of risk taken. Above 1 is solid, above 2 is strong."
+        />
+        <KPICard
+          label="Max Drawdown"
+          value={`${kpis.maxDrawdown}%`}
+          color="#ef4444"
+          hint="The deepest drop from a peak before the portfolio recovered."
+        />
       </div>
 
       {/* main content grid */}
@@ -148,7 +158,9 @@ export default function Overview() {
           </div>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-text-muted">APR</span>
+              <span className="text-text-muted">
+                <Hint label="APR" text="Annualized rate the active position is earning right now." />
+              </span>
               <span className="text-green font-medium">{last.apr}%</span>
             </div>
             <div className="flex justify-between">
@@ -156,11 +168,18 @@ export default function Overview() {
               <span className="text-text">{formatUSD(last.fees)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-text-muted">Impermanent loss</span>
+              <span className="text-text-muted">
+                <Hint
+                  label="Impermanent loss"
+                  text="Value given up versus just holding the two tokens, when their prices drift apart."
+                />
+              </span>
               <span className="text-red text-xs">{formatUSD(last.il)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-text-muted">Net (fees - IL)</span>
+              <span className="text-text-muted">
+                <Hint label="Net (fees - IL)" text="Fees earned minus impermanent loss. The position's real take." />
+              </span>
               <span className={cn('font-medium', kpis.netFees >= 0 ? 'text-green' : 'text-red')}>
                 {kpis.netFees >= 0 ? '+' : ''}{formatUSD(kpis.netFees)}
               </span>
@@ -191,7 +210,7 @@ export default function Overview() {
   )
 }
 
-function KPICard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+function KPICard({ label, value, sub, color, hint }: { label: string; value: string; sub?: string; color?: string; hint?: string }) {
   return (
     <div
       className="rounded-3xl p-5"
@@ -200,7 +219,9 @@ function KPICard({ label, value, sub, color }: { label: string; value: string; s
         border: '1px solid rgba(13, 45, 76, 0.06)',
       }}
     >
-      <p className="text-text-secondary text-xs uppercase tracking-wider mb-1.5 font-medium">{label}</p>
+      <p className="text-text-secondary text-xs uppercase tracking-wider mb-1.5 font-medium">
+        {hint ? <Hint label={label} text={hint} align="center" /> : label}
+      </p>
       <p className="text-xl font-bold" style={{ color: color || '#080a0c', fontFamily: 'Outfit' }}>{value}</p>
       {sub && <p className="text-xs mt-0.5" style={{ color: color || '#6d7f9c' }}>{sub}</p>}
     </div>

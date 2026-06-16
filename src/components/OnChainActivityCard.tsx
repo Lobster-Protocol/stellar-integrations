@@ -28,9 +28,12 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
       {operations.isLoading ? (
         <p className="text-xs text-text-muted">Loading...</p>
       ) : operations.isError ? (
-        <p className="text-xs text-coral">
-          Read failed: {operations.error?.message}
-        </p>
+        <div className="text-xs space-y-1.5">
+          <p className="text-coral">Couldn't reach Horizon to load operations.</p>
+          <button onClick={() => operations.refetch()} className="text-primary hover:underline">
+            Try again
+          </button>
+        </div>
       ) : !operations.data || operations.data.length === 0 ? (
         <p className="text-xs text-text-secondary">
           Nothing on this account yet.

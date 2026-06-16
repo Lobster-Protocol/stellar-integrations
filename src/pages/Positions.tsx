@@ -61,9 +61,12 @@ export default function Positions() {
         ) : factoryInfo.isLoading ? (
           <p className="text-xs text-text-muted">Reading from Soroban RPC...</p>
         ) : factoryInfo.isError ? (
-          <p className="text-xs text-coral">
-            Read failed: {factoryInfo.error?.message}
-          </p>
+          <div className="text-xs space-y-1.5">
+            <p className="text-coral">Couldn't reach Soroban RPC to read the factory.</p>
+            <button onClick={() => factoryInfo.refetch()} className="text-primary hover:underline">
+              Try again
+            </button>
+          </div>
         ) : factoryInfo.data ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <Stat label="Contract ID" value={shortenAddress(factoryId, 8)} mono />
@@ -93,9 +96,12 @@ export default function Positions() {
         ) : positions.isLoading ? (
           <p className="text-xs text-text-muted">Loading positions for {shortenAddress(address)}...</p>
         ) : positions.isError ? (
-          <p className="text-xs text-coral">
-            Read failed: {positions.error?.message}
-          </p>
+          <div className="text-xs space-y-1.5">
+            <p className="text-coral">Couldn't reach Soroban RPC to read your positions.</p>
+            <button onClick={() => positions.refetch()} className="text-primary hover:underline">
+              Try again
+            </button>
+          </div>
         ) : !positions.data || positions.data.length === 0 ? (
           <div className="text-xs text-text-secondary">
             Nothing registered yet for{' '}
