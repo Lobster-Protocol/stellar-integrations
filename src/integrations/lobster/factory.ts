@@ -3,7 +3,6 @@ import {
   TransactionBuilder,
   BASE_FEE,
   Address,
-  Networks,
   xdr,
   scValToNative,
   rpc,
@@ -204,5 +203,3 @@ export async function waitForTx(network: Network, hash: string): Promise<rpc.Api
   }
   throw new Error(`Timed out waiting for tx ${hash} (${POLL_TIMEOUT_MS / 1000}s)`)
 }
-
-export { Networks }
