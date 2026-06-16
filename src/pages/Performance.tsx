@@ -12,6 +12,7 @@ import {
   formatUsdTick,
 } from '../utils/recharts'
 import MockDataBadge from '../components/MockDataBadge'
+import Hint from '../components/Hint'
 
 const allSnapshots = generateSnapshots()
 const kpis = computeKPIs(allSnapshots)
@@ -102,10 +103,10 @@ export default function Performance() {
 
       {/* metrics grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricBox label="Net APR" value={`${kpis.apr}%`} positive />
-        <MetricBox label="Sharpe Ratio" value={kpis.sharpe.toString()} positive={kpis.sharpe > 0} />
-        <MetricBox label="Max Drawdown" value={`-${kpis.maxDrawdown}%`} positive={false} />
-        <MetricBox label="Net Fees - IL" value={`${kpis.netFees >= 0 ? '+' : ''}${formatUSD(kpis.netFees)}`} positive={kpis.netFees >= 0} />
+        <MetricBox label="Net APR" value={`${kpis.apr}%`} positive hint="Annualized return at the current rate, after fees and impermanent loss." />
+        <MetricBox label="Sharpe Ratio" value={kpis.sharpe.toString()} positive={kpis.sharpe > 0} hint="Return earned for each unit of risk taken. Above 1 is solid, above 2 is strong." />
+        <MetricBox label="Max Drawdown" value={`-${kpis.maxDrawdown}%`} positive={false} hint="The deepest drop from a peak before the strategy recovered." />
+        <MetricBox label="Net Fees - IL" value={`${kpis.netFees >= 0 ? '+' : ''}${formatUSD(kpis.netFees)}`} positive={kpis.netFees >= 0} hint="Total fees earned minus impermanent loss over the period." />
         <MetricBox label="Total Fees" value={formatUSD(kpis.totalFees)} />
         <MetricBox label="Total IL" value={formatUSD(kpis.totalIL)} />
         <MetricBox label="Migrations" value={kpis.migrations.toString()} />
@@ -115,10 +116,10 @@ export default function Performance() {
   )
 }
 
-function MetricBox({ label, value, positive }: { label: string; value: string; positive?: boolean }) {
+function MetricBox({ label, value, positive, hint }: { label: string; value: string; positive?: boolean; hint?: string }) {
   return (
     <div className="bg-bg-card rounded-2xl p-4" style={{ border: '1px solid rgba(13, 45, 76, 0.08)' }}>
-      <p className="text-text-muted text-xs mb-1">{label}</p>
+      <p className="text-text-muted text-xs mb-1">{hint ? <Hint label={label} text={hint} align="center" /> : label}</p>
       <p className={cn(
         'text-base font-semibold',
         positive === true ? 'text-green' : positive === false ? 'text-red' : 'text-text'

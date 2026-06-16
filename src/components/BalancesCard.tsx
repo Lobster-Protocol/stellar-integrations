@@ -17,7 +17,14 @@ export default function BalancesCard() {
   if (balances.isLoading) {
     body = <p className="text-xs text-text-muted">Loading balances...</p>
   } else if (balances.isError) {
-    body = <p className="text-xs text-coral">Read failed: {balances.error?.message}</p>
+    body = (
+      <div className="text-xs space-y-1.5">
+        <p className="text-coral">Couldn't reach Horizon to load balances.</p>
+        <button onClick={() => balances.refetch()} className="text-primary hover:underline">
+          Try again
+        </button>
+      </div>
+    )
   } else if (!balances.data || balances.data.length === 0) {
     body = (
       <p className="text-xs text-text-secondary">
