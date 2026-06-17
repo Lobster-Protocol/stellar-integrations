@@ -25,7 +25,7 @@ test.describe('Positions page - live on-chain data', () => {
   })
 
   test('without a connected wallet, the page prompts to connect', async ({ page }) => {
-    await page.goto('/positions', { waitUntil: 'networkidle' })
+    await page.goto('/positions', { waitUntil: 'domcontentloaded' })
     await expect(
       page.getByText(/Connect a wallet to see your positions/i),
     ).toBeVisible()
