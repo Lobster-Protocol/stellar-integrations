@@ -10,6 +10,7 @@ import { CONTRACTS } from '../config/contracts'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer } from '../utils/format'
 import { appendRoutingEntry } from '../integrations/broker/routing-log'
+import { decimalToStroops } from '../integrations/stellar/amount'
 import type { BrokerQuoteParams } from '../integrations/broker/types'
 import { cn } from '../utils/format'
 
@@ -66,6 +67,10 @@ export default function SwapModal({ open, onClose }: Props) {
       account: address!,
       networkPassphrase: networkPassphrase(network),
       signer,
+      // same converter the guard measures spend with, so the cap and the
+      // measured outflow agree. a malformed amount throws here and fails the
+      // swap closed rather than leaving the broker uncapped.
+      maxSpendStroops: decimalToStroops(params.sellingAmount ?? ''),
       onHash: (h) => {
         lastHash = h
       },

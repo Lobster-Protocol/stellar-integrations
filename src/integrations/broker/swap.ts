@@ -16,13 +16,14 @@ export function makeSignCallback(
   networkPassphrase: string,
   signer: Signer,
   onHash?: OnSignedHash,
+  maxSpendStroops?: bigint,
 ) {
   return async (payload: TransactionI | Buffer): Promise<TransactionI | Buffer> => {
     if (!('toXDR' in payload)) {
       throw new Error('soroban auth-entry signing not supported via wallet kit')
     }
     const xdr = payload.toXDR()
-    inspectBrokerTx(xdr, account, networkPassphrase)
+    inspectBrokerTx(xdr, account, networkPassphrase, maxSpendStroops)
     const { signedTxXdr } = await signer.signTransaction(xdr, {
       networkPassphrase,
       address: account,
@@ -44,7 +45,11 @@ export async function confirmBrokerTrade(
   networkPassphrase: string,
   signer: Signer,
   onHash?: OnSignedHash,
+  maxSpendStroops?: bigint,
 ): Promise<void> {
   const client = await getBrokerClient()
-  client.confirmQuote(account, makeSignCallback(account, networkPassphrase, signer, onHash))
+  client.confirmQuote(
+    account,
+    makeSignCallback(account, networkPassphrase, signer, onHash, maxSpendStroops),
+  )
 }
