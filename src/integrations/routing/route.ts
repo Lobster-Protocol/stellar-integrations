@@ -29,10 +29,17 @@ export async function routeSwap(
   // is not.
   let broker: BrokerQuoteResult | undefined
   if (health.brokerQuoteEnabled) {
-    const quote = await quoteBroker(params)
-    if (quote && quote.status === 'success' && validateBrokerQuote(quote).ok) {
-      broker = quote
-      if (health.brokerEnabled) return { source: 'broker', broker }
+    try {
+      const quote = await quoteBroker(params)
+      if (quote && quote.status === 'success' && validateBrokerQuote(quote).ok) {
+        broker = quote
+        if (health.brokerEnabled) return { source: 'broker', broker }
+      }
+    } catch {
+      // a broker hiccup (pair it doesn't cover, sub-minimum amount, endpoint
+      // down) must not sink the whole route. leave broker unset and fall through
+      // to the soroswap leg, or to a clean 'none' reason below, instead of
+      // throwing up to the swap modal and leaving it blank.
     }
   }
 
