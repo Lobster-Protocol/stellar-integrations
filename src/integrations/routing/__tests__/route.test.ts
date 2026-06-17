@@ -76,6 +76,21 @@ describe('routeSwap', () => {
     expect(r.source).toBe('soroswap-fallback')
   })
 
+  it('falls through to soroswap when the broker quote throws (it must not sink the route)', async () => {
+    quoteBrokerMock.mockRejectedValueOnce(new Error('broker rejected: pair not supported'))
+    quoteSoroswapMock.mockResolvedValueOnce(234_500_000n)
+    const r = await routeSwap(VALID_PARAMS, CTX)
+    expect(r.source).toBe('soroswap-fallback')
+    expect(r.broker).toBeUndefined()
+  })
+
+  it('reports none with a reason when the broker throws and there is no fallback router', async () => {
+    quoteBrokerMock.mockRejectedValueOnce(new Error('broker rejected: pair not supported'))
+    const r = await routeSwap(VALID_PARAMS, { ...CTX, network: 'testnet' })
+    expect(r.source).toBe('none')
+    expect(r.reason).toBeTruthy()
+  })
+
   it('reports none when neither broker nor soroswap have a path', async () => {
     quoteBrokerMock.mockResolvedValueOnce(null)
     quoteSoroswapMock.mockResolvedValueOnce(null)
