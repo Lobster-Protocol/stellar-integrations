@@ -45,7 +45,7 @@ describe('makeSignCallback', () => {
   it('round-trips a tx payload through the signer', async () => {
     const signedTx = { reconstructed: true, hash: () => Buffer.from('deadbeef', 'hex') }
     fromXDRMock
-      .mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend' }] })
+      .mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend', destination: ACCOUNT }] })
       .mockReturnValueOnce(signedTx)
     const signer = buildSigner()
     signer.signTransaction.mockResolvedValueOnce({ signedTxXdr: 'SIGNED_XDR' })
@@ -64,7 +64,7 @@ describe('makeSignCallback', () => {
   it('calls onHash with the hex hash of every signed leg when provided', async () => {
     const signedTx = { reconstructed: true, hash: () => Buffer.from('deadbeefcafe', 'hex') }
     fromXDRMock
-      .mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend' }] })
+      .mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend', destination: ACCOUNT }] })
       .mockReturnValueOnce(signedTx)
     const signer = buildSigner()
     signer.signTransaction.mockResolvedValueOnce({ signedTxXdr: 'SIGNED_XDR' })
@@ -80,7 +80,7 @@ describe('makeSignCallback', () => {
   it('does not break when onHash throws', async () => {
     const signedTx = { reconstructed: true, hash: () => Buffer.from('abcd', 'hex') }
     fromXDRMock
-      .mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend' }] })
+      .mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend', destination: ACCOUNT }] })
       .mockReturnValueOnce(signedTx)
     const signer = buildSigner()
     signer.signTransaction.mockResolvedValueOnce({ signedTxXdr: 'SIGNED_XDR' })
@@ -94,7 +94,7 @@ describe('makeSignCallback', () => {
   })
 
   it('propagates signer rejection unchanged', async () => {
-    fromXDRMock.mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend' }] })
+    fromXDRMock.mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend', destination: ACCOUNT }] })
     const signer = buildSigner()
     signer.signTransaction.mockRejectedValueOnce(new Error('user denied'))
     const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer)
@@ -105,7 +105,7 @@ describe('makeSignCallback', () => {
   it('refuses a tx whose source is not the trader', async () => {
     fromXDRMock.mockReturnValueOnce({
       source: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
-      operations: [{ type: 'pathPaymentStrictSend' }],
+      operations: [{ type: 'pathPaymentStrictSend', destination: ACCOUNT }],
     })
     const signer = buildSigner()
     const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer)

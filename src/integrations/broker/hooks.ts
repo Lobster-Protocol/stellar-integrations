@@ -21,8 +21,17 @@ export function useBrokerConfirm() {
       networkPassphrase: string
       signer: Signer
       onHash?: (hash: string) => void
+      // the quote's selling amount, in stroops. caps what the broker xdr can
+      // spend so a leg can't push more than the trader agreed to.
+      maxSpendStroops?: bigint
     }) => {
-      await confirmBrokerTrade(args.account, args.networkPassphrase, args.signer, args.onHash)
+      await confirmBrokerTrade(
+        args.account,
+        args.networkPassphrase,
+        args.signer,
+        args.onHash,
+        args.maxSpendStroops,
+      )
     },
   })
 }
