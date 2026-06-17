@@ -49,5 +49,5 @@ export async function seedWallet(page: Page) {
 // configured baseURL.
 export async function gotoWithWallet(page: Page, path: string = '/') {
   await seedWallet(page)
-  await page.goto(path, { waitUntil: 'networkidle' })
+  await page.goto(path, { waitUntil: 'domcontentloaded' })
 }

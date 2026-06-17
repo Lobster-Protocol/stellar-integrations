@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 import { BASE } from './fixtures'
 
 test('homepage loads and shows sidebar', async ({ page }) => {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
   await page.screenshot({ path: 'screenshots/01-overview.png', fullPage: true })
 
   // sidebar should exist with nav links
@@ -18,7 +18,7 @@ test('homepage loads and shows sidebar', async ({ page }) => {
 })
 
 test('overview shows KPI cards when not connected', async ({ page }) => {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   // no wallet, so the "connect wallet" prompt is up
   const prompt = page.getByText('Connect your wallet to get started')
@@ -26,7 +26,7 @@ test('overview shows KPI cards when not connected', async ({ page }) => {
 })
 
 test('performance page loads with charts', async ({ page }) => {
-  await page.goto(BASE + '/performance', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/performance', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(1000) // let recharts render
   await page.screenshot({ path: 'screenshots/02-performance.png', fullPage: true })
 
@@ -42,7 +42,7 @@ test('performance page loads with charts', async ({ page }) => {
 })
 
 test('activity page loads with events', async ({ page }) => {
-  await page.goto(BASE + '/activity', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/activity', { waitUntil: 'domcontentloaded' })
   await page.screenshot({ path: 'screenshots/03-activity.png', fullPage: true })
 
   const heading = page.getByText('Strategy Activity')
@@ -57,7 +57,7 @@ test('activity page loads with events', async ({ page }) => {
 })
 
 test('allocation page loads with stacked chart', async ({ page }) => {
-  await page.goto(BASE + '/allocation', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/allocation', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(1000)
   await page.screenshot({ path: 'screenshots/04-allocation.png', fullPage: true })
 
@@ -72,7 +72,7 @@ test('allocation page loads with stacked chart', async ({ page }) => {
 })
 
 test('bridges page loads with flow data', async ({ page }) => {
-  await page.goto(BASE + '/bridges', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/bridges', { waitUntil: 'domcontentloaded' })
   await page.screenshot({ path: 'screenshots/05-bridges.png', fullPage: true })
 
   const heading = page.getByText('Cross-Chain Bridges')
@@ -86,7 +86,7 @@ test('bridges page loads with flow data', async ({ page }) => {
 })
 
 test('navigation between all pages works', async ({ page }) => {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   // click each nav link and verify page loads
   for (const [link, expectedText] of [
@@ -103,7 +103,7 @@ test('navigation between all pages works', async ({ page }) => {
 })
 
 test('network selector toggles between testnet and mainnet', async ({ page }) => {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   const mainnetBtn = page.getByText('Mainnet', { exact: true })
   await mainnetBtn.click()
@@ -116,7 +116,7 @@ test('network selector toggles between testnet and mainnet', async ({ page }) =>
 })
 
 test('connect wallet button opens auth modal', async ({ page }) => {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   const connectBtn = page.getByText('Connect Wallet').first()
   await connectBtn.click()
@@ -126,7 +126,7 @@ test('connect wallet button opens auth modal', async ({ page }) => {
 })
 
 test('time range selector changes chart data', async ({ page }) => {
-  await page.goto(BASE + '/performance', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/performance', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(1000)
 
   // click 1M
@@ -141,7 +141,7 @@ test('time range selector changes chart data', async ({ page }) => {
 })
 
 test('activity filter buttons work', async ({ page }) => {
-  await page.goto(BASE + '/activity', { waitUntil: 'networkidle' })
+  await page.goto(BASE + '/activity', { waitUntil: 'domcontentloaded' })
 
   // click Pool Migration filter
   await page.getByRole('button', { name: 'Pool Migration' }).click()
@@ -161,7 +161,7 @@ test('no critical console errors on any page', async ({ page }) => {
   })
 
   for (const path of ['/', '/performance', '/activity', '/allocation', '/bridges']) {
-    await page.goto(BASE + path, { waitUntil: 'networkidle' })
+    await page.goto(BASE + path, { waitUntil: 'domcontentloaded' })
     await page.waitForTimeout(500)
   }
 

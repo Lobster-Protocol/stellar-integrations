@@ -5,7 +5,7 @@ import { seedWallet } from './fixtures'
 test.describe('Custody mode toggle', () => {
   test('defaults to wallet kit on a fresh browser', async ({ page }) => {
     await seedWallet(page)
-    await page.goto('/audit', { waitUntil: 'networkidle' })
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     const walletKitCard = page.locator('button', { hasText: 'Wallet kit' })
     const dfnsCard = page.locator('button', { hasText: 'DFNS MPC' })
@@ -15,7 +15,7 @@ test.describe('Custody mode toggle', () => {
 
   test('persists the chosen mode in localStorage', async ({ page }) => {
     await seedWallet(page)
-    await page.goto('/audit', { waitUntil: 'networkidle' })
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     await page.locator('button', { hasText: 'DFNS MPC' }).click()
     const stored = await page.evaluate(() => localStorage.getItem('lob_custody_mode'))

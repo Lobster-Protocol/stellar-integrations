@@ -9,7 +9,7 @@ const apiUrl = process.env.VITE_LOBSTER_API_URL
 test.describe('MicaExportButton on the audit page', () => {
   test('renders only when the lobster api url is configured', async ({ page }) => {
     await seedWallet(page)
-    await page.goto('/audit', { waitUntil: 'networkidle' })
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     const card = page.getByText('MiCA audit export')
     if (apiUrl) {

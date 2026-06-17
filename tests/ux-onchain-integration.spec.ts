@@ -168,8 +168,10 @@ test.describe('Live Horizon reads match Activity and Balances', () => {
       if (req.url().includes('horizon-testnet.stellar.org')) horizonCalls++
     })
 
-    await page.goto(`${BASE}/activity`)
-    await page.waitForLoadState('networkidle')
+    await page.goto(`${BASE}/activity`, { waitUntil: 'domcontentloaded' })
+    // give any mount effects a beat to fire a request, then assert the card
+    // stayed silent. networkidle never settles here with the live polling.
+    await page.waitForTimeout(1500)
 
     // No wallet -> OnChainActivityCard returns null, no Horizon call.
     expect(horizonCalls).toBe(0)

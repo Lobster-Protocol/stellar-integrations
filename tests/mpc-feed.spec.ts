@@ -7,7 +7,7 @@ const apiUrl = process.env.VITE_LOBSTER_API_URL
 test.describe('Audit page - DFNS wiring', () => {
   test('renders the audit chrome with all the D4 panels', async ({ page }) => {
     await seedWallet(page)
-    await page.goto('/audit', { waitUntil: 'networkidle' })
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     // these render regardless of api wiring; PoliciesPanel still shows a
     // header + a hint to set VITE_LOBSTER_API_URL when missing.
@@ -31,7 +31,7 @@ test.describe('Audit page - DFNS wiring', () => {
   test('MPC feed shows a waiting state when no SSE url is set', async ({ page }) => {
     test.skip(Boolean(apiUrl), 'feed goes live once the build has an api url')
     await seedWallet(page)
-    await page.goto('/audit', { waitUntil: 'networkidle' })
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     await expect(page.getByText('0 events')).toBeVisible()
     await expect(page.getByText(/Waiting for DFNS events/i)).toBeVisible()
