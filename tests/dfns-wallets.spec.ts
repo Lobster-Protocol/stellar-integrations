@@ -7,7 +7,7 @@ const apiUrl = process.env.VITE_LOBSTER_API_URL
 test.describe('DfnsWalletList on the audit page', () => {
   test('shows the wallet list panel when the api url is configured', async ({ page }) => {
     await seedWallet(page)
-    await page.goto('/audit', { waitUntil: 'networkidle' })
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     if (!apiUrl) {
       await expect(page.getByText('DFNS wallets')).toHaveCount(0)

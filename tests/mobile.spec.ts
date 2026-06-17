@@ -6,7 +6,7 @@ import { BASE } from './fixtures'
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
 
 test('mobile: sidebar is hidden, hamburger menu visible', async ({ page }) => {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
   await page.screenshot({ path: 'screenshots/mobile-overview.png' })
 
   // sidebar hidden on mobile
@@ -19,7 +19,7 @@ test('mobile: sidebar is hidden, hamburger menu visible', async ({ page }) => {
 })
 
 test('mobile: hamburger opens nav drawer', async ({ page }) => {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   // click hamburger (first button with svg)
   const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first()
@@ -44,7 +44,7 @@ test('mobile: hamburger opens nav drawer', async ({ page }) => {
 })
 
 test('mobile: connect wallet button works', async ({ page }) => {
-  await page.goto(BASE, { waitUntil: 'networkidle' })
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   const connectBtn = page.getByRole('button', { name: 'Connect Wallet' }).first()
   await expect(connectBtn).toBeVisible()

@@ -7,7 +7,7 @@ const apiUrl = process.env.VITE_LOBSTER_API_URL
 test.describe('PendingApprovalsPanel on the audit page', () => {
   test('shows the empty state when no approvals are pending', async ({ page }) => {
     await seedWallet(page)
-    await page.goto('/audit', { waitUntil: 'networkidle' })
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     if (!apiUrl) {
       await expect(page.getByText('Pending approvals')).toHaveCount(0)

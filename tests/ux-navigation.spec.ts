@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { gotoWithWallet, BASE } from './fixtures'
 
 async function gotoNoWallet(page: Page) {
-  await page.goto('/', { waitUntil: 'networkidle' })
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
 }
 
 test.describe('Cross-page navigation', () => {
@@ -47,7 +47,7 @@ test.describe('Cross-page navigation', () => {
 
   test('junk URL redirects to the custom /404 page', async ({ page }) => {
     await gotoWithWallet(page)
-    await page.goto(`${BASE}/this-does-not-exist`, { waitUntil: 'networkidle' })
+    await page.goto(`${BASE}/this-does-not-exist`, { waitUntil: 'domcontentloaded' })
     await expect(page).toHaveURL(/\/404$/)
     await expect(page.getByRole('heading', { name: '404' })).toBeVisible()
   })
@@ -122,7 +122,7 @@ test.describe('Network toggle', () => {
     await page.addInitScript(() => {
       localStorage.setItem('lob_network', 'devnet')
     })
-    await page.goto(BASE, { waitUntil: 'networkidle' })
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' })
     // After mount the corrupted value is replaced with 'testnet' on next set; we
     // assert the UI state reflects testnet (the Testnet button is highlighted).
     await expect(page.getByRole('button', { name: 'Testnet' })).toBeVisible()
@@ -151,7 +151,7 @@ test.describe('Accessibility basics', () => {
   test('every route has an h2 or h3 heading', async ({ page }) => {
     await gotoWithWallet(page)
     for (const path of ['/', '/performance', '/activity', '/allocation', '/bridges', '/positions']) {
-      await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' })
+      await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' })
       const count = await page.locator('h2, h3').count()
       expect(count).toBeGreaterThanOrEqual(1)
     }
