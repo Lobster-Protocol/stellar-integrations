@@ -47,6 +47,8 @@ test-results/
 _local/
 **/_local/
 _docs/
+# grafana provisioning + dashboards, kept local with the rest of the ops setup
+monitoring/
 notes/
 docs/*.md
 docs/*.json

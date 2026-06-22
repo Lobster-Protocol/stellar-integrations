@@ -16,6 +16,8 @@
     "typecheck": "tsc -b",
     "server": "tsx watch server/index.ts",
     "server:start": "tsx server/index.ts",
+    "ttl-monitor": "tsx server/ttl-monitor/daemon.ts",
+    "health-monitor": "tsx server/probe/daemon.ts",
     "setup:dfns-policies": "tsx scripts/setup-dfns-policies.mts"
   },
   "dependencies": {
