@@ -1,0 +1,12 @@
+# dependencies and build output
+/node_modules
+/build
+/.docusaurus
+/.cache-loader
+
+# generated api reference (regenerated from openapi/lobster.yaml)
+/docs/api
+
+# os / editor
+.DS_Store
+*.log
