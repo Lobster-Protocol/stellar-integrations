@@ -17,7 +17,7 @@ export interface RoutingEntry {
   network: 'testnet' | 'mainnet'
 }
 
-// structural subset of the ActivityEvent shape in src/data/mock.ts
+// one entry the routing feed renders: a broker route decision or a signature
 export interface LiveActivityEntry {
   id: string
   date: string

@@ -37,7 +37,7 @@ test('mobile: hamburger opens nav drawer', async ({ page }) => {
   await page.waitForTimeout(500)
 
   // drawer should close and Performance page should load
-  const heading = page.getByText('Strategy Performance')
+  const heading = page.getByRole('heading', { name: 'Performance' })
   await expect(heading).toBeVisible()
 
   await page.screenshot({ path: 'screenshots/mobile-performance.png' })

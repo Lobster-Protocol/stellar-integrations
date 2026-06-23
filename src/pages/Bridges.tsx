@@ -1,20 +1,14 @@
-import { generateBridgeEvents, formatUSD, CHAIN_COLORS } from '../data/mock'
 import { cn } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useTrustline } from '../integrations/allbridge/hooks'
 import { CONTRACTS } from '../config/contracts'
-import MockDataBadge from '../components/MockDataBadge'
 
-const events = generateBridgeEvents()
-
+// Real bridge surface: the Allbridge provider plus a live USDC trustline check
+// for the connected wallet. The bridge itself runs from the Deposit flow, where
+// the real fee, gas and time come from the live Allbridge quote. No seeded
+// history here.
 export default function Bridges() {
-
-  const totalIn = events.filter(e => e.direction === 'in').reduce((s, e) => s + e.amount, 0)
-  const totalOut = events.filter(e => e.direction === 'out').reduce((s, e) => s + e.amount, 0)
-  const netFlow = totalIn - totalOut
-
-  // live trustline check; testnet has no USDC issuer so data stays undefined there
   const { address } = useWallet()
   const { network } = useNetwork()
   const usdcIssuer = CONTRACTS[network].tokens.usdcIssuer
@@ -41,14 +35,7 @@ export default function Bridges() {
 
   return (
     <div className="space-y-6">
-      <MockDataBadge />
       <h2 className="text-lg font-semibold text-text">Cross-Chain Bridges</h2>
-
-      <div className="grid grid-cols-3 gap-4">
-        <FlowCard label="Total Inflow" value={formatUSD(totalIn)} color="#10b981" />
-        <FlowCard label="Total Outflow" value={formatUSD(totalOut)} color="#ef4444" />
-        <FlowCard label="Net Flow" value={`${netFlow >= 0 ? '+' : ''}${formatUSD(netFlow)}`} color={netFlow >= 0 ? '#10b981' : '#ef4444'} />
-      </div>
 
       <div className="bg-bg-card rounded-3xl p-5 card">
         <div className="flex items-center justify-between mb-4">
@@ -57,18 +44,14 @@ export default function Bridges() {
             Allbridge Core
           </span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
           <div>
             <p className="text-text-muted text-xs">Supported Token</p>
             <p className="text-text font-medium">USDC</p>
           </div>
           <div>
-            <p className="text-text-muted text-xs">Avg Bridge Time</p>
-            <p className="text-text font-medium">~2 min</p>
-          </div>
-          <div>
-            <p className="text-text-muted text-xs">Bridge Fee</p>
-            <p className="text-text font-medium">0.15%</p>
+            <p className="text-text-muted text-xs">Source Chains</p>
+            <p className="text-text font-medium">Ethereum, Arbitrum, BSC</p>
           </div>
           <div>
             <p className="text-text-muted text-xs">Trustline Status</p>
@@ -77,60 +60,12 @@ export default function Bridges() {
         </div>
       </div>
 
-      {/* transaction history */}
-      <div className="bg-bg-card rounded-3xl overflow-hidden card">
-        <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.08)' }}>
-          <h3 className="text-sm font-semibold text-text">Bridge History</h3>
-        </div>
-
-        <div className="divide-y" style={{ borderColor: 'rgba(13, 45, 76, 0.06)' }}>
-          {events.map(event => (
-            <div key={event.id} className="px-5 py-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className={cn(
-                  'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white',
-                  event.direction === 'in' ? 'bg-green' : 'bg-red'
-                )}>
-                  {event.direction === 'in' ? '↓' : '↑'}
-                </span>
-                <div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium" style={{ color: CHAIN_COLORS[event.sourceChain] || '#6d7f9c' }}>
-                      {event.sourceChain}
-                    </span>
-                    <span className="text-text-muted">→</span>
-                    <span className="font-medium" style={{ color: CHAIN_COLORS[event.destChain] || '#6d7f9c' }}>
-                      {event.destChain}
-                    </span>
-                  </div>
-                  <p className="text-xs text-text-muted font-mono">{event.txHash}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-text">{event.amount.toLocaleString()} {event.token}</p>
-                <div className="flex items-center gap-2 justify-end">
-                  <span className="text-xs text-text-muted">{event.date}</span>
-                  <span className={cn(
-                    'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                    event.status === 'completed' ? 'bg-green/10 text-green' : 'bg-yellow/10 text-yellow'
-                  )}>
-                    {event.status}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="bg-bg-card rounded-3xl p-5 card">
+        <p className="text-sm text-text-secondary">
+          Bridge USDC into Stellar from an EVM chain with the <span className="text-text font-medium">+ Deposit</span> button
+          on the Overview page. The live fee, gas cost and estimated time come from the Allbridge quote at the moment you bridge.
+        </p>
       </div>
-    </div>
-  )
-}
-
-function FlowCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="rounded-3xl p-5" style={{ background: 'linear-gradient(135deg, rgba(54, 147, 251, 0.12), rgba(255, 135, 112, 0.08))', border: '1px solid rgba(13, 45, 76, 0.06)' }}>
-      <p className="text-text-secondary text-xs uppercase tracking-wider mb-1.5 font-medium">{label}</p>
-      <p className="text-xl font-bold" style={{ color, fontFamily: 'Outfit' }}>{value}</p>
     </div>
   )
 }
