@@ -85,7 +85,7 @@ const testnet: NetworkContracts = {
   broker: { endpoint: 'https://api.stellar.broker', router: '' },
   lobster: {
     factory: 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO',
-    wasmHash: '837d3d9f265304e8eea935fe78342eb50e2291a4035048e0bef39431e300dc34',
+    wasmHash: '83333138aa55f439af3168736ad8a1aeab0cae0c0492ba305f38c2dffdd17563',
     readSource: 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
   },
   friendbot: 'https://friendbot.stellar.org',
