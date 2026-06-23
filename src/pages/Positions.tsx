@@ -7,6 +7,7 @@ import SignDemoTx from '../components/SignDemoTx'
 import BalancesCard from '../components/BalancesCard'
 import LiveDataMeta from '../components/LiveDataMeta'
 import RoutingEngineCard from '../components/RoutingEngineCard'
+import TtlCountdownCard from '../components/TtlCountdownCard'
 
 export default function Positions() {
   const { address } = useWallet()
@@ -75,6 +76,8 @@ export default function Positions() {
           </div>
         ) : null}
       </div>
+
+      <TtlCountdownCard />
 
       {/* User positions */}
       <div className="rounded-3xl p-5 bg-bg-card card">
