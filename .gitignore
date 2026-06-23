@@ -83,6 +83,10 @@ playwright-report/
 # local-only one-shot walkthrough (not a real assertion test)
 tests/demo-walkthrough.spec.ts
 
+# evidence-generation specs, kept local (they read local evidence files)
+tests/t3-evidence-screenshots.spec.ts
+tests/evidence-links.spec.ts
+
 # chrome profile of the real-wallet harness (holds the freighter test key)
 .wallet-test-profile/
 
