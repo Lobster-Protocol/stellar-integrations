@@ -37,6 +37,13 @@ export function formatRelativeAgo(input: { unixSec?: number; ms?: number }): str
   return `${Math.floor(diffSec / 3600)}h ago`
 }
 
+// compact USD: $1.2M / $3.4K / $5.67
+export function formatUSD(n: number): string {
+  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`
+  if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}K`
+  return `$${n.toFixed(2)}`
+}
+
 // horizon balances are 7-decimal fixed point; 2dp above 1, up to 7 below
 export function formatBalance(raw: string): string {
   const n = Number(raw)

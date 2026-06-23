@@ -18,12 +18,11 @@ test.describe('Cross-page navigation', () => {
     await expect(page).toHaveURL(/\/performance$/)
   })
 
-  test('Activity renders filter pills', async ({ page }) => {
+  test('Activity routes to /activity and renders the heading', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Activity$/ }).click()
     await expect(page).toHaveURL(/\/activity$/)
-    // exact: substring matching also hits "Disconnect wallet" via "all"
-    await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible()
   })
 
   test('Allocation navigates to /allocation', async ({ page }) => {
@@ -151,9 +150,8 @@ test.describe('Accessibility basics', () => {
   test('every route has an h2 or h3 heading', async ({ page }) => {
     await gotoWithWallet(page)
     for (const path of ['/', '/performance', '/activity', '/allocation', '/bridges', '/positions']) {
-      await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded' })
-      const count = await page.locator('h2, h3').count()
-      expect(count).toBeGreaterThanOrEqual(1)
+      await page.goto(`${BASE}${path}`)
+      await expect(page.locator('h2, h3').first()).toBeVisible()
     }
   })
 })

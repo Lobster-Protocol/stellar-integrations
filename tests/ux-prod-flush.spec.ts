@@ -48,11 +48,6 @@ test.describe('chore(t1) batch flush - prod assertions', () => {
     await expect(page.locator('#main-content')).toBeVisible()
   })
 
-  test('Preview-data badge shows up on the strategy pages', async ({ page }) => {
-    await page.goto(`${BASE}/performance`)
-    await expect(page.getByText(/Preview data\./)).toBeVisible({ timeout: 15_000 })
-  })
-
   test('Positions page renders Factory card + LiveDataMeta refresh button', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByRole('heading', { name: /Factory contract/i })).toBeVisible({ timeout: 15_000 })

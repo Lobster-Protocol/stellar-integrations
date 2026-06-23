@@ -1,34 +1,36 @@
 import { useState, lazy, Suspense } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
-import {
-  generateSnapshots,
-  computeKPIs,
-  STRATEGY,
-  formatUSD,
-  getProtocolColor,
-  getProtocolLabel,
-  PROTOCOL_DISTRIBUTION,
-} from '../data/mock'
+import { Link } from 'react-router-dom'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+
 import { useWallet } from '../contexts/WalletContext'
+import { useNetwork } from '../contexts/NetworkContext'
+import { useAccountBalances } from '../integrations/horizon/account'
+import { useLobsterPositions } from '../integrations/lobster/hooks'
+import { useXlmUsd, valueBalances } from '../integrations/pricing/price'
+import { useRecordNav } from '../integrations/pricing/nav'
+import { formatUSD, formatBalance, shortenAddress, stellarExplorer } from '../utils/format'
 import lobsterIcon from '../assets/lobster-icon.png'
-import { cn } from '../utils/format'
-import { TOOLTIP_STYLE, AXIS_TICK } from '../utils/recharts'
-import MockDataBadge from '../components/MockDataBadge'
+import LiveDataMeta from '../components/LiveDataMeta'
 import Hint from '../components/Hint'
 
-// lazy - the Allbridge SDK drags in viem/walletconnect/solana, ~1MB. no point
-// loading it until someone actually clicks deposit
+// lazy: the Allbridge SDK in DepositModal drags in viem/walletconnect/solana
 const DepositModal = lazy(() => import('../components/DepositModal'))
 const SwapModal = lazy(() => import('../components/SwapModal'))
 
-const snapshots = generateSnapshots()
-const kpis = computeKPIs(snapshots)
+const ASSET_COLORS = ['#3693fb', '#ff8770', '#9333ea', '#10b981', '#f97316']
 
 export default function Overview() {
   const { address, connect, connecting } = useWallet()
+  const { network } = useNetwork()
   const [depositOpen, setDepositOpen] = useState(false)
   const [swapOpen, setSwapOpen] = useState(false)
-  const last = snapshots[snapshots.length - 1]
+
+  const balancesQ = useAccountBalances(network, address)
+  const positionsQ = useLobsterPositions(network, address)
+  const priceQ = useXlmUsd(network)
+
+  const valued = valueBalances(balancesQ.data ?? [], priceQ.data ?? null)
+  useRecordNav(network, address, valued.usdTotal)
 
   if (!address) {
     return (
@@ -50,32 +52,30 @@ export default function Overview() {
     )
   }
 
-  if (!kpis) return null
+  const balances = balancesQ.data ?? []
+  const held = balances.filter((b) => Number(b.balance) > 0)
+  const { lines, usdTotal } = valued
+  const xlm = balances.find((b) => b.isNative)
+  const positions = positionsQ.data ?? []
 
-  // mini chart data (last 30 days)
-  const chartData = snapshots.slice(-30).map(s => ({
-    date: s.date.slice(5), // MM-DD
-    value: s.portfolioValue,
-  }))
+  // allocation by USD where we have a price, otherwise by raw amount
+  const alloc = lines
+    .filter((l) => Number(l.balance) > 0)
+    .map((l) => ({ name: l.code, value: l.usd ?? Number(l.balance) }))
 
-  const tokenAlloc = [
-    { name: STRATEGY.token0Symbol, value: last.token0Ratio },
-    { name: STRATEGY.token1Symbol, value: 100 - last.token0Ratio },
-  ]
-  const TOKEN_COLORS = ['#3693fb', '#ff8770']
-
-  const PROTO_COLORS = [getProtocolColor('aquarius'), getProtocolColor('soroswap'), getProtocolColor('phoenix')]
+  const portfolio =
+    usdTotal != null
+      ? formatUSD(usdTotal)
+      : xlm
+        ? `${formatBalance(xlm.balance)} XLM`
+        : '0'
 
   return (
     <div className="space-y-6">
-      {/* Suspense kept unconditional so the modal's state survives close->reopen.
-          The lazy chunk only resolves once; afterwards toggling `open` is cheap. */}
       <Suspense fallback={null}>
         <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} />
         <SwapModal open={swapOpen} onClose={() => setSwapOpen(false)} />
       </Suspense>
-
-      <MockDataBadge />
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-text">Portfolio</h2>
@@ -97,120 +97,123 @@ export default function Overview() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Portfolio Value" value={formatUSD(kpis.currentValue)} />
+        <KPICard label="Portfolio Value" value={portfolio} />
         <KPICard
-          label="Total P&L"
-          value={`${kpis.totalPnlPercent >= 0 ? '+' : ''}${kpis.totalPnlPercent}%`}
-          sub={`${kpis.totalPnl >= 0 ? '+' : ''}${formatUSD(kpis.totalPnl)}`}
-          color={kpis.totalPnl >= 0 ? '#10b981' : '#ef4444'}
+          label="XLM Price"
+          value={priceQ.data != null ? `$${priceQ.data.toFixed(4)}` : 'n/a'}
+          hint={network === 'mainnet' ? 'Live quote from Stellar Broker (XLM to USDC).' : 'No market price on testnet.'}
         />
-        <KPICard
-          label="Sharpe Ratio"
-          value={kpis.sharpe.toString()}
-          hint="Return earned for each unit of risk taken. Above 1 is solid, above 2 is strong."
-        />
-        <KPICard
-          label="Max Drawdown"
-          value={`${kpis.maxDrawdown}%`}
-          color="#ef4444"
-          hint="The deepest drop from a peak before the portfolio recovered."
-        />
+        <KPICard label="Assets Held" value={held.length.toString()} />
+        <KPICard label="Open Positions" value={positions.length.toString()} />
       </div>
 
-      {/* main content grid */}
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* mini PnL chart */}
         <div className="lg:col-span-2 bg-bg-card rounded-3xl p-5 card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-text">Portfolio Value (30D)</h3>
-            <span className="text-xs text-text-muted">{STRATEGY.name}</span>
+            <h3 className="text-sm font-semibold text-text">Balances</h3>
+            <LiveDataMeta
+              dataUpdatedAt={balancesQ.dataUpdatedAt}
+              isFetching={balancesQ.isFetching}
+              onRefresh={() => balancesQ.refetch()}
+            />
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="pnlGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3693fb" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#3693fb" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="date" tick={AXIS_TICK} axisLine={false} tickLine={false} />
-              <YAxis hide domain={['dataMin - 500', 'dataMax + 500']} />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                formatter={(val) => [formatUSD(Number(val)), 'Value']}
-              />
-              <Area type="monotone" dataKey="value" stroke="#3693fb" strokeWidth={2} fill="url(#pnlGrad)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {balancesQ.isLoading ? (
+            <p className="text-sm text-text-muted">Loading balances...</p>
+          ) : balancesQ.isError ? (
+            <button onClick={() => balancesQ.refetch()} className="text-sm text-coral underline">
+              Could not load balances. Try again.
+            </button>
+          ) : held.length === 0 ? (
+            <p className="text-sm text-text-muted">No assets in this wallet on {network}.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {lines
+                .filter((l) => Number(l.balance) > 0)
+                .map((l) => (
+                  <div key={l.code + (l.issuer ?? '')} className="flex items-center justify-between py-2.5 text-sm">
+                    <span className="font-medium text-text">{l.code}</span>
+                    <div className="text-right">
+                      <div className="font-mono text-text">{formatBalance(l.balance)}</div>
+                      {l.usd != null && <div className="text-xs text-text-muted">{formatUSD(l.usd)}</div>}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
 
-        {/* current position card */}
         <div className="bg-bg-card rounded-3xl p-5 card">
-          <h3 className="text-sm font-semibold text-text mb-4">Active Position</h3>
-          <div className="flex items-center gap-2 mb-3">
-            <span
-              className="px-2.5 py-0.5 rounded-full text-xs font-medium"
-              style={{ background: getProtocolColor(last.activeProtocol) + '15', color: getProtocolColor(last.activeProtocol) }}
-            >
-              {getProtocolLabel(last.activeProtocol)}
-            </span>
-            <span className="text-xs text-text-muted">{last.activePool}</span>
-          </div>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-text-muted">
-                <Hint label="APR" text="Annualized rate the active position is earning right now." />
-              </span>
-              <span className="text-green font-medium">{last.apr}%</span>
+          <h3 className="text-sm font-semibold text-text mb-4">Token Allocation</h3>
+          {alloc.length === 0 ? (
+            <p className="text-sm text-text-muted">Nothing held yet.</p>
+          ) : (
+            <div className="flex items-center gap-6">
+              <ResponsiveContainer width={120} height={120}>
+                <PieChart>
+                  <Pie data={alloc} innerRadius={35} outerRadius={55} paddingAngle={3} dataKey="value" stroke="none">
+                    {alloc.map((_, i) => (
+                      <Cell key={i} fill={ASSET_COLORS[i % ASSET_COLORS.length]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2">
+                {alloc.map((d, i) => (
+                  <div key={d.name} className="flex items-center gap-2 text-sm">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: ASSET_COLORS[i % ASSET_COLORS.length] }} />
+                    <span className="text-text-secondary">{d.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-text-muted">Fees earned</span>
-              <span className="text-text">{formatUSD(last.fees)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-muted">
-                <Hint
-                  label="Impermanent loss"
-                  text="Value given up versus just holding the two tokens, when their prices drift apart."
-                />
-              </span>
-              <span className="text-red text-xs">{formatUSD(last.il)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-muted">
-                <Hint label="Net (fees - IL)" text="Fees earned minus impermanent loss. The position's real take." />
-              </span>
-              <span className={cn('font-medium', kpis.netFees >= 0 ? 'text-green' : 'text-red')}>
-                {kpis.netFees >= 0 ? '+' : ''}{formatUSD(kpis.netFees)}
-              </span>
-            </div>
-            <hr className="border-border" />
-            <div className="flex justify-between">
-              <span className="text-text-muted">Migrations</span>
-              <span className="text-text">{kpis.migrations}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-muted">Arb swaps</span>
-              <span className="text-text">{kpis.swaps}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-muted">Days active</span>
-              <span className="text-text">{kpis.daysActive}</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* allocation donuts */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <DonutCard title="Token Allocation" data={tokenAlloc} colors={TOKEN_COLORS} />
-        <DonutCard title="DEX Distribution (time-weighted)" data={PROTOCOL_DISTRIBUTION} colors={PROTO_COLORS} />
+      <div className="bg-bg-card rounded-3xl p-5 card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-text">
+            <Hint label="Active Positions" text="Lobster vaults this wallet owns, read live from the on-chain factory." />
+          </h3>
+          <Link to="/positions" className="text-xs text-primary hover:underline">
+            View all
+          </Link>
+        </div>
+        {positionsQ.isLoading ? (
+          <p className="text-sm text-text-muted">Loading positions...</p>
+        ) : positionsQ.isError ? (
+          <button onClick={() => positionsQ.refetch()} className="text-sm text-coral underline">
+            Could not load positions. Try again.
+          </button>
+        ) : positions.length === 0 ? (
+          <p className="text-sm text-text-muted">
+            No open position on {network}. Lobster positions are created on the network where the factory is deployed.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {positions.map((p) => (
+              <div key={p.lobsterAddress} className="flex items-center justify-between py-2.5 text-sm">
+                <a
+                  href={stellarExplorer(network, 'contract', p.lobsterAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-primary hover:underline"
+                >
+                  {shortenAddress(p.lobsterAddress)}
+                </a>
+                <span className="font-mono text-xs text-text-muted">
+                  {shortenAddress(p.token0)} / {shortenAddress(p.token1)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function KPICard({ label, value, sub, color, hint }: { label: string; value: string; sub?: string; color?: string; hint?: string }) {
+function KPICard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div
       className="rounded-3xl p-5"
@@ -222,34 +225,7 @@ function KPICard({ label, value, sub, color, hint }: { label: string; value: str
       <p className="text-text-secondary text-xs uppercase tracking-wider mb-1.5 font-medium">
         {hint ? <Hint label={label} text={hint} align="center" /> : label}
       </p>
-      <p className="text-xl font-bold" style={{ color: color || '#080a0c', fontFamily: 'Outfit' }}>{value}</p>
-      {sub && <p className="text-xs mt-0.5" style={{ color: color || '#6d7f9c' }}>{sub}</p>}
-    </div>
-  )
-}
-
-function DonutCard({ title, data, colors }: { title: string; data: { name: string; value: number }[]; colors: string[] }) {
-  return (
-    <div className="bg-bg-card rounded-3xl p-5 card">
-      <h3 className="text-sm font-semibold text-text mb-4">{title}</h3>
-      <div className="flex items-center gap-6">
-        <ResponsiveContainer width={120} height={120}>
-          <PieChart>
-            <Pie data={data} innerRadius={35} outerRadius={55} paddingAngle={3} dataKey="value" stroke="none">
-              {data.map((_, i) => <Cell key={i} fill={colors[i]} />)}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="space-y-2">
-          {data.map((d, i) => (
-            <div key={d.name} className="flex items-center gap-2 text-sm">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: colors[i] }} />
-              <span className="text-text-secondary">{d.name}</span>
-              <span className="text-text font-medium ml-auto">{d.value}%</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <p className="text-xl font-bold" style={{ color: '#080a0c', fontFamily: 'Outfit' }}>{value}</p>
     </div>
   )
 }
