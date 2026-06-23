@@ -1,7 +1,7 @@
 // shared visual props for the dashboard recharts. they don't change with
 // data, so keeping them outside the page render saves a render-time alloc.
 
-import { formatUSD } from '../data/mock'
+import { formatUSD } from './format'
 
 export const TOOLTIP_STYLE = {
   background: '#fff',
