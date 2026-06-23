@@ -49,6 +49,10 @@ _local/
 _docs/
 # grafana provisioning + dashboards, kept local with the rest of the ops setup
 monitoring/
+# docusaurus site deps + output (also covered by lobster-docs/.gitignore)
+lobster-docs/node_modules/
+lobster-docs/build/
+lobster-docs/.docusaurus/
 notes/
 docs/*.md
 docs/*.json

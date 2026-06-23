@@ -1,0 +1,184 @@
+openapi: 3.1.0
+info:
+  title: Lobster BFF
+  version: 0.1.0
+  description: >
+    Backend for the Lobster dashboard. It wraps the DFNS custody service and a
+    few reads. The custody routes are gated on an API token (LOBSTER_API_TOKEN);
+    with no token set the gate is open for local dev. The DFNS reads answer 502
+    when the upstream call fails or the credentials are missing, and the sign
+    path answers 503 until its env is in place.
+servers:
+  - url: http://localhost:8787
+    description: local dev (hono)
+tags:
+  - name: health
+  - name: monitoring
+  - name: dfns
+security:
+  - lobsterToken: []
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness and version
+      security: []
+      responses:
+        '200': { description: ok }
+  /ttl:
+    get:
+      tags: [monitoring]
+      summary: Contract storage TTL per ledger key
+      description: >
+        Reads the Soroban storage entries for the deployed contracts and returns
+        each key's remaining runway in ledgers and seconds, plus a band of
+        ok / warn / crit / archived. Public read. Answers 503 when the factory
+        is not deployed on the requested network.
+      security: []
+      parameters:
+        - name: network
+          in: query
+          required: false
+          schema: { type: string, enum: [testnet, mainnet] }
+      responses:
+        '200': { description: ttl report }
+        '503': { description: factory not deployed on this network }
+  /dfns/wallets:
+    get:
+      tags: [dfns]
+      summary: List custody wallets
+      responses:
+        '200': { description: wallet list }
+        '401': { description: token required and missing or wrong }
+        '502': { description: DFNS read failed or not configured }
+    post:
+      tags: [dfns]
+      summary: Create a Stellar custody wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, network]
+              properties:
+                name: { type: string }
+                network: { type: string, enum: [Stellar, StellarTestnet] }
+      responses:
+        '200': { description: created }
+        '400': { description: name or network missing or invalid }
+        '401': { description: token required and missing or wrong }
+        '502': { description: DFNS create failed or not configured }
+  /dfns/policies:
+    get:
+      tags: [dfns]
+      summary: List approval policies
+      responses:
+        '200': { description: policy list }
+        '401': { description: token required and missing or wrong }
+        '502': { description: DFNS read failed or not configured }
+  /dfns/approvals:
+    get:
+      tags: [dfns]
+      summary: List pending approvals
+      responses:
+        '200': { description: pending approvals }
+        '401': { description: token required and missing or wrong }
+        '502': { description: DFNS read failed or not configured }
+  /dfns/approvals/{id}/decision:
+    post:
+      tags: [dfns]
+      summary: Approve or deny a pending signature
+      description: >
+        Fail-closed like /dfns/sign: deciding an approval authorizes a pending
+        treasury signature, so it answers 503 unless the API token is set.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                value: { type: string, enum: [Approved, Denied] }
+                reason: { type: string }
+      responses:
+        '200': { description: decision recorded }
+        '400': { description: missing id, bad json, or value not Approved/Denied }
+        '401': { description: token required and missing or wrong }
+        '503': { description: API token not set, so approvals are disabled }
+        '502': { description: DFNS decision call failed }
+  /dfns/sign:
+    post:
+      tags: [dfns]
+      summary: Sign and broadcast a Stellar tx via MPC
+      description: >
+        Inspects the XDR against the sign guard (op allowlist, treasury source,
+        destination whitelist, amount cap), then signs through DFNS and returns
+        the signed XDR. Fail-closed: 503 when the API token, the wallet id, or
+        the guard env is unset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [xdr]
+              properties:
+                xdr: { type: string, description: base64 transaction envelope }
+                networkPassphrase:
+                  type: string
+                  description: optional, must match the server's configured network
+      responses:
+        '200': { description: signed xdr }
+        '400': { description: bad json, missing xdr, network mismatch, or blocked by the sign guard }
+        '401': { description: token required and missing or wrong }
+        '503': { description: API token, wallet id, or sign guard not configured }
+  /dfns/audit/export:
+    get:
+      tags: [dfns]
+      summary: MiCA audit export, CDR 2025/1140, hash-chained
+      responses:
+        '200': { description: audit records }
+        '401': { description: token required and missing or wrong }
+        '502': { description: DFNS read failed or not configured }
+  /webhooks/dfns:
+    post:
+      tags: [dfns]
+      summary: DFNS inbound webhook, HMAC verified
+      description: >
+        Verifies the HMAC signature in constant time, drops replays outside the
+        time window, and de-duplicates on the event id. Not token-gated; the
+        HMAC is the auth.
+      security: []
+      responses:
+        '200': { description: accepted }
+        '400': { description: bad payload or signature check failed }
+  /sse:
+    get:
+      tags: [dfns]
+      summary: Server-sent stream of signature and policy activity
+      description: >
+        EventSource cannot set headers, so the token may be passed as ?token=
+        in addition to the header forms.
+      responses:
+        '200': { description: event stream }
+        '401': { description: token required and missing or wrong }
+components:
+  securitySchemes:
+    lobsterToken:
+      type: apiKey
+      in: header
+      name: x-lobster-token
+      description: >
+        Shared token (LOBSTER_API_TOKEN). Also accepted as a bearer token or, for
+        the SSE stream, a ?token= query parameter. Omitted when no token is set.
+    bearerAuth:
+      type: http
+      scheme: bearer

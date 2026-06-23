@@ -1,0 +1,22 @@
+/* minimal theme tokens. the classic preset requires a customCss entry; we keep
+   the defaults and only nudge the brand colour. */
+:root {
+  --ifm-color-primary: #1f9d8f;
+  --ifm-color-primary-dark: #1c8d80;
+  --ifm-color-primary-darker: #1a8579;
+  --ifm-color-primary-darkest: #156d64;
+  --ifm-color-primary-light: #22ad9e;
+  --ifm-color-primary-lighter: #24b5a5;
+  --ifm-color-primary-lightest: #2fcabb;
+  --ifm-code-font-size: 95%;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #2fcabb;
+  --ifm-color-primary-dark: #2ab6a8;
+  --ifm-color-primary-darker: #28ac9f;
+  --ifm-color-primary-darkest: #218d83;
+  --ifm-color-primary-light: #44d0c2;
+  --ifm-color-primary-lighter: #50d3c6;
+  --ifm-color-primary-lightest: #74dcd2;
+}
