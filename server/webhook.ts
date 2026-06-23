@@ -17,6 +17,9 @@ import { inspectSignXdr, readSignGuardConfig, SignGuardRejected } from './dfns/s
 import { listPendingApprovals, decideApproval, type ApprovalDecision } from './dfns/approvals'
 import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
 import { lookupDti } from './dfns/dti-codes'
+import { scanNetwork } from './ttl-monitor/index'
+import type { ScanResult } from './ttl-monitor/monitor'
+import type { Network } from '../src/config/contracts'
 
 const REPLAY_WINDOW_SEC = 300
 const HEARTBEAT_MS = 20_000
@@ -91,6 +94,38 @@ app.use('*', cors({
   origin: process.env.DASHBOARD_ORIGIN ?? 'http://localhost:5173',
   credentials: true,
 }))
+
+// storage ttl read for the dashboard countdown. public, since it only reads
+// public ledger state, and 503 when the factory isn't deployed on the asked
+// network so the ui gates the card instead of showing a broken read. answers
+// from a short cache: ttls move one ledger at a time, and an unauthenticated
+// route must not fan out into an rpc call per request.
+const TTL_CACHE_MS = 60_000
+const ttlCache = new Map<Network, { at: number; scan: ScanResult }>()
+
+app.get('/ttl', async (c) => {
+  const network: Network = c.req.query('network') === 'mainnet' ? 'mainnet' : 'testnet'
+  try {
+    let entry = ttlCache.get(network)
+    if (!entry || Date.now() - entry.at >= TTL_CACHE_MS) {
+      entry = { at: Date.now(), scan: await scanNetwork(network) }
+      ttlCache.set(network, entry)
+    }
+    const scan = entry.scan
+    return c.json({
+      network,
+      latestLedger: scan.latestLedger,
+      statuses: scan.statuses.map((s) => ({
+        key: s.keyXdr,
+        remainingLedgers: s.reading.remainingLedgers,
+        remainingSeconds: s.reading.remainingSeconds,
+        level: s.reading.level,
+      })),
+    })
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 503)
+  }
+})
 
 app.get('/dfns/policies', tokenGuard, async (c) => {
   try {
