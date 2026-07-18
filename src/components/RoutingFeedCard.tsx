@@ -36,7 +36,7 @@ export default function RoutingFeedCard() {
           {entries.slice(0, 10).map((e, i) => (
             <li key={`${e.ts}-${i}`} className="py-2 text-xs flex items-center justify-between gap-2">
               <span className="text-text">
-                {e.sellingAmount} {e.sellingAsset.split('-')[0].toUpperCase()} {' → '}
+                {e.sellingAmount} {e.sellingAsset.split('-')[0].toUpperCase()} {' -> '}
                 {e.buyingAmount ?? '?'} {e.buyingAsset.split('-')[0].toUpperCase()}
               </span>
               <span className={e.path === 'broker' ? 'text-primary' : 'text-text-secondary'}>

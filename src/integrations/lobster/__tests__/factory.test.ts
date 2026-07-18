@@ -64,7 +64,7 @@ describe('handleSendResult', () => {
       handleSendResult({ status: 'ERROR', hash: 'hx', errorResult: { e: 'malformed' } }),
     ).toThrow(/malformed/)
   })
-  it('throws on unknown statuses (defensive)', () => {
+  it('throws on unknown statuses', () => {
     expect(() => handleSendResult({ status: 'WAT', hash: 'hz' })).toThrow(/Unknown/)
   })
 })

@@ -49,7 +49,7 @@ export default function Positions() {
                 rel="noopener noreferrer"
                 className="text-[11px] text-primary hover:underline"
               >
-                Stellar Expert ↗
+                Stellar Expert
               </a>
             )}
           </div>
@@ -132,7 +132,7 @@ export default function Positions() {
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium font-mono"
                     >
-                      {shortenAddress(p.lobsterAddress)} ↗
+                      {shortenAddress(p.lobsterAddress)}
                     </a>
                   </div>
                   <Stat label="Owner" value={shortenAddress(p.owner)} mono />

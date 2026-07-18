@@ -2,18 +2,16 @@ import { test, expect } from '@playwright/test'
 
 import { BASE } from './fixtures'
 
-// test on a mobile viewport
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
 
 test('mobile: sidebar is hidden, hamburger menu visible', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
   await page.screenshot({ path: 'screenshots/mobile-overview.png' })
 
-  // sidebar hidden on mobile
   const sidebar = page.locator('aside')
   await expect(sidebar).toBeHidden()
 
-  // hamburger button
+  // the hamburger has no accessible name, so match the first icon button
   const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first()
   await expect(menuBtn).toBeVisible()
 })
@@ -21,22 +19,18 @@ test('mobile: sidebar is hidden, hamburger menu visible', async ({ page }) => {
 test('mobile: hamburger opens nav drawer', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
-  // click hamburger (first button with svg)
   const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first()
   await menuBtn.click()
   await page.waitForTimeout(300)
 
   await page.screenshot({ path: 'screenshots/mobile-menu-open.png' })
 
-  // should see nav links
   const perfLink = page.getByRole('link', { name: 'Performance' })
   await expect(perfLink).toBeVisible()
 
-  // click Performance
   await perfLink.click()
   await page.waitForTimeout(500)
 
-  // drawer should close and Performance page should load
   const heading = page.getByRole('heading', { name: 'Performance' })
   await expect(heading).toBeVisible()
 

@@ -35,7 +35,7 @@ is a classic operation and can't ride inside the Soroban invocation; those go ou
 as parallel transactions aimed at the same ledger.
 
 Not every quote is multi-DEX. A small amount often routes through a single pool,
-so the evidence run estimates a few sizes first and only confirms one whose path
+so a demo run estimates a few sizes first and only confirms one whose path
 crosses two venues.
 
 ## Fallback

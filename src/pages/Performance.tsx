@@ -19,6 +19,9 @@ export default function Performance() {
   const { usdTotal } = valueBalances(balancesQ.data ?? [], priceQ.data ?? null)
   useRecordNav(network, address, usdTotal)
 
+  // usdTotal is not read inside, but a change means useRecordNav may have
+  // appended a point, so it retriggers the read
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const history = useMemo(() => readNavHistory(network, address), [network, address, usdTotal])
 
   if (!address) {

@@ -42,7 +42,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="p-4 mx-3 mb-4 rounded-2xl hidden lg:block" style={{ background: 'linear-gradient(135deg, rgba(54, 147, 251, 0.12), rgba(255, 135, 112, 0.08))' }}>
         <p className="text-xs text-text-secondary font-medium mb-1">Powered by Stellar</p>
-        <p className="text-[10px] text-text-muted">Soroswap · Aquarius · Phoenix</p>
+        <p className="text-[10px] text-text-muted">Soroswap, Aquarius, Phoenix</p>
       </div>
     </div>
   )

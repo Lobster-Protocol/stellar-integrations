@@ -9,9 +9,9 @@ import LiveDataMeta from '../components/LiveDataMeta'
 
 const COLORS = ['#3693fb', '#ff8770', '#9333ea', '#10b981', '#f97316', '#eab308']
 
-// Real current allocation of the connected wallet, read from Horizon. There is
-// no on-chain history for a wallet's allocation over time, so this is the live
-// snapshot only, valued in USD on mainnet and in native units on testnet.
+// current allocation of the connected wallet, read from Horizon. a wallet has
+// no allocation history on-chain, so this is the live snapshot only: USD on
+// mainnet, native units on testnet.
 export default function Allocation() {
   const { address } = useWallet()
   const { network } = useNetwork()
@@ -86,7 +86,7 @@ export default function Allocation() {
                     <div className="text-right">
                       <div className="font-mono text-text">
                         {formatBalance(l.balance)}
-                        <span className="text-text-muted"> · {pct.toFixed(1)}%</span>
+                        <span className="text-text-muted"> ({pct.toFixed(1)}%)</span>
                       </div>
                       {l.usd != null && <div className="text-xs text-text-muted">{formatUSD(l.usd)}</div>}
                     </div>

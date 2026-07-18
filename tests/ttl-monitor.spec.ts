@@ -13,6 +13,6 @@ test.describe('TTL countdown card', () => {
 
   test('labels the source as live Soroban RPC on the active network', async ({ page }) => {
     await gotoWithWallet(page, '/positions')
-    await expect(page.getByText(/Soroban RPC · testnet/i)).toBeVisible()
+    await expect(page.getByText(/Soroban RPC \| testnet/i)).toBeVisible()
   })
 })

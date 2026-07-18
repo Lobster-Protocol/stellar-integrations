@@ -5,8 +5,7 @@ import { extendKeys, type ExtendSigner } from '../ttl-monitor/index'
 import { readTtl } from '../ttl-monitor/ledger'
 
 // real TransactionBuilder so buildExtendTtlTx builds a genuine tx, fake static
-// fromXDR so the signed leg doesn't have to round-trip a real envelope. the
-// sim classifiers follow the same field convention as builder.test.ts.
+// fromXDR so the signed leg doesn't have to round-trip a real envelope.
 vi.mock('@stellar/stellar-sdk', async () => {
   const actual = await vi.importActual<typeof import('@stellar/stellar-sdk')>('@stellar/stellar-sdk')
   class TB extends actual.TransactionBuilder {

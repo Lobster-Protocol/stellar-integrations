@@ -4,10 +4,9 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useTrustline } from '../integrations/allbridge/hooks'
 import { CONTRACTS } from '../config/contracts'
 
-// Real bridge surface: the Allbridge provider plus a live USDC trustline check
-// for the connected wallet. The bridge itself runs from the Deposit flow, where
-// the real fee, gas and time come from the live Allbridge quote. No seeded
-// history here.
+// Allbridge provider status and a USDC trustline check for the connected
+// wallet. The bridge itself runs from the Deposit flow, which pulls fee, gas
+// and timing from the Allbridge quote.
 export default function Bridges() {
   const { address } = useWallet()
   const { network } = useNetwork()
