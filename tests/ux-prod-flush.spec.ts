@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test'
 
-// prod smoke for the 2026-05-11 chore(t1) batch (commit 0bd9b4d). one
-// test per artifact so a regression points straight at the missing piece.
-// raw http where possible to keep assertions cheap and errors specific.
+// prod smoke for the meta and a11y batch. one test per artifact so a
+// regression points straight at the missing piece. raw http where possible
+// to keep assertions cheap and errors specific.
 import { BASE } from './fixtures'
 
-test.describe('chore(t1) batch flush - prod assertions', () => {
+test.describe('prod meta and a11y assertions', () => {
   test('robots.txt is served', async ({ request }) => {
     const r = await request.get(`${BASE}/robots.txt`)
     expect(r.status()).toBe(200)

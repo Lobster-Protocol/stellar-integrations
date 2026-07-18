@@ -8,7 +8,7 @@ const PUSHGATEWAY_URL = process.env.PUSHGATEWAY_URL
 async function runOnce(): Promise<void> {
   const result = await scan()
   for (const p of result.probes) {
-    if (!p.up) console.warn(`[probe] DOWN ${p.name} (${p.deliverable})`)
+    if (!p.up) console.warn(`[probe] DOWN ${p.name} (${p.area})`)
   }
   for (const a of result.accounts) {
     if (!a.exists) console.warn(`[probe] account ${a.role}/${a.network} not found`)

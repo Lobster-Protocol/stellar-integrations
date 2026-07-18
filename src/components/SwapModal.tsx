@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { X } from 'lucide-react'
+import { X, ArrowUpDown } from 'lucide-react'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
@@ -24,6 +24,21 @@ function assetKey(asset: Asset, network: 'mainnet' | 'testnet'): string | null {
   if (asset === 'XLM') return 'xlm'
   const issuer = CONTRACTS[network].tokens.usdcIssuer
   return issuer ? `USDC-${issuer}` : null
+}
+
+// a soroban sim error comes back as a wall of diagnostic events. pull out the
+// cases a trader can actually act on and drop the raw trace.
+function readableSwapError(message: string): string {
+  if (/resulting balance is not within the allowed range/i.test(message)) {
+    return 'Not enough spendable XLM. An account keeps 1 XLM in reserve, so it cannot send its whole balance. Add funds or lower the amount.'
+  }
+  if (/Error\(Contract, ?#10\)/i.test(message)) {
+    return 'Soroswap turned this route down, the pool could not fill it. Try a different amount.'
+  }
+  if (/trustline|op_no_trust|not authorized/i.test(message)) {
+    return 'The wallet has no trustline for this asset yet.'
+  }
+  return message.split('\n')[0].slice(0, 160)
 }
 
 export default function SwapModal({ open, onClose }: Props) {
@@ -100,6 +115,21 @@ export default function SwapModal({ open, onClose }: Props) {
               <option value="XLM">XLM</option>
               <option value="USDC">USDC</option>
             </select>
+          </div>
+
+          <div className="flex justify-center -my-1">
+            <button
+              type="button"
+              onClick={() => {
+                setSelling(buying)
+                setBuying(selling)
+              }}
+              aria-label="Switch selling and buying"
+              title="Switch selling and buying"
+              className="p-1.5 rounded-full bg-bg text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors"
+            >
+              <ArrowUpDown size={14} />
+            </button>
           </div>
 
           <div className="flex gap-2">
@@ -208,7 +238,9 @@ export default function SwapModal({ open, onClose }: Props) {
           ) : null}
 
           {confirmFallback.isError && (
-            <p className="text-xs text-coral">{(confirmFallback.error as Error).message}</p>
+            <p className="text-xs text-coral">
+              {readableSwapError((confirmFallback.error as Error).message)}
+            </p>
           )}
           {fallbackHash && (
             <div className="text-xs text-green">

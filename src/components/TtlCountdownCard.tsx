@@ -31,7 +31,7 @@ export default function TtlCountdownCard() {
       <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
         <h3 className="text-sm font-semibold text-text">Contract storage TTL</h3>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-text-muted">live · Soroban RPC · {network}</span>
+          <span className="text-[11px] text-text-muted">live | Soroban RPC | {network}</span>
           <LiveDataMeta
             dataUpdatedAt={ttl.dataUpdatedAt}
             isFetching={ttl.isFetching}

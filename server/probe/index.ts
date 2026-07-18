@@ -7,7 +7,7 @@ import { httpTargets, accountTargets, type HttpTarget, type AccountTarget } from
 
 export interface ProbeResult {
   name: string
-  deliverable: string
+  area: string
   up: boolean
   latencySeconds: number
 }
@@ -54,10 +54,10 @@ async function probeOne(t: HttpTarget): Promise<ProbeResult> {
     // only a network error or a 5xx is down
     return res.status > 0 && res.status < 500
   })
-  return { name: t.name, deliverable: t.deliverable, up: r.ok && r.value === true, latencySeconds: r.seconds }
+  return { name: t.name, area: t.area, up: r.ok && r.value === true, latencySeconds: r.seconds }
 }
 
-// synthetic D3.AC2 fallback check: the Soroswap router still quoting a mainnet
+// synthetic fallback check: the Soroswap router still quoting a mainnet
 // XLM->USDC swap. the stale xlmSac SAC broke exactly this once (get_pair Error
 // #205), so it gets its own watch.
 async function probeSoroswap(): Promise<ProbeResult | null> {
@@ -88,7 +88,7 @@ async function probeSoroswap(): Promise<ProbeResult | null> {
   })
   return {
     name: 'soroswap-xlm-usdc-pair',
-    deliverable: 'D3',
+    area: 'swap',
     up: r.ok && r.value === true,
     latencySeconds: r.seconds,
   }
@@ -138,10 +138,10 @@ export function formatMetrics(s: ScanResult): string {
   const lines = [
     '# HELP lobster_probe_up dependency reachable (1) or down (0)',
     '# TYPE lobster_probe_up gauge',
-    ...s.probes.map((p) => `lobster_probe_up{target="${p.name}",deliverable="${p.deliverable}"} ${p.up ? 1 : 0}`),
+    ...s.probes.map((p) => `lobster_probe_up{target="${p.name}",area="${p.area}"} ${p.up ? 1 : 0}`),
     '# HELP lobster_probe_latency_seconds round trip to the dependency',
     '# TYPE lobster_probe_latency_seconds gauge',
-    ...s.probes.map((p) => `lobster_probe_latency_seconds{target="${p.name}",deliverable="${p.deliverable}"} ${p.latencySeconds}`),
+    ...s.probes.map((p) => `lobster_probe_latency_seconds{target="${p.name}",area="${p.area}"} ${p.latencySeconds}`),
     '# HELP lobster_account_exists tracked account funded/exists on chain',
     '# TYPE lobster_account_exists gauge',
     ...s.accounts.map((a) => `lobster_account_exists{role="${a.role}",network="${a.network}"} ${a.exists ? 1 : 0}`),

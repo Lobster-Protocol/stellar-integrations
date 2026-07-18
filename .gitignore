@@ -27,6 +27,10 @@ dist-ssr
 
 # Local backups
 *.backup-*
+*.bak
+*.orig
+*.rej
+*~
 
 # Editor directories and files
 .vscode/*
@@ -56,91 +60,25 @@ lobster-docs/.docusaurus/
 notes/
 docs/*.md
 docs/*.json
-
-# defensive: stray PEM / private key files at any path
-*.pem
-*.key
-*.p12
-scripts/*-evidence.mjs
-scripts/*-ground-truth.mjs
-scripts/deploy-*.mjs
 NOTES.md
 CHANGELOG.md
-.mcp.json
-AGENTS.md
-.cursor/
-.cursorrules
-.aider*
-.continue/
-.windsurf/
 
 # build artefacts not worth committing
 .vercel/
 coverage/
 playwright-report/
 *.tsbuildinfo
-
-# local-only one-shot walkthrough (not a real assertion test)
-tests/demo-walkthrough.spec.ts
-
-# evidence-generation specs, kept local (they read local evidence files)
-tests/t3-evidence-screenshots.spec.ts
-tests/evidence-links.spec.ts
+.vite/
+.cache/
 
 # chrome profile of the real-wallet harness (holds the freighter test key)
 .wallet-test-profile/
-
-# playwright-mcp browser session artifacts (logs, snapshots, extensions)
-.playwright-mcp/
-/*-snapshot.yml
-/deposit-*.yml
-/post-connect-*.yml
-/expert-tx.yml
-/deposit-modal.yml
-
-# boilerplate meta-docs kept local
-CODE_OF_CONDUCT.md
-CONTRIBUTING.md
-SECURITY.md
-ARCHITECTURE.md
-ENV.md
-GOVERNANCE.md
-SUPPORT.md
-.github/ISSUE_TEMPLATE/
-.github/PULL_REQUEST_TEMPLATE.md
-.github/PULL_REQUEST_TEMPLATE/
-.github/CODEOWNERS
-
-# extra agent / IDE configs
-.zed/
-.replit
-.codex/
-.idx/
-.windsurfignore
-.huskyrc*
-
-# framework caches (defensive even when unused)
-.turbo/
-.next/
-.nuxt/
-.svelte-kit/
-.astro/
-.docusaurus/
-.cache/
-.parcel-cache/
-.vite/
 
 # OS leaks beyond .DS_Store
 Thumbs.db
 ehthumbs.db
 desktop.ini
 $RECYCLE.BIN/
-
-# backup / swap variants
-*.bak
-*.orig
-*.rej
-*~
 
 # alt lockfiles (we use npm)
 pnpm-lock.yaml

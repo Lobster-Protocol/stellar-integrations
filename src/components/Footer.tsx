@@ -15,20 +15,20 @@ export default function Footer() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <span>Lobster Protocol</span>
-          <span className="text-text-muted/60">·</span>
+          <span className="text-text-muted/60">|</span>
           <span>
             <span className="text-text font-medium">{network}</span>
           </span>
           {factoryExplorer && (
             <>
-              <span className="text-text-muted/60">·</span>
+              <span className="text-text-muted/60">|</span>
               <a
                 href={factoryExplorer}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline font-mono"
               >
-                Factory {shortenAddress(factoryId, 4)} ↗
+                Factory {shortenAddress(factoryId, 4)}
               </a>
             </>
           )}

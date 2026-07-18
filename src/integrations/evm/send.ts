@@ -49,7 +49,7 @@ export function toViemTxArgs(raw: RawEvmTx, chainId: WagmiChainId) {
   }
 }
 
-async function ensureChain(target: EvmChainSymbol): Promise<WagmiChainId> {
+async function requireChain(target: EvmChainSymbol): Promise<WagmiChainId> {
   const account = getAccount(wagmiConfig)
   if (!account.address) throw new EvmTxValidationError('connect an evm wallet first')
   const targetId = EVM_CHAIN_ID[target]
@@ -63,7 +63,7 @@ export async function sendAllbridgeEvmTx(
   raw: RawEvmTx,
   chainSymbol: EvmChainSymbol,
 ): Promise<EvmTxResult> {
-  const chainId = await ensureChain(chainSymbol)
+  const chainId = await requireChain(chainSymbol)
   const args = toViemTxArgs(raw, chainId)
   try {
     const hash = await sendTransaction(wagmiConfig, args)

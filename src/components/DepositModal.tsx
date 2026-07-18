@@ -29,13 +29,13 @@ interface Props {
 const CHAINS: Array<{
   id: 'stellar' | 'ETH' | 'ARB' | 'BSC'
   name: string
-  icon: string
+  label: string
   bridge: boolean
 }> = [
-  { id: 'stellar', name: 'Stellar (direct)', icon: '✦', bridge: false },
-  { id: 'ETH', name: 'Ethereum → Stellar', icon: 'Ξ', bridge: true },
-  { id: 'ARB', name: 'Arbitrum → Stellar', icon: '◆', bridge: true },
-  { id: 'BSC', name: 'BNB → Stellar', icon: '●', bridge: true },
+  { id: 'stellar', name: 'Stellar (direct)', label: 'Stellar (direct)', bridge: false },
+  { id: 'ETH', name: 'Ethereum to Stellar', label: 'Ethereum', bridge: true },
+  { id: 'ARB', name: 'Arbitrum to Stellar', label: 'Arbitrum', bridge: true },
+  { id: 'BSC', name: 'BNB to Stellar', label: 'BNB', bridge: true },
 ]
 
 const USDC_ASSET_CODE = 'USDC'
@@ -231,7 +231,7 @@ export default function DepositModal({ open, onClose }: Props) {
             </h3>
             <p className="text-sm text-text-secondary mb-1">
               {isBridge
-                ? `Bridging ${amount} USDC from ${selectedChain.name.split(' →')[0]}`
+                ? `Bridging ${amount} USDC from ${selectedChain.label}`
                 : `Depositing ${amount} USDC`}
             </p>
             {step.hash && step.sourceChain && (
@@ -293,8 +293,7 @@ export default function DepositModal({ open, onClose }: Props) {
                         : 'bg-bg text-text-secondary hover:bg-bg/80',
                     )}
                   >
-                    <span>{c.icon}</span>
-                    <span>{c.name.split(' →')[0]}</span>
+                    <span>{c.label}</span>
                     {c.bridge && <span className="text-[10px] text-text-muted ml-auto">bridge</span>}
                   </button>
                 ))}

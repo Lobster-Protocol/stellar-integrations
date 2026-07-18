@@ -16,7 +16,7 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
       <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
         <h3 className="text-sm font-semibold text-text">Recent on-chain operations</h3>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-text-muted">live · Horizon · {network}</span>
+          <span className="text-[11px] text-text-muted">live | Horizon | {network}</span>
           <LiveDataMeta
             dataUpdatedAt={operations.dataUpdatedAt}
             isFetching={operations.isFetching}
@@ -55,7 +55,7 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
                 rel="noopener noreferrer"
                 className="font-mono text-[10px] text-primary hover:underline shrink-0"
               >
-                {op.transactionHash.slice(0, 8)}...{op.transactionHash.slice(-6)} ↗
+                {op.transactionHash.slice(0, 8)}...{op.transactionHash.slice(-6)}
               </a>
             </li>
           ))}

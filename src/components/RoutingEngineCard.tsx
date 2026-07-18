@@ -88,7 +88,7 @@ export default function RoutingEngineCard() {
         {lastRoute ? (
           <div className="flex items-center justify-between gap-2 font-mono">
             <span className="text-text">
-              {lastRoute.sellingAmount} {lastRoute.sellingAsset.split('-')[0].toUpperCase()} {' → '}
+              {lastRoute.sellingAmount} {lastRoute.sellingAsset.split('-')[0].toUpperCase()} {' -> '}
               {lastRoute.buyingAmount ?? '?'} {lastRoute.buyingAsset.split('-')[0].toUpperCase()}
             </span>
             <span className={lastRoute.path === 'broker' ? 'text-primary' : 'text-text-secondary'}>

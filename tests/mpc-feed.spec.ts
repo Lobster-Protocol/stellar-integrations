@@ -5,7 +5,7 @@ import { seedWallet } from './fixtures'
 const apiUrl = process.env.VITE_LOBSTER_API_URL
 
 test.describe('Audit page - DFNS wiring', () => {
-  test('renders the audit chrome with all the D4 panels', async ({ page }) => {
+  test('renders the audit chrome with all the custody panels', async ({ page }) => {
     await seedWallet(page)
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 

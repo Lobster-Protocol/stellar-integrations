@@ -33,8 +33,8 @@ describe('parseBalances', () => {
 describe('formatMetrics', () => {
   const sample: ScanResult = {
     probes: [
-      { name: 'frontend', deliverable: 'D2', up: true, latencySeconds: 0.2 },
-      { name: 'dfns-api', deliverable: 'D4', up: false, latencySeconds: 10 },
+      { name: 'frontend', area: 'frontend', up: true, latencySeconds: 0.2 },
+      { name: 'dfns-api', area: 'custody', up: false, latencySeconds: 10 },
     ],
     accounts: [
       { role: 'dfns-treasury', network: 'mainnet', exists: true, xlm: 20, usdc: 0.9 },
@@ -44,9 +44,9 @@ describe('formatMetrics', () => {
 
   it('emits up, latency, exists and balance gauges with labels', () => {
     const out = formatMetrics(sample)
-    expect(out).toContain('lobster_probe_up{target="frontend",deliverable="D2"} 1')
-    expect(out).toContain('lobster_probe_up{target="dfns-api",deliverable="D4"} 0')
-    expect(out).toContain('lobster_probe_latency_seconds{target="dfns-api",deliverable="D4"} 10')
+    expect(out).toContain('lobster_probe_up{target="frontend",area="frontend"} 1')
+    expect(out).toContain('lobster_probe_up{target="dfns-api",area="custody"} 0')
+    expect(out).toContain('lobster_probe_latency_seconds{target="dfns-api",area="custody"} 10')
     expect(out).toContain('lobster_account_balance{role="dfns-treasury",network="mainnet",asset="XLM"} 20')
     expect(out).toContain('lobster_account_balance{role="dfns-treasury",network="mainnet",asset="USDC"} 0.9')
   })

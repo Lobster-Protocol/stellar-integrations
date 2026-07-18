@@ -2,11 +2,10 @@ import { useEffect } from 'react'
 
 import type { Network } from '../../config/contracts'
 
-// Net asset value history, recorded from real snapshots of the wallet's on-chain
-// value as the dashboard is used. There is no on-chain feed of a wallet's
-// portfolio value over time, so we sample it ourselves: each visit with a priced
-// portfolio appends one real point, at most once an hour. The series is the
-// wallet's true value at real timestamps, never seeded.
+// Net asset value history, sampled while the dashboard is open. No on-chain
+// feed exists for a wallet's portfolio value over time, so we record it
+// ourselves: each visit with a priced portfolio appends one point, at most
+// once an hour.
 
 export interface NavPoint {
   ts: number
