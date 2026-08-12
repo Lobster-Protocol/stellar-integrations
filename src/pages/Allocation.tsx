@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances } from '../integrations/horizon/account'
-import { useXlmUsd, valueBalances } from '../integrations/pricing/price'
+import { useXlmUsd, valueBalances, allocationWeights } from '../integrations/pricing/price'
 import { formatUSD, formatBalance } from '../utils/format'
 import LiveDataMeta from '../components/LiveDataMeta'
 
@@ -28,13 +28,10 @@ export default function Allocation() {
   }
 
   const balances = (balancesQ.data ?? []).filter((b) => Number(b.balance) > 0)
-  const { lines, usdTotal } = valueBalances(balancesQ.data ?? [], priceQ.data ?? null)
+  const { lines, usdTotal } = valueBalances(balancesQ.data ?? [], priceQ.data ?? null, network)
   const held = lines.filter((l) => Number(l.balance) > 0)
-
-  // weight by USD where priced, else by raw amount
-  const weight = (l: { usd: number | null; balance: string }) => l.usd ?? Number(l.balance)
-  const totalWeight = held.reduce((s, l) => s + weight(l), 0)
-  const chart = held.map((l) => ({ name: l.code, value: weight(l) }))
+  const chart = allocationWeights(lines)
+  const totalWeight = chart.reduce((s, c) => s + c.value, 0)
 
   return (
     <div className="space-y-6">
@@ -76,7 +73,7 @@ export default function Allocation() {
             </div>
             <div className="divide-y divide-border">
               {held.map((l, i) => {
-                const pct = totalWeight > 0 ? (weight(l) / totalWeight) * 100 : 0
+                const pct = totalWeight > 0 ? (chart[i].value / totalWeight) * 100 : 0
                 return (
                   <div key={l.code + (l.issuer ?? '')} className="flex items-center justify-between py-2.5 text-sm">
                     <span className="flex items-center gap-2">

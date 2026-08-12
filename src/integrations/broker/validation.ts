@@ -5,6 +5,9 @@ import type { BrokerQuoteResult } from './types'
 const MAX_SLIPPAGE = 0.05
 // implausibly large profit usually means a thin pool or stale quote
 const MAX_ABSOLUTE_PROFIT = 0.5
+// a broker output well above the direct-trade estimate on the same path reads as
+// a stale or gamed number, not a better route
+const MAX_BROKER_DIRECT_RATIO = 3
 
 export type ValidationResult = { ok: true } | { ok: false; reason: string }
 
@@ -23,9 +26,8 @@ export function validateBrokerQuote(q: BrokerQuoteResult): ValidationResult {
   if (!q.directTrade) return { ok: true }
   const direct = Number(q.directTrade.buying)
   const broker = Number(q.estimatedBuyingAmount)
-  // broker quote should never be more than ~3x direct on the same path
-  if (Number.isFinite(direct) && direct > 0 && broker / direct > 3) {
-    return { ok: false, reason: `broker output 3x direct trade, suspicious` }
+  if (Number.isFinite(direct) && direct > 0 && broker / direct > MAX_BROKER_DIRECT_RATIO) {
+    return { ok: false, reason: `broker output over ${MAX_BROKER_DIRECT_RATIO}x direct trade, suspicious` }
   }
   return { ok: true }
 }
@@ -33,6 +35,9 @@ export function validateBrokerQuote(q: BrokerQuoteResult): ValidationResult {
 // soroswap direct quotes do not carry a directTrade reference, so we only
 // guard against zero/negative output and a hard 10x ratio ceiling.
 const SOROSWAP_MAX_RATIO = 10n
+// how far the pool rate may sit from an external reference before the quote
+// reads as stale
+const MAX_REFERENCE_DRIFT = 0.5
 
 export interface SoroswapQuoteCheck {
   sellingStroops: bigint
@@ -53,7 +58,9 @@ export function validateSoroswapQuote(c: SoroswapQuoteCheck): ValidationResult {
   if (c.referenceRate && Number.isFinite(c.referenceRate) && c.referenceRate > 0) {
     const ratio = Number(c.buyingStroops) / Number(c.sellingStroops)
     const drift = Math.abs(ratio - c.referenceRate) / c.referenceRate
-    if (drift > 0.5) return { ok: false, reason: `ratio drift ${drift.toFixed(2)} above 0.5 vs reference` }
+    if (drift > MAX_REFERENCE_DRIFT) {
+      return { ok: false, reason: `ratio drift ${drift.toFixed(2)} above ${MAX_REFERENCE_DRIFT} vs reference` }
+    }
   }
   return { ok: true }
 }

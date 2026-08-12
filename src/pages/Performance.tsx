@@ -5,7 +5,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances } from '../integrations/horizon/account'
 import { useXlmUsd, valueBalances } from '../integrations/pricing/price'
-import { useRecordNav, readNavHistory } from '../integrations/pricing/nav'
+import { useRecordNav, readNavHistory, computeNavStats } from '../integrations/pricing/nav'
 import { formatUSD, cn } from '../utils/format'
 import { TOOLTIP_STYLE, AXIS_TICK, GRID_STROKE } from '../utils/recharts'
 import Hint from '../components/Hint'
@@ -16,7 +16,7 @@ export default function Performance() {
   const balancesQ = useAccountBalances(network, address)
   const priceQ = useXlmUsd(network)
 
-  const { usdTotal } = valueBalances(balancesQ.data ?? [], priceQ.data ?? null)
+  const { usdTotal } = valueBalances(balancesQ.data ?? [], priceQ.data ?? null, network)
   useRecordNav(network, address, usdTotal)
 
   // usdTotal is not read inside, but a change means useRecordNav may have
@@ -37,21 +37,7 @@ export default function Performance() {
     date: new Date(p.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     value: p.usd,
   }))
-  const first = history[0]
-  const latest = history[history.length - 1]
-  const change = first && latest && first.usd > 0 ? ((latest.usd - first.usd) / first.usd) * 100 : null
-
-  // max drawdown over the real series, peak to trough
-  let drawdown: number | null = null
-  if (history.length >= 2) {
-    let peak = history[0].usd
-    let worst = 0
-    for (const p of history) {
-      if (p.usd > peak) peak = p.usd
-      if (peak > 0) worst = Math.min(worst, (p.usd - peak) / peak)
-    }
-    drawdown = worst * 100
-  }
+  const { change, drawdown } = computeNavStats(history)
 
   return (
     <div className="space-y-6">

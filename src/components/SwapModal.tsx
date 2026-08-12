@@ -8,10 +8,9 @@ import { useSoroswapConfirm } from '../integrations/broker/hooks'
 import { useSwapRoute } from '../integrations/routing/hooks'
 import { CONTRACTS } from '../config/contracts'
 import { networkPassphrase } from '../integrations/lobster/client'
-import { stellarExplorer } from '../utils/format'
+import { cn, stellarExplorer } from '../utils/format'
 import { appendRoutingEntry } from '../integrations/broker/routing-log'
 import type { BrokerQuoteParams } from '../integrations/broker/types'
-import { cn } from '../utils/format'
 
 interface Props {
   open: boolean
@@ -22,8 +21,11 @@ type Asset = 'XLM' | 'USDC'
 
 function assetKey(asset: Asset, network: 'mainnet' | 'testnet'): string | null {
   if (asset === 'XLM') return 'xlm'
-  const issuer = CONTRACTS[network].tokens.usdcIssuer
-  return issuer ? `USDC-${issuer}` : null
+  // mainnet USDC is a classic asset (code-issuer); testnet USDC is Soroswap's
+  // soroban token, which has no classic issuer, so fall back to its contract id.
+  const t = CONTRACTS[network].tokens
+  if (t.usdcIssuer) return `USDC-${t.usdcIssuer}`
+  return t.usdcSac || null
 }
 
 // a soroban sim error comes back as a wall of diagnostic events. pull out the

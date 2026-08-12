@@ -30,5 +30,6 @@ export function useSwapRoute(
     },
     enabled: !!params && !!account,
     staleTime: STALE_ROUTE,
+    retry: 1,
   })
 }

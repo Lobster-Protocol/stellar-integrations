@@ -17,7 +17,7 @@ vi.mock('../client', () => ({
   getBrokerClient: vi.fn(),
 }))
 
-import { makeSignCallback } from '../swap'
+import { makeAuthCallback } from '../swap'
 import type { Signer } from '../../signer/types'
 
 const PASSPHRASE = 'Test SDF Network ; September 2015'
@@ -34,11 +34,12 @@ beforeEach(() => {
   fromXDRMock.mockReset()
 })
 
-describe('makeSignCallback', () => {
-  it('rejects buffer payloads (no soroban auth-entry signing path)', async () => {
+describe('makeAuthCallback', () => {
+  it('refuses the soroban auth digest instead of signing it blind', async () => {
     const signer = buildSigner()
-    const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer)
-    await expect(cb(Buffer.from([1, 2, 3]))).rejects.toThrow(/soroban auth-entry/i)
+    const cb = makeAuthCallback(ACCOUNT, PASSPHRASE, signer)
+    // the sdk pushes sha256(preimage), 32 opaque bytes nobody can vet
+    await expect(cb(Buffer.from([1, 2, 3]))).rejects.toThrow(/blind signature/i)
     expect(signer.signTransaction).not.toHaveBeenCalled()
   })
 
@@ -50,7 +51,7 @@ describe('makeSignCallback', () => {
     const signer = buildSigner()
     signer.signTransaction.mockResolvedValueOnce({ signedTxXdr: 'SIGNED_XDR' })
 
-    const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer)
+    const cb = makeAuthCallback(ACCOUNT, PASSPHRASE, signer)
     const fakeTx = { toXDR: () => 'RAW_XDR' } as unknown as Parameters<typeof cb>[0]
     const out = await cb(fakeTx)
 
@@ -70,7 +71,7 @@ describe('makeSignCallback', () => {
     signer.signTransaction.mockResolvedValueOnce({ signedTxXdr: 'SIGNED_XDR' })
     const hashes: string[] = []
 
-    const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer, (h) => hashes.push(h))
+    const cb = makeAuthCallback(ACCOUNT, PASSPHRASE, signer, (h) => hashes.push(h))
     const fakeTx = { toXDR: () => 'RAW_XDR' } as unknown as Parameters<typeof cb>[0]
     await cb(fakeTx)
 
@@ -85,7 +86,7 @@ describe('makeSignCallback', () => {
     const signer = buildSigner()
     signer.signTransaction.mockResolvedValueOnce({ signedTxXdr: 'SIGNED_XDR' })
 
-    const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer, () => {
+    const cb = makeAuthCallback(ACCOUNT, PASSPHRASE, signer, () => {
       throw new Error('downstream listener crashed')
     })
     const fakeTx = { toXDR: () => 'RAW_XDR' } as unknown as Parameters<typeof cb>[0]
@@ -97,7 +98,7 @@ describe('makeSignCallback', () => {
     fromXDRMock.mockReturnValueOnce({ source: ACCOUNT, operations: [{ type: 'pathPaymentStrictSend', destination: ACCOUNT }] })
     const signer = buildSigner()
     signer.signTransaction.mockRejectedValueOnce(new Error('user denied'))
-    const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer)
+    const cb = makeAuthCallback(ACCOUNT, PASSPHRASE, signer)
     const fakeTx = { toXDR: () => 'X' } as unknown as Parameters<typeof cb>[0]
     await expect(cb(fakeTx)).rejects.toThrow('user denied')
   })
@@ -108,7 +109,7 @@ describe('makeSignCallback', () => {
       operations: [{ type: 'pathPaymentStrictSend', destination: ACCOUNT }],
     })
     const signer = buildSigner()
-    const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer)
+    const cb = makeAuthCallback(ACCOUNT, PASSPHRASE, signer)
     const fakeTx = { toXDR: () => 'X' } as unknown as Parameters<typeof cb>[0]
     await expect(cb(fakeTx)).rejects.toThrow(/does not match trader/i)
     expect(signer.signTransaction).not.toHaveBeenCalled()
@@ -120,7 +121,7 @@ describe('makeSignCallback', () => {
       operations: [{ type: 'accountMerge' }],
     })
     const signer = buildSigner()
-    const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer)
+    const cb = makeAuthCallback(ACCOUNT, PASSPHRASE, signer)
     const fakeTx = { toXDR: () => 'X' } as unknown as Parameters<typeof cb>[0]
     await expect(cb(fakeTx)).rejects.toThrow(/not allowed in a swap envelope/i)
     expect(signer.signTransaction).not.toHaveBeenCalled()
@@ -132,7 +133,7 @@ describe('makeSignCallback', () => {
       operations: [{ type: 'pathPaymentStrictSend', source: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5' }],
     })
     const signer = buildSigner()
-    const cb = makeSignCallback(ACCOUNT, PASSPHRASE, signer)
+    const cb = makeAuthCallback(ACCOUNT, PASSPHRASE, signer)
     const fakeTx = { toXDR: () => 'X' } as unknown as Parameters<typeof cb>[0]
     await expect(cb(fakeTx)).rejects.toThrow(/not the trader/i)
     expect(signer.signTransaction).not.toHaveBeenCalled()

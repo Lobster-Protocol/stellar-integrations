@@ -1,5 +1,6 @@
 import { CONTRACTS, type Network } from '../../config/contracts'
 import { isContractId } from '../stellar/strkey-guards'
+import { decimalToStroops } from '../stellar/amount'
 
 // broker asset format: 'xlm' for native, 'CODE-ISSUER' for classic, C... for
 // soroban tokens. soroswap and our analytics need the SAC contract id, so we
@@ -12,12 +13,16 @@ export function brokerAssetToSac(asset: string, network: Network): string | null
   return null
 }
 
-// decimal -> stroops with 7-digit fixed point. null on zero, negative, NaN or
-// missing input so call sites can fold the same null path as their other
-// guards.
+// decimal -> stroops through the exact integer parse, not a float multiply that
+// loses precision past 2^53. null on zero, negative, over-precise or missing
+// input, where decimalToStroops throws, so call sites fold the same null path as
+// their other guards.
 export function toStroops(decimal: string | undefined): bigint | null {
   if (!decimal) return null
-  const n = Number(decimal)
-  if (!Number.isFinite(n) || n <= 0) return null
-  return BigInt(Math.floor(n * 10_000_000))
+  try {
+    const stroops = decimalToStroops(decimal)
+    return stroops > 0n ? stroops : null
+  } catch {
+    return null
+  }
 }

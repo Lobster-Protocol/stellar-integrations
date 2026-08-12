@@ -75,12 +75,19 @@ const mainnet: NetworkContracts = {
 }
 
 const testnet: NetworkContracts = {
-  // Soroswap / Aquarius / Allbridge are mainnet-only protocols. We leave
-  // these empty on testnet so the UI gates them rather than calling a
-  // non-existent contract.
-  tokens: { xlmSac: '', usdcSac: '', usdcIssuer: '' },
+  // Aquarius and Allbridge are mainnet-only, so those stay empty and the UI
+  // gates them. Soroswap does run on testnet, so its router and the two swap
+  // tokens (native XLM SAC + Soroswap's test USDC) are wired for a live swap.
+  tokens: {
+    xlmSac: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
+    usdcSac: 'CB3TLW74NBIOT3BUWOZ3TUM6RFDF6A4GVIRUQRQZABG5KPOUL4JJOV2F',
+    usdcIssuer: '',
+  },
   allbridge: { bridge: '', usdcPool: '' },
-  soroswap: { factory: '', router: '' },
+  soroswap: {
+    factory: 'CDP3HMUH6SMS3S7NPGNDJLULCOXXEPSHY4JKUKMBNQMATHDHWXRRJTBY',
+    router: 'CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD',
+  },
   aquarius: { router: '' },
   broker: { endpoint: 'https://api.stellar.broker', router: '' },
   lobster: {
@@ -114,9 +121,9 @@ export const EVM_EXPLORER_TX: Record<EvmChain, (hash: string) => string> = {
 // Public RPC endpoints we fall back to when the user did not set their own
 // VITE_*_RPC. Allbridge's SDK needs one per EVM chain plus Stellar.
 export const EVM_RPC_FALLBACK: Record<EvmChain, string> = {
-  ETH: 'https://rpc.ankr.com/eth',
-  ARB: 'https://rpc.ankr.com/arbitrum',
-  BSC: 'https://rpc.ankr.com/bsc',
+  ETH: 'https://ethereum-rpc.publicnode.com',
+  ARB: 'https://arbitrum-one-rpc.publicnode.com',
+  BSC: 'https://bsc-rpc.publicnode.com',
 }
 
 export const STELLAR_RPC_FALLBACK: Record<Network, { soroban: string; horizon: string }> = {

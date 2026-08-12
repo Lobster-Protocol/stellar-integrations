@@ -20,14 +20,6 @@ export function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ')
 }
 
-// activity feed: swaps show a token amount, everything else shows USD
-export function formatActivityAmount(type: string, amount: number, token?: string): string {
-  if (type === 'swap') return `${amount.toLocaleString()} ${token ?? ''}`.trim()
-  if (Math.abs(amount) >= 1_000_000) return `$${(amount / 1_000_000).toFixed(2)}M`
-  if (Math.abs(amount) >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`
-  return `$${amount.toFixed(2)}`
-}
-
 // short "Ns ago / Nm ago / Nh ago" given a unix seconds or millis timestamp
 export function formatRelativeAgo(input: { unixSec?: number; ms?: number }): string {
   const ms = input.ms ?? (input.unixSec ? input.unixSec * 1000 : Date.now())

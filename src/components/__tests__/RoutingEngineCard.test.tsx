@@ -28,17 +28,25 @@ describe('RoutingEngineCard', () => {
     }
   })
 
-  it('shows broker live and no partner-key text when the key is unset', () => {
+  it('shows broker live on mainnet and no partner-key text when the key is unset', () => {
+    localStorage.setItem('lob_network', 'mainnet')
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', '')
     wrap(<RoutingEngineCard />)
     expect(screen.getByText(/best execution live/i)).toBeInTheDocument()
     expect(screen.queryByText(/partner key/i)).not.toBeInTheDocument()
   })
 
-  it('still reads live when the partner key is set', () => {
+  it('still reads live on mainnet when the partner key is set', () => {
+    localStorage.setItem('lob_network', 'mainnet')
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', 'test-key')
     wrap(<RoutingEngineCard />)
     expect(screen.getByText(/best execution live/i)).toBeInTheDocument()
+  })
+
+  it('shows the broker as mainnet only when on testnet', () => {
+    localStorage.setItem('lob_network', 'testnet')
+    wrap(<RoutingEngineCard />)
+    expect(screen.getByText(/mainnet only/i)).toBeInTheDocument()
   })
 
   it('renders "none yet" when no route entry is in localStorage', () => {

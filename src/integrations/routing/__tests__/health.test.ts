@@ -35,10 +35,17 @@ describe('getRoutingHealth', () => {
     expect(h.fallbackEnabled).toBe(true)
   })
 
-  it('reports fallback disabled on testnet (soroswap router empty)', () => {
+  it('reports fallback enabled on testnet (soroswap router wired there too)', () => {
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', 'test-partner-key')
     const h = getRoutingHealth('testnet')
-    expect(h.fallbackEnabled).toBe(false)
+    expect(h.fallbackEnabled).toBe(true)
+  })
+
+  it('skips the broker on testnet, it only runs on mainnet', () => {
+    Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', 'test-partner-key')
+    const h = getRoutingHealth('testnet')
+    expect(h.brokerQuoteEnabled).toBe(false)
+    expect(h.brokerEnabled).toBe(false)
   })
 
   it('returns the configured endpoint regardless of partner key state', () => {

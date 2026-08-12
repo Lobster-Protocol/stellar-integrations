@@ -32,6 +32,7 @@ export function useTrustline(
     queryFn: () => hasTrustline(accountId!, assetCode, assetIssuer, network),
     enabled: !!accountId && !!assetIssuer,
     staleTime: STALE_TRUSTLINE,
+    retry: 1,
   })
 }
 
@@ -51,6 +52,7 @@ export function useBridgeQuote(req: BridgeRequest | null, trustlineRequired: boo
     staleTime: STALE_QUOTE,
     refetchInterval: STALE_QUOTE,
     refetchIntervalInBackground: false,
+    retry: 1,
   })
 }
 
