@@ -1,7 +1,8 @@
 // ui-side types for allbridge. the sdk handles the wire format.
 
 import { z } from 'zod'
-import { StrKey } from '@stellar/stellar-sdk'
+
+import { isAccountId } from '../stellar/strkey-guards'
 
 export const EvmSourceChain = z.enum(['ETH', 'ARB', 'BSC'])
 export type EvmSourceChain = z.infer<typeof EvmSourceChain>
@@ -13,7 +14,7 @@ export const BRIDGE_USDC_SYMBOL = 'USDC'
 export const stellarAccountIdRegex = /^G[A-Z2-7]{55}$/
 
 // positive usdc decimal string. rejects zero, leading zeros, >6 decimals, sci notation, signs
-export const positiveAmountRegex = /^(?!0+(\.0+)?$)(0|[1-9]\d{0,17})(\.\d{1,6})?$/
+const positiveAmountRegex = /^(?!0+(\.0+)?$)(0|[1-9]\d{0,17})(\.\d{1,6})?$/
 
 export const BridgeRequestSchema = z
   .object({
@@ -24,7 +25,7 @@ export const BridgeRequestSchema = z
   })
   // also enforce the Ed25519 checksum so a corrupted G-address can't strand funds
   .superRefine((val, ctx) => {
-    if (!StrKey.isValidEd25519PublicKey(val.toAddress)) {
+    if (!isAccountId(val.toAddress)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['toAddress'],

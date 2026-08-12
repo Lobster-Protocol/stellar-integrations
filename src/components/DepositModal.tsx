@@ -28,14 +28,13 @@ interface Props {
 
 const CHAINS: Array<{
   id: 'stellar' | 'ETH' | 'ARB' | 'BSC'
-  name: string
   label: string
   bridge: boolean
 }> = [
-  { id: 'stellar', name: 'Stellar (direct)', label: 'Stellar (direct)', bridge: false },
-  { id: 'ETH', name: 'Ethereum to Stellar', label: 'Ethereum', bridge: true },
-  { id: 'ARB', name: 'Arbitrum to Stellar', label: 'Arbitrum', bridge: true },
-  { id: 'BSC', name: 'BNB to Stellar', label: 'BNB', bridge: true },
+  { id: 'stellar', label: 'Stellar (direct)', bridge: false },
+  { id: 'ETH', label: 'Ethereum', bridge: true },
+  { id: 'ARB', label: 'Arbitrum', bridge: true },
+  { id: 'BSC', label: 'BNB', bridge: true },
 ]
 
 const USDC_ASSET_CODE = 'USDC'
@@ -401,15 +400,9 @@ export default function DepositModal({ open, onClose }: Props) {
             )}
 
             {!isBridge && (
-              <div className="mb-4 px-3 py-2.5 rounded-xl bg-primary/5 text-xs text-text-secondary space-y-1">
-                <div className="flex justify-between">
-                  <span>Tx fee</span>
-                  <span className="text-text">~$0.00015</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Strategy</span>
-                  <span className="text-text font-medium">XLM/USDC Optimizer</span>
-                </div>
+              <div className="mb-4 px-3 py-2.5 rounded-xl bg-primary/5 text-xs text-text-secondary">
+                Direct Stellar deposits are not wired to the factory yet. Bridge USDC from an
+                EVM chain for now.
               </div>
             )}
 

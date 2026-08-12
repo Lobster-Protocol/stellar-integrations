@@ -22,6 +22,14 @@ export interface SoroswapQuoteParams {
   amountInStroops: bigint
 }
 
+// [sellingToken, buyingToken] as the router's path arg
+function swapPath(sellingTokenId: string, buyingTokenId: string) {
+  return xdr.ScVal.scvVec([
+    Address.fromString(sellingTokenId).toScVal(),
+    Address.fromString(buyingTokenId).toScVal(),
+  ])
+}
+
 // direct soroswap router invoke when the broker has no quote. uses
 // router_get_amounts_out via simulate. last element of the returned
 // Vec<i128> is the expected output. null on any failure (no pair,
@@ -53,10 +61,7 @@ export async function quoteSoroswapDirect(
 
   const router = new Contract(routerId)
   const amountIn = nativeToScVal(params.amountInStroops, { type: 'i128' })
-  const path = xdr.ScVal.scvVec([
-    Address.fromString(params.sellingTokenId).toScVal(),
-    Address.fromString(params.buyingTokenId).toScVal(),
-  ])
+  const path = swapPath(params.sellingTokenId, params.buyingTokenId)
 
   const tx = new TransactionBuilder(sourceAccount, {
     fee: BASE_FEE,
@@ -99,10 +104,7 @@ export async function buildSoroswapSwapTx(params: SoroswapBuildParams): Promise<
 
   const amountIn = nativeToScVal(params.amountInStroops, { type: 'i128' })
   const minOut = nativeToScVal(params.minAmountOut, { type: 'i128' })
-  const path = xdr.ScVal.scvVec([
-    Address.fromString(params.sellingTokenId).toScVal(),
-    Address.fromString(params.buyingTokenId).toScVal(),
-  ])
+  const path = swapPath(params.sellingTokenId, params.buyingTokenId)
   const to = Address.fromString(params.callerAccount).toScVal()
   const deadline = nativeToScVal(BigInt(params.deadlineUnix), { type: 'u64' })
 

@@ -9,18 +9,22 @@ export interface ValuedBalance extends AccountBalance {
 }
 
 // Value held balances: XLM at the live price, USDC at one dollar, anything else
-// stays unpriced. usdTotal is null when nothing could be priced (e.g. testnet),
-// which tells the caller to show native units instead of a dollar total.
+// stays unpriced. USDC counts at par only when it carries the network's canonical
+// issuer, so a look-alike token sharing the code can't inflate the dollar total.
+// usdTotal is null when nothing could be priced (e.g. testnet), which tells the
+// caller to show native units instead of a dollar total.
 export function valueBalances(
   balances: AccountBalance[],
   xlmUsd: number | null,
+  network: Network,
 ): { lines: ValuedBalance[]; usdTotal: number | null } {
+  const usdcIssuer = CONTRACTS[network].tokens.usdcIssuer
   let total = 0
   let anyPriced = false
   const lines = balances.map((b) => {
     let usd: number | null = null
     if (b.isNative && xlmUsd != null) usd = Number(b.balance) * xlmUsd
-    else if (b.code === 'USDC') usd = Number(b.balance)
+    else if (b.code === 'USDC' && !!usdcIssuer && b.issuer === usdcIssuer) usd = Number(b.balance)
     if (usd != null && Number.isFinite(usd)) {
       total += usd
       anyPriced = true
@@ -28,6 +32,14 @@ export function valueBalances(
     return { ...b, usd }
   })
   return { lines, usdTotal: anyPriced ? total : null }
+}
+
+// donut slices for the held lines, weighted by USD where priced and by raw
+// token amount otherwise, so the split works on mainnet and testnet alike.
+export function allocationWeights(lines: ValuedBalance[]): { name: string; value: number }[] {
+  return lines
+    .filter((l) => Number(l.balance) > 0)
+    .map((l) => ({ name: l.code, value: l.usd ?? Number(l.balance) }))
 }
 
 // XLM/USD comes from a live broker quote of one XLM into USDC. Mainnet only:
@@ -56,5 +68,6 @@ export function useXlmUsd(network: Network) {
     queryKey: ['price', 'xlm-usd', network],
     queryFn: () => fetchXlmUsd(network),
     staleTime: STALE_PRICE,
+    retry: 1,
   })
 }

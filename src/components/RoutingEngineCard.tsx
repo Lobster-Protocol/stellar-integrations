@@ -51,7 +51,9 @@ export default function RoutingEngineCard() {
                 health.brokerQuoteEnabled ? 'bg-green' : 'bg-text-muted/40'
               }`}
             />
-            <span className="text-text">{health.brokerQuoteEnabled ? 'best execution live' : 'offline'}</span>
+            <span className="text-text">
+              {health.brokerQuoteEnabled ? 'best execution live' : network === 'mainnet' ? 'offline' : 'mainnet only'}
+            </span>
           </div>
           <div className="text-text-muted mt-1 truncate">{health.brokerEndpoint}</div>
         </div>

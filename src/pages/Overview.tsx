@@ -6,7 +6,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances } from '../integrations/horizon/account'
 import { useLobsterPositions } from '../integrations/lobster/hooks'
-import { useXlmUsd, valueBalances } from '../integrations/pricing/price'
+import { useXlmUsd, valueBalances, allocationWeights } from '../integrations/pricing/price'
 import { useRecordNav } from '../integrations/pricing/nav'
 import { formatUSD, formatBalance, shortenAddress, stellarExplorer } from '../utils/format'
 import lobsterIcon from '../assets/lobster-icon.png'
@@ -29,7 +29,7 @@ export default function Overview() {
   const positionsQ = useLobsterPositions(network, address)
   const priceQ = useXlmUsd(network)
 
-  const valued = valueBalances(balancesQ.data ?? [], priceQ.data ?? null)
+  const valued = valueBalances(balancesQ.data ?? [], priceQ.data ?? null, network)
   useRecordNav(network, address, valued.usdTotal)
 
   if (!address) {
@@ -58,10 +58,7 @@ export default function Overview() {
   const xlm = balances.find((b) => b.isNative)
   const positions = positionsQ.data ?? []
 
-  // allocation by USD where we have a price, otherwise by raw amount
-  const alloc = lines
-    .filter((l) => Number(l.balance) > 0)
-    .map((l) => ({ name: l.code, value: l.usd ?? Number(l.balance) }))
+  const alloc = allocationWeights(lines)
 
   const portfolio =
     usdTotal != null

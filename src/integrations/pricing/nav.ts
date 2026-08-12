@@ -26,6 +26,31 @@ export function readNavHistory(network: Network, address: string | null): NavPoi
   }
 }
 
+export interface NavStats {
+  change: number | null // percent move since the first snapshot
+  drawdown: number | null // deepest peak-to-trough drop, percent (<= 0)
+}
+
+// portfolio stats over the recorded series: total move since tracking began and
+// the worst peak-to-trough drawdown. both null until there are enough points.
+export function computeNavStats(history: NavPoint[]): NavStats {
+  const first = history[0]
+  const latest = history[history.length - 1]
+  const change = first && latest && first.usd > 0 ? ((latest.usd - first.usd) / first.usd) * 100 : null
+
+  let drawdown: number | null = null
+  if (history.length >= 2) {
+    let peak = history[0].usd
+    let worst = 0
+    for (const p of history) {
+      if (p.usd > peak) peak = p.usd
+      if (peak > 0) worst = Math.min(worst, (p.usd - peak) / peak)
+    }
+    drawdown = worst * 100
+  }
+  return { change, drawdown }
+}
+
 export function recordNav(network: Network, address: string | null, usd: number | null): void {
   if (!address || usd == null || !Number.isFinite(usd)) return
   try {

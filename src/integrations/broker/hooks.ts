@@ -19,6 +19,7 @@ export function useBrokerConfirm() {
     mutationFn: async (args: {
       account: string
       networkPassphrase: string
+      params: BrokerQuoteParams
       signer: Signer
       onHash?: (hash: string) => void
       // the quote's selling amount, in stroops. caps what the broker xdr can
@@ -29,6 +30,7 @@ export function useBrokerConfirm() {
         args.account,
         args.networkPassphrase,
         args.signer,
+        args.params,
         args.onHash,
         args.maxSpendStroops,
       )

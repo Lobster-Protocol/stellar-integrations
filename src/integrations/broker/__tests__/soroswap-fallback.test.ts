@@ -5,6 +5,19 @@ vi.mock('../../lobster/client', () => ({
   networkPassphrase: vi.fn(() => 'Test SDF Network ; September 2015'),
 }))
 
+// testnet now carries a real soroswap router, so blank it here to keep the
+// no-router guard tests meaningful.
+vi.mock('../../../config/contracts', async () => {
+  const actual = await vi.importActual<typeof import('../../../config/contracts')>('../../../config/contracts')
+  return {
+    ...actual,
+    CONTRACTS: {
+      ...actual.CONTRACTS,
+      testnet: { ...actual.CONTRACTS.testnet, soroswap: { factory: '', router: '' } },
+    },
+  }
+})
+
 const { getSorobanServer } = await import('../../lobster/client')
 const getSorobanServerMock = getSorobanServer as ReturnType<typeof vi.fn>
 

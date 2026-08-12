@@ -44,6 +44,11 @@ async function readContract<T = unknown>(
   if (rpc.Api.isSimulationError(sim)) {
     throw new Error(`Factory.${method} simulation failed: ${sim.error}`)
   }
+  if (rpc.Api.isSimulationRestore(sim)) {
+    // factory storage is archived. raise the same restore error the write
+    // helpers do so the ui shows the ttl-expired state.
+    throw new RestoreRequiredError(sim.restorePreamble)
+  }
   if (!sim.result) {
     throw new Error(`Factory.${method} returned no result`)
   }
@@ -68,24 +73,20 @@ export async function getFactoryInfo(
     readContract<bigint>(network, source, 'get_pool_count'),
   ])
   return {
-    admin: admin,
+    admin,
     wasmHash: Buffer.from(wasmHashBytes).toString('hex'),
     poolCount: Number(poolCountBig),
   }
 }
 
-export async function getPoolsByUser(
-  network: Network,
-  user: string,
-  callerAccount?: string,
-): Promise<LobsterPool[]> {
+export async function getPoolsByUser(network: Network, user: string): Promise<LobsterPool[]> {
   const server = getSorobanServer(network)
   // freshly imported wallets on mainnet 404 on getAccount before
   // simulation. no pools to read in that case; return [] instead of
   // crashing the UI.
   let source: string
   try {
-    source = readSource(network, callerAccount || user)
+    source = readSource(network, user)
     await server.getAccount(source)
   } catch (err) {
     if (err instanceof Error && /not found|404/i.test(err.message)) return []

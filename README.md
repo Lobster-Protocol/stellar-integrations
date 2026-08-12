@@ -33,6 +33,20 @@ stellar contract invoke --id CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRP
 # 1
 ```
 
+## Integration proofs
+
+Best-execution routing goes through Stellar Broker, which only runs on mainnet,
+so the two routing proofs are mainnet. The DFNS custody proofs are on testnet.
+
+| what | link |
+| --- | --- |
+| live swap on Soroswap testnet, XLM to USDC, the route the swap modal runs | [`23112a47`](https://stellar.expert/explorer/testnet/tx/23112a4791f2c364874395900401421ec4985bc5b47676bd1947efe7801b7533) |
+| multi-DEX route, one Soroswap pool and two Aquarius pools in a single ledger | [`f5a3533f`](https://stellar.expert/explorer/public/tx/f5a3533f2b92a3159d7eedcb443806f6ef998159b39e8556c65fed73d7b4bea6) |
+| fallback straight to the Soroswap router, no broker in the path | [`766cd060`](https://stellar.expert/explorer/public/tx/766cd0602dfb2f59f812397331dac4121480c84b6a1104c3462541fb786096e6) |
+| Soroban call signed by DFNS MPC, not a local key | [`bd5db00a`](https://stellar.expert/explorer/testnet/tx/bd5db00a38a40327cdf906f27af94afcce39e679fd81d01a93bacf3479f3ef41) |
+| DFNS policy, auto-approved under the limit | [`e379a0d3`](https://stellar.expert/explorer/testnet/tx/e379a0d33452495abefce7277fa17324be1d44b506df36203ea2ba8eaa62fc5a) |
+| DFNS policy, cleared over the limit only after a second approver | [`90023887`](https://stellar.expert/explorer/testnet/tx/90023887d0980bba1a48309d1236b28e6884a944de0d65cf561dd94e457d2f74) |
+
 ## Stack
 
 React 19, Vite 6, Tailwind v4, TypeScript strict.

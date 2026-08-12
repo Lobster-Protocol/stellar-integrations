@@ -2,7 +2,7 @@ import { useAccountOperations } from '../integrations/horizon/account'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import LiveDataMeta from './LiveDataMeta'
-import { stellarExplorer } from '../utils/format'
+import { shortenAddress, stellarExplorer } from '../utils/format'
 
 export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
   const { address } = useWallet()
@@ -55,7 +55,7 @@ export default function OnChainActivityCard({ limit = 5 }: { limit?: number }) {
                 rel="noopener noreferrer"
                 className="font-mono text-[10px] text-primary hover:underline shrink-0"
               >
-                {op.transactionHash.slice(0, 8)}...{op.transactionHash.slice(-6)}
+                {shortenAddress(op.transactionHash, 8, 6)}
               </a>
             </li>
           ))}

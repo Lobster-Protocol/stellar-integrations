@@ -8,6 +8,19 @@ vi.mock('../../broker/soroswap-fallback', async () => {
   return { ...actual, quoteSoroswapDirect: vi.fn() }
 })
 
+// testnet now has a soroswap router; blank it here so the no-fallback-router
+// branch still has a network to exercise.
+vi.mock('../../../config/contracts', async () => {
+  const actual = await vi.importActual<typeof import('../../../config/contracts')>('../../../config/contracts')
+  return {
+    ...actual,
+    CONTRACTS: {
+      ...actual.CONTRACTS,
+      testnet: { ...actual.CONTRACTS.testnet, soroswap: { factory: '', router: '' } },
+    },
+  }
+})
+
 const partnerKeyBefore = import.meta.env.VITE_STELLAR_BROKER_PARTNER_KEY
 
 import { routeSwap } from '../route'

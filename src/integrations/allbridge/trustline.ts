@@ -1,12 +1,10 @@
 // Trustline check plus changeTrust build/submit for the Allbridge USDC
 // destination. All Horizon-side; the bridge SDK covers none of this.
 
-import { Asset, Operation, TransactionBuilder, BASE_FEE, Networks } from '@stellar/stellar-sdk'
+import { Asset, Operation, TransactionBuilder, BASE_FEE, NotFoundError } from '@stellar/stellar-sdk'
 import { getHorizonServer } from '../horizon/client'
+import { networkPassphrase } from '../lobster/client'
 import type { Network } from '../lobster/types'
-
-const passphraseFor = (network: Network) =>
-  network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET
 
 export async function hasTrustline(
   accountId: string,
@@ -27,8 +25,7 @@ export async function hasTrustline(
     // shows "Required" rather than an error toast. Anything else
     // (network outage, malformed account id) we rethrow so the caller
     // can render the failure state instead of silently saying "no".
-    const status = (err as { response?: { status?: number } })?.response?.status
-    if (status === 404) return false
+    if (err instanceof NotFoundError) return false
     throw err
   }
 }
@@ -46,7 +43,7 @@ export async function buildTrustlineXdr(
   const account = await server.loadAccount(accountId)
   return new TransactionBuilder(account, {
     fee: BASE_FEE,
-    networkPassphrase: passphraseFor(network),
+    networkPassphrase: networkPassphrase(network),
   })
     .addOperation(Operation.changeTrust({ asset: new Asset(assetCode, assetIssuer) }))
     .setTimeout(180)
@@ -56,7 +53,7 @@ export async function buildTrustlineXdr(
 
 export async function submitTrustlineTx(signedXdr: string, network: Network): Promise<string> {
   const server = getHorizonServer(network)
-  const tx = TransactionBuilder.fromXDR(signedXdr, passphraseFor(network))
+  const tx = TransactionBuilder.fromXDR(signedXdr, networkPassphrase(network))
   const res = await server.submitTransaction(tx)
   return res.hash
 }
