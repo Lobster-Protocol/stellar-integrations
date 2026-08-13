@@ -9,9 +9,9 @@ describe('swapTokensFor', () => {
     expect(codes).toEqual(['XLM', 'USDC', 'EURC', 'XTAR', 'XRP'])
   })
 
-  it('lists only XLM and USDC on mainnet', () => {
+  it('lists XLM, USDC and the higher-cap tokens on mainnet', () => {
     const codes = swapTokensFor('mainnet').map((t) => t.code)
-    expect(codes).toEqual(['XLM', 'USDC'])
+    expect(codes).toEqual(['XLM', 'USDC', 'EURC', 'AQUA', 'SHX', 'BLND', 'KALE'])
   })
 
   it('maps XLM to the native broker id on both networks', () => {
@@ -29,18 +29,29 @@ describe('swapTokensFor', () => {
     expect(mainnetUsdc?.asset).toBe(`USDC-${CONTRACTS.mainnet.tokens.usdcIssuer}`)
   })
 
-  it('offers no duplicate codes', () => {
-    const codes = swapTokensFor('testnet').map((t) => t.code)
-    expect(new Set(codes).size).toBe(codes.length)
+  it('offers no duplicate codes on either network', () => {
+    for (const network of ['testnet', 'mainnet'] as const) {
+      const codes = swapTokensFor(network).map((t) => t.code)
+      expect(new Set(codes).size).toBe(codes.length)
+    }
   })
 
   // every token the selector offers must resolve to a real SAC through the
   // routing layer, or it would render as a dead pair.
-  it('every testnet token resolves to a valid SAC via the routing mapping', () => {
-    for (const t of swapTokensFor('testnet')) {
-      const sac = brokerAssetToSac(t.asset, 'testnet')
-      expect(sac, `${t.code} must map to a SAC`).not.toBeNull()
-      expect(StrKey.isValidContract(sac!)).toBe(true)
+  it('every token resolves to a valid SAC via the routing mapping', () => {
+    for (const network of ['testnet', 'mainnet'] as const) {
+      for (const t of swapTokensFor(network)) {
+        const sac = brokerAssetToSac(t.asset, network)
+        expect(sac, `${t.code} on ${network} must map to a SAC`).not.toBeNull()
+        expect(StrKey.isValidContract(sac!)).toBe(true)
+      }
     }
+  })
+
+  // the CODE-ISSUER derivation must reproduce the canonical mainnet USDC SAC,
+  // proving the generic path is behaviour-preserving for the one we hardcode.
+  it('derives the mainnet USDC SAC from its CODE-ISSUER form', () => {
+    const usdc = swapTokensFor('mainnet').find((t) => t.code === 'USDC')!
+    expect(brokerAssetToSac(usdc.asset, 'mainnet')).toBe(CONTRACTS.mainnet.tokens.usdcSac)
   })
 })
