@@ -14,3 +14,15 @@ export function decimalToStroops(amount: string): bigint {
   const [whole, frac = ''] = amount.split('.')
   return BigInt(whole + frac.padEnd(7, '0'))
 }
+
+// inverse of decimalToStroops: render an i128 stroop count as an exact
+// 7-decimal string. integer math only - a large soroban token balance would
+// lose precision through Number(). used to show token balances Horizon can't
+// see (a soroban-only asset like testnet USDC).
+export function stroopsToDecimal(stroops: bigint): string {
+  const neg = stroops < 0n
+  const abs = neg ? -stroops : stroops
+  const whole = abs / 10_000_000n
+  const frac = (abs % 10_000_000n).toString().padStart(7, '0')
+  return `${neg ? '-' : ''}${whole}.${frac}`
+}

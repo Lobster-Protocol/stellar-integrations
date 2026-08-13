@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Horizon, NotFoundError } from '@stellar/stellar-sdk'
-import type { Network } from '../../config/contracts'
+import { CONTRACTS, type Network } from '../../config/contracts'
 import { getHorizonServer } from './client'
+import { getSorobanTokenBalance } from '../stellar/token-balance'
+import { stroopsToDecimal } from '../stellar/amount'
 
 type BalanceLine = Horizon.HorizonApi.BalanceLine
 type BalanceLineAsset = Horizon.HorizonApi.BalanceLineAsset
@@ -46,15 +48,30 @@ export async function getAccountBalances(
   accountId: string,
 ): Promise<AccountBalance[]> {
   const server = getHorizonServer(network)
+  let classic: AccountBalance[]
   try {
     const account = await server.loadAccount(accountId)
-    return account.balances
+    classic = account.balances
       .map((b) => mapBalance(b))
       .filter((b): b is AccountBalance => b !== null)
   } catch (err) {
     if (err instanceof NotFoundError) return []  // account not on-chain here
     throw err
   }
+
+  // Horizon only lists classic balances. testnet USDC is a soroban-only asset,
+  // so after an XLM->USDC swap the received USDC is invisible here. read it
+  // from the SAC and append it. the read is null-safe: a failure leaves the
+  // classic list exactly as it was. skip when a classic USDC already shows
+  // (mainnet, where the SAC just wraps the same trustline balance).
+  const usdcSac = CONTRACTS[network].tokens.usdcSac
+  if (usdcSac && !classic.some((b) => b.code === 'USDC')) {
+    const raw = await getSorobanTokenBalance(network, usdcSac, accountId)
+    if (raw !== null) {
+      classic.push({ code: 'USDC', issuer: usdcSac, balance: stroopsToDecimal(raw), isNative: false })
+    }
+  }
+  return classic
 }
 
 export async function getRecentOperations(

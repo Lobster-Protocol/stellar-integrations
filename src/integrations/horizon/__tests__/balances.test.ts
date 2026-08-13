@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NotFoundError } from '@stellar/stellar-sdk'
+import { CONTRACTS } from '../../../config/contracts'
 
 // Mock the client module so getAccountBalances doesn't hit the real
 // Horizon endpoint. We give it a fake `loadAccount` and `operations`
@@ -24,6 +25,13 @@ vi.mock('../client', () => ({
   }),
 }))
 
+// the soroban USDC read is exercised on its own in token-balance.test.ts;
+// here we stub it so the balance mapping stays the unit under test.
+const sorobanTokenBalance = vi.fn()
+vi.mock('../../stellar/token-balance', () => ({
+  getSorobanTokenBalance: (...args: unknown[]) => sorobanTokenBalance(...args),
+}))
+
 const { getAccountBalances, getRecentOperations } = await import('../account')
 
 // Constructing a real NotFoundError without an actual HTTP response is
@@ -36,6 +44,9 @@ function makeNotFound(): NotFoundError {
 describe('getAccountBalances', () => {
   beforeEach(() => {
     loadAccount.mockReset()
+    // default: no soroban USDC, so the classic mapping tests are unaffected.
+    sorobanTokenBalance.mockReset()
+    sorobanTokenBalance.mockResolvedValue(null)
   })
 
   it('maps native + alphanum4 balance lines into AccountBalance', async () => {
@@ -61,6 +72,38 @@ describe('getAccountBalances', () => {
     const result = await getAccountBalances('testnet', 'GACCOUNT')
     expect(result).toHaveLength(1)
     expect(result[0].isNative).toBe(true)
+  })
+
+  it('appends the soroban USDC balance Horizon cannot see', async () => {
+    loadAccount.mockResolvedValueOnce({
+      balances: [{ asset_type: 'native', balance: '9991.0000000' }],
+    })
+    sorobanTokenBalance.mockResolvedValueOnce(124_200_000n) // 12.42 USDC in stroops
+    const result = await getAccountBalances('testnet', 'GACCOUNT')
+    expect(sorobanTokenBalance).toHaveBeenCalledWith(
+      'testnet',
+      CONTRACTS.testnet.tokens.usdcSac,
+      'GACCOUNT',
+    )
+    expect(result).toHaveLength(2)
+    expect(result[1]).toEqual({
+      code: 'USDC',
+      issuer: CONTRACTS.testnet.tokens.usdcSac,
+      balance: '12.4200000',
+      isNative: false,
+    })
+  })
+
+  it('does not append USDC when a classic USDC line is already present', async () => {
+    loadAccount.mockResolvedValueOnce({
+      balances: [
+        { asset_type: 'native', balance: '10' },
+        { asset_type: 'credit_alphanum4', asset_code: 'USDC', asset_issuer: 'GISSUER', balance: '5' },
+      ],
+    })
+    const result = await getAccountBalances('testnet', 'GACCOUNT')
+    expect(sorobanTokenBalance).not.toHaveBeenCalled()
+    expect(result).toHaveLength(2)
   })
 
   it('returns [] when the account is not found (NotFoundError)', async () => {
