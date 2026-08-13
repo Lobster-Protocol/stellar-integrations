@@ -81,9 +81,16 @@ describe('validateSoroswapQuote', () => {
     expect(validateSoroswapQuote({ ...okIn, buyingAsset: okIn.sellingAsset }).ok).toBe(false)
   })
 
-  it('fails when output exceeds the 10x raw ratio ceiling', () => {
+  it('passes a cheap token that pays out hundreds of units per unit in', () => {
+    // AQUA-like: ~400 units out per XLM in. legitimate, must not be rejected.
     expect(
-      validateSoroswapQuote({ ...okIn, buyingStroops: okIn.sellingStroops * 11n }).ok,
+      validateSoroswapQuote({ ...okIn, buyingStroops: okIn.sellingStroops * 400n }).ok,
+    ).toBe(true)
+  })
+
+  it('fails only on an implausibly high ratio (garbage or overflow)', () => {
+    expect(
+      validateSoroswapQuote({ ...okIn, buyingStroops: okIn.sellingStroops * 2_000_000_000n }).ok,
     ).toBe(false)
   })
 

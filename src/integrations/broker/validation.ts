@@ -32,9 +32,12 @@ export function validateBrokerQuote(q: BrokerQuoteResult): ValidationResult {
   return { ok: true }
 }
 
-// soroswap direct quotes do not carry a directTrade reference, so we only
-// guard against zero/negative output and a hard 10x ratio ceiling.
-const SOROSWAP_MAX_RATIO = 10n
+// soroswap direct quotes do not carry a directTrade reference. real Stellar
+// tokens span orders of magnitude in unit price - a cheap token pays out
+// hundreds of units per XLM - so a tight amount-ratio ceiling wrongly rejects
+// legitimate quotes. keep only a very high backstop against a garbage/overflow
+// value; the on-chain minAmountOut is what actually caps slippage at execution.
+const SOROSWAP_MAX_RATIO = 1_000_000_000n
 // how far the pool rate may sit from an external reference before the quote
 // reads as stale
 const MAX_REFERENCE_DRIFT = 0.5
@@ -51,9 +54,11 @@ export function validateSoroswapQuote(c: SoroswapQuoteCheck): ValidationResult {
   if (c.buyingStroops <= 0n) return { ok: false, reason: 'output amount is zero or negative' }
   if (c.sellingStroops <= 0n) return { ok: false, reason: 'input amount is zero or negative' }
   if (c.sellingAsset === c.buyingAsset) return { ok: false, reason: 'selling and buying assets identical' }
-  // raw ratio sanity. for same-decimal pairs a 10x ceiling catches stale pools.
+  // backstop only: reject a value so large it can only be garbage or overflow,
+  // not a real (even very cheap) token. real price sanity is the drift check
+  // below when a reference is present, plus minAmountOut on chain.
   if (c.buyingStroops > c.sellingStroops * SOROSWAP_MAX_RATIO) {
-    return { ok: false, reason: `buying / selling ratio above ${SOROSWAP_MAX_RATIO}x ceiling` }
+    return { ok: false, reason: 'buying / selling ratio implausibly high, likely a broken quote' }
   }
   if (c.referenceRate && Number.isFinite(c.referenceRate) && c.referenceRate > 0) {
     const ratio = Number(c.buyingStroops) / Number(c.sellingStroops)
