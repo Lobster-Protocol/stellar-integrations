@@ -13,6 +13,11 @@ interface NetworkContracts {
     // for changeTrust or to match account.balances[].asset_issuer.
     usdcIssuer: string
   }
+  // Soroswap-listed tokens with a liquid testnet pool, offered in the swap
+  // selector on top of XLM/USDC. mainnet routes through the broker across the
+  // real asset set, so it stays empty here. codes and contract ids come from
+  // Soroswap's testnet token list; liquidity was probed pool by pool.
+  extraSwapTokens: { code: string; sac: string }[]
   allbridge: {
     bridge: string
     usdcPool: string
@@ -50,6 +55,7 @@ const mainnet: NetworkContracts = {
     usdcSac: 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
     usdcIssuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
   },
+  extraSwapTokens: [],
   allbridge: {
     bridge: 'CBQ6GW7QCFFE252QEVENUNG45KYHHBRO4IZIWFJOXEFANHPQUXX5NFWV',
     usdcPool: 'CAOTMWRKNMV5GWSVOMWCTCM5ZZFEQFUSWNLCZXA2KAXD4YG5A4DIPNFT',
@@ -83,6 +89,14 @@ const testnet: NetworkContracts = {
     usdcSac: 'CB3TLW74NBIOT3BUWOZ3TUM6RFDF6A4GVIRUQRQZABG5KPOUL4JJOV2F',
     usdcIssuer: '',
   },
+  // EURC, XTAR and XRP each have a liquid Soroswap pool from XLM or USDC on
+  // testnet. AQUA and the rest of the list have no pool, so they are left out
+  // rather than offered as dead pairs.
+  extraSwapTokens: [
+    { code: 'EURC', sac: 'CBQDUWBOHS7P4TZIJ3KUPUZQOWMKJC6CQPPFEONSV3BH4X27YVEXWNOT' },
+    { code: 'XTAR', sac: 'CCZGLAUBDKJSQK72QOZHVU7CUWKW45OZWYWCLL27AEK74U2OIBK6LXF2' },
+    { code: 'XRP', sac: 'CDDIA6HYANLPMDKBVQRIIXY3NA6S3TMHZFJUNPMBEJGZ5JSHN3E2TAUI' },
+  ],
   allbridge: { bridge: '', usdcPool: '' },
   soroswap: {
     factory: 'CDP3HMUH6SMS3S7NPGNDJLULCOXXEPSHY4JKUKMBNQMATHDHWXRRJTBY',
@@ -99,6 +113,31 @@ const testnet: NetworkContracts = {
 }
 
 export const CONTRACTS: Record<Network, NetworkContracts> = { mainnet, testnet }
+
+// one entry the swap selector can render. `asset` is the broker-format id the
+// routing layer expects: 'xlm' for native, 'USDC-<issuer>' for a classic
+// asset, or the bare SAC contract id for a soroban token.
+export interface SwapToken {
+  code: string
+  asset: string
+}
+
+// the tokens offered in the swap selector for a network. XLM and USDC come
+// from the canonical `tokens` block (so their ids are never duplicated), then
+// the network's extra Soroswap tokens. USDC is classic on mainnet, a soroban
+// token on testnet, which is exactly the split brokerAssetToSac maps back.
+export function swapTokensFor(network: Network): SwapToken[] {
+  const t = CONTRACTS[network].tokens
+  const usdc: SwapToken = {
+    code: 'USDC',
+    asset: t.usdcIssuer ? `USDC-${t.usdcIssuer}` : t.usdcSac,
+  }
+  return [
+    { code: 'XLM', asset: 'xlm' },
+    usdc,
+    ...CONTRACTS[network].extraSwapTokens.map((e) => ({ code: e.code, asset: e.sac })),
+  ]
+}
 
 // EVM-side canonical values for the Allbridge inflow path. These don't
 // vary with the Stellar network (USDC mainnet address on Ethereum is

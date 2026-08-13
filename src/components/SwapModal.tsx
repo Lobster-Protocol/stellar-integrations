@@ -6,7 +6,7 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useSigner } from '../contexts/CustodyContext'
 import { useSoroswapConfirm } from '../integrations/broker/hooks'
 import { useSwapRoute } from '../integrations/routing/hooks'
-import { CONTRACTS } from '../config/contracts'
+import { swapTokensFor } from '../config/contracts'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { cn, stellarExplorer } from '../utils/format'
 import { appendRoutingEntry } from '../integrations/broker/routing-log'
@@ -15,17 +15,6 @@ import type { BrokerQuoteParams } from '../integrations/broker/types'
 interface Props {
   open: boolean
   onClose: () => void
-}
-
-type Asset = 'XLM' | 'USDC'
-
-function assetKey(asset: Asset, network: 'mainnet' | 'testnet'): string | null {
-  if (asset === 'XLM') return 'xlm'
-  // mainnet USDC is a classic asset (code-issuer); testnet USDC is Soroswap's
-  // soroban token, which has no classic issuer, so fall back to its contract id.
-  const t = CONTRACTS[network].tokens
-  if (t.usdcIssuer) return `USDC-${t.usdcIssuer}`
-  return t.usdcSac || null
 }
 
 // a soroban sim error comes back as a wall of diagnostic events. pull out the
@@ -48,17 +37,30 @@ export default function SwapModal({ open, onClose }: Props) {
   const { network } = useNetwork()
   const signer = useSigner()
 
-  const [selling, setSelling] = useState<Asset>('XLM')
-  const [buying, setBuying] = useState<Asset>('USDC')
+  const [sellingCode, setSellingCode] = useState('XLM')
+  const [buyingCode, setBuyingCode] = useState('USDC')
   const [amount, setAmount] = useState('')
 
+  const tokens = useMemo(() => swapTokensFor(network), [network])
+  // resolve the picked codes against the current network's token set. switching
+  // network can drop a token (an EURC pick on testnet, then mainnet which only
+  // lists XLM/USDC), so fall back rather than render an empty select.
+  const selling = tokens.find((t) => t.code === sellingCode) ?? tokens[0]
+  const buying =
+    tokens.find((t) => t.code === buyingCode) ??
+    tokens.find((t) => t.code !== selling.code) ??
+    tokens[0]
+  const sameToken = selling.code === buying.code
+
   const params: BrokerQuoteParams | null = useMemo(() => {
-    if (!amount || selling === buying) return null
-    const s = assetKey(selling, network)
-    const b = assetKey(buying, network)
-    if (!s || !b) return null
-    return { sellingAsset: s, buyingAsset: b, sellingAmount: amount, slippageTolerance: 0.02 }
-  }, [selling, buying, amount, network])
+    if (!amount || sameToken) return null
+    return {
+      sellingAsset: selling.asset,
+      buyingAsset: buying.asset,
+      sellingAmount: amount,
+      slippageTolerance: 0.02,
+    }
+  }, [selling.asset, buying.asset, sameToken, amount])
 
   const route = useSwapRoute(params, address, network)
   const confirmFallback = useSoroswapConfirm()
@@ -110,12 +112,15 @@ export default function SwapModal({ open, onClose }: Props) {
           <div className="flex gap-2">
             <label className="text-xs text-text-secondary w-16 self-center">Selling</label>
             <select
-              value={selling}
-              onChange={(e) => setSelling(e.target.value as Asset)}
+              value={selling.code}
+              onChange={(e) => setSellingCode(e.target.value)}
               className="flex-1 bg-bg rounded-lg px-3 py-2 text-sm"
             >
-              <option value="XLM">XLM</option>
-              <option value="USDC">USDC</option>
+              {tokens.map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.code}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -123,8 +128,8 @@ export default function SwapModal({ open, onClose }: Props) {
             <button
               type="button"
               onClick={() => {
-                setSelling(buying)
-                setBuying(selling)
+                setSellingCode(buying.code)
+                setBuyingCode(selling.code)
               }}
               aria-label="Switch selling and buying"
               title="Switch selling and buying"
@@ -137,12 +142,15 @@ export default function SwapModal({ open, onClose }: Props) {
           <div className="flex gap-2">
             <label className="text-xs text-text-secondary w-16 self-center">Buying</label>
             <select
-              value={buying}
-              onChange={(e) => setBuying(e.target.value as Asset)}
+              value={buying.code}
+              onChange={(e) => setBuyingCode(e.target.value)}
               className="flex-1 bg-bg rounded-lg px-3 py-2 text-sm"
             >
-              <option value="XLM">XLM</option>
-              <option value="USDC">USDC</option>
+              {tokens.map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.code}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -158,11 +166,11 @@ export default function SwapModal({ open, onClose }: Props) {
             />
           </div>
 
-          {selling === buying && (
+          {sameToken && (
             <p className="text-xs text-coral">Selling and buying must differ.</p>
           )}
 
-          {!amount && selling !== buying && (
+          {!amount && !sameToken && (
             <p className="text-xs text-text-muted">
               Enter an amount to compare the best route across Stellar Broker and Soroswap.
             </p>
@@ -184,7 +192,7 @@ export default function SwapModal({ open, onClose }: Props) {
               <div className="flex justify-between">
                 <span className="text-text-muted">Broker estimated receive</span>
                 <span className="font-mono">
-                  {broker.estimatedBuyingAmount} {buying}
+                  {broker.estimatedBuyingAmount} {buying.code}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -212,7 +220,7 @@ export default function SwapModal({ open, onClose }: Props) {
               <div className="flex justify-between">
                 <span className="text-text-muted">Direct via Soroswap</span>
                 <span className="font-mono">
-                  {soroswap.buyingAmount} {buying}
+                  {soroswap.buyingAmount} {buying.code}
                 </span>
               </div>
             </div>
