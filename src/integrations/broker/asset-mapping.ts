@@ -1,5 +1,7 @@
+import { Asset } from '@stellar/stellar-sdk'
 import { CONTRACTS, type Network } from '../../config/contracts'
-import { isContractId } from '../stellar/strkey-guards'
+import { isContractId, isAccountId } from '../stellar/strkey-guards'
+import { networkPassphrase } from '../lobster/client'
 import { decimalToStroops } from '../stellar/amount'
 
 // broker asset format: 'xlm' for native, 'CODE-ISSUER' for classic, C... for
@@ -9,7 +11,19 @@ export function brokerAssetToSac(asset: string, network: Network): string | null
   const c = CONTRACTS[network]
   if (asset === 'xlm') return isContractId(c.tokens.xlmSac) ? c.tokens.xlmSac : null
   if (asset.startsWith('C')) return isContractId(asset) ? asset : null
-  if (asset.startsWith('USDC-')) return isContractId(c.tokens.usdcSac) ? c.tokens.usdcSac : null
+  // CODE-ISSUER classic asset. the SAC is deterministic from the code, issuer
+  // and network passphrase, so derive it rather than keep a table of contract
+  // ids. covers USDC and every mainnet swap token in one path.
+  const dash = asset.indexOf('-')
+  if (dash > 0) {
+    const issuer = asset.slice(dash + 1)
+    if (!isAccountId(issuer)) return null
+    try {
+      return new Asset(asset.slice(0, dash), issuer).contractId(networkPassphrase(network))
+    } catch {
+      return null
+    }
+  }
   return null
 }
 
