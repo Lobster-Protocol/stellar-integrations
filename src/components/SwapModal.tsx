@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X, ArrowUpDown } from 'lucide-react'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
+import { getWalletNetworkPassphrase } from '../integrations/signer/wallet-network'
 import { useSoroswapConfirm } from '../integrations/broker/hooks'
 import { useSwapRoute } from '../integrations/routing/hooks'
 import { swapTokensFor } from '../config/contracts'
@@ -20,6 +22,11 @@ interface Props {
 // a soroban sim error comes back as a wall of diagnostic events. pull out the
 // cases a trader can actually act on and drop the raw trace.
 function readableSwapError(message: string): string {
+  // wallets refuse to sign when their own network toggle does not match the tx
+  // network (Freighter: "set to Main Net ... not possible at the moment").
+  if (/set to (main|test)\s?net|not possible at the moment|different network|network mismatch/i.test(message)) {
+    return "Your wallet is on a different network than the app. Switch the wallet's network to match, then try again."
+  }
   if (/resulting balance is not within the allowed range/i.test(message)) {
     return 'Not enough spendable XLM. An account keeps 1 XLM in reserve, so it cannot send its whole balance. Add funds or lower the amount.'
   }
@@ -64,6 +71,17 @@ export default function SwapModal({ open, onClose }: Props) {
   const route = useSwapRoute(params, address, network)
   const confirmFallback = useSoroswapConfirm()
 
+  // the wallet keeps its own network selection, separate from the app toggle.
+  // if they differ the wallet refuses to sign, so read it and warn up front.
+  const walletNetwork = useQuery({
+    queryKey: ['wallet-network', address],
+    queryFn: getWalletNetworkPassphrase,
+    enabled: !!address,
+    staleTime: 10_000,
+  })
+  const networkMismatch =
+    !!address && !!walletNetwork.data && walletNetwork.data !== networkPassphrase(network)
+
   if (!open) return null
 
   const source = route.data?.source
@@ -71,7 +89,12 @@ export default function SwapModal({ open, onClose }: Props) {
   const soroswap = route.data?.soroswap
 
   const canConfirmFallback =
-    !!address && source === 'soroswap-fallback' && !!soroswap && !confirmFallback.isPending && !!params
+    !!address &&
+    source === 'soroswap-fallback' &&
+    !!soroswap &&
+    !confirmFallback.isPending &&
+    !!params &&
+    !networkMismatch
 
   async function handleConfirmFallback() {
     if (!canConfirmFallback || !soroswap || !params) return
@@ -236,6 +259,13 @@ export default function SwapModal({ open, onClose }: Props) {
 
           {source === 'none' && !route.isLoading && route.data?.reason && (
             <p className="text-xs text-coral">{route.data.reason}</p>
+          )}
+
+          {networkMismatch && (
+            <p className="text-xs text-coral">
+              Your wallet is set to a different network. Switch it to {network} to match the
+              app (or flip the app's network with the toggle at the top), then try again.
+            </p>
           )}
 
           {!address ? (
