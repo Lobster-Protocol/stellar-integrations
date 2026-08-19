@@ -94,15 +94,48 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [network])
 
+  // re-attach the wallet session on mount. rehydrating the address from
+  // localStorage shows "connected" but the wallet has not granted the site
+  // access this session, so the first signTransaction is refused with "not
+  // connected". setWallet + fetchAddress runs the wallet's access grant (silent
+  // once it has been approved) so the connection is real before the user signs.
+  useEffect(() => {
+    if (!kitInitialised) return
+    const wid = localStorage.getItem('lob_wid')
+    if (!wid || !localStorage.getItem('lob_addr')) return
+    let cancelled = false
+    void (async () => {
+      try {
+        StellarWalletsKit.setWallet(wid)
+        const { address: fresh } = await StellarWalletsKit.fetchAddress()
+        if (!cancelled && fresh) {
+          setAddress(fresh)
+          localStorage.setItem('lob_addr', fresh)
+        }
+      } catch {
+        // wallet locked, access denied, or extension missing: keep the
+        // rehydrated address, the user can reconnect from the header.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const connect = useCallback(async () => {
     setConnecting(true)
     try {
       const { address: addr } = await StellarWalletsKit.authModal()
-      const picked = StellarWalletsKit.selectedModule?.productName || 'Stellar Wallet'
+      const mod = StellarWalletsKit.selectedModule
+      const picked = mod?.productName || 'Stellar Wallet'
       setAddress(addr)
       setWalletName(picked)
       localStorage.setItem('lob_addr', addr)
       localStorage.setItem('lob_wname', picked)
+      // remember which module so we can re-attach the session on the next load
+      // instead of only rehydrating the address (which leaves the wallet
+      // thinking the site is not connected, so it refuses to sign).
+      if (mod?.productId) localStorage.setItem('lob_wid', mod.productId)
     } catch (err: unknown) {
       console.error('wallet connect failed:', err)
     } finally {
@@ -115,6 +148,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setWalletName(null)
     localStorage.removeItem('lob_addr')
     localStorage.removeItem('lob_wname')
+    localStorage.removeItem('lob_wid')
     // kit may throw if nothing was connected; tearing down anyway, ignore
     StellarWalletsKit.disconnect().catch(() => {})
   }, [])
