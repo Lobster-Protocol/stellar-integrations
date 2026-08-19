@@ -3,7 +3,7 @@ import { X, ArrowUpDown } from 'lucide-react'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useSigner } from '../contexts/CustodyContext'
+import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { useSoroswapConfirm } from '../integrations/broker/hooks'
 import { useSwapRoute } from '../integrations/routing/hooks'
 import { swapTokensFor } from '../config/contracts'
@@ -35,7 +35,6 @@ function readableSwapError(message: string): string {
 export default function SwapModal({ open, onClose }: Props) {
   const { address } = useWallet()
   const { network } = useNetwork()
-  const signer = useSigner()
 
   const [sellingCode, setSellingCode] = useState('XLM')
   const [buyingCode, setBuyingCode] = useState('USDC')
@@ -76,24 +75,33 @@ export default function SwapModal({ open, onClose }: Props) {
 
   async function handleConfirmFallback() {
     if (!canConfirmFallback || !soroswap || !params) return
-    const hash = await confirmFallback.mutateAsync({
-      account: address!,
-      network,
-      networkPassphrase: networkPassphrase(network),
-      params,
-      buyingStroops: soroswap.buyingStroops,
-      signer,
-    })
-    appendRoutingEntry({
-      ts: Date.now(),
-      path: 'soroswap-fallback',
-      sellingAsset: params.sellingAsset,
-      buyingAsset: params.buyingAsset,
-      sellingAmount: params.sellingAmount ?? '',
-      buyingAmount: soroswap.buyingAmount,
-      txHash: hash,
-      network,
-    })
+    try {
+      // the swap spends the connected wallet's own funds and is a Soroban
+      // invokeHostFunction, which the DFNS relay guard refuses (it only signs
+      // treasury-sourced payment ops). so it always signs with the wallet kit,
+      // regardless of the custody-mode toggle.
+      const hash = await confirmFallback.mutateAsync({
+        account: address!,
+        network,
+        networkPassphrase: networkPassphrase(network),
+        params,
+        buyingStroops: soroswap.buyingStroops,
+        signer: walletKitSigner,
+      })
+      appendRoutingEntry({
+        ts: Date.now(),
+        path: 'soroswap-fallback',
+        sellingAsset: params.sellingAsset,
+        buyingAsset: params.buyingAsset,
+        sellingAmount: params.sellingAmount ?? '',
+        buyingAmount: soroswap.buyingAmount,
+        txHash: hash,
+        network,
+      })
+    } catch {
+      // the mutation's error state drives the inline message below; swallow the
+      // rejection here so the click handler doesn't raise an unhandled promise.
+    }
   }
 
   const fallbackHash = confirmFallback.data ?? null
