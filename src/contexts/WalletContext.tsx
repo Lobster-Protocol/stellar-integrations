@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import { StellarWalletsKit, Networks, type ModuleInterface } from '@creit-tech/stellar-wallets-kit'
 import { FreighterModule } from '@creit-tech/stellar-wallets-kit/modules/freighter'
 import { xBullModule } from '@creit-tech/stellar-wallets-kit/modules/xbull'
-import { AlbedoModule } from '@creit-tech/stellar-wallets-kit/modules/albedo'
+import { AlbedoModule, ALBEDO_ID } from '@creit-tech/stellar-wallets-kit/modules/albedo'
 import { LobstrModule } from '@creit-tech/stellar-wallets-kit/modules/lobstr'
 import { WalletConnectModule, WalletConnectTargetChain } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
 import { useNetwork } from './NetworkContext'
@@ -102,7 +102,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!kitInitialised) return
     const wid = localStorage.getItem('lob_wid')
-    if (!wid || !localStorage.getItem('lob_addr')) return
+    // Albedo and other purely web wallets prompt on every getAddress, so a
+    // mount-time re-attach would pop a window on each load. skip them - they
+    // grant access at sign time instead. extension wallets (Freighter, xBull,
+    // LOBSTR) return silently once the site has been approved.
+    if (!wid || wid === ALBEDO_ID || !localStorage.getItem('lob_addr')) return
     let cancelled = false
     void (async () => {
       try {
