@@ -4,7 +4,7 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { cn, shortenAddress } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useSigner } from '../contexts/CustodyContext'
+import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import {
   useBridgeQuote,
   useTrustline,
@@ -57,7 +57,6 @@ export default function DepositModal({ open, onClose }: Props) {
 
   const { address: stellarAddr } = useWallet()
   const { network } = useNetwork()
-  const signer = useSigner()
 
   const evm = useAccount()
   const { connectors, connect, isPending: isConnecting } = useConnect()
@@ -186,7 +185,9 @@ export default function DepositModal({ open, onClose }: Props) {
     try {
       setTl({ phase: 'creating' })
       const xdr = await buildTrustlineXdr(stellarAddr, USDC_ASSET_CODE, usdcIssuer, network)
-      const { signedTxXdr } = await signer.signTransaction(xdr, {
+      // the trustline lives on the connected wallet's own account, so it signs
+      // with the wallet kit. the DFNS relay only signs treasury-sourced ops.
+      const { signedTxXdr } = await walletKitSigner.signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
         address: stellarAddr,
       })
