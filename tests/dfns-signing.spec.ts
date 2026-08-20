@@ -4,16 +4,16 @@ import { seedWallet, TEST_WALLET, TEST_SOURCE_TESTNET } from './fixtures'
 
 // in MPC custody mode the dashboard keeps the same connected account but swaps
 // the signer for the dfns one, which posts the built xdr to /dfns/sign. this
-// drives that path from the UI: toggle to dfns, ping the factory, and assert
-// the signature request leaves with the right shape. the dfns endpoints are
-// mocked because the real flow needs the sandbox + relay deployed. the build
-// step still hits live testnet rpc, like the other on-chain specs.
+// drives that path from the UI: toggle to dfns, sign the treasury payment, and
+// assert the signature request leaves with the right shape. the dfns endpoints
+// are mocked because the real flow needs the sandbox + relay deployed. the
+// build step still hits live testnet rpc, like the other on-chain specs.
 const apiUrl = process.env.VITE_LOBSTER_API_URL
 
 test.describe('DFNS MPC signing path', () => {
   test.skip(!apiUrl, 'set VITE_LOBSTER_API_URL to exercise the dfns signer')
 
-  test('routes the ping signature through /dfns/sign in MPC mode', async ({ page }) => {
+  test('routes the treasury signature through /dfns/sign in MPC mode', async ({ page }) => {
     // a matching testnet wallet so the custody context resolves a dfns address
     await page.route('**/dfns/wallets', (route) =>
       route.fulfill({
@@ -38,7 +38,8 @@ test.describe('DFNS MPC signing path', () => {
           'access-control-allow-methods': 'POST,OPTIONS',
           'access-control-allow-headers': 'content-type,x-lobster-token',
         },
-        body: req.method() === 'OPTIONS' ? '' : JSON.stringify({ signedTxXdr: 'AAAAdfns-mock' }),
+        // a classic tx: dfns broadcasts it and the relay reports the hash.
+        body: req.method() === 'OPTIONS' ? '' : JSON.stringify({ txHash: 'a'.repeat(64) }),
       })
     })
 
@@ -48,7 +49,7 @@ test.describe('DFNS MPC signing path', () => {
     // the network busy, so idle never fires.
     await page.goto('/positions', { waitUntil: 'domcontentloaded' })
 
-    const btn = page.getByRole('button', { name: /Ping Factory with DFNS MPC/i })
+    const btn = page.getByRole('button', { name: /Sign a treasury payment with DFNS MPC/i })
     await expect(btn).toBeVisible()
 
     const signReq = page.waitForRequest((req) => req.url().includes('/dfns/sign') && req.method() === 'POST')
