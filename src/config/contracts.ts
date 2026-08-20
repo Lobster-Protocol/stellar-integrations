@@ -26,6 +26,9 @@ interface NetworkContracts {
   // ids. these are the higher-cap Stellar tokens whose Soroswap pool actually
   // fills (probed pool by pool), so the selector never offers a dead pair.
   extraSwapTokens: SwapToken[]
+  // the Lobster classic token, used by the DFNS custody demo to open a trustline
+  // from the MPC-held treasury. issuer is empty off testnet.
+  lobsAsset: { code: string; issuer: string }
   allbridge: {
     bridge: string
     usdcPool: string
@@ -73,6 +76,7 @@ const mainnet: NetworkContracts = {
     { code: 'BLND', asset: 'BLND-GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY' },
     { code: 'KALE', asset: 'KALE-GBDVX4VELCDSQ54KQJYTNHXAHFLBCA77ZY2USQBM4CSHTTV7DME7KALE' },
   ],
+  lobsAsset: { code: 'LOBS', issuer: '' },
   allbridge: {
     bridge: 'CBQ6GW7QCFFE252QEVENUNG45KYHHBRO4IZIWFJOXEFANHPQUXX5NFWV',
     usdcPool: 'CAOTMWRKNMV5GWSVOMWCTCM5ZZFEQFUSWNLCZXA2KAXD4YG5A4DIPNFT',
@@ -114,6 +118,7 @@ const testnet: NetworkContracts = {
     { code: 'XTAR', asset: 'CCZGLAUBDKJSQK72QOZHVU7CUWKW45OZWYWCLL27AEK74U2OIBK6LXF2' },
     { code: 'XRP', asset: 'CDDIA6HYANLPMDKBVQRIIXY3NA6S3TMHZFJUNPMBEJGZ5JSHN3E2TAUI' },
   ],
+  lobsAsset: { code: 'LOBS', issuer: 'GBYIQEC7OMW2BV4PFL4R6GCBN32ALIEAEYDV7MIWPRGJGEP5M7UMWVCB' },
   allbridge: { bridge: '', usdcPool: '' },
   soroswap: {
     factory: 'CDP3HMUH6SMS3S7NPGNDJLULCOXXEPSHY4JKUKMBNQMATHDHWXRRJTBY',

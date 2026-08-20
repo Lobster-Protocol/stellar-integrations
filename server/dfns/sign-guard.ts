@@ -16,11 +16,17 @@ import { decimalToStroops } from '../../src/integrations/stellar/amount'
 // payment destinations, so an offer could sell treasury assets at a price an
 // attacker dictates without tripping either check. they come back once they
 // have their own price+amount bounds.
+// changeTrust is allowed: it establishes or removes a trustline on the treasury
+// itself and moves no value out of the account, so the destination/amount checks
+// below do not apply to it. it is a prerequisite op (a treasury must trust an
+// asset before it can hold it), which is exactly what the DFNS custody demo
+// signs. it is strictly less dangerous than payment, which is already allowed.
 const ALLOWED_OPS = new Set([
   'payment',
   'pathPaymentStrictSend',
   'pathPaymentStrictReceive',
   'bumpSequence',
+  'changeTrust',
 ])
 
 export class SignGuardRejected extends Error {
