@@ -24,7 +24,10 @@ export async function buildTreasuryPaymentTx(
     .addOperation(
       Operation.payment({ destination: treasury, asset: Asset.native(), amount: amountXlm }),
     )
-    .setTimeout(180)
+    // a 1 hour validity window: a quorum approval is a human step that can take
+    // minutes, and the tx must still be valid when dfns broadcasts it after the
+    // approval. a short window would expire before the approver acts.
+    .setTimeout(3600)
     .build()
   return tx.toXDR()
 }
@@ -46,7 +49,10 @@ export async function buildTreasuryTrustlineTx(
     networkPassphrase: networkPassphrase(network),
   })
     .addOperation(Operation.changeTrust({ asset: new Asset(code, issuer) }))
-    .setTimeout(180)
+    // a 1 hour validity window: a quorum approval is a human step that can take
+    // minutes, and the tx must still be valid when dfns broadcasts it after the
+    // approval. a short window would expire before the approver acts.
+    .setTimeout(3600)
     .build()
   return tx.toXDR()
 }
