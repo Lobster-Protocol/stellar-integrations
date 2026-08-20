@@ -3,6 +3,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useSigner } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
+import { buildTreasuryPaymentTx } from '../integrations/dfns/demo-tx'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer } from '../utils/format'
 
@@ -34,17 +35,36 @@ export default function SignDemoTx() {
     inFlight.current = true
     try {
       setState({ phase: 'building' })
-      const { xdr, restorePreamble } = await buildPing.mutateAsync(address)
-      if (restorePreamble) {
-        setState({ phase: 'failed', errorMsg: 'Factory storage is archived. A restore tx is needed before this ping.' })
-        return
+      let xdr: string
+      if (signer.name === 'dfns') {
+        // DFNS custody signs a classic self-payment: a payment op the relay guard
+        // allows and DFNS can broadcast + weigh against its policy. the Factory
+        // ping is a soroban call the guard blocks (anti-drain), so it is wallet-
+        // kit only.
+        xdr = await buildTreasuryPaymentTx(network, address, '0.0100000')
+      } else {
+        const ping = await buildPing.mutateAsync(address)
+        if (ping.restorePreamble) {
+          setState({ phase: 'failed', errorMsg: 'Factory storage is archived. A restore tx is needed before this ping.' })
+          return
+        }
+        xdr = ping.xdr
       }
 
       setState({ phase: 'signing' })
-      const { signedTxXdr } = await signer.signTransaction(xdr, {
+      const { signedTxXdr, broadcastHash } = await signer.signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
         address,
       })
+
+      // DFNS signs AND broadcasts a classic tx, so the hash is the artifact and
+      // there is nothing to submit. the wallet kit hands back an envelope to
+      // submit and poll.
+      if (broadcastHash) {
+        setState({ phase: 'confirmed', txHash: broadcastHash })
+        return
+      }
+      if (!signedTxXdr) throw new Error('signer returned neither a hash nor an envelope')
 
       setState({ phase: 'submitting' })
       const { hash, status } = await submit.mutateAsync(signedTxXdr)
@@ -61,13 +81,16 @@ export default function SignDemoTx() {
     }
   }
 
-  const signerLabel = signer.name === 'dfns' ? 'DFNS MPC' : walletName ?? 'wallet'
+  const isDfns = signer.name === 'dfns'
+  const idleLabel = isDfns
+    ? 'Sign a treasury payment with DFNS MPC'
+    : `Ping Factory with ${walletName ?? 'wallet'}`
   const buttonLabel: Record<State['phase'], string> = {
-    idle: `Ping Factory with ${signerLabel}`,
+    idle: idleLabel,
     building: 'Building tx...',
-    signing: 'Awaiting signature...',
+    signing: isDfns ? 'MPC signing...' : 'Awaiting signature...',
     submitting: 'Submitting & polling...',
-    confirmed: 'Ping again',
+    confirmed: 'Sign again',
     failed: 'Retry',
   }
 
@@ -75,7 +98,9 @@ export default function SignDemoTx() {
     <div className="rounded-3xl p-5 bg-bg-card card">
       <h3 className="text-sm font-semibold text-text mb-1">Sign a testnet transaction</h3>
       <p className="text-xs text-text-secondary mb-4">
-        Pings the Factory via your wallet. Builds the XDR, asks the wallet to sign, submits to Stellar RPC and waits for inclusion. Costs only the resource fee.
+        {isDfns
+          ? 'Signs a small self-payment from the DFNS-held treasury through the MPC nodes, checked against the approval policy and broadcast by DFNS. No value leaves the account; the hash below is the on-chain artifact.'
+          : 'Pings the Factory via your wallet. Builds the XDR, asks the wallet to sign, submits to Stellar RPC and waits for inclusion. Costs only the resource fee.'}
       </p>
 
       {!address ? (

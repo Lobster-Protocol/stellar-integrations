@@ -259,9 +259,21 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     }
     const initial = await broadcastStellarTx(walletId, tx)
     const final = await waitForSignatureTerminal(walletId, initial.id)
-    if (!final.signedData) return c.json({ error: `no signed envelope (status ${final.status})` }, 502)
-    const back = envelopeFromSignedData(final.signedData, passphrase)
-    return c.json({ signedTxXdr: back.toXDR() })
+    if (final.status === 'Failed' || final.status === 'Rejected') {
+      return c.json({ error: `dfns ${final.status}${final.reason ? `: ${final.reason}` : ''}` }, 502)
+    }
+    // classic tx: dfns signs AND broadcasts natively, so it is already on chain.
+    // return the hash; the caller does not resubmit.
+    if (final.txHash) {
+      return c.json({ txHash: final.txHash })
+    }
+    // soroban tx: dfns only signs, so hand back the envelope for the caller to
+    // submit through their own rpc.
+    if (final.signedData) {
+      const back = envelopeFromSignedData(final.signedData, passphrase)
+      return c.json({ signedTxXdr: back.toXDR() })
+    }
+    return c.json({ error: `no txHash or signed envelope (status ${final.status})` }, 502)
   } catch (err) {
     return c.json({ error: (err as Error).message }, 502)
   }
