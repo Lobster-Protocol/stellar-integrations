@@ -88,9 +88,8 @@ src/
   components/   UI: Sidebar, TopBar, DepositModal, charts
   config/       contracts.ts (addresses by network)
   contexts/     Wallet + Network
-  integrations/ allbridge, broker, dfns, evm, horizon, lobster, routing, signer, stellar
+  integrations/ allbridge, broker, dfns, evm, horizon, lobster, pricing, routing, signer, stellar, ttl
   pages/        Overview, Performance, Activity, Allocation, Bridges, Positions, Audit
-  data/         Seeded mock for the strategy preview pages
 server/         Hono service: DFNS signing, webhook, MiCA export, policies
 tests/          Playwright suites
 scripts/        CLI helpers

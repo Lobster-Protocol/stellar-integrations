@@ -46,7 +46,7 @@ export function allocationWeights(lines: ValuedBalance[]): { name: string; value
 // the broker runs on mainnet, and testnet assets have no market price. Returns
 // null when there is no price, so a caller shows native units rather than a made
 // up dollar figure. USDC is treated as one dollar.
-const STALE_PRICE = 30_000
+const PRICE_STALE_MS = 30_000
 
 export async function fetchXlmUsd(network: Network): Promise<number | null> {
   if (network !== 'mainnet') return null
@@ -67,7 +67,7 @@ export function useXlmUsd(network: Network) {
   return useQuery<number | null>({
     queryKey: ['price', 'xlm-usd', network],
     queryFn: () => fetchXlmUsd(network),
-    staleTime: STALE_PRICE,
+    staleTime: PRICE_STALE_MS,
     retry: 1,
   })
 }
