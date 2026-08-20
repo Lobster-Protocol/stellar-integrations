@@ -3,7 +3,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useSigner } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
-import { buildTreasuryPaymentTx } from '../integrations/dfns/demo-tx'
+import { buildTreasuryPaymentTx, buildTreasuryTrustlineTx } from '../integrations/dfns/demo-tx'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer } from '../utils/format'
 
@@ -30,18 +30,21 @@ export default function SignDemoTx() {
   // double-click guard during submit
   const inFlight = useRef(false)
 
-  async function handleClick() {
+  async function handleAction(kind: 'ping' | 'payment' | 'trustline') {
     if (!address || inFlight.current) return
     inFlight.current = true
     try {
       setState({ phase: 'building' })
       let xdr: string
-      if (signer.name === 'dfns') {
+      if (kind === 'payment') {
         // DFNS custody signs a classic self-payment: a payment op the relay guard
         // allows and DFNS can broadcast + weigh against its policy. the Factory
         // ping is a soroban call the guard blocks (anti-drain), so it is wallet-
         // kit only.
         xdr = await buildTreasuryPaymentTx(network, address, '0.0100000')
+      } else if (kind === 'trustline') {
+        // opens a LOBS trustline from the treasury; changeTrust moves no value.
+        xdr = await buildTreasuryTrustlineTx(network, address)
       } else {
         const ping = await buildPing.mutateAsync(address)
         if (ping.restorePreamble) {
@@ -82,16 +85,21 @@ export default function SignDemoTx() {
   }
 
   const isDfns = signer.name === 'dfns'
-  const idleLabel = isDfns
-    ? 'Sign a treasury payment with DFNS MPC'
-    : `Ping Factory with ${walletName ?? 'wallet'}`
-  const buttonLabel: Record<State['phase'], string> = {
-    idle: idleLabel,
+  const busy = !RESTING_PHASES.includes(state.phase)
+  // wallet-kit keeps the single ping button whose label reflects the phase.
+  const pingLabel: Record<State['phase'], string> = {
+    idle: `Ping Factory with ${walletName ?? 'wallet'}`,
     building: 'Building tx...',
-    signing: isDfns ? 'MPC signing...' : 'Awaiting signature...',
+    signing: 'Awaiting signature...',
     submitting: 'Submitting & polling...',
-    confirmed: 'Sign again',
+    confirmed: 'Ping again',
     failed: 'Retry',
+  }
+  // dfns shows two fixed-label buttons, so the running phase reads on its own line.
+  const phaseText: Partial<Record<State['phase'], string>> = {
+    building: 'Building tx...',
+    signing: 'MPC signing...',
+    submitting: 'Submitting & polling...',
   }
 
   return (
@@ -99,7 +107,7 @@ export default function SignDemoTx() {
       <h3 className="text-sm font-semibold text-text mb-1">Sign a testnet transaction</h3>
       <p className="text-xs text-text-secondary mb-4">
         {isDfns
-          ? 'Signs a small self-payment from the DFNS-held treasury through the MPC nodes, checked against the approval policy and broadcast by DFNS. No value leaves the account; the hash below is the on-chain artifact.'
+          ? 'The DFNS-held treasury signs through the MPC nodes: a small self-payment, or a trustline for the Lobster token. Both are checked against the approval policy and broadcast by DFNS. No value leaves the account; the hash below is the on-chain artifact.'
           : 'Pings the Factory via your wallet. Builds the XDR, asks the wallet to sign, submits to Stellar RPC and waits for inclusion. Costs only the resource fee.'}
       </p>
 
@@ -111,13 +119,36 @@ export default function SignDemoTx() {
         </p>
       ) : (
         <div className="space-y-3">
-          <button
-            onClick={handleClick}
-            disabled={!RESTING_PHASES.includes(state.phase)}
-            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {buttonLabel[state.phase]}
-          </button>
+          {isDfns ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleAction('payment')}
+                disabled={busy}
+                className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Sign a treasury payment with DFNS MPC
+              </button>
+              <button
+                onClick={() => handleAction('trustline')}
+                disabled={busy}
+                className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Open a LOBS trustline with DFNS MPC
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => handleAction('ping')}
+              disabled={busy}
+              className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {pingLabel[state.phase]}
+            </button>
+          )}
+
+          {busy && phaseText[state.phase] && (
+            <p className="text-xs text-text-muted">{phaseText[state.phase]}</p>
+          )}
 
           {state.phase === 'confirmed' && (
             <div className="text-xs text-text-secondary">
