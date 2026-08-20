@@ -33,6 +33,8 @@ export function makeAuthCallback(
       networkPassphrase,
       address: account,
     })
+    // the broker path signs with the wallet kit, which returns an envelope.
+    if (!signedTxXdr) throw new Error('broker signer did not return a signed transaction')
     const signed = TransactionBuilder.fromXDR(signedTxXdr, networkPassphrase) as TransactionI
     if (onHash) {
       try {

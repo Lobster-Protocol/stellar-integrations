@@ -191,6 +191,7 @@ export default function DepositModal({ open, onClose }: Props) {
         networkPassphrase: networkPassphrase(network),
         address: stellarAddr,
       })
+      if (!signedTxXdr) throw new Error('wallet did not return a signed trustline transaction')
       await submitTrustlineTx(signedTxXdr, network)
       await trustlineQuery.refetch()
       setTl({ phase: 'idle' })

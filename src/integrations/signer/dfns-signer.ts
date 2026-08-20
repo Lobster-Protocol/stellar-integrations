@@ -20,8 +20,15 @@ export const dfnsSigner: Signer = {
       const detail = await res.text().catch(() => '')
       throw new Error(`dfns sign ${res.status}: ${detail}`)
     }
-    const body = (await res.json()) as { signedTxXdr?: string; error?: string }
-    if (!body.signedTxXdr) throw new Error(body.error ?? 'dfns sign returned no envelope')
-    return { signedTxXdr: body.signedTxXdr }
+    const body = (await res.json()) as {
+      signedTxXdr?: string
+      txHash?: string
+      error?: string
+    }
+    // classic tx: the relay reports the hash dfns already broadcast.
+    if (body.txHash) return { broadcastHash: body.txHash }
+    // soroban tx: the relay hands back the signed envelope to submit.
+    if (body.signedTxXdr) return { signedTxXdr: body.signedTxXdr }
+    throw new Error(body.error ?? 'dfns sign returned neither a hash nor an envelope')
   },
 }
