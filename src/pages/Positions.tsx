@@ -32,7 +32,6 @@ export default function Positions() {
 
       <RoutingEngineCard />
 
-      {/* Factory card - always shown, sources from on-chain state */}
       <div className="rounded-3xl p-5 bg-bg-card card">
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-text">Factory contract</h3>
@@ -79,7 +78,6 @@ export default function Positions() {
 
       <TtlCountdownCard />
 
-      {/* User positions */}
       <div className="rounded-3xl p-5 bg-bg-card card">
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <h3 className="text-sm font-semibold text-text">Your positions</h3>

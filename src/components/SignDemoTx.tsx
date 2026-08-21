@@ -43,7 +43,7 @@ export default function SignDemoTx() {
         // kit only.
         xdr = await buildTreasuryPaymentTx(network, address, '0.0100000')
       } else if (kind === 'trustline') {
-        // opens a LOBS trustline from the treasury; changeTrust moves no value.
+        // changeTrust moves no value.
         xdr = await buildTreasuryTrustlineTx(network, address)
       } else {
         const ping = await buildPing.mutateAsync(address)
