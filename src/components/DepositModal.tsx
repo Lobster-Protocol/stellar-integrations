@@ -279,7 +279,6 @@ export default function DepositModal({ open, onClose }: Props) {
               </button>
             </div>
 
-            {/* source chain */}
             <div className="mb-4">
               <label className="text-xs text-text-secondary font-medium mb-2 block">Source</label>
               <div className="grid grid-cols-2 gap-2">
@@ -301,7 +300,6 @@ export default function DepositModal({ open, onClose }: Props) {
               </div>
             </div>
 
-            {/* EVM wallet block */}
             {isBridge && (
               <div className="mb-4 px-3 py-2.5 rounded-xl bg-bg text-xs space-y-2">
                 <div className="flex justify-between items-center">
@@ -340,7 +338,6 @@ export default function DepositModal({ open, onClose }: Props) {
               </div>
             )}
 
-            {/* amount */}
             <div className="mb-4">
               <label className="text-xs text-text-secondary font-medium mb-2 block">Amount (USDC)</label>
               <input
@@ -355,7 +352,6 @@ export default function DepositModal({ open, onClose }: Props) {
               />
             </div>
 
-            {/* info */}
             {isBridge && (
               <div className="mb-4 px-3 py-2.5 rounded-xl bg-primary/5 text-xs text-text-secondary space-y-1">
                 <div className="flex justify-between">

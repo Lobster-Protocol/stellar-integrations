@@ -10,8 +10,8 @@ const LEVEL_STYLE: Record<TtlLevel, { dot: string; text: string; label: string }
   archived: { dot: 'bg-zinc-500', text: 'text-text-muted', label: 'archived' },
 }
 
-// decompose seconds into a short d/h/m label. no thresholds here; the bands
-// that drive the colour are decided server-side and arrive as the level.
+// no thresholds here; the bands that drive the colour are decided server-side
+// and arrive as the level.
 function formatRemaining(seconds: number): string {
   if (seconds <= 0) return 'expired'
   const d = Math.floor(seconds / 86_400)
