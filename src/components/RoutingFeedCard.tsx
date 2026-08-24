@@ -1,24 +1,11 @@
-import { useEffect, useState } from 'react'
-
-import { readRoutingLog, type RoutingEntry } from '../integrations/broker/routing-log'
+import { routeAssetsLabel } from '../integrations/broker/routing-log'
+import { useRoutingLog } from '../integrations/broker/use-routing-log'
 import { useNetwork } from '../contexts/NetworkContext'
 import { stellarExplorer, formatRelativeAgo } from '../utils/format'
 
 export default function RoutingFeedCard() {
   const { network } = useNetwork()
-  const [entries, setEntries] = useState<RoutingEntry[]>(() => readRoutingLog())
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'lob_routing_log') setEntries(readRoutingLog())
-    }
-    window.addEventListener('storage', onStorage)
-    const interval = setInterval(() => setEntries(readRoutingLog()), 5_000)
-    return () => {
-      window.removeEventListener('storage', onStorage)
-      clearInterval(interval)
-    }
-  }, [])
+  const entries = useRoutingLog()
 
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
@@ -35,10 +22,7 @@ export default function RoutingFeedCard() {
         <ul className="divide-y divide-text-muted/10">
           {entries.slice(0, 10).map((e, i) => (
             <li key={`${e.ts}-${i}`} className="py-2 text-xs flex items-center justify-between gap-2">
-              <span className="text-text">
-                {e.sellingAmount} {e.sellingAsset.split('-')[0].toUpperCase()} {' -> '}
-                {e.buyingAmount ?? '?'} {e.buyingAsset.split('-')[0].toUpperCase()}
-              </span>
+              <span className="text-text">{routeAssetsLabel(e)}</span>
               <span className={e.path === 'broker' ? 'text-primary' : 'text-text-secondary'}>
                 {e.path}
               </span>

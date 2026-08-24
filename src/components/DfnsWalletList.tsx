@@ -2,25 +2,18 @@ import { useState } from 'react'
 
 import { useDfnsWallets, useCreateDfnsWallet } from '../integrations/dfns/hooks'
 import { useNetwork } from '../contexts/NetworkContext'
-import { CONTRACTS } from '../config/contracts'
 import { shortenAddress, stellarExplorer } from '../utils/format'
 import { isAccountId } from '../integrations/stellar/strkey-guards'
+import { friendbotFund } from '../integrations/stellar/friendbot'
 
-async function friendbotFund(address: string): Promise<void> {
-  const faucet = CONTRACTS.testnet.friendbot
-  const res = await fetch(`${faucet}/?addr=${encodeURIComponent(address)}`)
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`friendbot ${res.status}: ${detail.slice(0, 200)}`)
-  }
-}
+type FundState = 'pending' | 'done' | { error: string }
 
 export default function DfnsWalletList() {
   const wallets = useDfnsWallets()
   const create = useCreateDfnsWallet()
   const { network } = useNetwork()
   const [name, setName] = useState('')
-  const [funding, setFunding] = useState<Record<string, 'pending' | 'done' | string>>({})
+  const [funding, setFunding] = useState<Record<string, FundState>>({})
 
   if (!import.meta.env.VITE_LOBSTER_API_URL) {
     return null
@@ -40,7 +33,7 @@ export default function DfnsWalletList() {
       await friendbotFund(address)
       setFunding((m) => ({ ...m, [address]: 'done' }))
     } catch (err) {
-      setFunding((m) => ({ ...m, [address]: (err as Error).message }))
+      setFunding((m) => ({ ...m, [address]: { error: (err as Error).message } }))
     }
   }
 
@@ -112,8 +105,8 @@ export default function DfnsWalletList() {
                     </button>
                   )}
                 </div>
-                {fundState && fundState !== 'pending' && fundState !== 'done' && (
-                  <div className="text-coral mt-1">{fundState}</div>
+                {typeof fundState === 'object' && (
+                  <div className="text-coral mt-1">{fundState.error}</div>
                 )}
               </li>
             )

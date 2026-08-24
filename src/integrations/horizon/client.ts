@@ -1,6 +1,5 @@
 import { Horizon } from '@stellar/stellar-sdk'
-import type { Network } from '../lobster/types'
-import { STELLAR_RPC_FALLBACK } from '../../config/contracts'
+import { STELLAR_RPC_FALLBACK, type Network } from '../../config/contracts'
 
 const servers = new Map<Network, Horizon.Server>()
 

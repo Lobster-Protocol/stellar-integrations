@@ -1,22 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { relayFetch } from './relay'
+
 const NS = 'dfns'
 const STALE = 60_000
 
 async function fetchJson<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const base = import.meta.env.VITE_LOBSTER_API_URL
-  if (!base) throw new Error('VITE_LOBSTER_API_URL not set')
-  const token = import.meta.env.VITE_LOBSTER_API_TOKEN
-  const headers: Record<string, string> = {
-    ...(init.headers as Record<string, string> | undefined),
-    ...(token ? { 'x-lobster-token': token } : {}),
-  }
-  if (init.body && !headers['content-type']) headers['content-type'] = 'application/json'
-  const res = await fetch(`${base}${path}`, {
-    credentials: 'include',
-    ...init,
-    headers,
-  })
+  const res = await relayFetch(path, init)
   if (!res.ok) throw new Error(`${path} ${res.status}`)
   return res.json() as Promise<T>
 }

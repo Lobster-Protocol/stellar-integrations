@@ -10,6 +10,7 @@ import {
 } from './bridge'
 import { getAllbridgeSdk } from './client'
 import type { BridgeRequest, BridgeQuote, EvmSourceChain } from './types'
+import type { Network } from '../../config/contracts'
 import {
   readAllowance,
   sendAllbridgeEvmTx,
@@ -25,7 +26,7 @@ export function useTrustline(
   accountId: string | null,
   assetCode: string,
   assetIssuer: string,
-  network: 'testnet' | 'mainnet',
+  network: Network,
 ) {
   return useQuery<boolean>({
     queryKey: [NS, 'trustline', accountId, assetCode, assetIssuer, network],

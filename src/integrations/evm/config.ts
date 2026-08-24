@@ -2,6 +2,8 @@ import { http, createConfig } from 'wagmi'
 import { mainnet, arbitrum, bsc } from 'wagmi/chains'
 import { injected, walletConnect } from 'wagmi/connectors'
 
+import { FRONTEND_URL } from '../../config/contracts'
+
 // Same projectId we use for LOBSTR mobile via Stellar Wallets Kit.
 // Empty in dev means: no WalletConnect, MetaMask-injected only.
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined
@@ -16,11 +18,8 @@ const connectors = [
           metadata: {
             name: 'Lobster Protocol',
             description: 'Lobster Protocol dashboard',
-            url:
-              typeof window !== 'undefined'
-                ? window.location.origin
-                : 'https://stellar-instit.lobster-protocol.com',
-            icons: ['https://stellar-instit.lobster-protocol.com/lobster-icon.png'],
+            url: typeof window !== 'undefined' ? window.location.origin : FRONTEND_URL,
+            icons: [`${FRONTEND_URL}/lobster-icon.png`],
           },
         }),
       ]

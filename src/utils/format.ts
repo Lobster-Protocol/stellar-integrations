@@ -46,14 +46,3 @@ export function formatBalance(raw: string): string {
   }
   return n.toLocaleString('en-US', { maximumFractionDigits: 7, minimumFractionDigits: 4 })
 }
-
-// short "Xs ago" / "Xm ago" / "Xh ago" from a raw millisecond delta
-export function formatAgeMs(ms: number): string {
-  if (ms < 1000) return 'just now'
-  const s = Math.round(ms / 1000)
-  if (s < 60) return `${s}s ago`
-  const m = Math.round(s / 60)
-  if (m < 60) return `${m}m ago`
-  const h = Math.round(m / 60)
-  return `${h}h ago`
-}

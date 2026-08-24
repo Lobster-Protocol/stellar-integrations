@@ -136,6 +136,10 @@ const testnet: NetworkContracts = {
 
 export const CONTRACTS: Record<Network, NetworkContracts> = { mainnet, testnet }
 
+// production dashboard origin. one canonical value; the probe still reads its own
+// MONITOR_FRONTEND_URL override where a deploy needs a different host.
+export const FRONTEND_URL = 'https://stellar-instit.lobster-protocol.com'
+
 // the tokens offered in the swap selector for a network. XLM and USDC come
 // from the canonical `tokens` block (so their ids are never duplicated), then
 // the network's extra tokens. USDC is classic on mainnet, a soroban token on
