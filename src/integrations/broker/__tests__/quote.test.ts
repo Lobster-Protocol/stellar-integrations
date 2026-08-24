@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { estimateSwap, StellarBrokerError } = vi.hoisted(() => {
   const fn = vi.fn()
+  // mirrors the real sdk error: a numeric `code`, and `name` left as 'Error'
+  // (the sdk never sets it), so detection has to key off the code.
   class Err extends Error {
     readonly code: number
     constructor(code: number, message: string) {
       super(message)
       this.code = code
-      this.name = 'StellarBrokerError'
     }
   }
   return { estimateSwap: fn, StellarBrokerError: Err }
@@ -50,15 +51,16 @@ describe('quoteBroker', () => {
     expect(result?.estimatedBuyingAmount).toBe('23.45')
   })
 
-  it('returns null when the server signals code 11 (no liquidity)', async () => {
-    estimateSwap.mockRejectedValueOnce(new StellarBrokerError(11, 'Price quote not available'))
-    const result = await quoteBroker(VALID_PARAMS)
-    expect(result).toBeNull()
+  it('returns null when the server signals no quote (codes 11/12/13)', async () => {
+    for (const code of [11, 12, 13]) {
+      estimateSwap.mockRejectedValueOnce(new StellarBrokerError(code, 'no quote'))
+      expect(await quoteBroker(VALID_PARAMS)).toBeNull()
+    }
   })
 
-  it('propagates other broker error codes', async () => {
-    estimateSwap.mockRejectedValueOnce(new StellarBrokerError(13, 'Quote request failed'))
-    await expect(quoteBroker(VALID_PARAMS)).rejects.toThrow(/Quote request failed/)
+  it('propagates broker errors outside the no-quote family', async () => {
+    estimateSwap.mockRejectedValueOnce(new StellarBrokerError(14, 'Invalid quote request parameter'))
+    await expect(quoteBroker(VALID_PARAMS)).rejects.toThrow(/Invalid quote request parameter/)
   })
 
   it('propagates non-broker errors as-is', async () => {

@@ -7,16 +7,19 @@ import {
   BrokerQuoteResultSchema,
 } from './types'
 
-// broker code 11: "Price quote not available" (server-side no-liquidity signal)
-const QUOTE_NOT_AVAILABLE = 11
+// StellarBrokerError carries a numeric code but never sets .name (it stays
+// 'Error'), and estimateSwap throws code 13 for a missing quote, not 11. so
+// detect the no-quote family by code: 11 not-set, 12 expired, 13 quote error (no
+// liquidity or a failed fetch). anything without a broker code (a zod parse error,
+// a transport failure) is a real fault and rethrows.
+const NO_QUOTE_CODES = new Set([11, 12, 13])
 
-// the sdk index.js re-exports StellarBrokerClient + estimate + mediator but
-// not the error class. detecting by name keeps us independent of which
-// subpath the runtime tree-shakes.
 function isNoQuoteAvailable(err: unknown): boolean {
-  if (!(err instanceof Error)) return false
-  if (err.name !== 'StellarBrokerError') return false
-  return (err as Error & { code?: number }).code === QUOTE_NOT_AVAILABLE
+  // a DOMException carries the same legacy numeric codes (11/12/13), so exclude it
+  // rather than swallow a real transport fault as a missing quote.
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException) return false
+  const code = (err as { code?: unknown } | null)?.code
+  return typeof code === 'number' && NO_QUOTE_CODES.has(code)
 }
 
 export async function quoteBroker(
