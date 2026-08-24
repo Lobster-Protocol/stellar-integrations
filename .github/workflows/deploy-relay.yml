@@ -1,0 +1,29 @@
+name: deploy relay
+
+# redeploy the render relay when its own code changes. render's git integration
+# stopped firing for this service, so ci hits the service deploy hook instead.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'src/config/**'
+      - 'src/integrations/**'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: trigger render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK secret is not set; skipping"
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK"
+          echo "render deploy triggered"
