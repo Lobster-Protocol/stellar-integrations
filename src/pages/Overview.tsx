@@ -9,6 +9,7 @@ import { useLobsterPositions } from '../integrations/lobster/hooks'
 import { useXlmUsd, valueBalances, allocationWeights } from '../integrations/pricing/price'
 import { useRecordNav } from '../integrations/pricing/nav'
 import { formatUSD, formatBalance, shortenAddress, stellarExplorer } from '../utils/format'
+import { CHART_COLORS } from '../utils/recharts'
 import lobsterIcon from '../assets/lobster-icon.png'
 import LiveDataMeta from '../components/LiveDataMeta'
 import Hint from '../components/Hint'
@@ -16,8 +17,6 @@ import Hint from '../components/Hint'
 // lazy: the Allbridge SDK in DepositModal drags in viem/walletconnect/solana
 const DepositModal = lazy(() => import('../components/DepositModal'))
 const SwapModal = lazy(() => import('../components/SwapModal'))
-
-const ASSET_COLORS = ['#3693fb', '#ff8770', '#9333ea', '#10b981', '#f97316']
 
 export default function Overview() {
   const { address, connect, connecting } = useWallet()
@@ -149,7 +148,7 @@ export default function Overview() {
                 <PieChart>
                   <Pie data={alloc} innerRadius={35} outerRadius={55} paddingAngle={3} dataKey="value" stroke="none">
                     {alloc.map((_, i) => (
-                      <Cell key={i} fill={ASSET_COLORS[i % ASSET_COLORS.length]} />
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
                 </PieChart>
@@ -157,7 +156,7 @@ export default function Overview() {
               <div className="space-y-2">
                 {alloc.map((d, i) => (
                   <div key={d.name} className="flex items-center gap-2 text-sm">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: ASSET_COLORS[i % ASSET_COLORS.length] }} />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
                     <span className="text-text-secondary">{d.name}</span>
                   </div>
                 ))}

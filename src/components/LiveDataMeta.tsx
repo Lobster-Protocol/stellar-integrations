@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { formatAgeMs } from '../utils/format'
+import { formatRelativeAgo } from '../utils/format'
 
 export default function LiveDataMeta({
   dataUpdatedAt,
@@ -12,14 +12,14 @@ export default function LiveDataMeta({
   onRefresh: () => void
 }) {
   // tick once a second so the age label stays fresh
-  const [now, setNow] = useState(() => Date.now())
+  const [, tick] = useState(0)
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    const id = window.setInterval(() => tick((t) => t + 1), 1000)
     return () => window.clearInterval(id)
   }, [])
 
-  const label = dataUpdatedAt ? formatAgeMs(now - dataUpdatedAt) : '-'
+  const label = dataUpdatedAt ? formatRelativeAgo({ ms: dataUpdatedAt }) : '-'
 
   return (
     <div className="flex items-center gap-2 text-[10px] text-text-muted">

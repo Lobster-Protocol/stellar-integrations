@@ -1,4 +1,4 @@
-import { CONTRACTS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
+import { CONTRACTS, STELLAR_RPC_FALLBACK, FRONTEND_URL } from '../../src/config/contracts'
 
 // what the production stack depends on, grouped by service area so a dashboard
 // row maps back to a subsystem. env overrides let a deploy point at its own urls.
@@ -23,7 +23,7 @@ export function httpTargets(): HttpTarget[] {
   const t = STELLAR_RPC_FALLBACK.testnet
   const m = STELLAR_RPC_FALLBACK.mainnet
   const list: HttpTarget[] = [
-    { name: 'frontend', area: 'frontend', url: env.MONITOR_FRONTEND_URL || 'https://stellar-instit.lobster-protocol.com', probe: 'http' },
+    { name: 'frontend', area: 'frontend', url: env.MONITOR_FRONTEND_URL || FRONTEND_URL, probe: 'http' },
     { name: 'soroban-rpc-testnet', area: 'shared', url: t.soroban, probe: 'rpc' },
     { name: 'soroban-rpc-mainnet', area: 'mainnet', url: m.soroban, probe: 'rpc' },
     { name: 'horizon-testnet', area: 'shared', url: t.horizon, probe: 'http' },

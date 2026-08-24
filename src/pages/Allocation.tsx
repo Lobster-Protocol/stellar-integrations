@@ -5,9 +5,8 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances } from '../integrations/horizon/account'
 import { useXlmUsd, valueBalances, allocationWeights } from '../integrations/pricing/price'
 import { formatUSD, formatBalance } from '../utils/format'
+import { CHART_COLORS } from '../utils/recharts'
 import LiveDataMeta from '../components/LiveDataMeta'
-
-const COLORS = ['#3693fb', '#ff8770', '#9333ea', '#10b981', '#f97316', '#eab308']
 
 // current allocation of the connected wallet, read from Horizon. a wallet has
 // no allocation history on-chain, so this is the live snapshot only: USD on
@@ -27,7 +26,6 @@ export default function Allocation() {
     )
   }
 
-  const balances = (balancesQ.data ?? []).filter((b) => Number(b.balance) > 0)
   const { lines, usdTotal } = valueBalances(balancesQ.data ?? [], priceQ.data ?? null, network)
   const held = lines.filter((l) => Number(l.balance) > 0)
   const chart = allocationWeights(lines)
@@ -50,7 +48,7 @@ export default function Allocation() {
         <button onClick={() => balancesQ.refetch()} className="text-sm text-coral underline">
           Could not load balances. Try again.
         </button>
-      ) : balances.length === 0 ? (
+      ) : held.length === 0 ? (
         <p className="text-sm text-text-muted">No assets held in this wallet on {network}.</p>
       ) : (
         <div className="grid lg:grid-cols-2 gap-4">
@@ -59,7 +57,7 @@ export default function Allocation() {
               <PieChart>
                 <Pie data={chart} innerRadius={60} outerRadius={95} paddingAngle={3} dataKey="value" stroke="none">
                   {chart.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                   ))}
                 </Pie>
               </PieChart>
@@ -77,7 +75,7 @@ export default function Allocation() {
                 return (
                   <div key={l.code + (l.issuer ?? '')} className="flex items-center justify-between py-2.5 text-sm">
                     <span className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
                       <span className="font-medium text-text">{l.code}</span>
                     </span>
                     <div className="text-right">

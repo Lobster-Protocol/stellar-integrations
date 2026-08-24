@@ -1,19 +1,11 @@
+import { relayFetch } from '../dfns/relay'
 import type { Signer, SignOpts } from './types'
 
-// the hono service runs the mpc round and answers with the signed envelope
 export const dfnsSigner: Signer = {
   name: 'dfns',
   async signTransaction(xdr: string, opts: SignOpts) {
-    const base = import.meta.env.VITE_LOBSTER_API_URL
-    if (!base) throw new Error('VITE_LOBSTER_API_URL not set; cannot reach dfns signer')
-    const token = import.meta.env.VITE_LOBSTER_API_TOKEN
-    const res = await fetch(`${base}/dfns/sign`, {
+    const res = await relayFetch('/dfns/sign', {
       method: 'POST',
-      credentials: 'include',
-      headers: {
-        'content-type': 'application/json',
-        ...(token ? { 'x-lobster-token': token } : {}),
-      },
       body: JSON.stringify({ xdr, networkPassphrase: opts.networkPassphrase }),
     })
     if (!res.ok) {

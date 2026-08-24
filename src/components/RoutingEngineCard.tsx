@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
-
 import { useNetwork } from '../contexts/NetworkContext'
 import { CONTRACTS } from '../config/contracts'
 import { getRoutingHealth } from '../integrations/routing/health'
-import { readRoutingLog, type RoutingEntry } from '../integrations/broker/routing-log'
+import { routeAssetsLabel } from '../integrations/broker/routing-log'
+import { useRoutingLog } from '../integrations/broker/use-routing-log'
 import { formatRelativeAgo } from '../utils/format'
 
 const PROTOCOLS = ['Stellar Broker', 'Soroswap', 'Aquarius', 'Phoenix', 'SDEX'] as const
@@ -11,21 +10,7 @@ const PROTOCOLS = ['Stellar Broker', 'Soroswap', 'Aquarius', 'Phoenix', 'SDEX'] 
 export default function RoutingEngineCard() {
   const { network } = useNetwork()
   const c = CONTRACTS[network]
-  const [lastRoute, setLastRoute] = useState<RoutingEntry | null>(() => readRoutingLog()[0] ?? null)
-
-  useEffect(() => {
-    const sync = () => setLastRoute(readRoutingLog()[0] ?? null)
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'lob_routing_log') sync()
-    }
-    window.addEventListener('storage', onStorage)
-    const interval = setInterval(sync, 5_000)
-    return () => {
-      window.removeEventListener('storage', onStorage)
-      clearInterval(interval)
-    }
-  }, [])
-
+  const lastRoute = useRoutingLog()[0] ?? null
   const health = getRoutingHealth(network)
   const aquariusAvailable = !!c.aquarius.router
 
@@ -89,10 +74,7 @@ export default function RoutingEngineCard() {
         <div className="text-text-muted mb-1">Last route</div>
         {lastRoute ? (
           <div className="flex items-center justify-between gap-2 font-mono">
-            <span className="text-text">
-              {lastRoute.sellingAmount} {lastRoute.sellingAsset.split('-')[0].toUpperCase()} {' -> '}
-              {lastRoute.buyingAmount ?? '?'} {lastRoute.buyingAsset.split('-')[0].toUpperCase()}
-            </span>
+            <span className="text-text">{routeAssetsLabel(lastRoute)}</span>
             <span className={lastRoute.path === 'broker' ? 'text-primary' : 'text-text-secondary'}>
               {lastRoute.path}
             </span>
