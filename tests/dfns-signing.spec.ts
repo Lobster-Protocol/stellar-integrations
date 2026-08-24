@@ -1,13 +1,11 @@
 import { test, expect } from '@playwright/test'
+import { TransactionBuilder, Networks } from '@stellar/stellar-sdk'
 
-import { seedWallet, TEST_WALLET, TEST_SOURCE_TESTNET } from './fixtures'
+import { seedWallet, TEST_SOURCE_TESTNET } from './fixtures'
 
-// in MPC custody mode the dashboard keeps the same connected account but swaps
-// the signer for the dfns one, which posts the built xdr to /dfns/sign. this
-// drives that path from the UI: toggle to dfns, sign the treasury payment, and
-// assert the signature request leaves with the right shape. the dfns endpoints
-// are mocked because the real flow needs the sandbox + relay deployed. the
-// build step still hits live testnet rpc, like the other on-chain specs.
+// MPC custody mode swaps in the dfns signer, which posts the built xdr to
+// /dfns/sign. the dfns endpoints are mocked (the real flow needs the sandbox +
+// relay); the build step still hits live testnet rpc, like the other on-chain specs.
 const apiUrl = process.env.VITE_LOBSTER_API_URL
 
 test.describe('DFNS MPC signing path', () => {
@@ -62,7 +60,9 @@ test.describe('DFNS MPC signing path', () => {
     // for the wrong network
     expect(signBody.networkPassphrase).toContain('Test SDF Network')
 
-    // the source stays the connected account; dfns only supplies the signature
-    expect(TEST_WALLET.address).toBe(TEST_SOURCE_TESTNET)
+    // the built tx must source from the dfns treasury wallet the relay guard
+    // requires, not whatever browser account happens to be connected
+    const built = TransactionBuilder.fromXDR(signBody.xdr!, Networks.TESTNET)
+    expect(built.source).toBe(TEST_SOURCE_TESTNET)
   })
 })

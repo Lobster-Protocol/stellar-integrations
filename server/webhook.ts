@@ -5,7 +5,7 @@ import { streamSSE } from 'hono/streaming'
 import crypto from 'node:crypto'
 import { EventEmitter } from 'node:events'
 
-import { TransactionBuilder, Networks, type Transaction } from '@stellar/stellar-sdk'
+import { TransactionBuilder, Networks } from '@stellar/stellar-sdk'
 
 import { requireEnv } from './env'
 import { DfnsWebhookEventSchema, type DfnsWebhookEvent } from './dfns/types'
@@ -76,6 +76,11 @@ const rateLimit = async (c: Context, next: Next) => {
   const perMin = Number(process.env.RATE_LIMIT_PER_MIN ?? '120')
   const key = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
   const now = Date.now()
+  // drop expired windows once the map grows, so a churn of distinct ips can't
+  // leak memory over the life of the process.
+  if (rlWindows.size > 256) {
+    for (const [k, v] of rlWindows) if (now >= v.resetAt) rlWindows.delete(k)
+  }
   const w = rlWindows.get(key)
   if (!w || now >= w.resetAt) {
     rlWindows.set(key, { count: 1, resetAt: now + 60_000 })
@@ -105,26 +110,30 @@ const ttlCache = new Map<Network, { at: number; scan: ScanResult }>()
 
 app.get('/ttl', async (c) => {
   const network: Network = c.req.query('network') === 'mainnet' ? 'mainnet' : 'testnet'
-  try {
-    let entry = ttlCache.get(network)
-    if (!entry || Date.now() - entry.at >= TTL_CACHE_MS) {
+  let entry = ttlCache.get(network)
+  if (!entry || Date.now() - entry.at >= TTL_CACHE_MS) {
+    try {
       entry = { at: Date.now(), scan: await scanNetwork(network) }
       ttlCache.set(network, entry)
+    } catch (err) {
+      // rpc down. serve the last good scan and hold off re-scanning for a window,
+      // so this public route can't be turned into an rpc amplifier during an
+      // outage. 503 only when we have never scanned this network.
+      if (!entry) return c.json({ error: (err as Error).message }, 503)
+      entry.at = Date.now()
     }
-    const scan = entry.scan
-    return c.json({
-      network,
-      latestLedger: scan.latestLedger,
-      statuses: scan.statuses.map((s) => ({
-        key: s.keyXdr,
-        remainingLedgers: s.reading.remainingLedgers,
-        remainingSeconds: s.reading.remainingSeconds,
-        level: s.reading.level,
-      })),
-    })
-  } catch (err) {
-    return c.json({ error: (err as Error).message }, 503)
   }
+  const scan = entry.scan
+  return c.json({
+    network,
+    latestLedger: scan.latestLedger,
+    statuses: scan.statuses.map((s) => ({
+      key: s.keyXdr,
+      remainingLedgers: s.reading.remainingLedgers,
+      remainingSeconds: s.reading.remainingSeconds,
+      level: s.reading.level,
+    })),
+  })
 })
 
 app.get('/dfns/policies', tokenGuard, async (c) => {
@@ -146,6 +155,11 @@ app.get('/dfns/wallets', tokenGuard, async (c) => {
 })
 
 app.post('/dfns/wallets', rateLimit, tokenGuard, async (c) => {
+  // fail-closed like /dfns/sign: creating a wallet writes to the custody account,
+  // and the token guard is a no-op when the env is unset.
+  if (!process.env.LOBSTER_API_TOKEN) {
+    return c.json({ error: 'LOBSTER_API_TOKEN must be set before wallets can be created' }, 503)
+  }
   let body: { name?: string; network?: string }
   try {
     body = await c.req.json()
@@ -240,7 +254,10 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     return c.json({ error: 'networkPassphrase mismatch with DFNS_STELLAR_NETWORK' }, 400)
   }
   try {
-    const tx = TransactionBuilder.fromXDR(body.xdr, passphrase) as Transaction
+    const tx = TransactionBuilder.fromXDR(body.xdr, passphrase)
+    if ('innerTransaction' in tx) {
+      return c.json({ error: 'fee-bump transactions are not accepted here' }, 400)
+    }
     // dfns kind:Transaction does not handle RestoreFootprint envelopes; the
     // caller must run the restore through wallet kit first then resubmit.
     if (tx.operations.some((op) => op.type === 'restoreFootprint')) {
@@ -353,7 +370,9 @@ function defaultExportContext(): ExportContext {
 app.get('/dfns/audit/export', tokenGuard, (c) => {
   const ctx = defaultExportContext()
   const snapshots = eventHistory
-    .filter((e) => e.kind.startsWith('wallet.transaction.') || e.kind.startsWith('wallet.transfer.'))
+    // one record per settled tx: the lifecycle also emits requested/broadcasted,
+    // which carry no txHash and would double-count the same trade under evt.id.
+    .filter((e) => e.kind === 'wallet.transaction.confirmed' || e.kind === 'wallet.transfer.confirmed')
     .map((e) => eventToSnapshot(e))
     .filter((s): s is StellarTxSnapshot => !!s)
   // one continuous hash chain across every tx so the whole export verifies

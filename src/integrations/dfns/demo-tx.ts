@@ -4,12 +4,12 @@ import { CONTRACTS, type Network } from '../../config/contracts'
 import { getHorizonServer } from '../horizon/client'
 import { networkPassphrase } from '../lobster/client'
 
-// a classic self-payment the DFNS-held treasury signs to demonstrate MPC
-// custody. it is a real on-chain tx, a payment op the relay sign guard allows
-// (unlike a soroban call, which the guard blocks to stop a treasury drain), and
-// it carries an amount DFNS can weigh against its approval policy. destination
-// is the treasury itself, so no value leaves the account. a larger amount is
-// what pushes the same flow over the policy limit into the second-approver path.
+// a quorum approval is a human step, so the tx must still be valid when dfns
+// broadcasts it minutes later. both demo txs carry the same wide window.
+const APPROVAL_WINDOW_SECONDS = 3600
+
+// the treasury pays itself: no value leaves, but it is a real payment op the
+// relay guard allows and dfns can weigh against its approval policy.
 export async function buildTreasuryPaymentTx(
   network: Network,
   treasury: string,
@@ -24,18 +24,13 @@ export async function buildTreasuryPaymentTx(
     .addOperation(
       Operation.payment({ destination: treasury, asset: Asset.native(), amount: amountXlm }),
     )
-    // a 1 hour validity window: a quorum approval is a human step that can take
-    // minutes, and the tx must still be valid when dfns broadcasts it after the
-    // approval. a short window would expire before the approver acts.
-    .setTimeout(3600)
+    .setTimeout(APPROVAL_WINDOW_SECONDS)
     .build()
   return tx.toXDR()
 }
 
-// a changeTrust the DFNS-held treasury signs to open a trustline for the Lobster
-// classic token. changeTrust moves no value out - it is the prerequisite op a
-// treasury runs before it can hold an asset, which the relay guard now allows.
-// proves the MPC can sign a classic non-payment op (the tranche's trustline case).
+// changeTrust proves the MPC can sign a classic non-payment op; it opens a LOBS
+// trustline on the treasury and moves no value.
 export async function buildTreasuryTrustlineTx(
   network: Network,
   treasury: string,
@@ -49,10 +44,7 @@ export async function buildTreasuryTrustlineTx(
     networkPassphrase: networkPassphrase(network),
   })
     .addOperation(Operation.changeTrust({ asset: new Asset(code, issuer) }))
-    // a 1 hour validity window: a quorum approval is a human step that can take
-    // minutes, and the tx must still be valid when dfns broadcasts it after the
-    // approval. a short window would expire before the approver acts.
-    .setTimeout(3600)
+    .setTimeout(APPROVAL_WINDOW_SECONDS)
     .build()
   return tx.toXDR()
 }

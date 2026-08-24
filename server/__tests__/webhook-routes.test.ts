@@ -97,6 +97,12 @@ describe('GET /dfns/policies and /dfns/wallets', () => {
 })
 
 describe('POST /dfns/wallets', () => {
+  // wallet creation is a custody write, fail-closed on the token like /dfns/sign,
+  // so set it and present it to reach the real create path.
+  beforeEach(() => {
+    process.env.LOBSTER_API_TOKEN = SIGN_API_TOKEN
+  })
+
   it('creates a stellar testnet wallet with name + network', async () => {
     createWalletMock.mockResolvedValueOnce({
       id: 'w-new',
@@ -108,7 +114,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify({ name: 'lobster-testnet-1', network: 'StellarTestnet' }),
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
       }),
     )
     expect(res.status).toBe(200)
@@ -120,7 +126,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify({ name: 'foo', network: 'Ethereum' }),
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
       }),
     )
     expect(res.status).toBe(400)
@@ -132,7 +138,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify({ network: 'StellarTestnet' }),
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
       }),
     )
     expect(res.status).toBe(400)
@@ -144,7 +150,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: '{ malformed',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
       }),
     )
     expect(res.status).toBe(400)
@@ -156,7 +162,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify({ name: 'x', network: 'StellarTestnet' }),
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
       }),
     )
     expect(res.status).toBe(502)
