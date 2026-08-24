@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { buildTreasuryPaymentTx, buildTreasuryTrustlineTx } from '../integrations/dfns/demo-tx'
+import { pollSignatureStatus } from '../integrations/dfns/relay'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer, cn } from '../utils/format'
 
@@ -12,6 +13,7 @@ type State =
   | { phase: 'building' }
   | { phase: 'signing' }
   | { phase: 'submitting' }
+  | { phase: 'pending' }
   | { phase: 'confirmed'; txHash: string }
   | { phase: 'failed'; errorMsg: string }
 
@@ -27,6 +29,8 @@ export default function SignDemoTx() {
 
   const [state, setState] = useState<State>({ phase: 'idle' })
   const inFlight = useRef(false)
+  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   const isDfns = signer.name === 'dfns'
   // dfns signs from the mpc treasury, so the tx must source from that account and
@@ -53,10 +57,21 @@ export default function SignDemoTx() {
       }
 
       setState({ phase: 'signing' })
-      const { signedTxXdr, broadcastHash } = await signer.signTransaction(xdr, {
+      const { signedTxXdr, broadcastHash, pendingId } = await signer.signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
         address: source,
       })
+
+      // held for a human approval in dfns: show the pending state and poll until a
+      // second approver signs off, then the hash lands.
+      if (pendingId) {
+        setState({ phase: 'pending' })
+        const ac = new AbortController()
+        abortRef.current = ac
+        const hash = await pollSignatureStatus(pendingId, { signal: ac.signal })
+        setState({ phase: 'confirmed', txHash: hash })
+        return
+      }
 
       // dfns broadcasts a classic tx itself, so the hash is the whole artifact;
       // the wallet kit hands back an envelope to submit and poll.
@@ -87,6 +102,7 @@ export default function SignDemoTx() {
     building: 'Building tx...',
     signing: 'Awaiting signature...',
     submitting: 'Submitting & polling...',
+    pending: 'Awaiting approval...',
     confirmed: 'Ping again',
     failed: 'Retry',
   }
@@ -169,6 +185,13 @@ export default function SignDemoTx() {
 
           {busy && phaseText[state.phase] && (
             <p className="text-xs text-text-muted">{phaseText[state.phase]}</p>
+          )}
+
+          {state.phase === 'pending' && (
+            <div className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2">
+              Awaiting approval in the DFNS console. A second approver has to sign off
+              (the app can't self-approve), then the hash appears here.
+            </div>
           )}
 
           {state.phase === 'confirmed' && (

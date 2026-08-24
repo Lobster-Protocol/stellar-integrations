@@ -12,7 +12,7 @@ import { DfnsWebhookEventSchema, type DfnsWebhookEvent } from './dfns/types'
 import { listPolicies } from './dfns/policies'
 import { listWallets, createStellarWallet } from './dfns/wallets'
 import { DfnsStellarNetworkSchema } from './dfns/types'
-import { broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData } from './dfns/sign'
+import { broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData, isTerminal, getSignatureStatus } from './dfns/sign'
 import { inspectSignXdr, readSignGuardConfig, SignGuardRejected } from './dfns/sign-guard'
 import { listPendingApprovals, decideApproval, type ApprovalDecision } from './dfns/approvals'
 import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
@@ -24,6 +24,10 @@ import type { Network } from '../src/config/contracts'
 const REPLAY_WINDOW_SEC = 300
 const HEARTBEAT_MS = 20_000
 const RING_SIZE = 200
+// how long /dfns/sign waits for an instant result before handing back a pending
+// id. an op no policy holds (a trustline) confirms inside this window; a payment
+// held for approval does not, so the client tracks it via /dfns/sign/:id/status.
+const PENDING_POLL_MS = 10_000
 
 const bus = new EventEmitter()
 bus.setMaxListeners(0)
@@ -275,12 +279,12 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
       throw err
     }
     const initial = await broadcastStellarTx(walletId, tx)
-    const final = await waitForSignatureTerminal(walletId, initial.id)
+    const final = await waitForSignatureTerminal(walletId, initial.id, PENDING_POLL_MS)
     if (final.status === 'Failed' || final.status === 'Rejected') {
       return c.json({ error: `dfns ${final.status}${final.reason ? `: ${final.reason}` : ''}` }, 502)
     }
-    // classic tx: dfns signs AND broadcasts natively, so it is already on chain.
-    // return the hash; the caller does not resubmit.
+    // a hash means dfns already broadcast it (a classic tx); return it whether or
+    // not the ledger has closed, so a slow confirm is not read as an approval hold.
     if (final.txHash) {
       return c.json({ txHash: final.txHash })
     }
@@ -290,7 +294,27 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
       const back = envelopeFromSignedData(final.signedData, passphrase)
       return c.json({ signedTxXdr: back.toXDR() })
     }
+    // no hash and no envelope: an approval policy is holding it for a human. hand
+    // the id back so the client can show pending and poll for the eventual hash.
+    if (!isTerminal(final.status)) {
+      return c.json({ pending: true, id: initial.id })
+    }
     return c.json({ error: `no txHash or signed envelope (status ${final.status})` }, 502)
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 502)
+  }
+})
+
+// tracks a signature the client is holding after /dfns/sign returned pending. it
+// reads the current dfns status so the ui can show the hash once a human approves.
+app.get('/dfns/sign/:id/status', rateLimit, tokenGuard, async (c) => {
+  const walletId = process.env.DFNS_STELLAR_WALLET_ID
+  if (!walletId) return c.json({ error: 'DFNS_STELLAR_WALLET_ID not set' }, 503)
+  const id = c.req.param('id')
+  if (!id) return c.json({ error: 'missing signature id' }, 400)
+  try {
+    const s = await getSignatureStatus(walletId, id)
+    return c.json({ status: s.status, txHash: s.txHash, reason: s.reason })
   } catch (err) {
     return c.json({ error: (err as Error).message }, 502)
   }

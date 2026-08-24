@@ -12,12 +12,13 @@ vi.hoisted(() => {
   process.env.DFNS_GUARD_PERMISSIVE = '1'
 })
 
-const { listPoliciesMock, listWalletsMock, createWalletMock, broadcastMock, waitMock } = vi.hoisted(() => ({
+const { listPoliciesMock, listWalletsMock, createWalletMock, broadcastMock, waitMock, statusMock } = vi.hoisted(() => ({
   listPoliciesMock: vi.fn(),
   listWalletsMock: vi.fn(),
   createWalletMock: vi.fn(),
   broadcastMock: vi.fn(),
   waitMock: vi.fn(),
+  statusMock: vi.fn(),
 }))
 
 vi.mock('../dfns/policies', () => ({
@@ -30,6 +31,8 @@ vi.mock('../dfns/wallets', () => ({
 vi.mock('../dfns/sign', () => ({
   broadcastStellarTx: broadcastMock,
   waitForSignatureTerminal: waitMock,
+  getSignatureStatus: statusMock,
+  isTerminal: (s: string) => s === 'Confirmed' || s === 'Failed' || s === 'Rejected',
   envelopeFromSignedData: (hex: string) => ({ toXDR: () => `XDR-from-${hex}` }),
 }))
 vi.mock('../dfns/approvals', () => ({
@@ -65,6 +68,7 @@ beforeEach(() => {
   createWalletMock.mockReset()
   broadcastMock.mockReset()
   waitMock.mockReset()
+  statusMock.mockReset()
   process.env.DFNS_STELLAR_WALLET_ID = 'wa-test-1'
 })
 
@@ -238,6 +242,35 @@ describe('POST /dfns/sign', () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as { signedTxXdr: string }
     expect(body.signedTxXdr).toBe('XDR-from-deadbeef')
+  })
+
+  it('hands back a pending id when the tx is held for approval', async () => {
+    broadcastMock.mockResolvedValueOnce({ id: 'sig-9', status: 'Pending' })
+    waitMock.mockResolvedValueOnce({ id: 'sig-9', status: 'Pending' })
+    const res = await app.fetch(signRequest({ xdr: sampleXdr() }))
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { pending: boolean; id: string }
+    expect(body.pending).toBe(true)
+    expect(body.id).toBe('sig-9')
+  })
+})
+
+describe('GET /dfns/sign/:id/status', () => {
+  beforeEach(() => {
+    process.env.LOBSTER_API_TOKEN = SIGN_API_TOKEN
+  })
+
+  it('returns the current dfns status and hash', async () => {
+    statusMock.mockResolvedValueOnce({ id: 'sig-9', status: 'Confirmed', txHash: 'abc123' })
+    const res = await app.fetch(
+      new Request('http://localhost/dfns/sign/sig-9/status', {
+        headers: { authorization: `Bearer ${SIGN_API_TOKEN}` },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { status: string; txHash: string }
+    expect(body.status).toBe('Confirmed')
+    expect(body.txHash).toBe('abc123')
   })
 })
 

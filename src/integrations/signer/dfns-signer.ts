@@ -15,8 +15,12 @@ export const dfnsSigner: Signer = {
     const body = (await res.json()) as {
       signedTxXdr?: string
       txHash?: string
+      pending?: boolean
+      id?: string
       error?: string
     }
+    // held for approval: the relay hands back the signature id to poll.
+    if (body.pending && body.id) return { pendingId: body.id }
     // classic tx: the relay reports the hash dfns already broadcast.
     if (body.txHash) return { broadcastHash: body.txHash }
     // soroban tx: the relay hands back the signed envelope to submit.

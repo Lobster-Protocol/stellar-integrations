@@ -24,7 +24,7 @@ export async function broadcastStellarTx(
   return DfnsSignatureSchema.parse(res)
 }
 
-async function getTransactionStatus(
+export async function getSignatureStatus(
   walletId: string,
   txId: string,
 ): Promise<DfnsSignatureResponse> {
@@ -34,17 +34,25 @@ async function getTransactionStatus(
 }
 
 // confirmed != broadcasted: a policy can reject between submit and chain.
+export function isTerminal(status: string): boolean {
+  return status === 'Confirmed' || status === 'Failed' || status === 'Rejected'
+}
+
+// polls up to timeoutMs and returns the last status. it does NOT throw on timeout:
+// a tx held by an approval policy stays non-terminal, and the caller hands the id
+// back to the client to track instead of blocking the request.
 export async function waitForSignatureTerminal(
   walletId: string,
   txId: string,
+  timeoutMs = POLL_TIMEOUT_MS,
 ): Promise<DfnsSignatureResponse> {
   const start = Date.now()
-  while (Date.now() - start < POLL_TIMEOUT_MS) {
-    const cur = await getTransactionStatus(walletId, txId)
-    if (['Confirmed', 'Failed', 'Rejected'].includes(cur.status)) return cur
+  let cur = await getSignatureStatus(walletId, txId)
+  while (!isTerminal(cur.status) && Date.now() - start < timeoutMs) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+    cur = await getSignatureStatus(walletId, txId)
   }
-  throw new Error(`dfns signature ${txId} did not reach terminal status within ${POLL_TIMEOUT_MS}ms`)
+  return cur
 }
 
 // for a soroban tx, which dfns signs but does not broadcast natively: the caller
