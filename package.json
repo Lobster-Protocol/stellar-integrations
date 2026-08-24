@@ -28,7 +28,7 @@
     "@hono/node-server": "1.19.14",
     "@stellar-broker/client": "0.6.14",
     "@stellar/stellar-sdk": "^14.6.1",
-    "@tailwindcss/vite": "^4.2.1",
+    "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.100.9",
     "buffer": "^6.0.3",
     "hono": "^4.12.25",
