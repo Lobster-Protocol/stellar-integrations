@@ -133,6 +133,17 @@ describe('inspectSignXdr', () => {
     expect(() => inspectSignXdr(tx, cfg)).not.toThrow()
   })
 
+  it('rejects a tx whose fee is over the ceiling', () => {
+    // a dust payment under every other check, but a 2 XLM fee that would drain
+    // xlm the amount cap never sees
+    const src = new Account(TREASURY, '1')
+    const tx = new TransactionBuilder(src, { fee: '20000000', networkPassphrase: Networks.TESTNET })
+      .addOperation(Operation.payment({ destination: OTHER, asset: Asset.native(), amount: '1' }))
+      .setTimeout(60)
+      .build()
+    expect(() => inspectSignXdr(tx, baseCfg)).toThrow(/fee.*over the/i)
+  })
+
   it('rejects an invokeHostFunction even when sourced by the treasury', () => {
     // the exact drain scenario the allowlist comment describes: transfer() on
     // the real usdc sac, straight from contracts.ts

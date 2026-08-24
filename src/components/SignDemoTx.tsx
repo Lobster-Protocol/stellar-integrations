@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useSigner } from '../contexts/CustodyContext'
+import { useCustody } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { buildTreasuryPaymentTx, buildTreasuryTrustlineTx } from '../integrations/dfns/demo-tx'
 import { networkPassphrase } from '../integrations/lobster/client'
@@ -20,33 +20,31 @@ const RESTING_PHASES: ReadonlyArray<State['phase']> = ['idle', 'confirmed', 'fai
 export default function SignDemoTx() {
   const { address, walletName } = useWallet()
   const { network } = useNetwork()
-  const signer = useSigner()
+  const { signer, dfnsAddress } = useCustody()
 
   const buildPing = useBuildPingTx(network)
   const submit = useSubmitAndWait(network)
 
   const [state, setState] = useState<State>({ phase: 'idle' })
-
-  // double-click guard during submit
   const inFlight = useRef(false)
 
+  const isDfns = signer.name === 'dfns'
+  // dfns signs from the mpc treasury, so the tx must source from that account and
+  // not the connected browser wallet; the relay guard rejects any other source.
+  const source = isDfns ? dfnsAddress : address
+
   async function handleAction(kind: 'ping' | 'payment' | 'trustline') {
-    if (!address || inFlight.current) return
+    if (!source || inFlight.current) return
     inFlight.current = true
     try {
       setState({ phase: 'building' })
       let xdr: string
       if (kind === 'payment') {
-        // DFNS custody signs a classic self-payment: a payment op the relay guard
-        // allows and DFNS can broadcast + weigh against its policy. the Factory
-        // ping is a soroban call the guard blocks (anti-drain), so it is wallet-
-        // kit only.
-        xdr = await buildTreasuryPaymentTx(network, address, '0.0100000')
+        xdr = await buildTreasuryPaymentTx(network, source, '0.0100000')
       } else if (kind === 'trustline') {
-        // changeTrust moves no value.
-        xdr = await buildTreasuryTrustlineTx(network, address)
+        xdr = await buildTreasuryTrustlineTx(network, source)
       } else {
-        const ping = await buildPing.mutateAsync(address)
+        const ping = await buildPing.mutateAsync(source)
         if (ping.restorePreamble) {
           setState({ phase: 'failed', errorMsg: 'Factory storage is archived. A restore tx is needed before this ping.' })
           return
@@ -57,12 +55,11 @@ export default function SignDemoTx() {
       setState({ phase: 'signing' })
       const { signedTxXdr, broadcastHash } = await signer.signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
-        address,
+        address: source,
       })
 
-      // DFNS signs AND broadcasts a classic tx, so the hash is the artifact and
-      // there is nothing to submit. the wallet kit hands back an envelope to
-      // submit and poll.
+      // dfns broadcasts a classic tx itself, so the hash is the whole artifact;
+      // the wallet kit hands back an envelope to submit and poll.
       if (broadcastHash) {
         setState({ phase: 'confirmed', txHash: broadcastHash })
         return
@@ -84,9 +81,7 @@ export default function SignDemoTx() {
     }
   }
 
-  const isDfns = signer.name === 'dfns'
   const busy = !RESTING_PHASES.includes(state.phase)
-  // wallet-kit keeps the single ping button whose label reflects the phase.
   const pingLabel: Record<State['phase'], string> = {
     idle: `Ping Factory with ${walletName ?? 'wallet'}`,
     building: 'Building tx...',
@@ -95,7 +90,6 @@ export default function SignDemoTx() {
     confirmed: 'Ping again',
     failed: 'Retry',
   }
-  // dfns shows two fixed-label buttons, so the running phase reads on its own line.
   const phaseText: Partial<Record<State['phase'], string>> = {
     building: 'Building tx...',
     signing: 'MPC signing...',
@@ -111,8 +105,12 @@ export default function SignDemoTx() {
           : 'Pings the Factory via your wallet. Builds the XDR, asks the wallet to sign, submits to Stellar RPC and waits for inclusion. Costs only the resource fee.'}
       </p>
 
-      {!address ? (
-        <p className="text-xs text-text-muted">Connect a Stellar wallet to try this.</p>
+      {!source ? (
+        <p className="text-xs text-text-muted">
+          {isDfns
+            ? 'No DFNS treasury wallet on this network yet. Create one in the custody panel to try this.'
+            : 'Connect a Stellar wallet to try this.'}
+        </p>
       ) : network === 'mainnet' ? (
         <p className="text-xs text-coral">
           The Factory isn't on mainnet yet. Switch to testnet to send a real tx.

@@ -1,26 +1,10 @@
 import { type Transaction, type FeeBumpTransaction } from '@stellar/stellar-sdk'
 import { decimalToStroops } from '../../src/integrations/stellar/amount'
 
-// ops allowed in any /dfns/sign envelope. anything else (AccountMerge,
-// SetOptions adding a signer, ChangeTrust on a non-treasury asset, etc.)
-// could exfiltrate funds or compromise the treasury account.
-//
-// invokeHostFunction is deliberately NOT here: a Soroban call from the
-// treasury can invoke transfer() on the USDC SAC and drain the wallet
-// without ever touching the destination whitelist or amount cap below.
-// soroban-from-treasury needs its own envelope path with a contract-id
-// allowlist, not the bare op type.
-//
-// the DEX offer ops (manageSellOffer/manageBuyOffer/createPassiveSellOffer)
-// are out for the same reason: the cap and whitelist below only know about
-// payment destinations, so an offer could sell treasury assets at a price an
-// attacker dictates without tripping either check. they come back once they
-// have their own price+amount bounds.
-// changeTrust is allowed: it establishes or removes a trustline on the treasury
-// itself and moves no value out of the account, so the destination/amount checks
-// below do not apply to it. it is a prerequisite op (a treasury must trust an
-// asset before it can hold it), which is exactly what the DFNS custody demo
-// signs. it is strictly less dangerous than payment, which is already allowed.
+// only value-bounded classic ops may sign from the treasury. soroban calls and
+// DEX offers are excluded: their outflow escapes the amount cap and destination
+// whitelist below (a soroban transfer() or a dictated-price offer would drain the
+// treasury unchecked). changeTrust is in because it moves no value.
 const ALLOWED_OPS = new Set([
   'payment',
   'pathPaymentStrictSend',
@@ -28,6 +12,10 @@ const ALLOWED_OPS = new Set([
   'bumpSequence',
   'changeTrust',
 ])
+
+// 1 XLM. no classic treasury op needs a fee this large; bounding it stops a drain
+// through an inflated fee the amount cap can't see, same as the broker guard.
+const MAX_FEE_STROOPS = 10_000_000n
 
 export class SignGuardRejected extends Error {
   constructor(message: string) {
@@ -69,9 +57,12 @@ function checkAmount(amount: string | undefined, max: bigint, kind: string): voi
 }
 
 function checkDestination(op: { destination?: string }, list: string[], kind: string): void {
-  if (list.length === 0 || !op.destination) return
-  if (!list.includes(op.destination)) {
-    throw new SignGuardRejected(`${kind} destination ${op.destination} not in whitelist`)
+  if (list.length === 0) return
+  // fail closed on a missing destination, like checkAmount does on a missing
+  // amount: a whitelist that silently waved through a destination-less op would
+  // be a hole in the last line of defense.
+  if (!op.destination || !list.includes(op.destination)) {
+    throw new SignGuardRejected(`${kind} destination ${op.destination ?? '(unset)'} not in whitelist`)
   }
 }
 
@@ -84,6 +75,11 @@ export function inspectSignXdr(
     throw new SignGuardRejected(
       `tx source ${t.source} does not match treasury ${cfg.treasuryAddress}`,
     )
+  }
+  // the outer fee is what the treasury pays (a fee-bump's inner fee is 0), and the
+  // amount cap never sees it, so bound it here.
+  if (BigInt(tx.fee) > MAX_FEE_STROOPS) {
+    throw new SignGuardRejected(`tx fee ${tx.fee} stroops is over the ${MAX_FEE_STROOPS} ceiling`)
   }
   for (const op of t.operations) {
     if (!ALLOWED_OPS.has(op.type)) {
