@@ -36,7 +36,8 @@ export type BridgeRequest = z.infer<typeof BridgeRequestSchema>
 export interface BridgeQuote {
   amountInFloat: string
   amountOutFloat: string
-  estimatedTimeSeconds: number
+  // seconds, from the SDK's published transfer time; null when the corridor omits it
+  estimatedTimeSeconds: number | null
   trustlineRequired: boolean
   // payment method ('native', 'stablecoin', 'abr') -> float amount
   gasFeeOptions: Record<string, string>

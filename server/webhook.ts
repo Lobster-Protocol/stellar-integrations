@@ -14,6 +14,8 @@ import { listWallets, createStellarWallet } from './dfns/wallets'
 import { DfnsStellarNetworkSchema } from './dfns/types'
 import { broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData, isTerminal, getSignatureStatus } from './dfns/sign'
 import { inspectSignXdr, readSignGuardConfig, SignGuardRejected } from './dfns/sign-guard'
+import { reSequence } from './dfns/resequence'
+import { unresolvedSignature, trackPending, clearPending } from './dfns/inflight'
 import { listPendingApprovals, decideApproval, type ApprovalDecision } from './dfns/approvals'
 import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
 import { lookupDti } from './dfns/dti-codes'
@@ -270,15 +272,26 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
         400,
       )
     }
+    // rebind the sequence right before handing off, then guard the tx we broadcast
+    const fresh = await reSequence(tx, passphrase)
     try {
-      inspectSignXdr(tx, guard)
+      inspectSignXdr(fresh, guard)
     } catch (err) {
       if (err instanceof SignGuardRejected) {
         return c.json({ error: err.message }, 400)
       }
       throw err
     }
-    const initial = await broadcastStellarTx(walletId, tx)
+    // one treasury signature at a time: a second tx built while one is held for
+    // approval reuses the same sequence and would tx_bad_seq on broadcast.
+    const busy = await unresolvedSignature(walletId, getSignatureStatus, isTerminal)
+    if (busy) {
+      return c.json(
+        { error: 'a treasury signature is already awaiting approval; approve or deny it in the dfns console first', pending: true, id: busy },
+        409,
+      )
+    }
+    const initial = await broadcastStellarTx(walletId, fresh)
     const final = await waitForSignatureTerminal(walletId, initial.id, PENDING_POLL_MS)
     if (final.status === 'Failed' || final.status === 'Rejected') {
       return c.json({ error: `dfns ${final.status}${final.reason ? `: ${final.reason}` : ''}` }, 502)
@@ -297,6 +310,7 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     // no hash and no envelope: an approval policy is holding it for a human. hand
     // the id back so the client can show pending and poll for the eventual hash.
     if (!isTerminal(final.status)) {
+      trackPending(walletId, initial.id)
       return c.json({ pending: true, id: initial.id })
     }
     return c.json({ error: `no txHash or signed envelope (status ${final.status})` }, 502)
@@ -314,6 +328,7 @@ app.get('/dfns/sign/:id/status', rateLimit, tokenGuard, async (c) => {
   if (!id) return c.json({ error: 'missing signature id' }, 400)
   try {
     const s = await getSignatureStatus(walletId, id)
+    if (isTerminal(s.status)) clearPending(walletId)
     return c.json({ status: s.status, txHash: s.txHash, reason: s.reason })
   } catch (err) {
     return c.json({ error: (err as Error).message }, 502)

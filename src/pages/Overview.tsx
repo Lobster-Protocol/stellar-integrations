@@ -1,18 +1,23 @@
 import { useState, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances } from '../integrations/horizon/account'
-import { useLobsterPositions } from '../integrations/lobster/hooks'
-import { useXlmUsd, valueBalances, allocationWeights } from '../integrations/pricing/price'
+import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
+import { buildPortfolio, share } from '../integrations/pricing/portfolio'
+import { useBalanceHistory, valueAtCurrentPrice, assetKey } from '../integrations/pricing/history'
 import { useRecordNav } from '../integrations/pricing/nav'
-import { formatUSD, formatBalance, shortenAddress, stellarExplorer } from '../utils/format'
-import { CHART_COLORS } from '../utils/recharts'
+import { useVaultPositions, VENUE_LABEL } from '../integrations/lobster/position'
+import { useActivity, KIND_LABEL } from '../integrations/horizon/activity'
+import { CONTRACTS } from '../config/contracts'
+import { formatBalance, formatValue, shortenAddress, stellarExplorer } from '../utils/format'
+import { CHART_COLORS, TOOLTIP_STYLE } from '../utils/recharts'
 import lobsterIcon from '../assets/lobster-icon.png'
 import LiveDataMeta from '../components/LiveDataMeta'
-import Hint from '../components/Hint'
+import TokenRef from '../components/TokenRef'
+import { Card, CardHead, Empty, Failed, Stat } from '../components/ui'
 
 // lazy: the Allbridge SDK in DepositModal drags in viem/walletconnect/solana
 const DepositModal = lazy(() => import('../components/DepositModal'))
@@ -25,10 +30,14 @@ export default function Overview() {
   const [swapOpen, setSwapOpen] = useState(false)
 
   const balancesQ = useAccountBalances(network, address)
-  const positionsQ = useLobsterPositions(network, address)
-  const priceQ = useXlmUsd(network)
+  const priceQ = useXlmPrice(network)
+  const vaultsQ = useVaultPositions(network, address)
+  const historyQ = useBalanceHistory(network, address)
+  const activityQ = useActivity(network, address)
 
-  const valued = valueBalances(balancesQ.data ?? [], priceQ.data ?? null, network)
+  const unit = priceUnit(network)
+  const price = priceQ.data ?? null
+  const valued = valueBalances(balancesQ.data ?? [], price, network)
   useRecordNav(network, address, valued.usdTotal)
 
   if (!address) {
@@ -51,17 +60,31 @@ export default function Overview() {
     )
   }
 
-  const balances = balancesQ.data ?? []
-  const held = balances.filter((b) => Number(b.balance) > 0)
   const { lines, usdTotal } = valued
-  const xlm = balances.find((b) => b.isNative)
-  const positions = positionsQ.data ?? []
+  const held = lines.filter((l) => Number(l.balance) > 0)
+  const xlm = lines.find((l) => l.isNative)
+  const vaults = vaultsQ.data ?? []
+  const priceOf = tokenPricer(network, price)
+  // same computation Allocation renders, so the two pages can never disagree
+  const portfolio = buildPortfolio(lines, vaults, priceOf, network)
+  const alloc = portfolio.byAsset
 
-  const alloc = allocationWeights(lines)
+  // the same reconstruction Performance draws, thinned to a sparkline
+  const priceByKey: Record<string, number> = {}
+  if (price != null) priceByKey.XLM = price
+  const usdcIssuer = CONTRACTS[network].tokens.usdcIssuer
+  if (usdcIssuer) priceByKey[assetKey('USDC', usdcIssuer)] = 1
+  const spark = (historyQ.data?.points ?? []).map((p) => ({
+    ts: p.ts,
+    value: valueAtCurrentPrice(p, priceByKey),
+  }))
 
-  const portfolio =
+  const events = (activityQ.data?.pages ?? []).flatMap((p) => p.events)
+  const recent = events.slice(0, 5)
+
+  const headline =
     usdTotal != null
-      ? formatUSD(usdTotal)
+      ? formatValue(portfolio.total, unit)
       : xlm
         ? `${formatBalance(xlm.balance)} XLM`
         : '0'
@@ -73,8 +96,18 @@ export default function Overview() {
         <SwapModal open={swapOpen} onClose={() => setSwapOpen(false)} />
       </Suspense>
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-text">Portfolio</h2>
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-text-muted mb-1">Portfolio</p>
+          <p className="text-3xl font-bold text-text" style={{ fontFamily: 'Outfit' }}>
+            {headline}
+          </p>
+          <p className="text-xs text-text-secondary mt-1">
+            {usdTotal != null
+              ? `Wallet plus vaults, quoted in ${unit === 'USD' ? 'US dollars' : 'testnet USDC'}.`
+              : `No market price on ${network}, so this is the native balance.`}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSwapOpen(true)}
@@ -92,136 +125,249 @@ export default function Overview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard label="Portfolio Value" value={portfolio} />
-        <KPICard
-          label="XLM Price"
-          value={priceQ.data != null ? `$${priceQ.data.toFixed(4)}` : 'n/a'}
-          hint={network === 'mainnet' ? 'Live quote from Stellar Broker (XLM to USDC).' : 'No market price on testnet.'}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Stat label="In wallet" value={usdTotal != null ? formatValue(usdTotal, unit) : 'n/a'} sub={`${held.length} assets`} />
+        <Stat
+          label="In vaults"
+          value={formatValue(portfolio.vaultValue, unit)}
+          sub={`${vaults.length} position${vaults.length === 1 ? '' : 's'}`}
+          tone="accent"
         />
-        <KPICard label="Assets Held" value={held.length.toString()} />
-        <KPICard label="Open Positions" value={positions.length.toString()} />
+        <Stat
+          label="XLM price"
+          value={price != null ? price.toFixed(4) : 'n/a'}
+          sub={
+            price != null
+              ? network === 'mainnet'
+                ? 'USDC, via Stellar Broker'
+                : 'USDC, via the Soroswap pool'
+              : 'no pool to quote from'
+          }
+        />
+        <Stat label="Operations" value={String(events.length)} sub="signed by this wallet" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-bg-card rounded-3xl p-5 card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-text">Balances</h3>
-            <LiveDataMeta
-              dataUpdatedAt={balancesQ.dataUpdatedAt}
-              isFetching={balancesQ.isFetching}
-              onRefresh={() => balancesQ.refetch()}
-            />
-          </div>
-          {balancesQ.isLoading ? (
-            <p className="text-sm text-text-muted">Loading balances...</p>
-          ) : balancesQ.isError ? (
-            <button onClick={() => balancesQ.refetch()} className="text-sm text-coral underline">
-              Could not load balances. Try again.
-            </button>
-          ) : held.length === 0 ? (
-            <p className="text-sm text-text-muted">No assets in this wallet on {network}.</p>
+        <Card className="lg:col-span-2">
+          <CardHead
+            title="Value over time"
+            note="Holdings replayed from the ledger and valued at today's price."
+            meta={
+              <Link to="/performance" className="text-xs text-primary hover:underline">
+                Performance
+              </Link>
+            }
+          />
+          {spark.length < 2 ? (
+            <Empty>Not enough history on {network} yet.</Empty>
           ) : (
-            <div className="divide-y divide-border">
-              {lines
-                .filter((l) => Number(l.balance) > 0)
-                .map((l) => (
-                  <div key={l.code + (l.issuer ?? '')} className="flex items-center justify-between py-2.5 text-sm">
-                    <span className="font-medium text-text">{l.code}</span>
-                    <div className="text-right">
-                      <div className="font-mono text-text">{formatBalance(l.balance)}</div>
-                      {l.usd != null && <div className="text-xs text-text-muted">{formatUSD(l.usd)}</div>}
-                    </div>
-                  </div>
-                ))}
-            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={spark} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="overviewFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={CHART_COLORS[0]} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={CHART_COLORS[0]} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  labelFormatter={(v) => new Date(Number(v)).toLocaleDateString('en-GB')}
+                  formatter={(v) => [formatValue(Number(v), unit), 'Value']}
+                />
+                <Area
+                  type="stepAfter"
+                  dataKey="value"
+                  stroke={CHART_COLORS[0]}
+                  strokeWidth={2}
+                  fill="url(#overviewFill)"
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           )}
-        </div>
+        </Card>
 
-        <div className="bg-bg-card rounded-3xl p-5 card">
-          <h3 className="text-sm font-semibold text-text mb-4">Token Allocation</h3>
+        <Card>
+          <CardHead
+            title="Allocation"
+            meta={
+              <Link to="/allocation" className="text-xs text-primary hover:underline">
+                Detail
+              </Link>
+            }
+          />
           {alloc.length === 0 ? (
-            <p className="text-sm text-text-muted">Nothing held yet.</p>
+            <Empty>Nothing held yet.</Empty>
           ) : (
-            <div className="flex items-center gap-6">
-              <ResponsiveContainer width={120} height={120}>
+            <>
+              <ResponsiveContainer width="100%" height={140}>
                 <PieChart>
-                  <Pie data={alloc} innerRadius={35} outerRadius={55} paddingAngle={3} dataKey="value" stroke="none">
-                    {alloc.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  <Pie
+                    data={alloc}
+                    innerRadius="60%"
+                    outerRadius="88%"
+                    paddingAngle={2}
+                    dataKey="value"
+                    stroke="#fff"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  >
+                    {alloc.map((d, i) => (
+                      <Cell key={d.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    formatter={(v, n) => [
+                      `${share({ name: String(n), value: Number(v) }, alloc).toFixed(1)}%`,
+                      String(n),
+                    ]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="space-y-2">
+              <ul className="space-y-1.5 mt-3">
                 {alloc.map((d, i) => (
-                  <div key={d.name} className="flex items-center gap-2 text-sm">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                  <li key={d.name} className="flex items-center gap-2 text-sm">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+                    />
                     <span className="text-text-secondary">{d.name}</span>
-                  </div>
+                    <span className="ml-auto text-text-muted text-xs tabular-nums">
+                      {share(d, alloc).toFixed(1)}%
+                    </span>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </>
           )}
-        </div>
+        </Card>
       </div>
 
-      <div className="bg-bg-card rounded-3xl p-5 card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-text">
-            <Hint label="Active Positions" text="Lobster vaults this wallet owns, read live from the on-chain factory." />
-          </h3>
-          <Link to="/positions" className="text-xs text-primary hover:underline">
-            View all
-          </Link>
-        </div>
-        {positionsQ.isLoading ? (
-          <p className="text-sm text-text-muted">Loading positions...</p>
-        ) : positionsQ.isError ? (
-          <button onClick={() => positionsQ.refetch()} className="text-sm text-coral underline">
-            Could not load positions. Try again.
-          </button>
-        ) : positions.length === 0 ? (
-          <p className="text-sm text-text-muted">
-            No open position on {network}. Lobster positions are created on the network where the factory is deployed.
-          </p>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHead
+            title="Balances"
+            meta={
+              <LiveDataMeta
+                dataUpdatedAt={balancesQ.dataUpdatedAt}
+                isFetching={balancesQ.isFetching}
+                onRefresh={() => balancesQ.refetch()}
+              />
+            }
+          />
+          {balancesQ.isLoading ? (
+            <p className="text-sm text-text-muted py-4">Loading balances...</p>
+          ) : balancesQ.isError ? (
+            <Failed what="Couldn't load balances." onRetry={() => balancesQ.refetch()} />
+          ) : held.length === 0 ? (
+            <Empty>No assets in this wallet on {network}.</Empty>
+          ) : (
+            <ul className="divide-y divide-border">
+              {held.map((l) => (
+                <li key={l.code + (l.issuer ?? '')} className="flex items-center justify-between py-2.5 text-sm">
+                  <span className="font-medium text-text">{l.code}</span>
+                  <div className="text-right">
+                    <div className="font-mono text-text tabular-nums">{formatBalance(l.balance)}</div>
+                    {l.usd != null && (
+                      <div className="text-xs text-text-muted">{formatValue(l.usd, unit)}</div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card>
+          <CardHead
+            title="Recent activity"
+            meta={
+              <Link to="/activity" className="text-xs text-primary hover:underline">
+                See all
+              </Link>
+            }
+          />
+          {activityQ.isLoading ? (
+            <p className="text-sm text-text-muted py-4">Reading the ledger...</p>
+          ) : recent.length === 0 ? (
+            <Empty>Nothing on this account yet.</Empty>
+          ) : (
+            <ul className="divide-y divide-border">
+              {recent.map((e) => (
+                <li key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  <div className="min-w-0">
+                    <div className="text-text">{KIND_LABEL[e.kind]}</div>
+                    {e.moves.length > 0 && (
+                      <div className="text-xs text-text-muted">
+                        {e.moves
+                          .map((m) => `${m.direction === 'in' ? '+' : '-'}${formatBalance(m.amount)} ${m.code}`)
+                          .join('  ')}
+                      </div>
+                    )}
+                  </div>
+                  <a
+                    href={stellarExplorer(network, 'tx', e.txHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-text-muted hover:text-primary shrink-0"
+                  >
+                    {new Date(e.at).toLocaleDateString('en-GB')}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+
+      <Card>
+        <CardHead
+          title="Positions"
+          note="Lobster vaults this wallet owns, with what each one currently holds."
+          meta={
+            <Link to="/positions" className="text-xs text-primary hover:underline">
+              Manage
+            </Link>
+          }
+        />
+        {vaultsQ.isLoading ? (
+          <p className="text-sm text-text-muted py-4">Reading vaults...</p>
+        ) : vaultsQ.isError ? (
+          <Failed what="Couldn't read the vaults." onRetry={() => vaultsQ.refetch()} />
+        ) : vaults.length === 0 ? (
+          <Empty>
+            No open position on {network}. Lobster positions are created on the network where the
+            factory is deployed.
+          </Empty>
         ) : (
-          <div className="divide-y divide-border">
-            {positions.map((p) => (
-              <div key={p.lobsterAddress} className="flex items-center justify-between py-2.5 text-sm">
-                <a
-                  href={stellarExplorer(network, 'contract', p.lobsterAddress)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-primary hover:underline"
-                >
-                  {shortenAddress(p.lobsterAddress)}
-                </a>
-                <span className="font-mono text-xs text-text-muted">
-                  {shortenAddress(p.token0)} / {shortenAddress(p.token1)}
-                </span>
-              </div>
-            ))}
-          </div>
+          <ul className="divide-y divide-border">
+            {vaults.map((v) => {
+              const { value, partial } = portfolio.vaults.find((x) => x.vault.address === v.address)!
+              return (
+                <li key={v.address} className="flex items-center justify-between gap-3 py-2.5 text-sm flex-wrap">
+                  <a
+                    href={stellarExplorer(network, 'contract', v.address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-primary hover:underline"
+                  >
+                    {shortenAddress(v.address)}
+                  </a>
+                  <span className="text-xs text-text-secondary flex items-center gap-1">
+                    <TokenRef id={v.token0} /> / <TokenRef id={v.token1} />
+                  </span>
+                  <span className="text-xs text-text-muted">{VENUE_LABEL[v.venue]}</span>
+                  <span className="text-sm text-text tabular-nums">
+                    {formatValue(value, unit)}
+                    {partial && <span className="text-text-muted"> +</span>}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
         )}
-      </div>
-    </div>
-  )
-}
-
-function KPICard({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div
-      className="rounded-3xl p-5"
-      style={{
-        background: 'linear-gradient(135deg, rgba(54, 147, 251, 0.12), rgba(255, 135, 112, 0.08))',
-        border: '1px solid rgba(13, 45, 76, 0.06)',
-      }}
-    >
-      <p className="text-text-secondary text-xs uppercase tracking-wider mb-1.5 font-medium">
-        {hint ? <Hint label={label} text={hint} align="center" /> : label}
-      </p>
-      <p className="text-xl font-bold" style={{ color: '#080a0c', fontFamily: 'Outfit' }}>{value}</p>
+      </Card>
     </div>
   )
 }

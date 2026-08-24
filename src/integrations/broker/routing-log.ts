@@ -1,5 +1,9 @@
 // per-browser trace of attempted routes, not an authoritative audit
 
+import { tokenLabel } from '../stellar/token-registry'
+import { isContractId } from '../stellar/strkey-guards'
+import { shortenAddress } from '../../utils/format'
+
 export const ROUTING_LOG_KEY = 'lob_routing_log'
 const MAX = 50
 
@@ -40,9 +44,19 @@ export function appendRoutingEntry(entry: RoutingEntry): RoutingEntry[] {
   return next
 }
 
-// asset ids arrive as 'xlm' or 'CODE-ISSUER'; both routing cards render the same
-// "amount CODE -> amount CODE" line off the code half.
+// Asset ids arrive in three shapes: 'xlm', 'CODE-ISSUER' on mainnet, and a bare
+// SAC contract id on testnet where the broker is skipped. Splitting on the dash
+// only works for the middle one - on testnet it printed the whole 56-character
+// contract id as if it were a ticker.
+export function assetCode(asset: string, network: RoutingEntry['network']): string {
+  if (!asset) return '?'
+  if (asset.includes('-')) return asset.split('-')[0].toUpperCase()
+  if (isContractId(asset)) return tokenLabel(asset, network) ?? shortenAddress(asset)
+  return asset.toUpperCase()
+}
+
 export function routeAssetsLabel(e: RoutingEntry): string {
-  const code = (asset: string) => asset.split('-')[0].toUpperCase()
-  return `${e.sellingAmount} ${code(e.sellingAsset)} -> ${e.buyingAmount ?? '?'} ${code(e.buyingAsset)}`
+  const sell = assetCode(e.sellingAsset, e.network)
+  const buy = assetCode(e.buyingAsset, e.network)
+  return `${e.sellingAmount} ${sell} -> ${e.buyingAmount ?? '?'} ${buy}`
 }

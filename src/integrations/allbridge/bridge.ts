@@ -57,8 +57,12 @@ export async function quoteBridge(
   )
   const gasFee = await sdk.getGasFeeOptions(sourceUsdc, stellarUsdc, messenger)
 
-  // ~2 min per allbridge, varies with evm congestion
-  const estimatedTimeSeconds = 120
+  // average source->stellar time the SDK publishes for this messenger, in ms.
+  // some corridors omit it, so keep null rather than inventing a figure. the
+  // /1000 also fails safe: a value already in seconds rounds below the floor.
+  const rawMs = sourceUsdc.transferTime?.[ChainSymbol.SRB]?.[messenger]
+  const secs = typeof rawMs === 'number' ? Math.round(rawMs / 1000) : NaN
+  const estimatedTimeSeconds = secs >= 10 && secs <= 86_400 ? secs : null
 
   // skip entries without a .float string instead of stringifying objects
   const narrowedGasFee: Record<string, string> = {}

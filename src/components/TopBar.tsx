@@ -3,7 +3,7 @@ import { Menu, LogOut } from 'lucide-react'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
-import { shortenAddress, cn } from '../utils/format'
+import { shortenAddress, cn, stellarExplorer } from '../utils/format'
 import lobsterIcon from '../assets/lobster-icon.png'
 
 interface Props {
@@ -62,12 +62,28 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-right">
               <p className="text-[10px] text-text-muted leading-none">{walletName}</p>
-              <p className="text-xs text-text font-mono">{shortenAddress(address, 5)}</p>
+              <a
+                href={stellarExplorer(network, 'account', address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={address}
+                className="text-xs text-text font-mono hover:text-primary hover:underline"
+              >
+                {shortenAddress(address, 5)}
+              </a>
             </div>
             {mode === 'dfns' && dfnsAddress && (
               <div className="hidden sm:block text-right border-l border-text-muted/20 pl-2 ml-1">
                 <p className="text-[10px] text-text-muted leading-none">DFNS</p>
-                <p className="text-xs text-text font-mono">{shortenAddress(dfnsAddress, 5)}</p>
+                <a
+                  href={stellarExplorer(network, 'account', dfnsAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={dfnsAddress}
+                  className="text-xs text-text font-mono hover:text-primary hover:underline"
+                >
+                  {shortenAddress(dfnsAddress, 5)}
+                </a>
               </div>
             )}
             <button

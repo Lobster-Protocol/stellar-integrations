@@ -35,7 +35,7 @@ export default function PendingApprovalsPanel() {
                 <span className="text-text-muted">{a.activityKind}</span>
               </div>
               {a.expirationDate && (
-                <div className="text-xs text-text-muted mb-2">expires {a.expirationDate}</div>
+                <div className="text-xs text-text-muted mb-2">expires {new Date(a.expirationDate).toLocaleString()}</div>
               )}
               <div className="flex gap-2 items-center">
                 <input

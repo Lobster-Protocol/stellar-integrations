@@ -36,7 +36,10 @@ export interface NavStats {
 export function computeNavStats(history: NavPoint[]): NavStats {
   const first = history[0]
   const latest = history[history.length - 1]
-  const change = first && latest && first.usd > 0 ? ((latest.usd - first.usd) / first.usd) * 100 : null
+  // one snapshot compares against itself and always reads 0%, which looks like a
+  // measured flat move rather than the absence of one
+  const change =
+    history.length >= 2 && first.usd > 0 ? ((latest.usd - first.usd) / first.usd) * 100 : null
 
   let drawdown: number | null = null
   if (history.length >= 2) {

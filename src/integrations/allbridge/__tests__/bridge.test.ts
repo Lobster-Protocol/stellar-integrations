@@ -1,13 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ChainSymbol, Messenger } from '@allbridge/bridge-core-sdk'
 
 import { quoteBridge, buildBridgeTx, buildBridgeApproveTx, getBridgeSpender, resolveUsdc } from '../bridge'
 import type { BridgeRequest } from '../types'
 
+// the source token carries the avg transfer time to stellar (SRB), in ms
+const TRANSFER_TIME = { [ChainSymbol.SRB]: { [Messenger.ALLBRIDGE]: 180_000 } }
 const TOKENS = {
-  ETH: { symbol: 'USDC', chainSymbol: 'ETH', bridgeAddress: '0xBRIDGE-ETH', decimals: 6 },
-  ARB: { symbol: 'USDC', chainSymbol: 'ARB', bridgeAddress: '0xBRIDGE-ARB', decimals: 6 },
-  BSC: { symbol: 'USDC', chainSymbol: 'BSC', bridgeAddress: '0xBRIDGE-BSC', decimals: 6 },
-  SRB: { symbol: 'USDC', chainSymbol: 'SRB', bridgeAddress: 'CBRIDGE-SRB', decimals: 7 },
+  ETH: { symbol: 'USDC', chainSymbol: 'ETH', bridgeAddress: '0xBRIDGE-ETH', decimals: 6, transferTime: TRANSFER_TIME },
+  ARB: { symbol: 'USDC', chainSymbol: 'ARB', bridgeAddress: '0xBRIDGE-ARB', decimals: 6, transferTime: TRANSFER_TIME },
+  BSC: { symbol: 'USDC', chainSymbol: 'BSC', bridgeAddress: '0xBRIDGE-BSC', decimals: 6, transferTime: TRANSFER_TIME },
+  SRB: { symbol: 'USDC', chainSymbol: 'SRB', bridgeAddress: 'CBRIDGE-SRB', decimals: 7, transferTime: {} },
 }
 
 type SendArgs = {
@@ -63,12 +66,20 @@ describe('resolveUsdc', () => {
 })
 
 describe('quoteBridge', () => {
-  it('returns the amounts plus the 2 minute eta estimate', async () => {
+  it('returns the amounts plus the live eta from the SDK transfer time', async () => {
     const q = await quoteBridge(sdk as never, VALID_REQ, false)
     expect(q.amountInFloat).toBe('50')
     expect(q.amountOutFloat).toBe('49.85')
-    expect(q.estimatedTimeSeconds).toBe(120)
+    expect(q.estimatedTimeSeconds).toBe(180)
     expect(q.trustlineRequired).toBe(false)
+  })
+
+  it('leaves the eta null when the SDK omits the transfer time', async () => {
+    sdk.tokensByChain.mockImplementation(async (chain: string) => [
+      { ...TOKENS[chain as keyof typeof TOKENS], transferTime: {} },
+    ])
+    const q = await quoteBridge(sdk as never, VALID_REQ, false)
+    expect(q.estimatedTimeSeconds).toBeNull()
   })
 
   it('flattens gas fee objects to their float string', async () => {

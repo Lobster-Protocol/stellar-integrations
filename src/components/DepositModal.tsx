@@ -34,7 +34,6 @@ const CHAINS: Array<{
   { id: 'stellar', label: 'Stellar (direct)', bridge: false },
   { id: 'ETH', label: 'Ethereum', bridge: true },
   { id: 'ARB', label: 'Arbitrum', bridge: true },
-  { id: 'BSC', label: 'BNB', bridge: true },
 ]
 
 const USDC_ASSET_CODE = 'USDC'
@@ -246,7 +245,7 @@ export default function DepositModal({ open, onClose }: Props) {
               </a>
             )}
             <p className="text-xs text-text-muted mt-3">
-              Funds arrive on Stellar in ~2 min via Allbridge Core. Watch your balance.
+              Funds arrive on Stellar once the source-chain tx confirms, via Allbridge Core. Watch your balance.
             </p>
             <button
               onClick={onClose}
@@ -367,7 +366,13 @@ export default function DepositModal({ open, onClose }: Props) {
                 <div className="flex justify-between">
                   <span>Est. time</span>
                   <span className="text-text">
-                    {quote ? `~${Math.round(quote.estimatedTimeSeconds / 60)} min` : '~2 min'}
+                    {quote
+                      ? quote.estimatedTimeSeconds != null
+                        ? `~${Math.round(quote.estimatedTimeSeconds / 60)} min`
+                        : 'varies'
+                      : amount
+                        ? '...'
+                        : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between">

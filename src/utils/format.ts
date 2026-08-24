@@ -29,11 +29,22 @@ export function formatRelativeAgo(input: { unixSec?: number; ms?: number }): str
   return `${Math.floor(diffSec / 3600)}h ago`
 }
 
-// compact USD: $1.2M / $3.4K / $5.67
+// compact magnitude: 1.2M / 3.4K / 5.67
+export function compactNumber(n: number): string {
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return n.toFixed(2)
+}
+
 export function formatUSD(n: number): string {
-  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`
-  if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}K`
-  return `$${n.toFixed(2)}`
+  return `$${compactNumber(n)}`
+}
+
+// A portfolio total is quoted in the network's USDC. On mainnet that is money
+// and takes a dollar sign; on testnet it is a test token, and printing "$" for
+// it would read as a dollar value the wallet does not hold.
+export function formatValue(n: number, unit: 'USD' | 'USDC'): string {
+  return unit === 'USD' ? formatUSD(n) : `${compactNumber(n)} USDC`
 }
 
 // horizon balances are 7-decimal fixed point; 2dp above 1, up to 7 below

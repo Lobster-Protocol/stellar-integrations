@@ -171,6 +171,21 @@ export const EVM_EXPLORER_TX: Record<EvmChain, (hash: string) => string> = {
   BSC: (h) => `https://bscscan.com/tx/${h}`,
 }
 
+export const EVM_CHAIN_NAME: Record<EvmChain, string> = {
+  ETH: 'Ethereum',
+  ARB: 'Arbitrum',
+  BSC: 'BNB Chain',
+}
+
+// USDC on BNB Chain is 18-decimal while the allowance scaling on the send path
+// assumes 6, so that corridor is refused. One list, so the bridge page and the
+// deposit modal cannot advertise different chains.
+export const EVM_BRIDGEABLE: Record<EvmChain, boolean> = {
+  ETH: true,
+  ARB: true,
+  BSC: false,
+}
+
 // Public RPC endpoints we fall back to when the user did not set their own
 // VITE_*_RPC. Allbridge's SDK needs one per EVM chain plus Stellar.
 export const EVM_RPC_FALLBACK: Record<EvmChain, string> = {

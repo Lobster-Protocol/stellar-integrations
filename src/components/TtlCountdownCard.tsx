@@ -1,6 +1,7 @@
+import { xdr } from '@stellar/stellar-sdk'
+
 import { useNetwork } from '../contexts/NetworkContext'
 import { useTtlStatus, type TtlLevel } from '../integrations/ttl/hooks'
-import { shortenAddress } from '../utils/format'
 import LiveDataMeta from './LiveDataMeta'
 
 const LEVEL_STYLE: Record<TtlLevel, { dot: string; text: string; label: string }> = {
@@ -8,6 +9,23 @@ const LEVEL_STYLE: Record<TtlLevel, { dot: string; text: string; label: string }
   warn: { dot: 'bg-amber-400', text: 'text-amber-400', label: 'extend soon' },
   crit: { dot: 'bg-coral', text: 'text-coral', label: 'extend now' },
   archived: { dot: 'bg-zinc-500', text: 'text-text-muted', label: 'archived' },
+}
+
+// the feed returns each watched entry as a base64 ledger key. decode the key
+// type so a reader sees "Contract instance" instead of opaque base64.
+function keyLabel(keyXdr: string): string {
+  try {
+    const k = xdr.LedgerKey.fromXDR(keyXdr, 'base64')
+    if (k.switch().name === 'contractCode') return 'Contract code'
+    if (k.switch().name === 'contractData') {
+      const cd = k.contractData()
+      if (cd.key().switch().name === 'scvLedgerKeyContractInstance') return 'Contract instance'
+      return cd.durability().name === 'persistent' ? 'Persistent storage' : 'Temporary storage'
+    }
+    return 'Storage entry'
+  } catch {
+    return 'Storage entry'
+  }
 }
 
 // no thresholds here; the bands that drive the colour are decided server-side
@@ -28,7 +46,7 @@ export default function TtlCountdownCard() {
 
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
-      <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
+      <div className="flex items-baseline justify-between mb-1 gap-3 flex-wrap">
         <h3 className="text-sm font-semibold text-text">Contract storage TTL</h3>
         <div className="flex items-center gap-3">
           <span className="text-[11px] text-text-muted">live | Soroban RPC | {network}</span>
@@ -39,6 +57,9 @@ export default function TtlCountdownCard() {
           />
         </div>
       </div>
+      <p className="text-xs text-text-secondary mb-3">
+        Time left before each of the factory's on-chain storage entries expires. Once archived, reads fail until the entry is restored.
+      </p>
 
       {ttl.isLoading ? (
         <p className="text-xs text-text-muted">Loading...</p>
@@ -59,12 +80,12 @@ export default function TtlCountdownCard() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`h-2 w-2 rounded-full shrink-0 ${style.dot}`} />
-                  <span className="font-mono text-[10px] text-text-muted truncate">{shortenAddress(s.key, 10, 6)}</span>
+                  <span className="text-text truncate" title={s.key}>{keyLabel(s.key)}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`text-[10px] ${style.text}`}>{style.label}</span>
                   <span className="text-text font-medium tabular-nums">
-                    {formatRemaining(s.remainingSeconds)}
+                    {formatRemaining(s.remainingSeconds)} left
                   </span>
                 </div>
               </li>

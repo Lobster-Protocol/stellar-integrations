@@ -28,19 +28,19 @@ describe('RoutingEngineCard', () => {
     }
   })
 
-  it('shows broker live on mainnet and no partner-key text when the key is unset', () => {
+  it('shows the broker enabled on mainnet with no partner-key jargon when the key is unset', () => {
     localStorage.setItem('lob_network', 'mainnet')
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', '')
     wrap(<RoutingEngineCard />)
-    expect(screen.getByText(/best execution live/i)).toBeInTheDocument()
+    expect(screen.getByText(/enabled/i)).toBeInTheDocument()
     expect(screen.queryByText(/partner key/i)).not.toBeInTheDocument()
   })
 
-  it('still reads live on mainnet when the partner key is set', () => {
+  it('still reads enabled on mainnet when the partner key is set', () => {
     localStorage.setItem('lob_network', 'mainnet')
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', 'test-key')
     wrap(<RoutingEngineCard />)
-    expect(screen.getByText(/best execution live/i)).toBeInTheDocument()
+    expect(screen.getByText(/enabled/i)).toBeInTheDocument()
   })
 
   it('shows the broker as mainnet only when on testnet', () => {
