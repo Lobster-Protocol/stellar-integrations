@@ -10,14 +10,8 @@ import {
 import { CONTRACTS, type Network } from '../../config/contracts'
 import { decimalToStroops } from '../stellar/amount'
 
-// ops the broker is allowed to push as part of a swap. a plain payment is not
-// here: a real swap settles via path payments or Soroban router calls, never a
-// bare payment to an arbitrary destination, and that would let a hostile broker
-// xdr drain the trader. the DEX offer ops are out too: they carry their outflow
-// in amount/buyAmount, which the spend cap below does not sum, so a hostile
-// manageSellOffer could sell the whole balance at a dictated price and stay
-// under the cap. the broker routes through path payments and the router
-// contract; it has no need to push raw offers.
+// a swap settles via path payments or the router contract; a bare payment or a
+// DEX offer is out because its outflow escapes the spend cap below.
 const ALLOWED_OP_TYPES = new Set([
   'pathPaymentStrictReceive',
   'pathPaymentStrictSend',
@@ -62,13 +56,8 @@ function invokedContractId(op: Operation.InvokeHostFunction): string | null {
   }
 }
 
-// throws if the xdr the broker is asking us to sign carries an op that
-// does not belong to a swap, sources an account other than the trader,
-// or invokes a contract that is not on the network's allowlist. checks
-// run before the wallet kit ever sees the envelope.
-// maxSpendStroops, when set, caps the total outflow of this envelope against the
-// amount the trader agreed to in the quote. without it a hostile broker xdr that
-// passed the op/source/contract checks could still send far more than quoted.
+// runs before the wallet kit ever sees the envelope. maxSpendStroops, when set,
+// caps the total outflow against the amount the trader agreed to in the quote.
 export function inspectBrokerTx(
   xdr: string,
   traderAccount: string,
@@ -89,10 +78,8 @@ export function inspectBrokerTx(
     )
   }
 
-  // a bloated fee is xlm leaving the trader that the spend cap never sees, since
-  // the cap sums path-payment legs and not the fee. bound it directly. on a
-  // fee-bump the outer account pays the bump, so bound that too when the trader
-  // is funding it.
+  // bound the fee directly; on a fee-bump the trader also pays the outer leg, so
+  // bound that when it funds the bump.
   if (inner.fee !== undefined && BigInt(inner.fee) > MAX_FEE_STROOPS) {
     throw new BrokerTxRejected(`tx fee ${inner.fee} stroops is over the ${MAX_FEE_STROOPS} ceiling`)
   }

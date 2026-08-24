@@ -1,6 +1,3 @@
-// Trustline check plus changeTrust build/submit for the Allbridge USDC
-// destination. All Horizon-side; the bridge SDK covers none of this.
-
 import { Asset, Operation, TransactionBuilder, BASE_FEE, NotFoundError } from '@stellar/stellar-sdk'
 import { getHorizonServer } from '../horizon/client'
 import { networkPassphrase } from '../lobster/client'
@@ -30,9 +27,7 @@ export async function hasTrustline(
   }
 }
 
-// Unsigned changeTrust XDR that opens a USDC trustline on the destination.
-// The wallet signs this before any bridged USDC can land, otherwise the
-// funds bounce. Allbridge is mainnet-only, so this only runs on mainnet.
+// without this trustline any bridged USDC bounces back to the source chain.
 export async function buildTrustlineXdr(
   accountId: string,
   assetCode: string,

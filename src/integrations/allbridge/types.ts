@@ -1,5 +1,3 @@
-// ui-side types for allbridge. the sdk handles the wire format.
-
 import { z } from 'zod'
 
 import { isAccountId } from '../stellar/strkey-guards'

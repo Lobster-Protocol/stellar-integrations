@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-// the 21 dfns webhook event kinds we may receive for a stellar wallet.
+// dfns webhook event kinds for a stellar wallet.
 // docs-legacy.dfns.co/d/api-docs/webhooks/webhook-events
 export const DfnsEventKindSchema = z.enum([
   'wallet.created',

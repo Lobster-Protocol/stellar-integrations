@@ -1,7 +1,6 @@
 import { getDfnsClient } from './client'
 
-// per-policy seuils sit in env so they can change without redeploy.
-// values are USD-equivalents at policy-create time per MiCA Article 68.
+// per-policy thresholds sit in env so they can change without a redeploy.
 function num(name: string, fallback: number): number {
   const v = process.env[name]
   if (!v) return fallback

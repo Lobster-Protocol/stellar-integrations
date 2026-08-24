@@ -33,8 +33,7 @@ async function getTransactionStatus(
   return DfnsSignatureSchema.parse(res)
 }
 
-// poll until the signature reaches a terminal state. throws on timeout.
-// confirmed != broadcasted: policies can reject between submit and chain.
+// confirmed != broadcasted: a policy can reject between submit and chain.
 export async function waitForSignatureTerminal(
   walletId: string,
   txId: string,
@@ -48,9 +47,8 @@ export async function waitForSignatureTerminal(
   throw new Error(`dfns signature ${txId} did not reach terminal status within ${POLL_TIMEOUT_MS}ms`)
 }
 
-// reconstruct a signed envelope from the hex string dfns returns. the
-// caller submits this through their own horizon/soroban-rpc, useful for
-// soroban tx submission which dfns does not handle natively.
+// for a soroban tx, which dfns signs but does not broadcast natively: the caller
+// submits this rebuilt envelope through their own rpc.
 export function envelopeFromSignedData(
   signedDataHex: string,
   networkPassphrase: string,

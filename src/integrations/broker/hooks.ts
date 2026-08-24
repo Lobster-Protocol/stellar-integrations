@@ -75,7 +75,7 @@ export function useSoroswapConfirm() {
         networkPassphrase: args.networkPassphrase,
         address: args.account,
       })
-      // the swap runs on the wallet kit, which always returns a signed envelope.
+      // a soroban swap always comes back as a signed envelope to submit.
       if (!signedTxXdr) throw new Error('swap signer did not return a signed transaction')
       const hash = await submitSignedXdr(args.network, signedTxXdr)
       const final = await waitForTx(args.network, hash)

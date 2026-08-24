@@ -59,11 +59,9 @@ export async function getAccountBalances(
     throw err
   }
 
-  // Horizon only lists classic balances. testnet USDC is a soroban-only asset,
-  // so after an XLM->USDC swap the received USDC is invisible here. read it
-  // from the SAC and append it. the read is null-safe: a failure leaves the
-  // classic list exactly as it was. skip when a classic USDC already shows
-  // (mainnet, where the SAC just wraps the same trustline balance).
+  // Horizon lists only classic balances, so testnet's soroban-only USDC is
+  // invisible after a swap. append it from the SAC (null-safe), unless a classic
+  // USDC already shows (mainnet wraps the same trustline balance).
   const usdcSac = CONTRACTS[network].tokens.usdcSac
   if (usdcSac && !classic.some((b) => b.code === 'USDC')) {
     const raw = await getSorobanTokenBalance(network, usdcSac, accountId)
