@@ -5,7 +5,7 @@ import { useCustody } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { buildTreasuryPaymentTx, buildTreasuryTrustlineTx } from '../integrations/dfns/demo-tx'
 import { networkPassphrase } from '../integrations/lobster/client'
-import { stellarExplorer } from '../utils/format'
+import { stellarExplorer, cn } from '../utils/format'
 
 type State =
   | { phase: 'idle' }
@@ -20,7 +20,7 @@ const RESTING_PHASES: ReadonlyArray<State['phase']> = ['idle', 'confirmed', 'fai
 export default function SignDemoTx() {
   const { address, walletName } = useWallet()
   const { network } = useNetwork()
-  const { signer, dfnsAddress } = useCustody()
+  const { signer, dfnsAddress, setMode } = useCustody()
 
   const buildPing = useBuildPingTx(network)
   const submit = useSubmitAndWait(network)
@@ -104,6 +104,29 @@ export default function SignDemoTx() {
           ? 'The DFNS-held treasury signs through the MPC nodes: a small self-payment, or a trustline for the Lobster token. Both are checked against the approval policy and broadcast by DFNS. No value leaves the account; the hash below is the on-chain artifact.'
           : 'Pings the Factory via your wallet. Builds the XDR, asks the wallet to sign, submits to Stellar RPC and waits for inclusion. Costs only the resource fee.'}
       </p>
+
+      <div className="flex items-center gap-1 mb-4 bg-bg rounded-full p-0.5 text-xs w-fit">
+        <button
+          type="button"
+          onClick={() => setMode('wallet-kit')}
+          className={cn(
+            'px-3 py-1 rounded-full font-medium transition-all',
+            !isDfns ? 'bg-bg-card text-primary shadow-sm' : 'text-text-muted',
+          )}
+        >
+          Wallet kit
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('dfns')}
+          className={cn(
+            'px-3 py-1 rounded-full font-medium transition-all',
+            isDfns ? 'bg-bg-card text-primary shadow-sm' : 'text-text-muted',
+          )}
+        >
+          DFNS MPC
+        </button>
+      </div>
 
       {!source ? (
         <p className="text-xs text-text-muted">
