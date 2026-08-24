@@ -7,7 +7,7 @@ import { useActivity, KIND_LABEL, type ActivityKind } from '../integrations/hori
 import { CHART_COLORS, CHART_MUTED, TOOLTIP_STYLE, AXIS_TICK } from '../utils/recharts'
 import ActivityFeed from '../components/ActivityFeed'
 import RoutingFeedCard from '../components/RoutingFeedCard'
-import { Card, CardHead, Disclosure, Empty, Stat } from '../components/ui'
+import { Card, CardHead, ChartFrame, Disclosure, Empty, Stat } from '../components/ui'
 
 // kinds that represent something the owner did, as opposed to the rent and
 // read calls a soroban account accumulates on its own
@@ -81,6 +81,11 @@ export default function Activity() {
             {address ? 'Nothing recorded on this account yet.' : 'Connect a wallet to see its history.'}
           </Empty>
         ) : (
+          <ChartFrame
+            label="Count of operations by type"
+            columns={['Type', 'Operations']}
+            rows={byKind.map((d) => [d.label, d.count])}
+          >
           <ResponsiveContainer width="100%" height={Math.max(120, byKind.length * 30)}>
             <BarChart data={byKind} layout="vertical" margin={{ left: 8, right: 24 }}>
               <XAxis type="number" tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
@@ -107,6 +112,7 @@ export default function Activity() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          </ChartFrame>
         )}
       </Card>
 

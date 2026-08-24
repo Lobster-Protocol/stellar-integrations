@@ -17,7 +17,7 @@ import { CHART_COLORS, TOOLTIP_STYLE } from '../utils/recharts'
 import lobsterIcon from '../assets/lobster-icon.png'
 import LiveDataMeta from '../components/LiveDataMeta'
 import TokenRef from '../components/TokenRef'
-import { Card, CardHead, Empty, Failed, Stat } from '../components/ui'
+import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
 
 // lazy: the Allbridge SDK in DepositModal drags in viem/walletconnect/solana
 const DepositModal = lazy(() => import('../components/DepositModal'))
@@ -150,8 +150,8 @@ export default function Overview() {
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHead
-            title="Value over time"
-            note="Holdings replayed from the ledger and valued at today's price."
+            title="Wallet balance over time"
+            note="What the wallet itself held, replayed from the ledger. Swaps and vault deposits leave this line."
             meta={
               <Link to="/performance" className="text-xs text-primary hover:underline">
                 Performance
@@ -161,6 +161,14 @@ export default function Overview() {
           {spark.length < 2 ? (
             <Empty>Not enough history on {network} yet.</Empty>
           ) : (
+            <ChartFrame
+              label={`Wallet balance over time, quoted in ${unit}`}
+              columns={['Date', `Value (${unit})`]}
+              rows={spark.map((r) => [
+                new Date(r.ts).toLocaleDateString('en-GB'),
+                formatValue(r.value, unit),
+              ])}
+            >
             <ResponsiveContainer width="100%" height={160}>
               <AreaChart data={spark} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
                 <defs>
@@ -184,6 +192,7 @@ export default function Overview() {
                 />
               </AreaChart>
             </ResponsiveContainer>
+            </ChartFrame>
           )}
         </Card>
 
@@ -200,6 +209,11 @@ export default function Overview() {
             <Empty>Nothing held yet.</Empty>
           ) : (
             <>
+              <ChartFrame
+                label="Share of portfolio value per token"
+                columns={['Token', 'Share']}
+                rows={alloc.map((d) => [d.name, `${share(d, alloc).toFixed(1)}%`])}
+              >
               <ResponsiveContainer width="100%" height={140}>
                 <PieChart>
                   <Pie
@@ -225,6 +239,7 @@ export default function Overview() {
                   />
                 </PieChart>
               </ResponsiveContainer>
+              </ChartFrame>
               <ul className="space-y-1.5 mt-3">
                 {alloc.map((d, i) => (
                   <li key={d.name} className="flex items-center gap-2 text-sm">

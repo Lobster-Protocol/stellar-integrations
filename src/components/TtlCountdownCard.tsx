@@ -1,14 +1,17 @@
 import { xdr } from '@stellar/stellar-sdk'
+import { AlertTriangle, Archive, CheckCircle2, OctagonAlert, type LucideIcon } from 'lucide-react'
 
 import { useNetwork } from '../contexts/NetworkContext'
 import { useTtlStatus, type TtlLevel } from '../integrations/ttl/hooks'
 import LiveDataMeta from './LiveDataMeta'
 
-const LEVEL_STYLE: Record<TtlLevel, { dot: string; text: string; label: string }> = {
-  ok: { dot: 'bg-emerald-400', text: 'text-emerald-400', label: 'healthy' },
-  warn: { dot: 'bg-amber-400', text: 'text-amber-400', label: 'extend soon' },
-  crit: { dot: 'bg-coral', text: 'text-coral', label: 'extend now' },
-  archived: { dot: 'bg-zinc-500', text: 'text-text-muted', label: 'archived' },
+// Amber and red read as the same hue under deuteranopia whatever lightness we
+// pick, so the level is carried by the icon and the word as well as the colour.
+const LEVEL_STYLE: Record<TtlLevel, { text: string; label: string; icon: LucideIcon }> = {
+  ok: { text: 'text-ok', label: 'healthy', icon: CheckCircle2 },
+  warn: { text: 'text-warn', label: 'extend soon', icon: AlertTriangle },
+  crit: { text: 'text-crit', label: 'extend now', icon: OctagonAlert },
+  archived: { text: 'text-text-muted', label: 'archived', icon: Archive },
 }
 
 // the feed returns each watched entry as a base64 ledger key. decode the key
@@ -73,13 +76,14 @@ export default function TtlCountdownCard() {
         <ul className="space-y-1.5">
           {ttl.data.statuses.map((s) => {
             const style = LEVEL_STYLE[s.level]
+            const Icon = style.icon
             return (
               <li
                 key={s.key}
                 className="px-3 py-2 rounded-xl bg-bg flex items-center justify-between gap-3 text-xs"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className={`h-2 w-2 rounded-full shrink-0 ${style.dot}`} />
+                  <Icon size={13} className={`shrink-0 ${style.text}`} aria-hidden />
                   <span className="text-text truncate" title={s.key}>{keyLabel(s.key)}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

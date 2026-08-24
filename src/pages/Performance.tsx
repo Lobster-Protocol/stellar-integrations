@@ -26,7 +26,7 @@ import { useRecordNav, readNavHistory, computeNavStats } from '../integrations/p
 import { CONTRACTS } from '../config/contracts'
 import { compactNumber, formatBalance, formatValue } from '../utils/format'
 import { AXIS_TICK, CHART_COLORS, GRID_STROKE, TOOLTIP_STYLE } from '../utils/recharts'
-import { Card, CardHead, Empty, Failed, Stat } from '../components/ui'
+import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
 
 const day = (ts: number) =>
   new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -37,6 +37,31 @@ interface Row {
   label: string
   value: number
   [asset: string]: number | string
+}
+
+function FlowRow({
+  label,
+  amount,
+  sign,
+  note,
+}: {
+  label: string
+  amount: string
+  sign: '+' | '-'
+  note?: string
+}) {
+  const zero = Number(amount) === 0
+  return (
+    <li className="flex items-center justify-between gap-3 py-2.5">
+      <span className="min-w-0">
+        <span className="text-text-secondary">{label}</span>
+        {note && !zero && <span className="block text-[11px] text-text-muted">{note}</span>}
+      </span>
+      <span className={`tabular-nums shrink-0 ${zero ? 'text-text-muted' : 'text-text'}`}>
+        {zero ? '0.00' : `${sign}${formatBalance(amount)}`} XLM
+      </span>
+    </li>
+  )
 }
 
 export default function Performance() {
@@ -84,6 +109,7 @@ export default function Performance() {
     })
   }, [history, priceByKey, assetKeys])
 
+  const flows = history?.flows
   const recorded = readNavHistory(network, address)
   const { change, drawdown } = computeNavStats(recorded)
 
@@ -97,10 +123,6 @@ export default function Performance() {
       </div>
     )
   }
-
-  const first = series[0]
-  const last = series.at(-1)
-  const netChange = first && last ? last.value - first.value : null
 
   return (
     <div className="space-y-6">
@@ -119,10 +141,10 @@ export default function Performance() {
           sub={unit === 'USDC' ? 'quoted in testnet USDC' : undefined}
         />
         <Stat
-          label="Net change in holdings"
-          value={netChange != null ? `${netChange >= 0 ? '+' : ''}${formatValue(netChange, unit)}` : 'n/a'}
-          tone={netChange == null ? 'plain' : netChange >= 0 ? 'up' : 'down'}
-          sub="deposits and spending, not market moves"
+          label="Paid in fees"
+          value={flows ? `${formatBalance(flows.fees)} XLM` : 'n/a'}
+          sub="network fees and storage rent"
+          tone={flows && Number(flows.fees) > 0 ? 'down' : 'plain'}
         />
         <Stat
           label="Market move"
@@ -140,9 +162,9 @@ export default function Performance() {
 
       <Card>
         <CardHead
-          title="Portfolio value over time"
-          note={`Every holding valued at today's price, so the shape shows what entered and left the wallet rather than what the market did. ${
-            unit === 'USDC' ? 'Quoted in testnet USDC.' : ''
+          title="Wallet balance over time"
+          note={`What the wallet itself held, replayed from the ledger and valued at today's price. A swap or a vault deposit leaves this line even though the value did not leave you, which is what the breakdown below accounts for.${
+            unit === 'USDC' ? ' Quoted in testnet USDC.' : ''
           }`}
           meta={
             <Link to="/activity" className="text-xs text-primary hover:underline">
@@ -158,6 +180,14 @@ export default function Performance() {
           <Empty>Not enough history on {network} yet. One move is enough to start the curve.</Empty>
         ) : (
           <>
+            <ChartFrame
+              label={`Wallet balance over time, quoted in ${unit}`}
+              columns={['Date', `Value (${unit})`]}
+              rows={series.map((r) => [
+                new Date(r.ts).toLocaleString('en-GB'),
+                formatValue(r.value, unit),
+              ])}
+            >
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={series} margin={{ left: 4, right: 8, top: 4 }}>
                 <defs>
@@ -200,6 +230,7 @@ export default function Performance() {
                 />
               </AreaChart>
             </ResponsiveContainer>
+            </ChartFrame>
             {!history?.complete && (
               <p className="text-[11px] text-text-muted mt-2">
                 This account has more history than one read can cover, so the curve starts partway
@@ -209,6 +240,41 @@ export default function Performance() {
           </>
         )}
       </Card>
+
+      {flows && (
+        <Card>
+          <CardHead
+            title="Where the XLM went"
+            note="Every stroop this account has ever received, accounted for. The lines add up to the balance Horizon reports right now."
+          />
+          <ul className="divide-y divide-border text-sm">
+            <FlowRow label="Received from outside" amount={flows.receivedOutside} sign="+" />
+            <FlowRow label="Sent to someone else" amount={flows.sentOutside} sign="-" />
+            <FlowRow
+              label="Moved into swaps and vaults"
+              amount={flows.intoContracts}
+              sign="-"
+              note="converted or parked, not spent"
+            />
+            <FlowRow label="Returned by a contract" amount={flows.fromContracts} sign="+" />
+            <FlowRow
+              label="Network fees and storage rent"
+              amount={flows.fees}
+              sign="-"
+              note="the only XLM actually consumed"
+            />
+            <li className="flex items-center justify-between gap-3 py-2.5 font-medium">
+              <span className="text-text">Held in the wallet now</span>
+              <span className="text-text tabular-nums">{formatBalance(flows.heldNow)} XLM</span>
+            </li>
+          </ul>
+          <p className="text-xs text-text-secondary mt-3">
+            {flows.reconciles
+              ? 'These figures match the live balance to the stroop.'
+              : 'This account has more history than one read covers, so the lines below do not close.'}
+          </p>
+        </Card>
+      )}
 
       <Card>
         <CardHead
@@ -230,6 +296,14 @@ export default function Performance() {
                     {formatBalance(String(history?.points.at(-1)?.held[k] ?? 0))}
                   </span>
                 </div>
+                <ChartFrame
+                  label={`${keyCode(k)} held over time`}
+                  columns={['Date', keyCode(k)]}
+                  rows={series.map((r) => [
+                    new Date(r.ts).toLocaleDateString('en-GB'),
+                    formatBalance(String(r[k] ?? 0)),
+                  ])}
+                >
                 <ResponsiveContainer width="100%" height={130}>
                   <LineChart data={series} margin={{ left: 0, right: 6, top: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
@@ -267,6 +341,7 @@ export default function Performance() {
                     />
                   </LineChart>
                 </ResponsiveContainer>
+                </ChartFrame>
               </div>
             ))}
           </div>

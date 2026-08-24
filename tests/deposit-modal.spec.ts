@@ -14,7 +14,9 @@ test.describe('DepositModal - Allbridge wiring', () => {
     await expect(page.getByRole('button', { name: /Stellar/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /Ethereum/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /Arbitrum/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /BNB/ })).toBeVisible()
+    // BNB USDC is 18-decimal and the allowance scaling assumes 6, so the
+    // registry marks it unbridgeable and the picker must not offer it
+    await expect(page.getByRole('button', { name: /BNB/ })).toHaveCount(0)
   })
 
   test('selecting an EVM source shows the Allbridge Core panel', async ({ page }) => {

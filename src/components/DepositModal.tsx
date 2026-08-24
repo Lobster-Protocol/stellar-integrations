@@ -11,7 +11,14 @@ import {
   useBridgeApprove,
   useBridgeSend,
 } from '../integrations/allbridge/hooks'
-import { CONTRACTS, EVM_USDC, EVM_EXPLORER_TX } from '../config/contracts'
+import {
+  CONTRACTS,
+  EVM_USDC,
+  EVM_EXPLORER_TX,
+  EVM_BRIDGEABLE,
+  EVM_CHAIN_NAME,
+  type EvmChain,
+} from '../config/contracts'
 import {
   BridgeRequestSchema,
   type BridgeRequest,
@@ -26,14 +33,13 @@ interface Props {
   onClose: () => void
 }
 
-const CHAINS: Array<{
-  id: 'stellar' | 'ETH' | 'ARB' | 'BSC'
-  label: string
-  bridge: boolean
-}> = [
+// the bridgeable set comes from the registry, so this list and the Bridges page
+// can never advertise different chains
+const CHAINS: Array<{ id: 'stellar' | EvmChain; label: string; bridge: boolean }> = [
   { id: 'stellar', label: 'Stellar (direct)', bridge: false },
-  { id: 'ETH', label: 'Ethereum', bridge: true },
-  { id: 'ARB', label: 'Arbitrum', bridge: true },
+  ...(Object.keys(EVM_USDC) as EvmChain[])
+    .filter((c) => EVM_BRIDGEABLE[c])
+    .map((c) => ({ id: c, label: EVM_CHAIN_NAME[c], bridge: true })),
 ]
 
 const USDC_ASSET_CODE = 'USDC'
@@ -139,9 +145,17 @@ export default function DepositModal({ open, onClose }: Props) {
       return
     }
 
-    // BNB usdc is 18-decimal, our allowance scaling assumes 6
-    if (evmChain === 'BSC') {
-      setStep({ phase: 'failed', msg: 'Use Ethereum or Arbitrum. BNB USDC is 18-decimal and not yet wired.' })
+    // a chain the registry marks unbridgeable can still be reached through a
+    // stale selection, so refuse it at the send rather than only in the picker
+    if (!EVM_BRIDGEABLE[evmChain]) {
+      const usable = (Object.keys(EVM_USDC) as EvmChain[])
+        .filter((c) => EVM_BRIDGEABLE[c])
+        .map((c) => EVM_CHAIN_NAME[c])
+        .join(' or ')
+      setStep({
+        phase: 'failed',
+        msg: `${EVM_CHAIN_NAME[evmChain]} USDC is not 6-decimal, so the allowance scaling would be wrong. Use ${usable}.`,
+      })
       return
     }
 

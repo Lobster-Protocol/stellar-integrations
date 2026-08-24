@@ -14,7 +14,7 @@ import LiveDataMeta from '../components/LiveDataMeta'
 import RoutingEngineCard from '../components/RoutingEngineCard'
 import TtlCountdownCard from '../components/TtlCountdownCard'
 import TokenRef from '../components/TokenRef'
-import { Card, Disclosure, Empty, Failed, Stat } from '../components/ui'
+import { Card, Empty, Failed, Stat } from '../components/ui'
 
 export default function Positions() {
   const { address } = useWallet()
@@ -191,52 +191,55 @@ export default function Positions() {
         </div>
       )}
 
+      <Card>
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <h3 className="text-sm font-semibold text-text">Factory contract</h3>
+          <div className="flex items-center gap-3">
+            <LiveDataMeta
+              dataUpdatedAt={factoryInfo.dataUpdatedAt}
+              isFetching={factoryInfo.isFetching}
+              onRefresh={() => factoryInfo.refetch()}
+            />
+            {factoryExplorer && (
+              <a
+                href={factoryExplorer}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-primary hover:underline"
+              >
+                Stellar Expert
+              </a>
+            )}
+          </div>
+        </div>
+        {!factoryId ? (
+          <p className="text-xs text-text-secondary">Not deployed on {network} yet.</p>
+        ) : factoryInfo.isLoading ? (
+          <p className="text-xs text-text-muted">Reading from Soroban RPC...</p>
+        ) : factoryInfo.isError ? (
+          <Failed what="Couldn't read the factory." onRetry={() => factoryInfo.refetch()} />
+        ) : factoryInfo.data ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Stat
+              label="Contract ID"
+              value={shortenAddress(factoryId, 8)}
+              mono
+              href={factoryExplorer ?? undefined}
+            />
+            <Stat
+              label="Admin"
+              value={shortenAddress(factoryInfo.data.admin, 8)}
+              mono
+              href={stellarExplorer(network, 'account', factoryInfo.data.admin)}
+            />
+            <Stat label="Pools created" value={String(factoryInfo.data.poolCount)} />
+          </div>
+        ) : null}
+      </Card>
+
       <TtlCountdownCard />
 
-      <Card>
-        <Disclosure summary="Factory contract and routing">
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-                <h4 className="text-xs font-semibold text-text">Factory</h4>
-                {factoryExplorer && (
-                  <a
-                    href={factoryExplorer}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] text-primary hover:underline"
-                  >
-                    Stellar Expert
-                  </a>
-                )}
-              </div>
-              {factoryInfo.isLoading ? (
-                <p className="text-xs text-text-muted">Reading from Soroban RPC...</p>
-              ) : factoryInfo.isError ? (
-                <Failed what="Couldn't read the factory." onRetry={() => factoryInfo.refetch()} />
-              ) : factoryInfo.data ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Stat
-                    label="Contract"
-                    value={shortenAddress(factoryId, 8)}
-                    mono
-                    href={factoryExplorer ?? undefined}
-                  />
-                  <Stat
-                    label="Admin"
-                    value={shortenAddress(factoryInfo.data.admin, 8)}
-                    mono
-                    href={stellarExplorer(network, 'account', factoryInfo.data.admin)}
-                  />
-                  <Stat label="Pools created" value={String(factoryInfo.data.poolCount)} />
-                </div>
-              ) : null}
-            </div>
-
-            <RoutingEngineCard bare />
-          </div>
-        </Disclosure>
-      </Card>
+      <RoutingEngineCard />
 
       <SignDemoTx />
     </div>

@@ -25,24 +25,24 @@ test('performance page loads', async ({ page }) => {
   await page.goto(BASE + '/performance', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Performance' })).toBeVisible()
   // no wallet connected, so it asks to connect rather than showing numbers
-  await expect(page.getByText('Connect a wallet to track its performance.')).toBeVisible()
+  await expect(page.getByText(/Connect a wallet to rebuild its history/i)).toBeVisible()
 })
 
 test('activity page loads', async ({ page }) => {
   await page.goto(BASE + '/activity', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
 })
 
 test('allocation page loads', async ({ page }) => {
   await page.goto(BASE + '/allocation', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: 'Token Allocation' })).toBeVisible()
-  await expect(page.getByText('Connect a wallet to see its allocation.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Allocation', exact: true })).toBeVisible()
+  await expect(page.getByText(/Connect a wallet to see how its value is spread/i)).toBeVisible()
 })
 
 test('bridges page loads with the Allbridge provider', async ({ page }) => {
   await page.goto(BASE + '/bridges', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByText('Cross-Chain Bridges')).toBeVisible()
-  await expect(page.getByText('Allbridge Core')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Bridges', exact: true })).toBeVisible()
+  await expect(page.getByText('Allbridge Core').first()).toBeVisible()
 })
 
 test('navigation between all pages works', async ({ page }) => {
@@ -51,11 +51,11 @@ test('navigation between all pages works', async ({ page }) => {
   for (const [link, expectedText] of [
     ['Performance', 'Performance'],
     ['Activity', 'Activity'],
-    ['Allocation', 'Token Allocation'],
-    ['Bridges', 'Cross-Chain Bridges'],
+    ['Allocation', 'Allocation'],
+    ['Bridges', 'Allbridge Core'],
     ['Overview', 'Connect your wallet'],
   ] as const) {
-    await page.getByRole('link', { name: link }).click()
+    await page.getByRole('link', { name: link, exact: true }).click()
     await page.waitForTimeout(500)
     await expect(page.getByText(expectedText).first()).toBeVisible()
   }

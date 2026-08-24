@@ -7,7 +7,7 @@ test.describe('Positions page - live on-chain data', () => {
     await gotoWithWallet(page, '/')
     await page.getByRole('link', { name: 'Positions', exact: true }).click()
     await expect(page).toHaveURL(/\/positions$/)
-    await expect(page.getByText('Lobster Positions')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
   })
 
   test('shows the Factory card with a Stellar Expert link on testnet', async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe('Positions page - live on-chain data', () => {
   test('without a connected wallet, the page prompts to connect', async ({ page }) => {
     await page.goto('/positions', { waitUntil: 'domcontentloaded' })
     await expect(
-      page.getByText(/Connect a wallet to see your positions/i),
+      page.getByText(/Connect a wallet to see the vaults it owns/i),
     ).toBeVisible()
   })
 })

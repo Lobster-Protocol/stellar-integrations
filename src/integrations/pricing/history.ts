@@ -34,6 +34,31 @@ export interface BalanceHistory {
   // false when we hit MAX_PAGES and the oldest moves are missing
   complete: boolean
   reachesAccountCreation: boolean
+  flows: XlmFlows
+}
+
+// Where every stroop of XLM went. The wallet curve only ever falls, which reads
+// like a loss until you can see that most of what left was swapped or parked in
+// a vault rather than spent. All five lines are exact, and they must add up to
+// the balance Horizon reports right now.
+export interface XlmFlows {
+  receivedOutside: string
+  sentOutside: string
+  intoContracts: string
+  fromContracts: string
+  fees: string
+  heldNow: string
+  reconciles: boolean
+}
+
+const ZERO_FLOWS: XlmFlows = {
+  receivedOutside: '0.0000000',
+  sentOutside: '0.0000000',
+  intoContracts: '0.0000000',
+  fromContracts: '0.0000000',
+  fees: '0.0000000',
+  heldNow: '0.0000000',
+  reconciles: false,
 }
 
 interface Delta {
@@ -51,10 +76,21 @@ interface Delta {
 async function collectDeltas(
   network: Network,
   account: string,
-): Promise<{ deltas: Delta[]; complete: boolean; created: boolean }> {
+): Promise<{ deltas: Delta[]; complete: boolean; created: boolean; flows: XlmFlows }> {
   const server = getHorizonServer(network)
   const deltas: Delta[] = []
   let created = false
+
+  // An effect id is "<operation id>-<index>", so effects raised by the same
+  // operation share a prefix. When a contract effect sits next to our own
+  // credit or debit, the value moved to or from a contract (a swap, a vault
+  // deposit) rather than to somebody else.
+  const contractOps = new Set<string>()
+  let receivedOutside = 0n
+  let sentOutside = 0n
+  let intoContracts = 0n
+  let fromContracts = 0n
+  const nativeMoves: Array<{ op: string; amount: bigint; credited: boolean; created: boolean }> = []
 
   let effPages = 0
   let effCursor = ''
@@ -65,15 +101,21 @@ async function collectDeltas(
     const page = await call.call()
     for (const e of page.records) {
       const ts = new Date(e.created_at).getTime()
+      const op = e.id.split('-')[0]
+      if (e.type.startsWith('contract_')) contractOps.add(op)
       if (e.type === 'account_credited' || e.type === 'account_debited') {
         const key =
           e.asset_type === 'native'
             ? 'XLM'
             : assetKey(e.asset_code ?? 'unknown', e.asset_issuer)
         const raw = decimalToStroops(e.amount)
-        deltas.push({ ts, key, amount: e.type === 'account_credited' ? raw : -raw })
+        const credited = e.type === 'account_credited'
+        deltas.push({ ts, key, amount: credited ? raw : -raw })
+        if (key === 'XLM') nativeMoves.push({ op, amount: raw, credited, created: false })
       } else if (e.type === 'account_created') {
-        deltas.push({ ts, key: 'XLM', amount: decimalToStroops(e.starting_balance) })
+        const raw = decimalToStroops(e.starting_balance)
+        deltas.push({ ts, key: 'XLM', amount: raw })
+        nativeMoves.push({ op, amount: raw, credited: true, created: true })
         created = true
       }
     }
@@ -85,6 +127,7 @@ async function collectDeltas(
     }
   }
 
+  let feeTotal = 0n
   let txPages = 0
   let txCursor = ''
   let txComplete = false
@@ -100,6 +143,7 @@ async function collectDeltas(
         key: 'XLM',
         amount: -BigInt(t.fee_charged),
       })
+      feeTotal += BigInt(t.fee_charged)
     }
     txPages += 1
     txCursor = page.records.at(-1)?.paging_token ?? ''
@@ -109,7 +153,30 @@ async function collectDeltas(
     }
   }
 
-  return { deltas, complete: effComplete && txComplete, created }
+  for (const m of nativeMoves) {
+    const internal = !m.created && contractOps.has(m.op)
+    if (m.credited) {
+      if (internal) fromContracts += m.amount
+      else receivedOutside += m.amount
+    } else if (internal) {
+      intoContracts += m.amount
+    } else {
+      sentOutside += m.amount
+    }
+  }
+
+  const heldNow = receivedOutside - sentOutside - intoContracts + fromContracts - feeTotal
+  const flows: XlmFlows = {
+    receivedOutside: stroopsToDecimal(receivedOutside),
+    sentOutside: stroopsToDecimal(sentOutside),
+    intoContracts: stroopsToDecimal(intoContracts),
+    fromContracts: stroopsToDecimal(fromContracts),
+    fees: stroopsToDecimal(feeTotal),
+    heldNow: stroopsToDecimal(heldNow),
+    reconciles: false,
+  }
+
+  return { deltas, complete: effComplete && txComplete, created, flows }
 }
 
 export async function getBalanceHistory(
@@ -120,13 +187,20 @@ export async function getBalanceHistory(
   try {
     balances = await getAccountBalances(network, account)
   } catch (err) {
-    if (err instanceof NotFoundError) return { points: [], complete: true, reachesAccountCreation: false }
+    if (err instanceof NotFoundError)
+      return { points: [], complete: true, reachesAccountCreation: false, flows: ZERO_FLOWS }
     throw err
   }
-  if (balances.length === 0) return { points: [], complete: true, reachesAccountCreation: false }
+  if (balances.length === 0)
+    return { points: [], complete: true, reachesAccountCreation: false, flows: ZERO_FLOWS }
 
-  const { deltas, complete, created } = await collectDeltas(network, account)
-  if (deltas.length === 0) return { points: [], complete, reachesAccountCreation: created }
+  const { deltas, complete, created, flows } = await collectDeltas(network, account)
+
+  // the five lines only mean anything if they land on the live balance
+  const liveNative = balances.find((b) => b.isNative)?.balance ?? '0'
+  flows.reconciles = complete && flows.heldNow === stroopsToDecimal(decimalToStroops(liveNative))
+
+  if (deltas.length === 0) return { points: [], complete, reachesAccountCreation: created, flows }
 
   // Horizon only reports classic balances, so a soroban-only token (testnet
   // USDC) has no effect trail to walk. Track the assets we can actually replay.
@@ -157,7 +231,7 @@ export async function getBalanceHistory(
   }
 
   points.reverse()
-  return { points, complete, reachesAccountCreation: created }
+  return { points, complete, reachesAccountCreation: created, flows }
 }
 
 export function useBalanceHistory(network: Network, account: string | null) {

@@ -19,6 +19,14 @@
   --color-green: #10b981;
   --color-red: #ef4444;
   --color-yellow: #eab308;
+  /* Status scale, good to critical. Darker than the plain green/yellow above
+     because those sit at 2.5:1 and 1.9:1 on a white card, which is fine behind
+     a filled shape and unreadable as text. Amber and red still collapse under
+     deuteranopia at any lightness, so every status here also carries an icon
+     and a word. */
+  --color-ok: #0f9b6c;
+  --color-warn: #8a6d00;
+  --color-crit: #cf4327;
   --color-soroswap: #3b82f6;
   --color-phoenix: #f97316;
   --color-aquarius: #9333ea;

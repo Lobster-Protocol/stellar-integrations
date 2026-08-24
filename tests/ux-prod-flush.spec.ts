@@ -61,9 +61,10 @@ test.describe('prod meta and a11y assertions', () => {
     await page.goto(`${BASE}/bridges`)
     // No wallet connected -> live branch shows "Connect wallet"
     await expect(page.getByText('Connect wallet').first()).toBeVisible({ timeout: 15_000 })
-    // And the old hardcoded text-green Active in Trustline cell is gone
-    const trustlineCell = page.locator('p:has-text("Trustline Status")').locator('..')
-    await expect(trustlineCell).not.toContainText(/^Active$/)
+    // and the trustline tile reports the live branch, never a hardcoded Active
+    const trustline = page.getByText(/^Trustline$/).locator('..')
+    await expect(trustline).toContainText(/Connect wallet/i)
+    await expect(trustline).not.toContainText(/^Active$/)
   })
 
   test('Mobile drawer toggle button has aria-expanded + aria-controls', async ({ page }) => {

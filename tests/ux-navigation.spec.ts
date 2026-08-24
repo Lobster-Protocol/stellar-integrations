@@ -22,7 +22,7 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Activity$/ }).click()
     await expect(page).toHaveURL(/\/activity$/)
-    await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
   })
 
   test('Allocation navigates to /allocation', async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: 'Positions', exact: true }).click()
     await expect(page).toHaveURL(/\/positions$/)
-    await expect(page.getByText('Lobster Positions')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
   })
 
   test('junk URL redirects to the custom /404 page', async ({ page }) => {

@@ -62,25 +62,24 @@ test.describe('Live Factory reads match the /positions DOM', () => {
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
     // Use the h3 heading to anchor on the Factory card only (the page
     // subtitle also contains the words "Factory contract").
-    const card = page.getByRole('heading', { name: 'Factory contract' }).locator('..').locator('..')
-    await expect(card).toContainText(shorten(truth.admin, 8))
+    const stat = page.getByText(/^Admin$/i).locator('..')
+    await expect(stat).toContainText(shorten(truth.admin, 8))
   })
 
   test('Factory pool_count from on-chain matches the rendered Pools created', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
     // The "Pools created" label sits above the stat value in the same Stat block.
-    const label = page.getByText(/^Pools created$/i)
-    const value = label.locator('..').locator('div').nth(1)
-    await expect(value).toHaveText(String(truth.poolCount))
+    // the whole stat block, so the assertion survives markup changes
+    const stat = page.getByText(/^Pools created$/i).locator('..')
+    await expect(stat).toContainText(String(truth.poolCount))
   })
 
   test('Contract ID stat renders the testnet Factory address', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByText(/Contract ID/i)).toBeVisible({ timeout: 30_000 })
-    const label = page.getByText(/^Contract ID$/i)
-    const value = label.locator('..').locator('div').nth(1)
-    await expect(value).toHaveText(shorten(FACTORY, 8))
+    const stat = page.getByText(/^Contract ID$/i).locator('..')
+    await expect(stat).toContainText(shorten(FACTORY, 8))
   })
 
   test('Stellar Expert link points to the Factory on the right network', async ({ page }) => {
@@ -103,10 +102,12 @@ test.describe('Live Factory reads match the /positions DOM', () => {
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 
     const callsBefore = sorobanCalls
-    // First Refresh button is on the Factory card (rendered before the
-    // Your-positions card which only mounts after wallet connect).
-    const refreshBtn = page.getByRole('button', { name: /Refresh/i }).first()
-    await refreshBtn.click()
+    // scope to the Factory card: the TTL card below it also has a refresh, and
+    // that one reads the monitoring relay rather than Soroban
+    const factoryCard = page
+      .getByRole('heading', { name: 'Factory contract' })
+      .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
+    await factoryCard.getByRole('button', { name: /Refresh/i }).click()
 
     // Give react-query a tick to dispatch the refetch.
     await page.waitForTimeout(800)
@@ -119,7 +120,10 @@ test.describe('Live Factory reads match the /positions DOM', () => {
 
     // Capture the first age label, wait, capture again. The interval
     // re-renders once a second; "just now" should turn into "Xs ago" within 3 s.
-    const ageNode = page.getByText(/^updated /).first()
+    const factoryCard = page
+      .getByRole('heading', { name: 'Factory contract' })
+      .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
+    const ageNode = factoryCard.getByText(/^updated /).first()
     const first = await ageNode.textContent()
     await page.waitForTimeout(2200)
     const second = await ageNode.textContent()

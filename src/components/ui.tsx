@@ -106,6 +106,75 @@ export function Stat({
   )
 }
 
+// A chart is a picture to a screen reader and to anyone who cannot separate the
+// colours, so every one of ours is named and can be read as numbers instead.
+// `rows` is what the chart plots; pass it and the reader gets a table toggle.
+export function ChartFrame({
+  label,
+  columns,
+  rows,
+  children,
+}: {
+  label: string
+  columns?: string[]
+  rows?: Array<Array<string | number>>
+  children: ReactNode
+}) {
+  const [asTable, setAsTable] = useState(false)
+  const canTable = !!rows && rows.length > 0 && !!columns
+
+  return (
+    <figure className="m-0">
+      {canTable && (
+        <div className="flex justify-end -mt-1 mb-1">
+          <button
+            type="button"
+            onClick={() => setAsTable(!asTable)}
+            className="text-[11px] text-text-muted hover:text-primary"
+          >
+            {asTable ? 'Show chart' : 'Show numbers'}
+          </button>
+        </div>
+      )}
+
+      {asTable ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <caption className="sr-only">{label}</caption>
+            <thead>
+              <tr className="text-text-muted text-left">
+                {columns!.map((c, i) => (
+                  <th key={c} scope="col" className={`font-normal pb-1 ${i > 0 ? 'text-right' : ''}`}>
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows!.map((r, ri) => (
+                <tr key={ri}>
+                  {r.map((cell, ci) => (
+                    <td
+                      key={ci}
+                      className={`py-1.5 ${ci > 0 ? 'text-right tabular-nums text-text' : 'text-text-secondary'}`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div role="img" aria-label={label}>
+          {children}
+        </div>
+      )}
+    </figure>
+  )
+}
+
 // Drill-down: the page reads simply until someone opens this.
 export function Disclosure({
   summary,

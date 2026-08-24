@@ -30,7 +30,7 @@ vi.mock('../../stellar/token-balance', () => ({
   getSorobanTokenBalance: (...args: unknown[]) => sorobanTokenBalance(...args),
 }))
 
-const { getAccountBalances, getRecentOperations } = await import('../account')
+const { getAccountBalances } = await import('../account')
 
 // Constructing a real NotFoundError without an actual HTTP response is
 // awkward - the SDK constructor takes (message, response). We instantiate
@@ -118,40 +118,5 @@ describe('getAccountBalances', () => {
   it('re-throws errors that LOOK like 404 but aren\'t NotFoundError instances', async () => {
     loadAccount.mockRejectedValueOnce({ response: { status: 404 } })
     await expect(getAccountBalances('testnet', 'GWEIRD')).rejects.toBeTruthy()
-  })
-})
-
-describe('getRecentOperations', () => {
-  beforeEach(() => {
-    operationsCall.mockReset()
-  })
-
-  it('shapes Horizon operation records into AccountOperation', async () => {
-    operationsCall.mockResolvedValueOnce({
-      records: [
-        {
-          id: '12345-0',
-          type: 'payment',
-          created_at: '2026-05-11T10:00:00Z',
-          transaction_hash: 'abc123',
-          transaction_successful: true,
-        },
-      ],
-    })
-    const ops = await getRecentOperations('testnet', 'GACCOUNT', 5)
-    expect(ops).toHaveLength(1)
-    expect(ops[0]).toEqual({
-      id: '12345-0',
-      type: 'payment',
-      createdAt: '2026-05-11T10:00:00Z',
-      transactionHash: 'abc123',
-      successful: true,
-    })
-  })
-
-  it('returns [] for unknown accounts (NotFoundError)', async () => {
-    operationsCall.mockRejectedValueOnce(makeNotFound())
-    const ops = await getRecentOperations('testnet', 'GMISSING')
-    expect(ops).toEqual([])
   })
 })

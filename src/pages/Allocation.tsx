@@ -17,16 +17,21 @@ import { formatBalance, formatValue, shortenAddress } from '../utils/format'
 import { CHART_COLORS, TOOLTIP_STYLE } from '../utils/recharts'
 import LiveDataMeta from '../components/LiveDataMeta'
 import TokenRef from '../components/TokenRef'
-import { Card, CardHead, Empty, Failed, Stat } from '../components/ui'
+import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
 
 interface Slice {
   name: string
   value: number
 }
 
-function Donut({ data, height = 200 }: { data: Slice[]; height?: number }) {
+function Donut({ data, height = 200, label }: { data: Slice[]; height?: number; label: string }) {
   const total = data.reduce((s, d) => s + d.value, 0)
   return (
+    <ChartFrame
+      label={label}
+      columns={['Slice', 'Share']}
+      rows={data.map((d) => [d.name, `${((d.value / total) * 100).toFixed(1)}%`])}
+    >
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
         <Pie
@@ -52,6 +57,7 @@ function Donut({ data, height = 200 }: { data: Slice[]; height?: number }) {
         />
       </PieChart>
     </ResponsiveContainer>
+    </ChartFrame>
   )
 }
 
@@ -164,7 +170,7 @@ export default function Allocation() {
             <Empty>Nothing here can be priced on {network} yet.</Empty>
           ) : (
             <div className="grid grid-cols-[1fr_1fr] items-center gap-4">
-              <Donut data={byAsset} />
+              <Donut data={byAsset} label="Share of portfolio value per token" />
               <Legend data={byAsset} />
             </div>
           )}
@@ -179,7 +185,7 @@ export default function Allocation() {
             <Empty>No priced value to place yet.</Empty>
           ) : (
             <div className="grid grid-cols-[1fr_1fr] items-center gap-4">
-              <Donut data={byVenue} />
+              <Donut data={byVenue} label="Share of portfolio value per venue" />
               <Legend data={byVenue} />
             </div>
           )}
