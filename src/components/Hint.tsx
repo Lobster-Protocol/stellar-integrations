@@ -1,10 +1,7 @@
 import { useId, useState } from 'react'
 
-// wraps a label and shows a one-line plain-language note on hover or focus, so
-// the dashboard reads without a finance glossary open in another tab. no portal
-// and no dep - the bubble is just absolutely positioned above the label.
-// align 'center' keeps it from running off the right edge inside the metric
-// grids; 'start' opens rightward where the row has room.
+// hover/focus tooltip, no portal or dep: the bubble is absolutely positioned
+// above the label. align 'center' keeps it off the right edge in the metric grids.
 export default function Hint({
   label,
   text,

@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NotFoundError } from '@stellar/stellar-sdk'
 import { CONTRACTS } from '../../../config/contracts'
 
-// Mock the client module so getAccountBalances doesn't hit the real
-// Horizon endpoint. We give it a fake `loadAccount` and `operations`
-// implementation that returns the data we want to assert on.
+// Mock the client module so getAccountBalances doesn't hit the real Horizon endpoint.
 
 const loadAccount = vi.fn()
 const operationsCall = vi.fn()

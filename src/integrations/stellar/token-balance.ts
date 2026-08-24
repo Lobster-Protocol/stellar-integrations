@@ -11,11 +11,9 @@ import type { Network } from '../../config/contracts'
 import { getSorobanServer, networkPassphrase } from '../lobster/client'
 import { isContractId, isAccountId } from './strkey-guards'
 
-// reads one account's balance of a soroban token through the SAC balance()
-// view. testnet USDC is a soroban-only asset, so Horizon never lists it - this
-// is how a user sees the USDC they just swapped into. returns null on any
-// failure (never held it, bad id, rpc down) so it can sit beside the classic
-// balance list without ever breaking it.
+// reads a soroban token balance via the SAC balance() view. returns null on any
+// failure (never held it, bad id, rpc down) so callers can append it without
+// ever breaking the classic balance list.
 export async function getSorobanTokenBalance(
   network: Network,
   tokenId: string,

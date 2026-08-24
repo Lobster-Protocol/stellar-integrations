@@ -46,8 +46,6 @@ export function allocationWeights(lines: ValuedBalance[]): { name: string; value
 // the broker runs on mainnet, and testnet assets have no market price. Returns
 // null when there is no price, so a caller shows native units rather than a made
 // up dollar figure. USDC is treated as one dollar.
-const PRICE_STALE_MS = 30_000
-
 export async function fetchXlmUsd(network: Network): Promise<number | null> {
   if (network !== 'mainnet') return null
   const issuer = CONTRACTS.mainnet.tokens.usdcIssuer
@@ -62,6 +60,8 @@ export async function fetchXlmUsd(network: Network): Promise<number | null> {
   const price = Number(quote.estimatedBuyingAmount)
   return Number.isFinite(price) && price > 0 ? price : null
 }
+
+const PRICE_STALE_MS = 30_000
 
 export function useXlmUsd(network: Network) {
   return useQuery<number | null>({

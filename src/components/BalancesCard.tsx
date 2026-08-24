@@ -11,8 +11,7 @@ export default function BalancesCard() {
 
   if (!address) return null
 
-  // pick the body once, then render the card chrome around it. Nested
-  // ternaries were getting hard to scan when we added the empty branch.
+  // pick the body once, then render the card chrome around it.
   let body
   if (balances.isLoading) {
     body = <p className="text-xs text-text-muted">Loading balances...</p>

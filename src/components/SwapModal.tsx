@@ -49,8 +49,8 @@ export default function SwapModal({ open, onClose }: Props) {
 
   const tokens = useMemo(() => swapTokensFor(network), [network])
   // resolve the picked codes against the current network's token set. switching
-  // network can drop a token (an EURC pick on testnet, then mainnet which only
-  // lists XLM/USDC), so fall back rather than render an empty select.
+  // network can drop a token (an XTAR pick on testnet, gone on mainnet), so fall
+  // back rather than render an empty select.
   const selling = tokens.find((t) => t.code === sellingCode) ?? tokens[0]
   const buying =
     tokens.find((t) => t.code === buyingCode) ??
@@ -99,10 +99,8 @@ export default function SwapModal({ open, onClose }: Props) {
   async function handleConfirmFallback() {
     if (!canConfirmFallback || !soroswap || !params) return
     try {
-      // the swap spends the connected wallet's own funds and is a Soroban
-      // invokeHostFunction, which the DFNS relay guard refuses (it only signs
-      // treasury-sourced payment ops). so it always signs with the wallet kit,
-      // regardless of the custody-mode toggle.
+      // a swap spends the connected wallet's own funds, so it always signs with
+      // the wallet kit, never the dfns relay (which only signs treasury ops).
       const hash = await confirmFallback.mutateAsync({
         account: address!,
         network,

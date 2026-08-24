@@ -54,9 +54,6 @@ export function validateSoroswapQuote(c: SoroswapQuoteCheck): ValidationResult {
   if (c.buyingStroops <= 0n) return { ok: false, reason: 'output amount is zero or negative' }
   if (c.sellingStroops <= 0n) return { ok: false, reason: 'input amount is zero or negative' }
   if (c.sellingAsset === c.buyingAsset) return { ok: false, reason: 'selling and buying assets identical' }
-  // backstop only: reject a value so large it can only be garbage or overflow,
-  // not a real (even very cheap) token. real price sanity is the drift check
-  // below when a reference is present, plus minAmountOut on chain.
   if (c.buyingStroops > c.sellingStroops * SOROSWAP_MAX_RATIO) {
     return { ok: false, reason: 'buying / selling ratio implausibly high, likely a broken quote' }
   }

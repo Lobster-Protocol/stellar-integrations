@@ -31,8 +31,8 @@ export interface NavStats {
   drawdown: number | null // deepest peak-to-trough drop, percent (<= 0)
 }
 
-// portfolio stats over the recorded series: total move since tracking began and
-// the worst peak-to-trough drawdown. both null until there are enough points.
+// portfolio stats over the recorded series: total move since the first point,
+// and the worst peak-to-trough drawdown (which needs at least two points).
 export function computeNavStats(history: NavPoint[]): NavStats {
   const first = history[0]
   const latest = history[history.length - 1]

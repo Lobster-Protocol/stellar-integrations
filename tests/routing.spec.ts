@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { BASE } from './fixtures'
 
-// the routing engine card states the broker-first / soroswap-fallback policy and
-// shows live broker + fallback availability off config. no wallet needed, it
-// reads the network config and the local routing log.
+// no wallet needed: the card reads the network config and the local routing log.
 test.describe('Routing engine card', () => {
   test('renders the broker-first routing policy on Positions', async ({ page }) => {
     await page.goto(BASE + '/positions', { waitUntil: 'domcontentloaded' })

@@ -1,7 +1,6 @@
-// digital token identifier (iso 24165) codes. registration is free for
-// regulatory reporting at registry.dtif.org. email secretariat@dtif.org
-// once for api credentials, then look up the codes via the registry ui
-// and paste them in here. until then mica-export falls back to 'UNKNOWN'.
+// digital token identifier (iso 24165) codes for the mica export. empty until the
+// codes are registered, so lookups return null and the export reports UNKNOWN
+// rather than a wrong code.
 
 export interface DtiKey {
   asset?: string
@@ -10,9 +9,7 @@ export interface DtiKey {
 }
 
 const TABLE: Array<{ key: DtiKey; dti: string }> = [
-  // register the real 9-char alphanumeric codes here once obtained. key by
-  // asset, by issuer for classic assets, or by contractId for soroban tokens.
-  // empty until then so the export does not lie to legal.
+  // real 9-char codes go here once obtained; key by asset, issuer, or contractId.
 ]
 
 function keysMatch(a: DtiKey, b: DtiKey): boolean {
