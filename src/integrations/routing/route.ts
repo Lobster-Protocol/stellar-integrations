@@ -1,9 +1,8 @@
-// broker first, soroswap direct router when the broker has no path
-
 import { quoteBroker } from '../broker/quote'
 import { quoteSoroswapDirect } from '../broker/soroswap-fallback'
 import { validateBrokerQuote, validateSoroswapQuote } from '../broker/validation'
 import { brokerAssetToSac, toStroops } from '../broker/asset-mapping'
+import { stroopsToDecimal } from '../stellar/amount'
 import { type Network } from '../../config/contracts'
 import type { BrokerQuoteParams, BrokerQuoteResult } from '../broker/types'
 import { getRoutingHealth } from './health'
@@ -76,6 +75,7 @@ export async function routeSwap(
   return {
     source: 'soroswap-fallback',
     broker,
-    soroswap: { buyingStroops, buyingAmount: (Number(buyingStroops) / 10_000_000).toString() },
+    // exact 7-decimal string, trailing zeros trimmed for the estimate line
+    soroswap: { buyingStroops, buyingAmount: stroopsToDecimal(buyingStroops).replace(/\.?0+$/, '') },
   }
 }

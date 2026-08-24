@@ -68,9 +68,14 @@ export async function sendAllbridgeEvmTx(
   try {
     const hash = await sendTransaction(wagmiConfig, args)
     const receipt = await waitForTransactionReceipt(wagmiConfig, { hash })
+    // the receipt resolves for reverted txs too, so a reverted approve/bridge
+    // would otherwise report success on a real-funds path.
+    if (receipt.status !== 'success') {
+      throw new EvmTxSubmitError(`EVM tx reverted on ${chainSymbol}: ${hash}`)
+    }
     return { hash, blockNumber: receipt.blockNumber }
   } catch (err) {
-    if (err instanceof EvmTxValidationError) throw err
+    if (err instanceof EvmTxValidationError || err instanceof EvmTxSubmitError) throw err
     const msg = err instanceof Error ? err.message : String(err)
     throw new EvmTxSubmitError(`EVM tx failed on ${chainSymbol}: ${msg}`, { cause: err })
   }

@@ -10,6 +10,7 @@ import {
 
 import { CONTRACTS } from '../../config/contracts'
 import { getSorobanServer, networkPassphrase } from './client'
+import { assertAccountId } from '../stellar/strkey-guards'
 import type { FactoryInfo, LobsterPool, Network } from './types'
 
 const POLL_INTERVAL_MS = 3_000
@@ -45,8 +46,8 @@ async function readContract<T = unknown>(
     throw new Error(`Factory.${method} simulation failed: ${sim.error}`)
   }
   if (rpc.Api.isSimulationRestore(sim)) {
-    // factory storage is archived. raise the same restore error the write
-    // helpers do so the ui shows the ttl-expired state.
+    // a read can't run the restore itself, so surface the archived state as an
+    // error for the ui to catch (the write path returns the preamble instead).
     throw new RestoreRequiredError(sim.restorePreamble)
   }
   if (!sim.result) {
@@ -80,6 +81,7 @@ export async function getFactoryInfo(
 }
 
 export async function getPoolsByUser(network: Network, user: string): Promise<LobsterPool[]> {
+  assertAccountId(user)
   const server = getSorobanServer(network)
   // freshly imported wallets on mainnet 404 on getAccount before
   // simulation. no pools to read in that case; return [] instead of
