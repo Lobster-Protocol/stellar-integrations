@@ -7,6 +7,7 @@ import { buildTreasuryPaymentTx, buildTreasuryTrustlineTx } from '../integration
 import { pollSignatureStatus } from '../integrations/dfns/relay'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer, cn } from '../utils/format'
+import { InfoTip } from './InfoTip'
 
 type State =
   | { phase: 'idle' }
@@ -50,7 +51,7 @@ export default function SignDemoTx() {
       } else {
         const ping = await buildPing.mutateAsync(source)
         if (ping.restorePreamble) {
-          setState({ phase: 'failed', errorMsg: 'Factory storage is archived. A restore tx is needed before this ping.' })
+          setState({ phase: 'failed', errorMsg: 'The Factory storage has expired on-chain and needs restoring before this call.' })
           return
         }
         xdr = ping.xdr
@@ -98,27 +99,39 @@ export default function SignDemoTx() {
 
   const busy = !RESTING_PHASES.includes(state.phase)
   const pingLabel: Record<State['phase'], string> = {
-    idle: `Ping Factory with ${walletName ?? 'wallet'}`,
-    building: 'Building tx...',
+    idle: `Call the Factory with ${walletName ?? 'wallet'}`,
+    building: 'Building...',
     signing: 'Awaiting signature...',
-    submitting: 'Submitting & polling...',
+    submitting: 'Submitting...',
     pending: 'Awaiting approval...',
-    confirmed: 'Ping again',
+    confirmed: 'Call again',
     failed: 'Retry',
   }
   const phaseText: Partial<Record<State['phase'], string>> = {
-    building: 'Building tx...',
-    signing: 'MPC signing...',
-    submitting: 'Submitting & polling...',
+    building: 'Building...',
+    signing: 'Signing (MPC)...',
+    submitting: 'Submitting...',
   }
 
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
       <h3 className="text-sm font-semibold text-text mb-1">Sign a testnet transaction</h3>
       <p className="text-xs text-text-secondary mb-4">
-        {isDfns
-          ? 'The DFNS-held treasury signs through the MPC nodes: a small self-payment, or a trustline for the Lobster token. Both are checked against the approval policy and broadcast by DFNS. No value leaves the account; the hash below is the on-chain artifact.'
-          : 'Pings the Factory via your wallet. Builds the XDR, asks the wallet to sign, submits to Stellar RPC and waits for inclusion. Costs only the resource fee.'}
+        {isDfns ? (
+          <>
+            The treasury wallet is held by DFNS and signed by its MPC network{' '}
+            <InfoTip term="mpc" label="MPC signing" />. Try a small payment to itself, or turning on
+            a trustline <InfoTip term="trustline" label="a trustline" /> for the Lobster token. Each
+            one is checked against the approval rules, then sent on-chain by DFNS. Nothing leaves the
+            account; the hash below is the proof it happened.
+          </>
+        ) : (
+          <>
+            Sends a harmless test call to the Lobster Factory <InfoTip term="factory" label="the Factory" />{' '}
+            through your wallet: it builds the transaction, your wallet signs it, and it goes to the
+            Stellar network. It only costs the network fee.
+          </>
+        )}
       </p>
 
       <div className="flex items-center gap-1 mb-4 bg-bg rounded-full p-0.5 text-xs w-fit">
@@ -130,7 +143,7 @@ export default function SignDemoTx() {
             !isDfns ? 'bg-bg-card text-primary shadow-sm' : 'text-text-muted',
           )}
         >
-          Wallet kit
+          Browser wallet
         </button>
         <button
           type="button"
@@ -152,7 +165,7 @@ export default function SignDemoTx() {
         </p>
       ) : network === 'mainnet' ? (
         <p className="text-xs text-coral">
-          The Factory isn't on mainnet yet. Switch to testnet to send a real tx.
+          The Factory isn't on mainnet yet. Switch to testnet to send a real transaction.
         </p>
       ) : (
         <div className="space-y-3">
@@ -163,14 +176,14 @@ export default function SignDemoTx() {
                 disabled={busy}
                 className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Sign a treasury payment with DFNS MPC
+                Sign a treasury payment (DFNS MPC)
               </button>
               <button
                 onClick={() => handleAction('trustline')}
                 disabled={busy}
                 className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Open a LOBS trustline with DFNS MPC
+                Turn on a LOBS trustline (DFNS MPC)
               </button>
             </div>
           ) : (
@@ -189,8 +202,8 @@ export default function SignDemoTx() {
 
           {state.phase === 'pending' && (
             <div className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2">
-              Awaiting approval in the DFNS console. A second approver has to sign off
-              (the app can't self-approve), then the hash appears here.
+              Waiting for approval in DFNS. Someone else has to approve it
+              (the app can't approve its own request), then the hash shows up here.
             </div>
           )}
 

@@ -1,9 +1,10 @@
 import { useCustody, type CustodyMode } from '../contexts/CustodyContext'
 import { cn } from '../utils/format'
+import { InfoTip } from './InfoTip'
 
 const OPTIONS: Array<{ value: CustodyMode; label: string; sub: string }> = [
-  { value: 'wallet-kit', label: 'Wallet kit', sub: 'sign with Freighter, LOBSTR, xBull or Albedo' },
-  { value: 'dfns', label: 'DFNS MPC', sub: 'sign through the institutional custody backend' },
+  { value: 'wallet-kit', label: 'Browser wallet', sub: 'sign with Freighter, LOBSTR, xBull or Albedo' },
+  { value: 'dfns', label: 'DFNS MPC', sub: 'keys held by DFNS, an institutional custody provider' },
 ]
 
 export default function CustodyModeToggle() {
@@ -12,8 +13,10 @@ export default function CustodyModeToggle() {
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-text">Custody mode</h3>
-        <span className="text-xs text-text-muted">stored per-browser</span>
+        <h3 className="text-sm font-semibold text-text">
+          Custody mode <InfoTip term="custody" label="custody" />
+        </h3>
+        <span className="text-xs text-text-muted">saved in this browser</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {OPTIONS.map((opt) => {

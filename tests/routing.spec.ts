@@ -7,7 +7,7 @@ test.describe('Routing engine card', () => {
   test('renders the broker-first routing policy on Positions', async ({ page }) => {
     await page.goto(BASE + '/positions', { waitUntil: 'domcontentloaded' })
     await expect(page.getByText('Routing engine')).toBeVisible()
-    await expect(page.getByText('Direct DEX fallback')).toBeVisible()
+    await expect(page.getByText('Direct exchange')).toBeVisible()
     await expect(page.getByText(/Stellar Broker/i).first()).toBeVisible()
   })
 

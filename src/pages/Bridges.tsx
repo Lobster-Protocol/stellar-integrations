@@ -14,6 +14,7 @@ import {
   type EvmChain,
 } from '../config/contracts'
 import { Card, CardHead, Empty, Stat } from '../components/ui'
+import { InfoTip } from '../components/InfoTip'
 
 // The corridor drawn end to end: an EVM chain, the Allbridge pool that carries
 // the value across, and the Stellar account it lands on.
@@ -48,7 +49,7 @@ function Corridor({ chains, live }: { chains: string[]; live: boolean }) {
         <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">Through</div>
         <div className="text-text font-medium">Allbridge Core</div>
         <div className="text-text-muted mt-1.5">
-          {live ? 'pool liquidity, both sides' : 'mainnet only'}
+          {live ? 'moves USDC across' : 'mainnet only'}
         </div>
       </div>
 
@@ -115,8 +116,8 @@ export default function Bridges() {
       <div>
         <h2 className="text-lg font-semibold text-text">Bridges</h2>
         <p className="text-xs text-text-secondary mt-1">
-          Moving USDC from an EVM chain onto Stellar, and what has to be in place before it can
-          land.
+          Bringing USDC from another chain onto Stellar, and what has to be ready before it can
+          arrive.
         </p>
       </div>
 
@@ -124,10 +125,14 @@ export default function Bridges() {
         <Stat label="Provider" value="Allbridge Core" sub={live ? 'live on this network' : 'mainnet only'} />
         <Stat label="Token" value="USDC" sub={`${chains.length} source chains`} />
         <Stat
-          label="Trustline"
+          label={
+            <>
+              Trustline <InfoTip term="trustline" label="a trustline" />
+            </>
+          }
           value={trustlineLabel}
           tone={trustlineLabel === 'Active' ? 'up' : trustlineLabel === 'Missing' ? 'down' : 'plain'}
-          sub="required before USDC can arrive"
+          sub="needed before USDC can arrive"
         />
         <Stat label="Arrivals seen" value={String(arrivals.length)} sub="USDC credits on this account" />
       </div>
@@ -135,7 +140,7 @@ export default function Bridges() {
       <Card>
         <CardHead
           title="The route"
-          note="USDC leaves an EVM chain, crosses through the Allbridge pools, and arrives as a Stellar credit on the account you have connected."
+          note="USDC leaves another chain, crosses the Allbridge bridge, and lands as USDC in the Stellar account you have connected."
         />
         <Corridor chains={chains.map((c) => EVM_CHAIN_NAME[c])} live={live} />
         {!live && (
@@ -154,8 +159,8 @@ export default function Bridges() {
               1
             </span>
             <span className="text-text-secondary">
-              Open a USDC trustline on your Stellar account. Without it the transfer has nowhere to
-              land.{' '}
+              Turn on a USDC trustline <InfoTip term="trustline" label="a trustline" /> for your
+              Stellar account. Without it, the incoming USDC has nowhere to land.{' '}
               <span className={cn('font-medium', trustlineClass)}>{trustlineLabel}</span>
             </span>
           </li>
@@ -164,7 +169,8 @@ export default function Bridges() {
               2
             </span>
             <span className="text-text-secondary">
-              Connect an EVM wallet holding USDC on {chains.map((c) => EVM_CHAIN_NAME[c]).join(' or ')}.
+              Connect the wallet that holds your USDC on{' '}
+              {chains.map((c) => EVM_CHAIN_NAME[c]).join(' or ')}.
             </span>
           </li>
           <li className="flex gap-3">
@@ -186,7 +192,7 @@ export default function Bridges() {
       <Card>
         <CardHead
           title="Arrivals"
-          note="USDC credited to this account, read from the ledger."
+          note="USDC that has landed in this account, read live from Stellar."
           meta={
             <Link to="/activity" className="text-xs text-primary hover:underline">
               All activity

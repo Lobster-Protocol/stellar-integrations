@@ -46,7 +46,11 @@ export interface XlmFlows {
   sentOutside: string
   intoContracts: string
   fromContracts: string
-  fees: string
+  // A TTL extend buys months of contract storage in one go and costs orders of
+  // magnitude more than a transaction fee, so lumping the two together makes an
+  // account look like it bleeds fees when it paid rent once.
+  storageRent: string
+  txFees: string
   heldNow: string
   reconciles: boolean
 }
@@ -56,10 +60,14 @@ const ZERO_FLOWS: XlmFlows = {
   sentOutside: '0.0000000',
   intoContracts: '0.0000000',
   fromContracts: '0.0000000',
-  fees: '0.0000000',
+  storageRent: '0.0000000',
+  txFees: '0.0000000',
   heldNow: '0.0000000',
   reconciles: false,
 }
+
+// operations whose whole cost is storage rent rather than a transaction fee
+const RENT_OPS = new Set(['extend_footprint_ttl', 'bump_footprint_expiration', 'restore_footprint'])
 
 interface Delta {
   ts: number
@@ -127,6 +135,22 @@ async function collectDeltas(
     }
   }
 
+  // a transaction's fee does not say what it bought, so read the operations to
+  // tell a rent prepayment apart from an ordinary fee
+  const rentTx = new Set<string>()
+  let opPages = 0
+  let opCursor = ''
+  while (opPages < MAX_PAGES) {
+    let call = server.operations().forAccount(account).order('desc').limit(PAGE)
+    if (opCursor) call = call.cursor(opCursor)
+    const page = await call.call()
+    for (const o of page.records) if (RENT_OPS.has(o.type)) rentTx.add(o.transaction_hash)
+    opPages += 1
+    opCursor = page.records.at(-1)?.paging_token ?? ''
+    if (page.records.length < PAGE) break
+  }
+
+  let rentTotal = 0n
   let feeTotal = 0n
   let txPages = 0
   let txCursor = ''
@@ -143,7 +167,8 @@ async function collectDeltas(
         key: 'XLM',
         amount: -BigInt(t.fee_charged),
       })
-      feeTotal += BigInt(t.fee_charged)
+      if (rentTx.has(t.hash)) rentTotal += BigInt(t.fee_charged)
+      else feeTotal += BigInt(t.fee_charged)
     }
     txPages += 1
     txCursor = page.records.at(-1)?.paging_token ?? ''
@@ -165,13 +190,15 @@ async function collectDeltas(
     }
   }
 
-  const heldNow = receivedOutside - sentOutside - intoContracts + fromContracts - feeTotal
+  const heldNow =
+    receivedOutside - sentOutside - intoContracts + fromContracts - feeTotal - rentTotal
   const flows: XlmFlows = {
     receivedOutside: stroopsToDecimal(receivedOutside),
     sentOutside: stroopsToDecimal(sentOutside),
     intoContracts: stroopsToDecimal(intoContracts),
     fromContracts: stroopsToDecimal(fromContracts),
-    fees: stroopsToDecimal(feeTotal),
+    storageRent: stroopsToDecimal(rentTotal),
+    txFees: stroopsToDecimal(feeTotal),
     heldNow: stroopsToDecimal(heldNow),
     reconciles: false,
   }
@@ -232,6 +259,41 @@ export async function getBalanceHistory(
 
   points.reverse()
   return { points, complete, reachesAccountCreation: created, flows }
+}
+
+// The replay only produces a point where something moved, so a cursor dragged
+// across a quiet fortnight has nothing to land on. Fill the gaps by carrying the
+// last known holdings forward: a balance is a step function, so the carried
+// value is what the account actually held at that instant. Never interpolate
+// between two points - that would draw a number the account never had.
+export function densify(points: BalancePoint[], target = 320): BalancePoint[] {
+  if (points.length < 2) return points
+  const first = points[0].ts
+  const last = points[points.length - 1].ts
+  const span = last - first
+  if (span <= 0 || points.length >= target) return points
+
+  const step = span / target
+  const out: BalancePoint[] = []
+  let i = 0
+  let held = points[0].held
+
+  for (let t = first; t < last; t += step) {
+    // emit every real change that falls before this tick, so the step edges stay
+    // exactly where they happened
+    while (i < points.length && points[i].ts <= t) {
+      held = points[i].held
+      if (out[out.length - 1]?.ts !== points[i].ts) out.push(points[i])
+      i += 1
+    }
+    if (out[out.length - 1]?.ts !== t) out.push({ ts: Math.round(t), held })
+  }
+
+  while (i < points.length) {
+    out.push(points[i])
+    i += 1
+  }
+  return out
 }
 
 export function useBalanceHistory(network: Network, account: string | null) {

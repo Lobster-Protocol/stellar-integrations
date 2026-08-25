@@ -10,7 +10,7 @@ test.describe('Audit page - DFNS wiring', () => {
     // these render regardless of api wiring
     await expect(page.getByText('Custody and audit')).toBeVisible()
     await expect(page.getByText('Custody mode')).toBeVisible()
-    await expect(page.getByText('MPC signature feed')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Signing activity/ })).toBeVisible()
 
     // the custody panels only exist once the service is wired, and the bundle
     // carries that url from build-time env this process cannot read, so decide
@@ -37,6 +37,6 @@ test.describe('Audit page - DFNS wiring', () => {
     // nothing has been signed in this browser, so the feed sits empty whether
     // or not the relay url is baked into the bundle
     await expect(page.getByText('0 events')).toBeVisible()
-    await expect(page.getByText(/Waiting for DFNS events/i)).toBeVisible()
+    await expect(page.getByText(/Sign something from the wallet/i)).toBeVisible()
   })
 })

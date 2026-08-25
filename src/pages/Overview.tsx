@@ -7,7 +7,12 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances } from '../integrations/horizon/account'
 import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
 import { buildPortfolio, share } from '../integrations/pricing/portfolio'
-import { useBalanceHistory, valueAtCurrentPrice, assetKey } from '../integrations/pricing/history'
+import {
+  useBalanceHistory,
+  valueAtCurrentPrice,
+  assetKey,
+  densify,
+} from '../integrations/pricing/history'
 import { useRecordNav } from '../integrations/pricing/nav'
 import { useVaultPositions, VENUE_LABEL } from '../integrations/lobster/position'
 import { useActivity, KIND_LABEL } from '../integrations/horizon/activity'
@@ -18,6 +23,7 @@ import lobsterIcon from '../assets/lobster-icon.png'
 import LiveDataMeta from '../components/LiveDataMeta'
 import TokenRef from '../components/TokenRef'
 import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
+import { InfoTip } from '../components/InfoTip'
 
 // lazy: the Allbridge SDK in DepositModal drags in viem/walletconnect/solana
 const DepositModal = lazy(() => import('../components/DepositModal'))
@@ -38,7 +44,15 @@ export default function Overview() {
   const unit = priceUnit(network)
   const price = priceQ.data ?? null
   const valued = valueBalances(balancesQ.data ?? [], price, network)
-  useRecordNav(network, address, valued.usdTotal)
+  // record the headline figure, so Performance charts the same number the user
+  // reads here rather than a wallet-only subset of it
+  const recorded = buildPortfolio(
+    valued.lines,
+    vaultsQ.data ?? [],
+    tokenPricer(network, price),
+    network,
+  )
+  useRecordNav(network, address, valued.usdTotal != null ? recorded.total : null)
 
   if (!address) {
     return (
@@ -46,7 +60,7 @@ export default function Overview() {
         <img src={lobsterIcon} alt="" className="w-20 h-20 opacity-70" />
         <h2 className="text-xl font-semibold text-text">Connect your wallet to get started</h2>
         <p className="text-text-secondary text-sm max-w-sm text-center">
-          Deposit funds and let Lobster optimize your liquidity positions across Stellar DEXs.
+          Deposit funds and let Lobster optimize your liquidity positions across Stellar exchanges.
         </p>
         <button
           onClick={connect}
@@ -74,7 +88,13 @@ export default function Overview() {
   if (price != null) priceByKey.XLM = price
   const usdcIssuer = CONTRACTS[network].tokens.usdcIssuer
   if (usdcIssuer) priceByKey[assetKey('USDC', usdcIssuer)] = 1
-  const spark = (historyQ.data?.points ?? []).map((p) => ({
+  // dense enough that the cursor finds a value on any day, not just on the days
+  // something moved
+  const spark = densify(historyQ.data?.points ?? []).map((p) => ({
+    ts: p.ts,
+    value: valueAtCurrentPrice(p, priceByKey),
+  }))
+  const sparkChanges = (historyQ.data?.points ?? []).map((p) => ({
     ts: p.ts,
     value: valueAtCurrentPrice(p, priceByKey),
   }))
@@ -105,7 +125,7 @@ export default function Overview() {
           <p className="text-xs text-text-secondary mt-1">
             {usdTotal != null
               ? `Wallet plus vaults, quoted in ${unit === 'USD' ? 'US dollars' : 'testnet USDC'}.`
-              : `No market price on ${network}, so this is the native balance.`}
+              : `No market price on ${network}, so this shows the XLM balance.`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -128,7 +148,11 @@ export default function Overview() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat label="In wallet" value={usdTotal != null ? formatValue(usdTotal, unit) : 'n/a'} sub={`${held.length} assets`} />
         <Stat
-          label="In vaults"
+          label={
+            <>
+              In vaults <InfoTip term="vault" label="a vault" />
+            </>
+          }
           value={formatValue(portfolio.vaultValue, unit)}
           sub={`${vaults.length} position${vaults.length === 1 ? '' : 's'}`}
           tone="accent"
@@ -144,14 +168,22 @@ export default function Overview() {
               : 'no pool to quote from'
           }
         />
-        <Stat label="Operations" value={String(events.length)} sub="signed by this wallet" />
+        <Stat
+          label={
+            <>
+              Operations <InfoTip term="operation" label="an operation" />
+            </>
+          }
+          value={String(events.length)}
+          sub="signed by this wallet"
+        />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHead
             title="Wallet balance over time"
-            note="What the wallet itself held, replayed from the ledger. Swaps and vault deposits leave this line."
+            note="What the wallet itself held, rebuilt from its on-chain history. Swaps and vault deposits leave this line."
             meta={
               <Link to="/performance" className="text-xs text-primary hover:underline">
                 Performance
@@ -164,7 +196,7 @@ export default function Overview() {
             <ChartFrame
               label={`Wallet balance over time, quoted in ${unit}`}
               columns={['Date', `Value (${unit})`]}
-              rows={spark.map((r) => [
+              rows={sparkChanges.map((r) => [
                 new Date(r.ts).toLocaleDateString('en-GB'),
                 formatValue(r.value, unit),
               ])}
@@ -304,7 +336,7 @@ export default function Overview() {
             }
           />
           {activityQ.isLoading ? (
-            <p className="text-sm text-text-muted py-4">Reading the ledger...</p>
+            <p className="text-sm text-text-muted py-4">Loading activity...</p>
           ) : recent.length === 0 ? (
             <Empty>Nothing on this account yet.</Empty>
           ) : (
@@ -347,7 +379,7 @@ export default function Overview() {
           }
         />
         {vaultsQ.isLoading ? (
-          <p className="text-sm text-text-muted py-4">Reading vaults...</p>
+          <p className="text-sm text-text-muted py-4">Loading positions...</p>
         ) : vaultsQ.isError ? (
           <Failed what="Couldn't read the vaults." onRetry={() => vaultsQ.refetch()} />
         ) : vaults.length === 0 ? (

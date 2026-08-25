@@ -18,6 +18,7 @@ import { CHART_COLORS, TOOLTIP_STYLE } from '../utils/recharts'
 import LiveDataMeta from '../components/LiveDataMeta'
 import TokenRef from '../components/TokenRef'
 import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
+import { InfoTip } from '../components/InfoTip'
 
 interface Slice {
   name: string
@@ -114,7 +115,7 @@ export default function Allocation() {
       <div className="space-y-6">
         <h2 className="text-lg font-semibold text-text">Allocation</h2>
         <Card>
-          <Failed what="Couldn't reach Horizon to read balances." onRetry={() => balancesQ.refetch()} />
+          <Failed what="Couldn't load balances." onRetry={() => balancesQ.refetch()} />
         </Card>
       </div>
     )
@@ -126,8 +127,8 @@ export default function Allocation() {
         <div>
           <h2 className="text-lg font-semibold text-text">Allocation</h2>
           <p className="text-xs text-text-secondary mt-1">
-            Everything this wallet controls: loose balances plus what its Lobster vaults hold, and
-            which venue each position sits on.
+            Everything this wallet controls: loose balances plus what its Lobster vaults{' '}
+            <InfoTip term="vault" label="a vault" /> hold, and which exchange each position sits on.
           </p>
         </div>
         <LiveDataMeta
@@ -178,14 +179,14 @@ export default function Allocation() {
 
         <Card>
           <CardHead
-            title="By venue"
-            note="Where that value actually sits. A vault shows as held until its liquidity is deployed to a DEX."
+            title="By exchange"
+            note="Where that value actually sits. A vault shows as held until its liquidity is put to work on an exchange."
           />
           {byVenue.length === 0 ? (
             <Empty>No priced value to place yet.</Empty>
           ) : (
             <div className="grid grid-cols-[1fr_1fr] items-center gap-4">
-              <Donut data={byVenue} label="Share of portfolio value per venue" />
+              <Donut data={byVenue} label="Share of portfolio value per exchange" />
               <Legend data={byVenue} />
             </div>
           )}
@@ -223,10 +224,10 @@ export default function Allocation() {
       <Card>
         <CardHead
           title="Vault positions"
-          note="Each Lobster vault, what it holds leg by leg, and the venue its liquidity is deployed to."
+          note="Each Lobster vault, what it holds token by token, and the exchange its liquidity is on."
         />
         {vaultsQ.isLoading ? (
-          <p className="text-xs text-text-muted py-4">Reading vaults from Soroban RPC...</p>
+          <p className="text-xs text-text-muted py-4">Loading vaults...</p>
         ) : vaultsQ.isError ? (
           <Failed what="Couldn't read the vaults." onRetry={() => vaultsQ.refetch()} />
         ) : vaultValues.length === 0 ? (

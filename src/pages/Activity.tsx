@@ -8,6 +8,7 @@ import { CHART_COLORS, CHART_MUTED, TOOLTIP_STYLE, AXIS_TICK } from '../utils/re
 import ActivityFeed from '../components/ActivityFeed'
 import RoutingFeedCard from '../components/RoutingFeedCard'
 import { Card, CardHead, ChartFrame, Disclosure, Empty, Stat } from '../components/ui'
+import { InfoTip } from '../components/InfoTip'
 
 // kinds that represent something the owner did, as opposed to the rent and
 // read calls a soroban account accumulates on its own
@@ -46,14 +47,18 @@ export default function Activity() {
       <div>
         <h2 className="text-lg font-semibold text-text">Activity</h2>
         <p className="text-xs text-text-secondary mt-1">
-          What this wallet has actually done, read from the ledger and named by the call each
-          transaction made.
+          What this wallet has actually done, read live from Stellar and labelled by what each
+          transaction did.
         </p>
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3">
         <Stat
-          label="Operations read"
+          label={
+            <>
+              Operations read <InfoTip term="operation" label="an operation" />
+            </>
+          }
           value={String(events.length)}
           sub={oldest ? `back to ${new Date(oldest).toLocaleDateString('en-GB')}` : undefined}
         />
@@ -74,7 +79,12 @@ export default function Activity() {
       <Card>
         <CardHead
           title="Breakdown by type"
-          note="How this wallet's operations split. Maintenance covers storage rent and read-only calls."
+          note={
+            <>
+              How this wallet's operations split. Maintenance covers storage rent{' '}
+              <InfoTip term="storageRent" label="storage rent" /> and background reads.
+            </>
+          }
         />
         {byKind.length === 0 ? (
           <Empty>

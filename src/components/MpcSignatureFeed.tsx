@@ -1,6 +1,7 @@
 import { useDfnsSignatureStream } from '../integrations/dfns/useDfnsSignatureStream'
 import type { DfnsEventKind } from '../integrations/dfns/types'
 import { formatRelativeAgo } from '../utils/format'
+import { InfoTip } from './InfoTip'
 
 const KIND_LABEL: Record<DfnsEventKind, string> = {
   'wallet.created': 'wallet created',
@@ -11,13 +12,13 @@ const KIND_LABEL: Record<DfnsEventKind, string> = {
   'wallet.signature.signed': 'signature signed',
   'wallet.signature.failed': 'signature failed',
   'wallet.signature.rejected': 'signature rejected',
-  'wallet.transaction.requested': 'tx requested',
-  'wallet.transaction.broadcasted': 'tx broadcasted',
-  'wallet.transaction.confirmed': 'tx confirmed',
-  'wallet.transaction.failed': 'tx failed',
-  'wallet.transaction.rejected': 'tx rejected',
+  'wallet.transaction.requested': 'transaction requested',
+  'wallet.transaction.broadcasted': 'transaction sent',
+  'wallet.transaction.confirmed': 'transaction confirmed',
+  'wallet.transaction.failed': 'transaction failed',
+  'wallet.transaction.rejected': 'transaction rejected',
   'wallet.transfer.requested': 'transfer requested',
-  'wallet.transfer.broadcasted': 'transfer broadcasted',
+  'wallet.transfer.broadcasted': 'transfer sent',
   'wallet.transfer.confirmed': 'transfer confirmed',
   'wallet.transfer.failed': 'transfer failed',
   'wallet.transfer.rejected': 'transfer rejected',
@@ -41,13 +42,15 @@ export default function MpcSignatureFeed() {
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-text">MPC signature feed</h3>
+        <h3 className="text-sm font-semibold text-text">
+          Signing activity <InfoTip term="mpc" label="MPC signing" />
+        </h3>
         <span className="text-xs text-text-muted">{events.length} events</span>
       </div>
 
       {events.length === 0 ? (
         <p className="text-xs text-text-muted">
-          Waiting for DFNS events. Trigger a signature from the wallet to see one.
+          Nothing yet. Sign something from the wallet and it shows up here.
         </p>
       ) : (
         <ul className="divide-y divide-text-muted/10">

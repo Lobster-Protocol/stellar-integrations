@@ -7,6 +7,7 @@ import PoliciesPanel from '../components/PoliciesPanel'
 import MpcSignatureFeed from '../components/MpcSignatureFeed'
 import MicaExportButton from '../components/MicaExportButton'
 import { Card, Empty, Stat } from '../components/ui'
+import { InfoTip } from '../components/InfoTip'
 
 export default function Audit() {
   const { mode } = useCustody()
@@ -22,7 +23,9 @@ export default function Audit() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-text">Custody and audit</h2>
+        <h2 className="text-lg font-semibold text-text">
+          Custody and audit <InfoTip term="custody" label="custody" />
+        </h2>
         <p className="text-xs text-text-secondary mt-1">
           Who holds the keys, what has to be approved before they sign, and the record that comes
           out of it.
@@ -38,13 +41,17 @@ export default function Audit() {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Stat
-            label="Signing with"
-            value={mode === 'dfns' ? 'DFNS MPC' : 'Wallet kit'}
-            sub={mode === 'dfns' ? 'keys split across MPC nodes' : 'keys in your browser wallet'}
+            label={
+              <>
+                Signing with <InfoTip term="mpc" label="MPC custody" />
+              </>
+            }
+            value={mode === 'dfns' ? 'DFNS MPC' : 'Browser wallet'}
+            sub={mode === 'dfns' ? 'key split across several servers' : 'keys in your browser wallet'}
             tone={mode === 'dfns' ? 'accent' : 'plain'}
           />
           <Stat
-            label="MPC wallets"
+            label="Custody wallets"
             value={wallets.isSuccess ? String(walletItems.length) : '-'}
             sub={
               wallets.isSuccess
@@ -55,19 +62,27 @@ export default function Audit() {
           {/* a failed read is not a finding: only call signing ungated once we
               have actually seen the policy list */}
           <Stat
-            label="Active policies"
+            label={
+              <>
+                Active rules <InfoTip term="policy" label="a signing policy" />
+              </>
+            }
             value={policies.isSuccess ? String(active.length) : '-'}
             sub={
               !policies.isSuccess
                 ? 'custody service unreachable'
                 : active.length === 0
-                  ? 'signing is not gated'
-                  : 'gate every matching signature'
+                  ? 'nothing has to be approved'
+                  : 'each matching payment needs approval'
             }
             tone={policies.isSuccess && active.length === 0 ? 'down' : 'plain'}
           />
           <Stat
-            label="Waiting on a human"
+            label={
+              <>
+                Waiting on a human <InfoTip term="approval" label="an approval" />
+              </>
+            }
             value={approvals.isSuccess ? String(waiting) : '-'}
             sub={
               !approvals.isSuccess

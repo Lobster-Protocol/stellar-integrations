@@ -7,7 +7,7 @@ test.describe('Custody mode toggle', () => {
     await seedWallet(page)
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
-    const walletKitCard = page.locator('button', { hasText: 'Wallet kit' })
+    const walletKitCard = page.locator('button', { hasText: 'Browser wallet' })
     const dfnsCard = page.locator('button', { hasText: 'DFNS MPC' })
     await expect(walletKitCard).toBeVisible()
     await expect(dfnsCard).toBeVisible()
@@ -21,7 +21,7 @@ test.describe('Custody mode toggle', () => {
     const stored = await page.evaluate(() => localStorage.getItem('lob_custody_mode'))
     expect(stored).toBe('dfns')
 
-    await page.locator('button', { hasText: 'Wallet kit' }).click()
+    await page.locator('button', { hasText: 'Browser wallet' }).click()
     const stored2 = await page.evaluate(() => localStorage.getItem('lob_custody_mode'))
     expect(stored2).toBe('wallet-kit')
   })

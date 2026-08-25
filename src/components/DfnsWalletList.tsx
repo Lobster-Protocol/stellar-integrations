@@ -7,6 +7,7 @@ import { isAccountId } from '../integrations/stellar/strkey-guards'
 import { friendbotFund } from '../integrations/stellar/friendbot'
 import type { Network } from '../config/contracts'
 import { Card, CardHead, Empty } from './ui'
+import { InfoTip } from './InfoTip'
 
 type FundState = 'pending' | 'done' | { error: string }
 
@@ -66,8 +67,12 @@ export default function DfnsWalletList() {
   return (
     <Card>
       <CardHead
-        title="DFNS wallets"
-        note="Keys held by the DFNS MPC nodes, grouped by the chain each wallet lives on. Testnet wallets can be funded from friendbot."
+        title={
+          <>
+            DFNS wallets <InfoTip term="custody" label="custody" />
+          </>
+        }
+        note="Wallets whose keys are held by DFNS custody, grouped by network. Testnet wallets can be topped up with free test XLM."
         meta={<span className="text-xs text-text-muted">{items.length} total</span>}
       />
 
@@ -76,7 +81,7 @@ export default function DfnsWalletList() {
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={`name (${dfnsNetwork})`}
+          placeholder="wallet name"
           className="flex-1 bg-bg rounded-lg px-3 py-2 text-sm"
         />
         <button
@@ -142,7 +147,7 @@ export default function DfnsWalletList() {
                                 ? 'funding...'
                                 : fundState === 'done'
                                   ? 'funded'
-                                  : 'friendbot'}
+                                  : 'fund'}
                             </button>
                           ) : null}
                         </span>

@@ -15,8 +15,8 @@ export function CardHead({
   note,
   meta,
 }: {
-  title: string
-  note?: string
+  title: ReactNode
+  note?: ReactNode
   meta?: ReactNode
 }) {
   return (

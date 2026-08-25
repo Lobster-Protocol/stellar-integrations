@@ -1,5 +1,6 @@
 import { useDfnsPolicies } from '../integrations/dfns/hooks'
 import { Card, CardHead, Disclosure, Empty } from './ui'
+import { InfoTip } from './InfoTip'
 
 // A policy that is not Active cannot hold anything back, so the live ones lead
 // and the retired ones go behind a fold. Showing seven rows at equal weight hid
@@ -20,8 +21,12 @@ export default function PoliciesPanel() {
   return (
     <Card>
       <CardHead
-        title="Signing policies"
-        note="Rules the DFNS side applies before a key signs. Only active ones can hold a transaction for approval."
+        title={
+          <>
+            Signing policies <InfoTip term="policy" label="a signing policy" />
+          </>
+        }
+        note="Rules checked before a key is allowed to sign. Only active rules can hold a payment back for someone to approve."
         meta={
           <span className="text-xs text-text-muted">
             {active.length} active of {items.length}
@@ -34,12 +39,12 @@ export default function PoliciesPanel() {
       ) : policies.isError ? (
         <p className="text-xs text-coral">{(policies.error as Error).message}</p>
       ) : items.length === 0 ? (
-        <Empty>No policy configured on this DFNS account.</Empty>
+        <Empty>No rules set on this custody account.</Empty>
       ) : (
         <div className="space-y-3">
           {active.length === 0 ? (
             <p className="text-xs text-coral">
-              No active policy. Signing is not gated by an approver right now.
+              No active rule. Nothing is being held back for approval right now.
             </p>
           ) : (
             <ul className="space-y-2">

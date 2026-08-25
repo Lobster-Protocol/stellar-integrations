@@ -16,6 +16,7 @@ import { broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData, i
 import { inspectSignXdr, readSignGuardConfig, SignGuardRejected } from './dfns/sign-guard'
 import { reSequence } from './dfns/resequence'
 import { unresolvedSignature, trackPending, clearPending } from './dfns/inflight'
+import { registerAllbridgeRoutes } from './allbridge/routes'
 import { listPendingApprovals, decideApproval, type ApprovalDecision } from './dfns/approvals'
 import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
 import { lookupDti } from './dfns/dti-codes'
@@ -105,6 +106,9 @@ app.use('*', cors({
   origin: process.env.DASHBOARD_ORIGIN ?? 'http://localhost:5173',
   credentials: true,
 }))
+
+// allbridge core bridge (mainnet-only): read/quote/status + unsigned tx build
+registerAllbridgeRoutes(app)
 
 // storage ttl read for the dashboard countdown. public, since it only reads
 // public ledger state, and 503 when the factory isn't deployed on the asked

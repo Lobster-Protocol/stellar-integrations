@@ -62,8 +62,11 @@ test.describe('Live Factory reads match the /positions DOM', () => {
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
     // Use the h3 heading to anchor on the Factory card only (the page
     // subtitle also contains the words "Factory contract").
-    const stat = page.getByText(/^Admin$/i).locator('..')
-    await expect(stat).toContainText(shorten(truth.admin, 8))
+    // the stat labels carry a help tip beside them, so anchor on the card
+    const card = page
+      .getByRole('heading', { name: /Factory contract/ })
+      .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
+    await expect(card).toContainText(shorten(truth.admin, 8))
   })
 
   test('Factory pool_count from on-chain matches the rendered Pools created', async ({ page }) => {
@@ -78,8 +81,10 @@ test.describe('Live Factory reads match the /positions DOM', () => {
   test('Contract ID stat renders the testnet Factory address', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByText(/Contract ID/i)).toBeVisible({ timeout: 30_000 })
-    const stat = page.getByText(/^Contract ID$/i).locator('..')
-    await expect(stat).toContainText(shorten(FACTORY, 8))
+    const card = page
+      .getByRole('heading', { name: /Factory contract/ })
+      .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
+    await expect(card).toContainText(shorten(FACTORY, 8))
   })
 
   test('Stellar Expert link points to the Factory on the right network', async ({ page }) => {

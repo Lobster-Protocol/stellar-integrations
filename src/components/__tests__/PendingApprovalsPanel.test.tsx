@@ -34,7 +34,7 @@ describe('PendingApprovalsPanel', () => {
   it('shows the empty state when no approvals are returned', async () => {
     fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) })
     wrap(<PendingApprovalsPanel />)
-    await waitFor(() => expect(screen.getByText(/No approvals waiting/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Nothing is waiting for approval/i)).toBeInTheDocument())
   })
 
   it('renders an approval row with approve and deny buttons', async () => {

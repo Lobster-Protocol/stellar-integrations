@@ -13,6 +13,7 @@ import { networkPassphrase } from '../integrations/lobster/client'
 import { cn, stellarExplorer } from '../utils/format'
 import { appendRoutingEntry } from '../integrations/broker/routing-log'
 import type { BrokerQuoteParams } from '../integrations/broker/types'
+import { InfoTip } from './InfoTip'
 
 interface Props {
   open: boolean
@@ -34,7 +35,7 @@ function readableSwapError(message: string): string {
     return 'Soroswap turned this route down, the pool could not fill it. Try a different amount.'
   }
   if (/trustline|op_no_trust|not authorized/i.test(message)) {
-    return 'The wallet has no trustline for this asset yet.'
+    return "This wallet hasn't turned on a trustline for this asset yet (a one-time approval needed to hold it)."
   }
   return message.split('\n')[0].slice(0, 160)
 }
@@ -131,7 +132,13 @@ export default function SwapModal({ open, onClose }: Props) {
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
       <div className="bg-bg-card rounded-3xl p-6 w-full max-w-md card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-text">Best-execution swap</h2>
+          <h2 className="text-lg font-semibold text-text flex items-center gap-1.5">
+            Best-execution swap
+            <InfoTip label="best execution">
+              Compares several exchanges and routes your swap through whichever gives you the most,
+              automatically.
+            </InfoTip>
+          </h2>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-bg">
             <X size={18} />
           </button>
@@ -205,6 +212,12 @@ export default function SwapModal({ open, onClose }: Props) {
             </p>
           )}
 
+          {amount && !sameToken && (
+            <p className="text-[11px] text-text-muted flex items-center gap-1">
+              Max slippage 2% <InfoTip term="slippage" label="max slippage" />
+            </p>
+          )}
+
           {route.isLoading && (
             <div
               role="status"
@@ -219,13 +232,13 @@ export default function SwapModal({ open, onClose }: Props) {
           {source !== 'none' && broker && (
             <div className="bg-bg rounded-lg p-3 text-xs space-y-1">
               <div className="flex justify-between">
-                <span className="text-text-muted">Broker estimated receive</span>
+                <span className="text-text-muted">Via Stellar Broker</span>
                 <span className="font-mono">
                   {broker.estimatedBuyingAmount} {buying.code}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-muted">Profit vs direct</span>
+                <span className="text-text-muted">Extra vs direct route</span>
                 <span
                   className={cn(
                     'font-mono',
@@ -237,8 +250,7 @@ export default function SwapModal({ open, onClose }: Props) {
               </div>
               {source === 'soroswap-fallback' && (
                 <p className="text-text-muted pt-1">
-                  Reference quote from Stellar Broker. The trade settles on Soroswap until
-                  the partner key is live.
+                  Price comparison from Stellar Broker. The swap itself runs on Soroswap for now.
                 </p>
               )}
             </div>
@@ -270,7 +282,7 @@ export default function SwapModal({ open, onClose }: Props) {
             <p className="text-xs text-text-muted">Connect a Stellar wallet to confirm.</p>
           ) : source === 'broker' ? (
             <p className="text-xs text-text-muted">
-              Live best-execution quote from Stellar Broker, aggregating Soroswap, Aquarius
+              Live best-execution quote from Stellar Broker, comparing Soroswap, Aquarius
               and Phoenix.
             </p>
           ) : source === 'soroswap-fallback' ? (
@@ -297,7 +309,7 @@ export default function SwapModal({ open, onClose }: Props) {
                 rel="noopener noreferrer"
                 className="underline"
               >
-                view on stellar expert
+                View on Stellar Expert
               </a>
             </div>
           )}

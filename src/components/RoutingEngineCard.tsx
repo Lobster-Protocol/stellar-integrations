@@ -3,8 +3,9 @@ import { getRoutingHealth } from '../integrations/routing/health'
 import { routeAssetsLabel } from '../integrations/broker/routing-log'
 import { useRoutingLog } from '../integrations/broker/use-routing-log'
 import { formatRelativeAgo } from '../utils/format'
+import { InfoTip } from './InfoTip'
 
-const PROTOCOLS = ['Stellar Broker', 'Soroswap', 'Aquarius', 'Phoenix', 'SDEX'] as const
+const PROTOCOLS = ['Stellar Broker', 'Soroswap', 'Aquarius', 'Phoenix', 'Stellar DEX'] as const
 
 // `bare` drops the outer card so this can sit inside another card's disclosure
 export default function RoutingEngineCard({ bare = false }: { bare?: boolean }) {
@@ -22,14 +23,20 @@ export default function RoutingEngineCard({ bare = false }: { bare?: boolean }) 
   const body = (
     <>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-text">Routing engine</h3>
+        <h3 className="text-sm font-semibold text-text flex items-center gap-1.5">
+          Routing engine
+          <InfoTip label="the routing engine">
+            Where your swap gets sent. Lobster checks several exchanges and picks the one that
+            gives you the best price.
+          </InfoTip>
+        </h3>
         <span className="text-xs text-text-muted">{network}</span>
       </div>
 
       <p className="text-xs text-text-secondary mb-3">
         {network === 'mainnet'
-          ? 'Swaps try Stellar Broker first. It searches Stellar DEX liquidity for the best-priced route across the venues below and submits the legs together. If the broker has no path, no key, or is unreachable, the Soroswap router is called directly as the fallback.'
-          : 'Stellar Broker runs on mainnet, so on testnet swaps go straight to the Soroswap router. The venues below are what the broker aggregates on mainnet.'}
+          ? 'Swaps try Stellar Broker first. It looks across the exchanges below for the best-priced route and sends the steps together. If the broker cannot find a route or is unavailable, the swap goes straight to Soroswap instead.'
+          : 'Stellar Broker runs on mainnet, so on testnet swaps go straight to Soroswap. The exchanges below are what the broker compares on mainnet.'}
       </p>
 
       <div className="grid grid-cols-2 gap-2">
@@ -43,12 +50,12 @@ export default function RoutingEngineCard({ bare = false }: { bare?: boolean }) 
             />
             <span className="text-text">{brokerStatus}</span>
           </div>
-          <div className="text-text-muted mt-1">best-execution aggregator</div>
+          <div className="text-text-muted mt-1">compares exchanges for the best price</div>
           <div className="text-text-muted mt-1 truncate">{health.brokerEndpoint}</div>
         </div>
 
         <div className="rounded-2xl bg-bg p-3 text-xs">
-          <div className="text-text-muted mb-1">Direct DEX fallback</div>
+          <div className="text-text-muted mb-1">Direct exchange</div>
           <div className="flex items-center gap-2">
             <span
               className={`inline-block w-2 h-2 rounded-full ${
@@ -62,7 +69,7 @@ export default function RoutingEngineCard({ bare = false }: { bare?: boolean }) 
       </div>
 
       <div className="mt-3">
-        <div className="text-text-muted text-xs mb-1">Venues the broker aggregates</div>
+        <div className="text-text-muted text-xs mb-1">Exchanges it compares</div>
         <div className="flex flex-wrap gap-1">
           {PROTOCOLS.map((p) => (
             <span key={p} className="px-2 py-1 rounded-full bg-bg text-text-secondary text-xs">

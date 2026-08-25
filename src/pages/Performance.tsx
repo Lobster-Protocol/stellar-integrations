@@ -15,18 +15,23 @@ import {
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances } from '../integrations/horizon/account'
-import { useXlmPrice, valueBalances, priceUnit } from '../integrations/pricing/price'
+import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
+import { buildPortfolio } from '../integrations/pricing/portfolio'
+import { useVaultPositions } from '../integrations/lobster/position'
 import {
   useBalanceHistory,
   valueAtCurrentPrice,
   assetKey,
   keyCode,
+  densify,
+  type BalancePoint,
 } from '../integrations/pricing/history'
 import { useRecordNav, readNavHistory, computeNavStats } from '../integrations/pricing/nav'
 import { CONTRACTS } from '../config/contracts'
 import { compactNumber, formatBalance, formatValue } from '../utils/format'
 import { AXIS_TICK, CHART_COLORS, GRID_STROKE, TOOLTIP_STYLE } from '../utils/recharts'
 import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
+import { InfoTip } from '../components/InfoTip'
 
 const day = (ts: number) =>
   new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -70,11 +75,15 @@ export default function Performance() {
   const balancesQ = useAccountBalances(network, address)
   const priceQ = useXlmPrice(network)
   const historyQ = useBalanceHistory(network, address)
+  const vaultsQ = useVaultPositions(network, address)
 
   const unit = priceUnit(network)
   const price = priceQ.data ?? null
-  const { usdTotal } = valueBalances(balancesQ.data ?? [], price, network)
-  useRecordNav(network, address, usdTotal)
+  const { lines, usdTotal } = valueBalances(balancesQ.data ?? [], price, network)
+  // the same total Overview leads with: wallet plus vaults, not wallet alone
+  const portfolio = buildPortfolio(lines, vaultsQ.data ?? [], tokenPricer(network, price), network)
+  const total = usdTotal != null ? portfolio.total : null
+  useRecordNav(network, address, total)
 
   // only assets whose identity we can pin down get a price, so a look-alike
   // token can never lift the curve
@@ -96,9 +105,8 @@ export default function Performance() {
     return Object.keys(last).sort((a, b) => (last[b] ?? 0) - (last[a] ?? 0))
   }, [history])
 
-  const series = useMemo<Row[]>(() => {
-    if (!history) return []
-    return history.points.map((p) => {
+  const toRows = (pts: BalancePoint[]): Row[] =>
+    pts.map((p) => {
       const row: Row = {
         ts: p.ts,
         label: day(p.ts),
@@ -107,18 +115,36 @@ export default function Performance() {
       for (const k of assetKeys) row[k] = p.held[k] ?? 0
       return row
     })
-  }, [history, priceByKey, assetKeys])
+
+  // the chart wants a point everywhere the cursor can land; the table wants only
+  // the moments something actually happened
+  const series = useMemo(
+    () => (history ? toRows(densify(history.points)) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [history, priceByKey, assetKeys],
+  )
+  const changes = useMemo(
+    () => (history ? toRows(history.points) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [history, priceByKey, assetKeys],
+  )
 
   const flows = history?.flows
   const recorded = readNavHistory(network, address)
-  const { change, drawdown } = computeNavStats(recorded)
+  const { change, drawdown, observedHours } = computeNavStats(recorded)
+  const observed =
+    observedHours == null
+      ? null
+      : observedHours < 48
+        ? `over ${Math.round(observedHours)}h watched`
+        : `over ${Math.round(observedHours / 24)}d watched`
 
   if (!address) {
     return (
       <div className="space-y-6">
         <h2 className="text-lg font-semibold text-text">Performance</h2>
         <Card>
-          <Empty>Connect a wallet to rebuild its history from the ledger.</Empty>
+          <Empty>Connect a wallet to rebuild its history from on-chain data.</Empty>
         </Card>
       </div>
     )
@@ -137,33 +163,43 @@ export default function Performance() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat
           label="Value now"
-          value={usdTotal != null ? formatValue(usdTotal, unit) : 'n/a'}
-          sub={unit === 'USDC' ? 'quoted in testnet USDC' : undefined}
+          value={total != null ? formatValue(total, unit) : 'n/a'}
+          sub={`wallet plus vaults${unit === 'USDC' ? ', in testnet USDC' : ''}`}
         />
         <Stat
-          label="Paid in fees"
-          value={flows ? `${formatBalance(flows.fees)} XLM` : 'n/a'}
-          sub="network fees and storage rent"
-          tone={flows && Number(flows.fees) > 0 ? 'down' : 'plain'}
+          label="Spent on the network"
+          value={
+            flows ? `${formatBalance(String(Number(flows.storageRent) + Number(flows.txFees)))} XLM` : 'n/a'
+          }
+          sub={
+            flows && Number(flows.storageRent) > 0 ? (
+              <>
+                {formatBalance(flows.storageRent)} of it is prepaid storage rent{' '}
+                <InfoTip term="storageRent" label="storage rent" />
+              </>
+            ) : (
+              'transaction fees'
+            )
+          }
         />
         <Stat
           label="Market move"
           value={change != null ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : 'n/a'}
-          tone={change == null ? 'plain' : change >= 0 ? 'up' : 'down'}
-          sub={`${recorded.length} snapshot${recorded.length === 1 ? '' : 's'} recorded here`}
+          tone={change == null || change === 0 ? 'plain' : change > 0 ? 'up' : 'down'}
+          sub={observed ?? 'needs a second snapshot'}
         />
         <Stat
           label="Deepest dip"
           value={drawdown != null ? `${drawdown.toFixed(2)}%` : 'n/a'}
           tone={drawdown != null && drawdown < 0 ? 'down' : 'plain'}
-          sub="across recorded snapshots"
+          sub={observed ?? 'needs a second snapshot'}
         />
       </div>
 
       <Card>
         <CardHead
           title="Wallet balance over time"
-          note={`What the wallet itself held, replayed from the ledger and valued at today's price. A swap or a vault deposit leaves this line even though the value did not leave you, which is what the breakdown below accounts for.${
+          note={`What the wallet itself held, rebuilt from its on-chain history and valued at today's price. A swap or a vault deposit leaves this line even though the value did not leave you, which is what the breakdown below accounts for.${
             unit === 'USDC' ? ' Quoted in testnet USDC.' : ''
           }`}
           meta={
@@ -173,7 +209,7 @@ export default function Performance() {
           }
         />
         {historyQ.isLoading ? (
-          <p className="text-xs text-text-muted py-8 text-center">Replaying the ledger...</p>
+          <p className="text-xs text-text-muted py-8 text-center">Rebuilding history...</p>
         ) : historyQ.isError ? (
           <Failed what="Couldn't read this account's history." onRetry={() => historyQ.refetch()} />
         ) : series.length < 2 ? (
@@ -183,7 +219,7 @@ export default function Performance() {
             <ChartFrame
               label={`Wallet balance over time, quoted in ${unit}`}
               columns={['Date', `Value (${unit})`]}
-              rows={series.map((r) => [
+              rows={changes.map((r) => [
                 new Date(r.ts).toLocaleString('en-GB'),
                 formatValue(r.value, unit),
               ])}
@@ -245,7 +281,12 @@ export default function Performance() {
         <Card>
           <CardHead
             title="Where the XLM went"
-            note="Every stroop this account has ever received, accounted for. The lines add up to the balance Horizon reports right now."
+            note={
+              <>
+                Every stroop <InfoTip term="stroop" label="a stroop" /> this account has ever
+                received, accounted for. The lines add up to the balance on-chain right now.
+              </>
+            }
           />
           <ul className="divide-y divide-border text-sm">
             <FlowRow label="Received from outside" amount={flows.receivedOutside} sign="+" />
@@ -258,10 +299,16 @@ export default function Performance() {
             />
             <FlowRow label="Returned by a contract" amount={flows.fromContracts} sign="+" />
             <FlowRow
-              label="Network fees and storage rent"
-              amount={flows.fees}
+              label="Prepaid storage rent"
+              amount={flows.storageRent}
               sign="-"
-              note="the only XLM actually consumed"
+              note="one-off, buys months of contract storage"
+            />
+            <FlowRow
+              label="Transaction fees"
+              amount={flows.txFees}
+              sign="-"
+              note="the per-transaction cost"
             />
             <li className="flex items-center justify-between gap-3 py-2.5 font-medium">
               <span className="text-text">Held in the wallet now</span>
@@ -299,7 +346,7 @@ export default function Performance() {
                 <ChartFrame
                   label={`${keyCode(k)} held over time`}
                   columns={['Date', keyCode(k)]}
-                  rows={series.map((r) => [
+                  rows={changes.map((r) => [
                     new Date(r.ts).toLocaleDateString('en-GB'),
                     formatBalance(String(r[k] ?? 0)),
                   ])}

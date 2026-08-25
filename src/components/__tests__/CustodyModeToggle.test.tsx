@@ -21,7 +21,7 @@ describe('CustodyModeToggle', () => {
   it('renders both wallet kit and DFNS MPC options', () => {
     wrap(<CustodyModeToggle />)
     expect(screen.getByText('Custody mode')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Wallet kit/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Browser wallet/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /DFNS MPC/ })).toBeInTheDocument()
   })
 
@@ -32,10 +32,10 @@ describe('CustodyModeToggle', () => {
     expect(localStorage.getItem('lob_custody_mode')).toBe('dfns')
   })
 
-  it('writes "wallet-kit" to localStorage when the user picks Wallet kit', () => {
+  it('writes "wallet-kit" to localStorage when the user picks the browser wallet', () => {
     localStorage.setItem('lob_custody_mode', 'dfns')
     wrap(<CustodyModeToggle />)
-    fireEvent.click(screen.getByRole('button', { name: /Wallet kit/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Browser wallet/ }))
     expect(localStorage.getItem('lob_custody_mode')).toBe('wallet-kit')
   })
 })

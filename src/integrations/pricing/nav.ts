@@ -14,7 +14,10 @@ export interface NavPoint {
 
 const MIN_GAP_MS = 60 * 60 * 1000
 const MAX_POINTS = 1000
-const key = (network: Network, address: string) => `lob_nav_${network}_${address}`
+// v2: the series used to record the wallet alone while the pages led with
+// wallet plus vaults. Reusing the old key would splice two different measures
+// into one line and draw a jump that never happened.
+const key = (network: Network, address: string) => `lob_nav2_${network}_${address}`
 
 export function readNavHistory(network: Network, address: string | null): NavPoint[] {
   if (!address) return []
@@ -29,6 +32,9 @@ export function readNavHistory(network: Network, address: string | null): NavPoi
 export interface NavStats {
   change: number | null // percent move since the first snapshot
   drawdown: number | null // deepest peak-to-trough drop, percent (<= 0)
+  // how long the snapshots actually span. A flat 0.00% over ten minutes is not
+  // the same claim as a flat 0.00% over a month, and the reader has to see which.
+  observedHours: number | null
 }
 
 // portfolio stats over the recorded series: total move since the first point,
@@ -51,7 +57,10 @@ export function computeNavStats(history: NavPoint[]): NavStats {
     }
     drawdown = worst * 100
   }
-  return { change, drawdown }
+  const observedHours =
+    history.length >= 2 ? (latest.ts - first.ts) / 3_600_000 : null
+
+  return { change, drawdown, observedHours }
 }
 
 export function recordNav(network: Network, address: string | null, usd: number | null): void {

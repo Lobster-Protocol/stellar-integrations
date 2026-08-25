@@ -4,6 +4,7 @@ import { AlertTriangle, Archive, CheckCircle2, OctagonAlert, type LucideIcon } f
 import { useNetwork } from '../contexts/NetworkContext'
 import { useTtlStatus, type TtlLevel } from '../integrations/ttl/hooks'
 import LiveDataMeta from './LiveDataMeta'
+import { InfoTip } from './InfoTip'
 
 // Amber and red read as the same hue under deuteranopia whatever lightness we
 // pick, so the level is carried by the icon and the word as well as the colour.
@@ -50,9 +51,11 @@ export default function TtlCountdownCard() {
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
       <div className="flex items-baseline justify-between mb-1 gap-3 flex-wrap">
-        <h3 className="text-sm font-semibold text-text">Contract storage TTL</h3>
+        <h3 className="text-sm font-semibold text-text">
+          Contract storage lease <InfoTip term="ttl" label="the storage lease" />
+        </h3>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-text-muted">live | Soroban RPC | {network}</span>
+          <span className="text-[11px] text-text-muted">live | on-chain | {network}</span>
           <LiveDataMeta
             dataUpdatedAt={ttl.dataUpdatedAt}
             isFetching={ttl.isFetching}
@@ -61,17 +64,17 @@ export default function TtlCountdownCard() {
         </div>
       </div>
       <p className="text-xs text-text-secondary mb-3">
-        Time left before each of the factory's on-chain storage entries expires. Once archived, reads fail until the entry is restored.
+        Time left before each of the Factory's on-chain storage entries expires. Once it does, the contract stops responding until the entry is restored.
       </p>
 
       {ttl.isLoading ? (
         <p className="text-xs text-text-muted">Loading...</p>
       ) : ttl.isError ? (
         <p className="text-xs text-text-secondary">
-          No TTL feed on {network} yet.
+          No storage data on {network} yet.
         </p>
       ) : !ttl.data || ttl.data.statuses.length === 0 ? (
-        <p className="text-xs text-text-secondary">No storage keys tracked yet.</p>
+        <p className="text-xs text-text-secondary">No storage entries tracked yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {ttl.data.statuses.map((s) => {

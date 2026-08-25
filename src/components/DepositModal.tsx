@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { cn, shortenAddress } from '../utils/format'
+import { InfoTip } from './InfoTip'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
@@ -131,7 +132,7 @@ export default function DepositModal({ open, onClose }: Props) {
   const handleDeposit = async () => {
     if (!isBridge) {
       // direct stellar path not yet hooked to the factory
-      setStep({ phase: 'failed', msg: 'Stellar direct deposits not available yet. Use the bridge from an EVM chain.' })
+      setStep({ phase: 'failed', msg: 'Stellar direct deposits are not available yet. Use the bridge from another chain.' })
       return
     }
 
@@ -154,7 +155,7 @@ export default function DepositModal({ open, onClose }: Props) {
         .join(' or ')
       setStep({
         phase: 'failed',
-        msg: `${EVM_CHAIN_NAME[evmChain]} USDC is not 6-decimal, so the allowance scaling would be wrong. Use ${usable}.`,
+        msg: `${EVM_CHAIN_NAME[evmChain]} USDC uses a different decimal format that isn't supported here. Use ${usable}.`,
       })
       return
     }
@@ -162,7 +163,7 @@ export default function DepositModal({ open, onClose }: Props) {
     // refetch right before send in case the cache is stale
     const fresh = await trustlineQuery.refetch()
     if (fresh.data !== true) {
-      setStep({ phase: 'failed', msg: 'Destination has no USDC trustline (or the check did not resolve). Open the trustline on Stellar first, then retry.' })
+      setStep({ phase: 'failed', msg: "Your Stellar account doesn't have a USDC trustline yet (or the check didn't finish). Turn it on first, then retry." })
       return
     }
 
@@ -241,7 +242,7 @@ export default function DepositModal({ open, onClose }: Props) {
               <Check className="text-green" size={22} />
             </div>
             <h3 className="text-lg font-semibold text-text mb-2">
-              {isBridge ? 'Bridge tx submitted' : 'Deposit initiated'}
+              {isBridge ? 'Bridge started' : 'Deposit started'}
             </h3>
             <p className="text-sm text-text-secondary mb-1">
               {isBridge
@@ -259,7 +260,7 @@ export default function DepositModal({ open, onClose }: Props) {
               </a>
             )}
             <p className="text-xs text-text-muted mt-3">
-              Funds arrive on Stellar once the source-chain tx confirms, via Allbridge Core. Watch your balance.
+              Funds arrive on Stellar once the transaction on the source chain confirms, through Allbridge Core. Keep an eye on your balance.
             </p>
             <button
               onClick={onClose}
@@ -316,7 +317,7 @@ export default function DepositModal({ open, onClose }: Props) {
             {isBridge && (
               <div className="mb-4 px-3 py-2.5 rounded-xl bg-bg text-xs space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-text-secondary">EVM wallet</span>
+                  <span className="text-text-secondary">Sending wallet</span>
                   {evm.address ? (
                     <span className="flex items-center gap-2 text-text font-mono">
                       {shortenAddress(evm.address, 6, 4)}
@@ -344,8 +345,8 @@ export default function DepositModal({ open, onClose }: Props) {
                 </div>
                 {!hasWalletConnectProjectId && !evm.address && (
                   <p className="text-[10px] text-text-muted">
-                    Set VITE_WALLETCONNECT_PROJECT_ID for mobile wallets via WalletConnect.
-                    Injected wallets (MetaMask, Rabby) work without it.
+                    Mobile wallets (via WalletConnect) need extra setup. Browser wallets like
+                    MetaMask or Rabby work right away.
                   </p>
                 )}
               </div>
@@ -378,7 +379,7 @@ export default function DepositModal({ open, onClose }: Props) {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Est. time</span>
+                  <span>Estimated arrival</span>
                   <span className="text-text">
                     {quote
                       ? quote.estimatedTimeSeconds != null
@@ -390,7 +391,9 @@ export default function DepositModal({ open, onClose }: Props) {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Trustline</span>
+                  <span className="flex items-center gap-1">
+                    Trustline <InfoTip term="trustline" label="a trustline" />
+                  </span>
                   {trustlineQuery.isLoading ? (
                     <span className="text-text-muted">Checking...</span>
                   ) : trustlineRequired ? (
@@ -407,7 +410,7 @@ export default function DepositModal({ open, onClose }: Props) {
                 </div>
                 {network === 'testnet' && (
                   <div className="mt-2 pt-2 border-t border-text-muted/10 text-coral">
-                    Allbridge runs on mainnet only. Switch to mainnet to send a real bridge tx.
+                    Allbridge runs on mainnet only. Switch to mainnet to send a real transfer.
                   </div>
                 )}
                 {tl.phase === 'failed' && (
@@ -418,8 +421,8 @@ export default function DepositModal({ open, onClose }: Props) {
 
             {!isBridge && (
               <div className="mb-4 px-3 py-2.5 rounded-xl bg-primary/5 text-xs text-text-secondary">
-                Direct Stellar deposits are not wired to the factory yet. Bridge USDC from an
-                EVM chain for now.
+                Direct Stellar deposits aren't available yet. For now, bridge USDC from another
+                chain.
               </div>
             )}
 
@@ -436,7 +439,7 @@ export default function DepositModal({ open, onClose }: Props) {
               {step.phase === 'approving'
                 ? 'Approving USDC...'
                 : step.phase === 'sending'
-                ? 'Submitting bridge tx...'
+                ? 'Sending the bridge...'
                 : isBridge
                 ? 'Bridge & Deposit'
                 : 'Deposit'}

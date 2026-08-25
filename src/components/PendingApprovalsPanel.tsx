@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { useDfnsPendingApprovals, useDfnsApprove } from '../integrations/dfns/hooks'
+import { InfoTip } from './InfoTip'
 
 export default function PendingApprovalsPanel() {
   const approvals = useDfnsPendingApprovals()
@@ -14,7 +15,9 @@ export default function PendingApprovalsPanel() {
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-text">Pending approvals</h3>
+        <h3 className="text-sm font-semibold text-text">
+          Pending approvals <InfoTip term="approval" label="an approval" />
+        </h3>
         <span className="text-xs text-text-muted">
           {approvals.isLoading ? '...' : `${approvals.data?.items.length ?? 0}`}
         </span>
@@ -25,7 +28,7 @@ export default function PendingApprovalsPanel() {
       ) : approvals.isError ? (
         <p className="text-xs text-coral">{(approvals.error as Error).message}</p>
       ) : (approvals.data?.items.length ?? 0) === 0 ? (
-        <p className="text-xs text-text-muted">No approvals waiting.</p>
+        <p className="text-xs text-text-muted">Nothing is waiting for approval.</p>
       ) : (
         <ul className="space-y-3">
           {approvals.data!.items.map((a) => (
@@ -40,7 +43,7 @@ export default function PendingApprovalsPanel() {
               <div className="flex gap-2 items-center">
                 <input
                   type="text"
-                  placeholder="optional reason"
+                  placeholder="reason (optional)"
                   value={reason[a.id] ?? ''}
                   onChange={(e) => setReason((m) => ({ ...m, [a.id]: e.target.value }))}
                   className="flex-1 bg-bg rounded-lg px-2 py-1.5 text-xs"

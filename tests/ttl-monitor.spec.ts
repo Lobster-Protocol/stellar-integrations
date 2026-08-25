@@ -8,11 +8,11 @@ import { gotoWithWallet } from './fixtures'
 test.describe('TTL countdown card', () => {
   test('renders the contract storage TTL card on /positions', async ({ page }) => {
     await gotoWithWallet(page, '/positions')
-    await expect(page.getByRole('heading', { name: 'Contract storage TTL' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Contract storage lease/ })).toBeVisible()
   })
 
   test('labels the source as live Soroban RPC on the active network', async ({ page }) => {
     await gotoWithWallet(page, '/positions')
-    await expect(page.getByText(/Soroban RPC \| testnet/i)).toBeVisible()
+    await expect(page.getByText(/live \| on-chain \| testnet/i)).toBeVisible()
   })
 })

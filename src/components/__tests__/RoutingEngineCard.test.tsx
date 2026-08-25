@@ -23,7 +23,7 @@ describe('RoutingEngineCard', () => {
     wrap(<RoutingEngineCard />)
     expect(screen.getByText(/Routing engine/i)).toBeInTheDocument()
     expect(screen.getByText(/api\.stellar\.broker/)).toBeInTheDocument()
-    for (const p of ['Stellar Broker', 'Soroswap', 'Aquarius', 'Phoenix', 'SDEX']) {
+    for (const p of ['Stellar Broker', 'Soroswap', 'Aquarius', 'Phoenix', 'Stellar DEX']) {
       expect(screen.getByText(p, { exact: true })).toBeInTheDocument()
     }
   })

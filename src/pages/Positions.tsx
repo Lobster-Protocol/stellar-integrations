@@ -15,6 +15,7 @@ import RoutingEngineCard from '../components/RoutingEngineCard'
 import TtlCountdownCard from '../components/TtlCountdownCard'
 import TokenRef from '../components/TokenRef'
 import { Card, Empty, Failed, Stat } from '../components/ui'
+import { InfoTip } from '../components/InfoTip'
 
 export default function Positions() {
   const { address } = useWallet()
@@ -42,8 +43,8 @@ export default function Positions() {
         <div>
           <h2 className="text-lg font-semibold text-text">Positions</h2>
           <p className="text-xs text-text-secondary mt-1">
-            Each Lobster vault is a contract you own. It holds your two tokens and can deploy them
-            to Soroswap, Phoenix or Aquarius.
+            Each Lobster vault <InfoTip term="vault" label="a vault" /> is a contract you own. It
+            holds your two tokens and can put them to work on Soroswap, Phoenix or Aquarius.
           </p>
         </div>
         {address && (
@@ -56,7 +57,15 @@ export default function Positions() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat label="Vaults" value={String(vaults.length)} sub="owned by this wallet" />
+        <Stat
+          label={
+            <>
+              Vaults <InfoTip term="vault" label="a vault" />
+            </>
+          }
+          value={String(vaults.length)}
+          sub="owned by this wallet"
+        />
         <Stat
           label="Value held"
           value={formatValue(portfolio.vaultValue, unit)}
@@ -64,12 +73,16 @@ export default function Positions() {
           tone="accent"
         />
         <Stat
-          label="Deployed to a DEX"
+          label="Active on an exchange"
           value={`${deployed} of ${vaults.length}`}
           sub={deployed === 0 ? 'the rest sit in the vault' : undefined}
         />
         <Stat
-          label="Factory pools"
+          label={
+            <>
+              Factory pools <InfoTip term="factory" label="the Factory" />
+            </>
+          }
           value={factoryInfo.data ? String(factoryInfo.data.poolCount) : '-'}
           sub="created by everyone"
         />
@@ -85,11 +98,11 @@ export default function Positions() {
         </Card>
       ) : vaultsQ.isLoading ? (
         <Card>
-          <p className="text-xs text-text-muted py-4">Reading vaults from Soroban RPC...</p>
+          <p className="text-xs text-text-muted py-4">Loading your vaults...</p>
         </Card>
       ) : vaultsQ.isError ? (
         <Card>
-          <Failed what="Couldn't reach Soroban RPC to read your vaults." onRetry={() => vaultsQ.refetch()} />
+          <Failed what="Couldn't load your vaults." onRetry={() => vaultsQ.refetch()} />
         </Card>
       ) : vaults.length === 0 ? (
         <Card>
@@ -159,7 +172,7 @@ export default function Positions() {
 
               {v.venue !== 'idle' && v.poolAddress && (
                 <div className="mt-3 text-xs text-text-secondary">
-                  Deployed into{' '}
+                  Working in{' '}
                   <a
                     href={stellarExplorer(network, 'contract', v.poolAddress)}
                     target="_blank"
@@ -168,7 +181,9 @@ export default function Positions() {
                   >
                     {shortenAddress(v.poolAddress)}
                   </a>
-                  {v.lpShares && <span className="text-text-muted"> - {formatBalance(v.lpShares)} LP</span>}
+                  {v.lpShares && (
+                    <span className="text-text-muted"> - {formatBalance(v.lpShares)} pool shares <InfoTip term="lpShares" label="pool shares" /></span>
+                  )}
                 </div>
               )}
 
@@ -193,7 +208,9 @@ export default function Positions() {
 
       <Card>
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-          <h3 className="text-sm font-semibold text-text">Factory contract</h3>
+          <h3 className="text-sm font-semibold text-text">
+            Factory contract <InfoTip term="factory" label="the Factory" />
+          </h3>
           <div className="flex items-center gap-3">
             <LiveDataMeta
               dataUpdatedAt={factoryInfo.dataUpdatedAt}
@@ -215,19 +232,27 @@ export default function Positions() {
         {!factoryId ? (
           <p className="text-xs text-text-secondary">Not deployed on {network} yet.</p>
         ) : factoryInfo.isLoading ? (
-          <p className="text-xs text-text-muted">Reading from Soroban RPC...</p>
+          <p className="text-xs text-text-muted">Loading...</p>
         ) : factoryInfo.isError ? (
           <Failed what="Couldn't read the factory." onRetry={() => factoryInfo.refetch()} />
         ) : factoryInfo.data ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Stat
-              label="Contract ID"
+              label={
+                <>
+                  Contract ID <InfoTip term="contractId" label="a contract ID" />
+                </>
+              }
               value={shortenAddress(factoryId, 8)}
               mono
               href={factoryExplorer ?? undefined}
             />
             <Stat
-              label="Admin"
+              label={
+                <>
+                  Admin <InfoTip term="admin" label="the admin" />
+                </>
+              }
               value={shortenAddress(factoryInfo.data.admin, 8)}
               mono
               href={stellarExplorer(network, 'account', factoryInfo.data.admin)}

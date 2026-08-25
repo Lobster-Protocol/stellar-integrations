@@ -44,7 +44,7 @@ export default function RoutingFeedCard({ bare = false }: { bare?: boolean }) {
     <Card>
       <CardHead
         title="Routing decisions"
-        note="Which venue each swap was routed through. Recorded per browser, not an on-chain record."
+        note="Which exchange each swap went through. Recorded per browser, not an on-chain record."
         meta={<span className="text-xs text-text-muted">{entries.length} on {network}</span>}
       />
       {body}

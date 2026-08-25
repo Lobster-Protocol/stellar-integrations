@@ -62,7 +62,7 @@ describe('DfnsWalletList', () => {
     })
     wrap(<DfnsWalletList />)
     await waitFor(() => expect(screen.getByText('lobster-testnet-1')).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'friendbot' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'fund' })).toBeInTheDocument()
   })
 
   it('does not show the friendbot button for mainnet wallets', async () => {
@@ -81,6 +81,6 @@ describe('DfnsWalletList', () => {
     })
     wrap(<DfnsWalletList />)
     await waitFor(() => expect(screen.getByText('lobster-mainnet')).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: 'friendbot' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'fund' })).not.toBeInTheDocument()
   })
 })

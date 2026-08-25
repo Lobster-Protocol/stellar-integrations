@@ -21,7 +21,7 @@ test.describe('Positions page - live on-chain data', () => {
   test('shows the Sign demo card with the wallet name in the button label', async ({ page }) => {
     await gotoWithWallet(page, '/positions')
     await expect(page.getByRole('heading', { name: /Sign a testnet transaction/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Ping Factory with Freighter/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Call the Factory with Freighter/i })).toBeVisible()
   })
 
   test('without a connected wallet, the page prompts to connect', async ({ page }) => {

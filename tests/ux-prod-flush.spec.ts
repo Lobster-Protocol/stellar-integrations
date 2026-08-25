@@ -61,10 +61,14 @@ test.describe('prod meta and a11y assertions', () => {
     await page.goto(`${BASE}/bridges`)
     // No wallet connected -> live branch shows "Connect wallet"
     await expect(page.getByText('Connect wallet').first()).toBeVisible({ timeout: 15_000 })
-    // and the trustline tile reports the live branch, never a hardcoded Active
-    const trustline = page.getByText(/^Trustline$/).locator('..')
+    // and the trustline tile reports the live branch, never a hardcoded Active.
+    // the label carries a help tip beside it, so anchor on the tile, not the word
+    const trustline = page
+      .getByText('Trustline', { exact: false })
+      .first()
+      .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]')
     await expect(trustline).toContainText(/Connect wallet/i)
-    await expect(trustline).not.toContainText(/^Active$/)
+    await expect(trustline).not.toContainText('Active')
   })
 
   test('Mobile drawer toggle button has aria-expanded + aria-controls', async ({ page }) => {

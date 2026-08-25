@@ -160,9 +160,9 @@ export default function ActivityFeed() {
   if (!address) {
     body = <Empty>Connect a wallet to see what it has done on-chain.</Empty>
   } else if (q.isLoading) {
-    body = <p className="text-xs text-text-muted py-4">Reading the ledger...</p>
+    body = <p className="text-xs text-text-muted py-4">Loading activity...</p>
   } else if (q.isError) {
-    body = <Failed what="Couldn't reach Horizon to read this account." onRetry={() => q.refetch()} />
+    body = <Failed what="Couldn't load this account's activity." onRetry={() => q.refetch()} />
   } else if (events.length === 0) {
     body = <Empty>Nothing on this account yet on {network}.</Empty>
   } else {
@@ -222,8 +222,8 @@ export default function ActivityFeed() {
     <Card>
       <CardHead
         title="On-chain activity"
-        note="Every operation this wallet signed, named from what the transaction actually called."
-        meta={<span className="text-[11px] text-text-muted">live | Horizon | {network}</span>}
+        note="Every operation this wallet signed, labelled by what each transaction did."
+        meta={<span className="text-[11px] text-text-muted">live | on-chain | {network}</span>}
       />
       {body}
     </Card>
