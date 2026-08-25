@@ -15,20 +15,36 @@ const MAX_PAGES = 100
 
 export interface FullHistory {
   events: ActivityEvent[]
-  // false when the page budget ran out with older operations still unread
+  // false when the page budget ran out before the window was fully read
   complete: boolean
 }
 
+export interface HistoryWindow {
+  // unix millis, inclusive; null means unbounded on that side
+  since?: number | null
+  until?: number | null
+  onProgress?: (count: number) => void
+}
+
 // The feed pages lazily because nobody scrolls 2 000 rows, but an export that
-// only held what happened to be on screen would be worse than no export.
+// only held what happened to be on screen would be worse than no export. With a
+// start date the walk stops as soon as it has read past it: Horizon serves
+// newest first, so anything beyond that page predates the window.
 export async function fetchAllActivity(
   network: Network,
   account: string,
-  onProgress?: (count: number) => void,
+  window: HistoryWindow = {},
 ): Promise<FullHistory> {
+  const { since = null, until = null, onProgress } = window
   const server = getHorizonServer(network)
   const events: ActivityEvent[] = []
   let cursor = ''
+
+  const inside = (e: ActivityEvent) => {
+    const at = Date.parse(e.at)
+    return (since == null || at >= since) && (until == null || at <= until)
+  }
+  const done = (complete: boolean): FullHistory => ({ events: events.filter(inside), complete })
 
   for (let page = 0; page < MAX_PAGES; page++) {
     let call = server.operations().forAccount(account).order('desc').limit(PAGE)
@@ -39,18 +55,22 @@ export async function fetchAllActivity(
       records = (await call.call()).records
     } catch (err) {
       // an account Horizon has never seen has no history, which is not a failure
-      if (err instanceof NotFoundError) return { events, complete: true }
+      if (err instanceof NotFoundError) return done(true)
       throw err
     }
 
     for (const r of records) events.push(toActivityEvent(r, account))
     onProgress?.(events.length)
 
-    if (records.length < PAGE) return { events, complete: true }
+    if (records.length < PAGE) return done(true)
+
+    const oldest = events[events.length - 1]
+    if (since != null && Date.parse(oldest.at) < since) return done(true)
+
     cursor = records[records.length - 1].paging_token
   }
 
-  return { events, complete: false }
+  return done(false)
 }
 
 export const ACTIVITY_COLUMNS = [

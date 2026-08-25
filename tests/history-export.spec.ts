@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 
-import { test, expect, type Download, type Locator } from '@playwright/test'
+import { test, expect, type Download, type Locator, type Page } from '@playwright/test'
 
 import { gotoWithWallet, TEST_WALLET } from './fixtures'
 
@@ -124,5 +124,99 @@ test.describe('activity search', () => {
 
     await page.getByRole('searchbox', { name: /Search this account/ }).fill('storage rent')
     await expect.poll(() => tabCount(tab)).toBeLessThan(before)
+  })
+})
+
+test.describe('activity date range', () => {
+  const START = (p: Page) => p.getByLabel('Start date, UTC')
+  const END = (p: Page) => p.getByLabel('End date, UTC')
+
+  test('a window that holds nothing shows nothing, and downloads nothing', async ({ page }) => {
+    await gotoWithWallet(page, '/activity')
+    const tab = page.getByRole('button', { name: /^Everything \d+$/ })
+    await expect(tab).toBeVisible({ timeout: 20000 })
+
+    await START(page).fill('2099-01-01')
+    await END(page).fill('2099-12-31')
+    await expect(page).toHaveURL(/from=2099-01-01/)
+    await expect.poll(() => tabCount(tab)).toBe(0)
+    await expect(
+      page.getByText('Nothing on this account matches what you asked for.').first(),
+    ).toBeVisible()
+
+    // the file has to agree with the screen, header and no rows
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'CSV' }).click(),
+    ])
+    expect(rows(await text(download))).toHaveLength(1)
+    await expect(page.getByText(/^0 operations between/)).toBeVisible()
+  })
+
+  test('a window wider than the account keeps every operation', async ({ page }) => {
+    await gotoWithWallet(page, '/activity')
+    const tab = page.getByRole('button', { name: /^Everything \d+$/ })
+    await expect(tab).toBeVisible({ timeout: 20000 })
+    const all = await tabCount(tab)
+
+    // the same file, once unbounded and once inside a window that predates the
+    // account, has to come out the same length
+    const [whole] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'CSV' }).click(),
+    ])
+    const wholeRows = rows(await text(whole)).length
+
+    await START(page).fill('2000-01-01')
+    await expect(page).toHaveURL(/from=2000-01-01/)
+    await expect.poll(() => tabCount(tab)).toBe(all)
+
+    const [windowed] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'CSV' }).click(),
+    ])
+    expect(windowed.suggestedFilename()).toMatch(
+      new RegExp(`^lobster-activity-2000-01-01-to-now-${ACCOUNT}-testnet-${DAY}[.]csv$`),
+    )
+    expect(rows(await text(windowed))).toHaveLength(wholeRows)
+    await expect(page.getByText(/operations since 1 Jan 2000 \(UTC\)\./)).toBeVisible()
+  })
+
+  test('refuses a window whose end comes before its start', async ({ page }) => {
+    await gotoWithWallet(page, '/activity')
+    await expect(page.getByRole('button', { name: /^Everything \d+$/ })).toBeVisible({
+      timeout: 20000,
+    })
+
+    await page.goto('/activity?from=2026-06-30&to=2026-06-01', { waitUntil: 'domcontentloaded' })
+    await expect(
+      page.getByText('The end date is before the start date, so nothing can fall inside it.'),
+    ).toBeVisible({ timeout: 20000 })
+    await expect(page.getByRole('button', { name: 'CSV' })).toBeDisabled()
+
+    await page.getByRole('button', { name: 'Reset the dates' }).click()
+    await expect(page).not.toHaveURL(/from=/)
+  })
+
+  test('ignores a date the url carries that nothing can parse', async ({ page }) => {
+    await gotoWithWallet(page, '/activity')
+    const tab = page.getByRole('button', { name: /^Everything \d+$/ })
+    await expect(tab).toBeVisible({ timeout: 20000 })
+    const all = await tabCount(tab)
+
+    await page.goto('/activity?from=2026-13-45', { waitUntil: 'domcontentloaded' })
+    await expect(tab).toBeVisible({ timeout: 20000 })
+    // a bound nothing can read must not silently pass every row through
+    await expect.poll(() => tabCount(tab)).toBe(all)
+    await expect(page.getByText('Full history')).toBeVisible()
+    await expect(START(page)).toHaveValue('')
+  })
+
+  test('carries the window through a reload', async ({ page }) => {
+    await gotoWithWallet(page, '/activity?from=2026-06-01&to=2026-06-30')
+    await expect(page.getByText('Selected dates')).toBeVisible({ timeout: 20000 })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(START(page)).toHaveValue('2026-06-01')
+    await expect(END(page)).toHaveValue('2026-06-30')
   })
 })

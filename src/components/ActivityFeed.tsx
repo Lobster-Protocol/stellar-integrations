@@ -1,5 +1,4 @@
-import { useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo } from 'react'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -10,7 +9,6 @@ import {
   Flame,
   Minus,
   Plus,
-  Search,
   Shield,
   Sparkles,
   type LucideIcon,
@@ -20,16 +18,21 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useWallet } from '../contexts/WalletContext'
 import {
   useActivity,
-  matchesQuery,
   KIND_LABEL,
-  KIND_GROUPS,
   groupOf,
   type ActivityEvent,
   type ActivityKind,
-  type KindGroup,
 } from '../integrations/horizon/activity'
 import { protocolLabel } from '../integrations/stellar/token-registry'
 import { formatBalance, shortenAddress, stellarExplorer, cn } from '../utils/format'
+import {
+  describeWindow,
+  feedPaging,
+  inWindow,
+  useActivityFilters,
+  type ActivityFilterState,
+} from '../integrations/horizon/activity-window'
+import { ActivityFilters } from './ActivityFilters'
 import CopyButton from './CopyButton'
 import TokenRef from './TokenRef'
 import { Card, CardHead, Empty, Failed } from './ui'
@@ -49,14 +52,6 @@ const ICON: Record<ActivityKind, LucideIcon> = {
   'contract-read': Eye,
   'contract-deploy': Boxes,
   'contract-call': Boxes,
-}
-
-const GROUP_LABEL: Record<KindGroup | 'all', string> = {
-  all: 'Everything',
-  moves: 'Transfers',
-  trading: 'Swaps',
-  liquidity: 'Liquidity',
-  housekeeping: 'Maintenance',
 }
 
 // kinds where who was on the other side is the point of the row
@@ -150,31 +145,44 @@ function Row({ e }: { e: ActivityEvent }) {
   )
 }
 
+function useCoverRange(
+  filters: ActivityFilterState,
+  events: ActivityEvent[],
+  q: ReturnType<typeof useActivity>,
+) {
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = q
+  // react-query already counts the pages it holds, so the budget needs no state
+  const { covering, capped, shouldFetch } = feedPaging({
+    startMs: filters.startMs,
+    oldestAt: events.length > 0 ? events[events.length - 1].at : null,
+    hasNextPage,
+    pages: q.data?.pages.length ?? 0,
+  })
+
+  useEffect(() => {
+    if (shouldFetch && !isFetchingNextPage) fetchNextPage()
+  }, [shouldFetch, isFetchingNextPage, fetchNextPage])
+
+  return { covering, capped }
+}
+
 export default function ActivityFeed() {
   const { address } = useWallet()
   const { network } = useNetwork()
   const q = useActivity(network, address)
-
-  // Filter and search live in the address bar, so a view worth talking about can
-  // be sent to somebody as a link.
-  const [params, setParams] = useSearchParams()
-  const raw = params.get('show')
-  const filter: KindGroup | 'all' = raw && raw in GROUP_LABEL ? (raw as KindGroup) : 'all'
-  const query = params.get('q') ?? ''
-
-  function update(next: { show?: KindGroup | 'all'; q?: string }) {
-    const p = new URLSearchParams(params)
-    for (const [k, v] of Object.entries(next)) {
-      if (!v || v === 'all') p.delete(k)
-      else p.set(k, v)
-    }
-    setParams(p, { replace: true })
-  }
+  const filters = useActivityFilters()
 
   const events = useMemo(() => (q.data?.pages ?? []).flatMap((p) => p.events), [q.data])
-  const found = useMemo(() => events.filter((e) => matchesQuery(e, query)), [events, query])
+  const { covering, capped } = useCoverRange(filters, events, q)
 
-  // counts follow the search, so a tab never promises rows the search hides
+  const found = useMemo(
+    () => (filters.reversed ? [] : events.filter((e) => inWindow(e, filters))),
+    // the filter object is rebuilt each render; its fields are what matter
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [events, filters.startMs, filters.endMs, filters.query, filters.reversed],
+  )
+
+  // counts follow the window, so a tab never promises rows the window hides
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: found.length }
     for (const e of found) {
@@ -184,7 +192,7 @@ export default function ActivityFeed() {
     return c
   }, [found])
 
-  const shown = filter === 'all' ? found : found.filter((e) => groupOf(e.kind) === filter)
+  const shown = filters.group === 'all' ? found : found.filter((e) => groupOf(e.kind) === filters.group)
 
   // day headers, in the order the events already arrive (newest first)
   const days: Array<[string, ActivityEvent[]]> = []
@@ -207,46 +215,31 @@ export default function ActivityFeed() {
   } else {
     body = (
       <>
-        <div className="flex flex-wrap items-center gap-1.5 mb-3">
-          {(['all', ...Object.keys(KIND_GROUPS)] as Array<KindGroup | 'all'>).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => update({ show: g })}
-              disabled={g !== 'all' && !counts[g]}
-              className={cn(
-                'px-2.5 py-1 rounded-full text-xs transition-colors disabled:opacity-30',
-                filter === g ? 'bg-primary text-white' : 'bg-bg text-text-secondary hover:text-text',
-              )}
-            >
-              {GROUP_LABEL[g]} {counts[g] ?? 0}
-            </button>
-          ))}
+        <ActivityFilters filters={filters} counts={counts} />
 
-          <div className="relative ml-auto">
-            <Search
-              size={12}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(ev) => update({ q: ev.target.value })}
-              placeholder="Search asset, address, hash"
-              aria-label="Search this account's activity"
-              className="w-52 max-w-full pl-7 pr-2.5 py-1 rounded-full bg-bg text-xs text-text placeholder:text-text-muted outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-        </div>
-
-        {shown.length === 0 ? (
+        {filters.reversed ? (
           <Empty
             action={
-              query ? (
+              <button
+                type="button"
+                onClick={() => filters.update({ from: '', to: '' })}
+                className="text-xs text-primary hover:underline"
+              >
+                Reset the dates
+              </button>
+            }
+          >
+            The end date is before the start date, so nothing can fall inside it.
+          </Empty>
+        ) : covering ? (
+          <p className="text-xs text-text-muted py-4">Reading back to the start date...</p>
+        ) : shown.length === 0 ? (
+          <Empty
+            action={
+              filters.query || filters.windowed ? (
                 <button
                   type="button"
-                  onClick={() => update({ q: '' })}
+                  onClick={() => filters.update({ q: '', from: '', to: '' })}
                   className="text-xs text-primary hover:underline"
                 >
                   Clear the search
@@ -254,8 +247,8 @@ export default function ActivityFeed() {
               ) : undefined
             }
           >
-            {query
-              ? `Nothing loaded so far matches ${query}.`
+            {filters.query || filters.windowed
+              ? 'Nothing on this account matches what you asked for.'
               : 'Nothing in this category yet.'}
           </Empty>
         ) : (
@@ -273,7 +266,15 @@ export default function ActivityFeed() {
           ))
         )}
 
-        {q.hasNextPage && (
+        {capped && (
+          <p className="text-[11px] text-text-muted mt-3 text-center">
+            These are the newest {events.length} operations, which do not yet reach{' '}
+            {filters.from}. Keep loading to go further back, or download the file, which reads
+            the whole range on its own.
+          </p>
+        )}
+
+        {q.hasNextPage && !covering && (
           <button
             type="button"
             onClick={() => q.fetchNextPage()}
@@ -291,7 +292,11 @@ export default function ActivityFeed() {
     <Card>
       <CardHead
         title="On-chain activity"
-        note="Every operation this wallet signed, labelled by what each transaction did."
+        note={
+          filters.windowed
+            ? `Every operation this wallet signed ${describeWindow(filters)}.`
+            : 'Every operation this wallet signed, labelled by what each transaction did.'
+        }
         meta={<span className="text-[11px] text-text-muted">live | on-chain | {network}</span>}
       />
       {body}

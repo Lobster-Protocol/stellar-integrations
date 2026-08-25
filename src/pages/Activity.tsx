@@ -8,6 +8,11 @@ import { CHART_COLORS, CHART_MUTED, TOOLTIP_STYLE, AXIS_TICK } from '../utils/re
 import { fetchAllActivity, activityCsv, activityJson, type FullHistory } from '../integrations/horizon/export'
 import { exportName } from '../utils/csv'
 import ActivityFeed from '../components/ActivityFeed'
+import {
+  describeWindow,
+  inWindow,
+  useActivityFilters,
+} from '../integrations/horizon/activity-window'
 import ExportButton, { type ExportFormat } from '../components/ExportButton'
 import RoutingFeedCard from '../components/RoutingFeedCard'
 import { Card, CardHead, ChartFrame, Disclosure, Empty, Stat } from '../components/ui'
@@ -30,8 +35,16 @@ export default function Activity() {
   const { address } = useWallet()
   const { network } = useNetwork()
   const q = useActivity(network, address)
+  // the same dates, search and tab the feed below reads, so the tiles, the chart
+  // and the download can never describe different sets of operations
+  const filters = useActivityFilters()
 
-  const events = useMemo(() => (q.data?.pages ?? []).flatMap((p) => p.events), [q.data])
+  const loaded = useMemo(() => (q.data?.pages ?? []).flatMap((p) => p.events), [q.data])
+  const events = useMemo(
+    () => (filters.reversed ? [] : loaded.filter((e) => inWindow(e, filters))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loaded, filters.startMs, filters.endMs, filters.query, filters.reversed],
+  )
 
   const byKind = useMemo(() => {
     const tally = new Map<ActivityKind, number>()
@@ -42,14 +55,28 @@ export default function Activity() {
   }, [events])
 
   // The feed pages as you scroll, so what it holds is a window. The export walks
-  // Horizon to the end instead, and says so when the page budget runs out first.
+  // Horizon itself, stops once it has read past the start date, and says so when
+  // the page budget runs out first. The dates scope the file; the search and the
+  // tab are browsing aids and do not.
   const read = (report: (m: string) => void) =>
-    fetchAllActivity(network, address!, (n) => report(`Read ${n} operations...`))
+    fetchAllActivity(network, address!, {
+      since: filters.startMs,
+      until: filters.endMs,
+      onProgress: (n) => report(`Read ${n} operations...`),
+    })
 
-  const noteFor = (h: FullHistory) =>
-    h.complete
-      ? `${h.events.length} operations, back to the first one.`
-      : `${h.events.length} operations. This account has more history than one export reads.`
+  const noteFor = (h: FullHistory) => {
+    if (!h.complete) {
+      return `${h.events.length} operations. This account has more history than one export reads.`
+    }
+    return filters.windowed
+      ? `${h.events.length} operations ${describeWindow(filters)}.`
+      : `${h.events.length} operations, back to the first one.`
+  }
+
+  const exportBase = filters.windowed
+    ? `activity-${filters.from || 'start'}-to-${filters.to || 'now'}`
+    : 'activity'
 
   const formats: ExportFormat[] = [
     {
@@ -75,6 +102,7 @@ export default function Activity() {
   const deliberate = events.filter((e) => DELIBERATE.includes(e.kind)).length
   const failed = events.filter((e) => !e.ok).length
   const oldest = events.at(-1)?.at
+  const windowSub = oldest ? `back to ${new Date(oldest).toLocaleDateString('en-GB')}` : undefined
 
   return (
     <div className="space-y-6">
@@ -87,12 +115,18 @@ export default function Activity() {
           </p>
         </div>
         <ExportButton
-          label="Full history"
-          name={exportName('activity', { account: address, network })}
+          label={filters.windowed ? 'Selected dates' : 'Full history'}
+          name={exportName(exportBase, { account: address, network })}
           formats={formats}
-          disabled={!address}
-          hint="Every operation on this account, not only the ones loaded below"
-          disabledHint="Connect a wallet first"
+          disabled={!address || filters.reversed}
+          hint={
+            filters.windowed
+              ? `Every operation ${describeWindow(filters)}, read from Horizon rather than from the rows below`
+              : 'Every operation on this account, not only the ones loaded below'
+          }
+          disabledHint={
+            filters.reversed ? 'The end date is before the start date' : 'Connect a wallet first'
+          }
         />
       </div>
 
@@ -100,11 +134,12 @@ export default function Activity() {
         <Stat
           label={
             <>
-              Operations read <InfoTip term="operation" label="an operation" />
+              {filters.windowed ? 'Operations in range' : 'Operations read'}{' '}
+              <InfoTip term="operation" label="an operation" />
             </>
           }
           value={String(events.length)}
-          sub={oldest ? `back to ${new Date(oldest).toLocaleDateString('en-GB')}` : undefined}
+          sub={filters.windowed ? describeWindow(filters) : windowSub}
         />
         <Stat
           label="Deliberate actions"
@@ -116,7 +151,13 @@ export default function Activity() {
           label="Failed"
           value={String(failed)}
           tone={failed > 0 ? 'down' : 'plain'}
-          sub={failed === 0 ? 'none so far' : 'check the feed below'}
+          sub={
+            failed > 0
+              ? 'check the feed below'
+              : filters.windowed
+                ? 'none in this range'
+                : 'none so far'
+          }
         />
       </div>
 
@@ -132,7 +173,11 @@ export default function Activity() {
         />
         {byKind.length === 0 ? (
           <Empty>
-            {address ? 'Nothing recorded on this account yet.' : 'Connect a wallet to see its history.'}
+            {!address
+              ? 'Connect a wallet to see its history.'
+              : filters.windowed || filters.query
+                ? 'Nothing on this account matches what you asked for.'
+                : 'Nothing recorded on this account yet.'}
           </Empty>
         ) : (
           <ChartFrame
