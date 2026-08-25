@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useWallet } from '../contexts/WalletContext'
@@ -17,10 +18,14 @@ import TtlCountdownCard from '../components/TtlCountdownCard'
 import TokenRef from '../components/TokenRef'
 import { Card, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
+import VaultActionModal from '../components/VaultActionModal'
+import type { VaultAction } from '../integrations/lobster/vault-tx'
+import type { VaultPosition } from '../integrations/lobster/position'
 
 export default function Positions() {
   const { address } = useWallet()
   const { network } = useNetwork()
+  const [vaultAction, setVaultAction] = useState<{ vault: VaultPosition; action: VaultAction } | null>(null)
 
   const factoryInfo = useFactoryInfo(network, address || undefined)
   const vaultsQ = useVaultPositions(network, address)
@@ -40,6 +45,18 @@ export default function Positions() {
 
   return (
     <div className="space-y-6">
+      {vaultAction && address && (
+        <VaultActionModal
+          open
+          onClose={() => setVaultAction(null)}
+          onDone={() => vaultsQ.refetch()}
+          network={network}
+          caller={address}
+          vault={vaultAction.vault}
+          action={vaultAction.action}
+        />
+      )}
+
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold text-text">Positions</h2>
@@ -197,11 +214,25 @@ export default function Positions() {
                 </p>
               )}
 
-              <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(13, 45, 76, 0.06)' }}>
-                <Link
-                  to="/activity"
-                  className="text-xs text-primary hover:underline"
-                >
+              <div className="mt-3 pt-3 flex items-center justify-between gap-2 flex-wrap" style={{ borderTop: '1px solid rgba(13, 45, 76, 0.06)' }}>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVaultAction({ vault: v, action: 'deposit' })}
+                    className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary-dark transition-all"
+                  >
+                    Deposit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVaultAction({ vault: v, action: 'withdraw' })}
+                    disabled={Number(v.amount0) === 0 && Number(v.amount1) === 0}
+                    className="px-3 py-1.5 rounded-full bg-bg text-text text-xs font-semibold ring-1 ring-primary/20 hover:bg-bg/70 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Withdraw
+                  </button>
+                </div>
+                <Link to="/activity" className="text-xs text-primary hover:underline">
                   Moves that touched this wallet
                 </Link>
               </div>
