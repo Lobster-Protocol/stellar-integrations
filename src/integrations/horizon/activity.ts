@@ -28,6 +28,8 @@ export interface AssetMove {
   issuer?: string
   amount: string
   direction: 'in' | 'out'
+  // the account or contract on the other side, when the ledger names one
+  counterparty?: string
 }
 
 export interface ActivityEvent {
@@ -79,6 +81,23 @@ export function groupOf(kind: ActivityKind): KindGroup {
     if ((kinds as readonly ActivityKind[]).includes(kind)) return group as KindGroup
   }
   return 'housekeeping'
+}
+
+// Free text search over a row: the label a reader sees, the amounts, the token
+// codes, whoever was on the other side, and the identifiers they'd paste from an
+// explorer. Anything visible in the feed should find its own row.
+export function matchesQuery(e: ActivityEvent, raw: string): boolean {
+  const q = raw.trim().toLowerCase()
+  if (!q) return true
+  const hay = [
+    KIND_LABEL[e.kind],
+    e.fn ?? '',
+    e.txHash,
+    e.contractId ?? '',
+    ...(e.swapPath ?? []),
+    ...e.moves.flatMap((m) => [m.code, m.amount, m.counterparty ?? '']),
+  ]
+  return hay.some((h) => h.toLowerCase().includes(q))
 }
 
 // A soroban call carries its target contract in the first parameter and the
@@ -133,11 +152,13 @@ function kindOfSorobanFn(fn: string | undefined): ActivityKind {
 
 function moveFrom(c: BalanceChange, account: string): AssetMove | null {
   if (c.from !== account && c.to !== account) return null
+  const out = c.from === account
   return {
     code: c.asset_type === 'native' ? 'XLM' : (c.asset_code ?? 'unknown'),
     issuer: c.asset_issuer,
     amount: c.amount,
-    direction: c.from === account ? 'out' : 'in',
+    direction: out ? 'out' : 'in',
+    counterparty: out ? c.to : c.from,
   }
 }
 
@@ -179,6 +200,7 @@ export function toActivityEvent(op: OpRecord, account: string): ActivityEvent {
             issuer: op.asset_issuer,
             amount: op.amount,
             direction: out ? 'out' : 'in',
+            counterparty: out ? op.to : op.from,
           },
         ],
       }
@@ -188,7 +210,9 @@ export function toActivityEvent(op: OpRecord, account: string): ActivityEvent {
       return {
         ...base,
         kind: 'account-funded',
-        moves: [{ code: 'XLM', amount: op.starting_balance, direction: 'in' }],
+        moves: [
+          { code: 'XLM', amount: op.starting_balance, direction: 'in', counterparty: op.funder },
+        ],
       }
 
     case 'change_trust':

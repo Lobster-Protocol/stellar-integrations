@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 
 import { cn } from '../utils/format'
+import CopyButton from './CopyButton'
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn('rounded-3xl p-5 bg-bg-card card', className)}>{children}</div>
@@ -70,6 +71,7 @@ export function Stat({
   hint,
   href,
   mono,
+  copy,
 }: {
   label: ReactNode
   value: string
@@ -78,6 +80,8 @@ export function Stat({
   hint?: string
   href?: string
   mono?: boolean
+  // the full value behind a shortened one, so it can leave the page intact
+  copy?: string
 }) {
   const body = (
     <span
@@ -94,13 +98,16 @@ export function Stat({
       title={hint}
     >
       <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">{label}</div>
-      {href ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
-          {body}
-        </a>
-      ) : (
-        body
-      )}
+      <div className="flex items-center gap-1">
+        {href ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            {body}
+          </a>
+        ) : (
+          body
+        )}
+        {copy && <CopyButton value={copy} what="the full value" />}
+      </div>
       {sub && <div className="text-[11px] text-text-muted mt-0.5">{sub}</div>}
     </div>
   )

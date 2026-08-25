@@ -4,6 +4,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
 import { shortenAddress, cn, stellarExplorer } from '../utils/format'
+import CopyButton from './CopyButton'
 import lobsterIcon from '../assets/lobster-icon.png'
 
 interface Props {
@@ -62,15 +63,18 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-right">
               <p className="text-[10px] text-text-muted leading-none">{walletName}</p>
-              <a
-                href={stellarExplorer(network, 'account', address)}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={address}
-                className="text-xs text-text font-mono hover:text-primary hover:underline"
-              >
-                {shortenAddress(address, 5)}
-              </a>
+              <span className="flex items-center justify-end gap-0.5">
+                <a
+                  href={stellarExplorer(network, 'account', address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={address}
+                  className="text-xs text-text font-mono hover:text-primary hover:underline"
+                >
+                  {shortenAddress(address, 5)}
+                </a>
+                <CopyButton value={address} what="your wallet address" />
+              </span>
             </div>
             {mode === 'dfns' && dfnsAddress && (
               <div className="hidden sm:block text-right border-l border-text-muted/20 pl-2 ml-1">

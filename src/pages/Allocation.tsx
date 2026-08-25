@@ -15,6 +15,9 @@ import { useVaultPositions, VENUE_LABEL } from '../integrations/lobster/position
 import { buildPortfolio } from '../integrations/pricing/portfolio'
 import { formatBalance, formatValue, shortenAddress } from '../utils/format'
 import { CHART_COLORS, TOOLTIP_STYLE } from '../utils/recharts'
+import { holdingsRows, HOLDINGS_COLUMNS } from '../integrations/pricing/export'
+import { exportName, toCsv } from '../utils/csv'
+import ExportButton from '../components/ExportButton'
 import LiveDataMeta from '../components/LiveDataMeta'
 import TokenRef from '../components/TokenRef'
 import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
@@ -96,8 +99,14 @@ export default function Allocation() {
   const priceOf = useMemo(() => tokenPricer(network, price), [network, price])
 
   const held = lines.filter((l) => Number(l.balance) > 0)
+  const portfolio = buildPortfolio(lines, vaults, priceOf, network)
   const { walletValue, vaultValue, total, byAsset, byVenue, unpriced, vaults: vaultValues } =
-    buildPortfolio(lines, vaults, priceOf, network)
+    portfolio
+  // built here rather than inside the download so the button can tell whether
+  // there is anything to write yet. A vault read that has not landed would make
+  // the file quietly short, so the download waits for both.
+  const loading = balancesQ.isLoading || vaultsQ.isLoading
+  const exportRows = holdingsRows(lines, portfolio, priceOf, unit, network)
 
   if (!address) {
     return (
@@ -131,14 +140,34 @@ export default function Allocation() {
             <InfoTip term="vault" label="a vault" /> hold, and which exchange each position sits on.
           </p>
         </div>
-        <LiveDataMeta
-          dataUpdatedAt={balancesQ.dataUpdatedAt}
-          isFetching={balancesQ.isFetching || vaultsQ.isFetching}
-          onRefresh={() => {
-            balancesQ.refetch()
-            vaultsQ.refetch()
-          }}
-        />
+        <div className="flex flex-col items-end gap-2">
+          <LiveDataMeta
+            dataUpdatedAt={balancesQ.dataUpdatedAt}
+            isFetching={balancesQ.isFetching || vaultsQ.isFetching}
+            onRefresh={() => {
+              balancesQ.refetch()
+              vaultsQ.refetch()
+            }}
+          />
+          <ExportButton
+            label="Holdings"
+            name={exportName('holdings', { account: address, network })}
+            hint="Wallet balances and vault legs as they stand right now"
+            disabled={loading || exportRows.length === 0}
+            disabledHint={loading ? 'Still reading the chain' : 'Nothing priced to export yet'}
+            formats={[
+              {
+                label: 'CSV',
+                ext: 'csv',
+                mime: 'text/csv',
+                build: async () => ({
+                  text: toCsv(HOLDINGS_COLUMNS, exportRows),
+                  note: `${exportRows.length} lines, priced in ${unit}.`,
+                }),
+              },
+            ]}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

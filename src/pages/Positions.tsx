@@ -9,6 +9,7 @@ import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrati
 import { buildPortfolio } from '../integrations/pricing/portfolio'
 import { CONTRACTS } from '../config/contracts'
 import { formatBalance, formatValue, shortenAddress, stellarExplorer } from '../utils/format'
+import CopyButton from '../components/CopyButton'
 import SignDemoTx from '../components/SignDemoTx'
 import LiveDataMeta from '../components/LiveDataMeta'
 import RoutingEngineCard from '../components/RoutingEngineCard'
@@ -124,15 +125,18 @@ export default function Positions() {
             <Card key={v.address}>
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
-                  <a
-                    href={stellarExplorer(network, 'contract', v.address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={v.address}
-                    className="font-mono text-sm text-primary hover:underline"
-                  >
-                    {shortenAddress(v.address, 6)}
-                  </a>
+                  <span className="flex items-center gap-0.5">
+                    <a
+                      href={stellarExplorer(network, 'contract', v.address)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={v.address}
+                      className="font-mono text-sm text-primary hover:underline"
+                    >
+                      {shortenAddress(v.address, 6)}
+                    </a>
+                    <CopyButton value={v.address} what="the vault address" />
+                  </span>
                   <div className="text-xs text-text-secondary mt-0.5 flex items-center gap-1">
                     <TokenRef id={v.token0} /> / <TokenRef id={v.token1} />
                   </div>
@@ -245,6 +249,7 @@ export default function Positions() {
               }
               value={shortenAddress(factoryId, 8)}
               mono
+              copy={factoryId}
               href={factoryExplorer ?? undefined}
             />
             <Stat
@@ -255,6 +260,7 @@ export default function Positions() {
               }
               value={shortenAddress(factoryInfo.data.admin, 8)}
               mono
+              copy={factoryInfo.data.admin}
               href={stellarExplorer(network, 'account', factoryInfo.data.admin)}
             />
             <Stat label="Pools created" value={String(factoryInfo.data.poolCount)} />

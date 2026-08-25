@@ -27,9 +27,12 @@ import {
   type BalancePoint,
 } from '../integrations/pricing/history'
 import { useRecordNav, readNavHistory, computeNavStats } from '../integrations/pricing/nav'
+import { valueHistoryCsv, performanceJson } from '../integrations/pricing/export'
+import { exportName } from '../utils/csv'
 import { CONTRACTS } from '../config/contracts'
 import { compactNumber, formatBalance, formatValue } from '../utils/format'
 import { AXIS_TICK, CHART_COLORS, GRID_STROKE, TOOLTIP_STYLE } from '../utils/recharts'
+import ExportButton from '../components/ExportButton'
 import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
@@ -152,12 +155,49 @@ export default function Performance() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-text">Performance</h2>
-        <p className="text-xs text-text-secondary mt-1">
-          Rebuilt from every credit, debit and fee this account has paid, so the last point matches
-          the live balance exactly.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold text-text">Performance</h2>
+          <p className="text-xs text-text-secondary mt-1">
+            Rebuilt from every credit, debit and fee this account has paid, so the last point
+            matches the live balance exactly.
+          </p>
+        </div>
+        <ExportButton
+          label="Value history"
+          name={exportName('value-history', { account: address, network })}
+          hint="One row per moment a balance moved, plus the XLM reconciliation in the JSON"
+          disabled={!history || history.points.length === 0}
+          disabledHint="No history rebuilt yet"
+          formats={[
+            {
+              label: 'CSV',
+              ext: 'csv',
+              mime: 'text/csv',
+              build: async () => ({
+                text: valueHistoryCsv(history!.points, assetKeys, priceByKey, unit),
+                note: `${history!.points.length} moves${history!.complete ? '' : ', clipped at the oldest page read'}.`,
+              }),
+            },
+            {
+              label: 'JSON',
+              ext: 'json',
+              mime: 'application/json',
+              build: async () => ({
+                text: performanceJson({
+                  account: address,
+                  network,
+                  unit,
+                  points: history!.points,
+                  priceByKey,
+                  flows: history!.flows,
+                  complete: history!.complete,
+                }),
+                note: `${history!.points.length} moves, with the XLM reconciliation.`,
+              }),
+            },
+          ]}
+        />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

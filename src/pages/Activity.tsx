@@ -5,7 +5,10 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useWallet } from '../contexts/WalletContext'
 import { useActivity, KIND_LABEL, type ActivityKind } from '../integrations/horizon/activity'
 import { CHART_COLORS, CHART_MUTED, TOOLTIP_STYLE, AXIS_TICK } from '../utils/recharts'
+import { fetchAllActivity, activityCsv, activityJson, type FullHistory } from '../integrations/horizon/export'
+import { exportName } from '../utils/csv'
 import ActivityFeed from '../components/ActivityFeed'
+import ExportButton, { type ExportFormat } from '../components/ExportButton'
 import RoutingFeedCard from '../components/RoutingFeedCard'
 import { Card, CardHead, ChartFrame, Disclosure, Empty, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
@@ -38,18 +41,59 @@ export default function Activity() {
       .sort((a, b) => b.count - a.count)
   }, [events])
 
+  // The feed pages as you scroll, so what it holds is a window. The export walks
+  // Horizon to the end instead, and says so when the page budget runs out first.
+  const read = (report: (m: string) => void) =>
+    fetchAllActivity(network, address!, (n) => report(`Read ${n} operations...`))
+
+  const noteFor = (h: FullHistory) =>
+    h.complete
+      ? `${h.events.length} operations, back to the first one.`
+      : `${h.events.length} operations. This account has more history than one export reads.`
+
+  const formats: ExportFormat[] = [
+    {
+      label: 'CSV',
+      ext: 'csv',
+      mime: 'text/csv',
+      build: async (report) => {
+        const h = await read(report)
+        return { text: activityCsv(h.events, network), note: noteFor(h) }
+      },
+    },
+    {
+      label: 'JSON',
+      ext: 'json',
+      mime: 'application/json',
+      build: async (report) => {
+        const h = await read(report)
+        return { text: activityJson(h, network, address!), note: noteFor(h) }
+      },
+    },
+  ]
+
   const deliberate = events.filter((e) => DELIBERATE.includes(e.kind)).length
   const failed = events.filter((e) => !e.ok).length
   const oldest = events.at(-1)?.at
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-text">Activity</h2>
-        <p className="text-xs text-text-secondary mt-1">
-          What this wallet has actually done, read live from Stellar and labelled by what each
-          transaction did.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold text-text">Activity</h2>
+          <p className="text-xs text-text-secondary mt-1">
+            What this wallet has actually done, read live from Stellar and labelled by what each
+            transaction did.
+          </p>
+        </div>
+        <ExportButton
+          label="Full history"
+          name={exportName('activity', { account: address, network })}
+          formats={formats}
+          disabled={!address}
+          hint="Every operation on this account, not only the ones loaded below"
+          disabledHint="Connect a wallet first"
+        />
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3">

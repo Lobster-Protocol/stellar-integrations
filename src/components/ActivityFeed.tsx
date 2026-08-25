@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -9,6 +10,7 @@ import {
   Flame,
   Minus,
   Plus,
+  Search,
   Shield,
   Sparkles,
   type LucideIcon,
@@ -18,6 +20,7 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useWallet } from '../contexts/WalletContext'
 import {
   useActivity,
+  matchesQuery,
   KIND_LABEL,
   KIND_GROUPS,
   groupOf,
@@ -27,6 +30,7 @@ import {
 } from '../integrations/horizon/activity'
 import { protocolLabel } from '../integrations/stellar/token-registry'
 import { formatBalance, shortenAddress, stellarExplorer, cn } from '../utils/format'
+import CopyButton from './CopyButton'
 import TokenRef from './TokenRef'
 import { Card, CardHead, Empty, Failed } from './ui'
 
@@ -55,6 +59,9 @@ const GROUP_LABEL: Record<KindGroup | 'all', string> = {
   housekeeping: 'Maintenance',
 }
 
+// kinds where who was on the other side is the point of the row
+const SHOW_COUNTERPARTY: ActivityKind[] = ['sent', 'received', 'mint', 'burn', 'account-funded']
+
 function dayKey(iso: string): string {
   const d = new Date(iso)
   const today = new Date()
@@ -70,6 +77,9 @@ function Row({ e }: { e: ActivityEvent }) {
   const Icon = ICON[e.kind]
   const via = e.contractId ? protocolLabel(e.contractId, network) : null
   const time = new Date(e.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  const other = SHOW_COUNTERPARTY.includes(e.kind)
+    ? e.moves.find((m) => m.counterparty)
+    : undefined
 
   return (
     <li className="flex items-center gap-3 py-2.5">
@@ -107,19 +117,34 @@ function Row({ e }: { e: ActivityEvent }) {
             ))}
           </div>
         )}
+
+        {other?.counterparty && (
+          <div className="text-[11px] text-text-muted mt-0.5 flex items-center gap-0.5">
+            <span>
+              {other.direction === 'out' ? 'to' : 'from'}{' '}
+              <span className="font-mono" title={other.counterparty}>
+                {shortenAddress(other.counterparty, 6, 4)}
+              </span>
+            </span>
+            <CopyButton value={other.counterparty} what="the address" />
+          </div>
+        )}
       </div>
 
       <div className="shrink-0 text-right">
         <div className="text-xs text-text-muted tabular-nums">{time}</div>
-        <a
-          href={stellarExplorer(network, 'tx', e.txHash)}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={e.fn ? `${e.fn}()` : e.txHash}
-          className="text-[10px] font-mono text-primary hover:underline"
-        >
-          {shortenAddress(e.txHash, 6, 4)}
-        </a>
+        <div className="flex items-center justify-end">
+          <a
+            href={stellarExplorer(network, 'tx', e.txHash)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={e.fn ? `${e.fn}()` : e.txHash}
+            className="text-[10px] font-mono text-primary hover:underline"
+          >
+            {shortenAddress(e.txHash, 6, 4)}
+          </a>
+          <CopyButton value={e.txHash} what="the transaction hash" />
+        </div>
       </div>
     </li>
   )
@@ -128,24 +153,38 @@ function Row({ e }: { e: ActivityEvent }) {
 export default function ActivityFeed() {
   const { address } = useWallet()
   const { network } = useNetwork()
-  const [filter, setFilter] = useState<KindGroup | 'all'>('all')
   const q = useActivity(network, address)
 
-  const events = useMemo(
-    () => (q.data?.pages ?? []).flatMap((p) => p.events),
-    [q.data],
-  )
+  // Filter and search live in the address bar, so a view worth talking about can
+  // be sent to somebody as a link.
+  const [params, setParams] = useSearchParams()
+  const raw = params.get('show')
+  const filter: KindGroup | 'all' = raw && raw in GROUP_LABEL ? (raw as KindGroup) : 'all'
+  const query = params.get('q') ?? ''
 
+  function update(next: { show?: KindGroup | 'all'; q?: string }) {
+    const p = new URLSearchParams(params)
+    for (const [k, v] of Object.entries(next)) {
+      if (!v || v === 'all') p.delete(k)
+      else p.set(k, v)
+    }
+    setParams(p, { replace: true })
+  }
+
+  const events = useMemo(() => (q.data?.pages ?? []).flatMap((p) => p.events), [q.data])
+  const found = useMemo(() => events.filter((e) => matchesQuery(e, query)), [events, query])
+
+  // counts follow the search, so a tab never promises rows the search hides
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: events.length }
-    for (const e of events) {
+    const c: Record<string, number> = { all: found.length }
+    for (const e of found) {
       const g = groupOf(e.kind)
       c[g] = (c[g] ?? 0) + 1
     }
     return c
-  }, [events])
+  }, [found])
 
-  const shown = filter === 'all' ? events : events.filter((e) => groupOf(e.kind) === filter)
+  const shown = filter === 'all' ? found : found.filter((e) => groupOf(e.kind) === filter)
 
   // day headers, in the order the events already arrive (newest first)
   const days: Array<[string, ActivityEvent[]]> = []
@@ -168,27 +207,57 @@ export default function ActivityFeed() {
   } else {
     body = (
       <>
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
           {(['all', ...Object.keys(KIND_GROUPS)] as Array<KindGroup | 'all'>).map((g) => (
             <button
               key={g}
               type="button"
-              onClick={() => setFilter(g)}
+              onClick={() => update({ show: g })}
               disabled={g !== 'all' && !counts[g]}
               className={cn(
                 'px-2.5 py-1 rounded-full text-xs transition-colors disabled:opacity-30',
-                filter === g
-                  ? 'bg-primary text-white'
-                  : 'bg-bg text-text-secondary hover:text-text',
+                filter === g ? 'bg-primary text-white' : 'bg-bg text-text-secondary hover:text-text',
               )}
             >
               {GROUP_LABEL[g]} {counts[g] ?? 0}
             </button>
           ))}
+
+          <div className="relative ml-auto">
+            <Search
+              size={12}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted"
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(ev) => update({ q: ev.target.value })}
+              placeholder="Search asset, address, hash"
+              aria-label="Search this account's activity"
+              className="w-52 max-w-full pl-7 pr-2.5 py-1 rounded-full bg-bg text-xs text-text placeholder:text-text-muted outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
         </div>
 
         {shown.length === 0 ? (
-          <Empty>Nothing in this category yet.</Empty>
+          <Empty
+            action={
+              query ? (
+                <button
+                  type="button"
+                  onClick={() => update({ q: '' })}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Clear the search
+                </button>
+              ) : undefined
+            }
+          >
+            {query
+              ? `Nothing loaded so far matches ${query}.`
+              : 'Nothing in this category yet.'}
+          </Empty>
         ) : (
           days.map(([day, list]) => (
             <div key={day} className="mb-1">
