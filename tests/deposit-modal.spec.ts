@@ -54,4 +54,16 @@ test.describe('DepositModal - Allbridge wiring', () => {
       page.getByText(/Allbridge runs on mainnet only/i),
     ).toBeVisible()
   })
+
+  test('opens from the Bridges page and lands on the bridge flow', async ({ page }) => {
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: /^Bridges$/ }).click()
+    await expect(page).toHaveURL(/\/bridges$/)
+
+    await page.getByRole('button', { name: 'Bridge USDC' }).click()
+    await expect(page.getByText('Deposit Funds')).toBeVisible()
+    // initialChain points the modal at a bridge chain, so the Allbridge panel
+    // is shown straight away rather than the direct-Stellar placeholder
+    await expect(page.getByText('Bridge provider')).toBeVisible()
+  })
 })

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { cn } from '../utils/format'
@@ -15,6 +15,10 @@ import {
 } from '../config/contracts'
 import { Card, CardHead, Empty, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
+
+// same lazy-load rationale as Overview: DepositModal pulls in the Allbridge SDK
+// (viem/walletconnect), so keep it out of the Bridges entry chunk.
+const DepositModal = lazy(() => import('../components/DepositModal'))
 
 // The corridor drawn end to end: an EVM chain, the Allbridge pool that carries
 // the value across, and the Stellar account it lands on.
@@ -83,6 +87,7 @@ export default function Bridges() {
 
   const chains = (Object.keys(EVM_USDC) as EvmChain[]).filter((c) => EVM_BRIDGEABLE[c])
   const live = !!CONTRACTS[network].allbridge.bridge
+  const [depositOpen, setDepositOpen] = useState(false)
 
   let trustlineLabel: string
   let trustlineClass: string
@@ -113,12 +118,29 @@ export default function Bridges() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-text">Bridges</h2>
-        <p className="text-xs text-text-secondary mt-1">
-          Bringing USDC from another chain onto Stellar, and what has to be ready before it can
-          arrive.
-        </p>
+      <Suspense fallback={null}>
+        <DepositModal
+          open={depositOpen}
+          onClose={() => setDepositOpen(false)}
+          initialChain={chains[0]}
+        />
+      </Suspense>
+
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold text-text">Bridges</h2>
+          <p className="text-xs text-text-secondary mt-1">
+            Bringing USDC from another chain onto Stellar, and what has to be ready before it can
+            arrive.
+          </p>
+        </div>
+        <button
+          onClick={() => setDepositOpen(true)}
+          className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all shrink-0"
+          style={{ boxShadow: '0 8px 20px rgba(54, 147, 251, 0.2)' }}
+        >
+          Bridge USDC
+        </button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -178,10 +200,14 @@ export default function Bridges() {
               3
             </span>
             <span className="text-text-secondary">
-              Use{' '}
-              <Link to="/" className="text-primary hover:underline">
-                Deposit on Overview
-              </Link>
+              Open{' '}
+              <button
+                type="button"
+                onClick={() => setDepositOpen(true)}
+                className="text-primary hover:underline"
+              >
+                the bridge form
+              </button>
               . The amount you receive and the arrival estimate come from a live Allbridge quote at
               that moment.
             </span>

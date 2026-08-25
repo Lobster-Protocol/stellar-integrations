@@ -32,6 +32,9 @@ import { hasWalletConnectProjectId } from '../integrations/evm/config'
 interface Props {
   open: boolean
   onClose: () => void
+  // Bridges opens the modal already pointed at a bridge chain, so it lands on
+  // the bridge flow rather than the direct-Stellar placeholder.
+  initialChain?: EvmChain | 'stellar'
 }
 
 // the bridgeable set comes from the registry, so this list and the Bridges page
@@ -52,8 +55,8 @@ type Step =
   | { phase: 'submitted'; hash?: string; sourceChain?: EvmSourceChain }
   | { phase: 'failed'; msg: string }
 
-export default function DepositModal({ open, onClose }: Props) {
-  const [chain, setChain] = useState<(typeof CHAINS)[number]['id']>('stellar')
+export default function DepositModal({ open, onClose, initialChain }: Props) {
+  const [chain, setChain] = useState<(typeof CHAINS)[number]['id']>(initialChain ?? 'stellar')
   const [amount, setAmount] = useState('')
   const [step, setStep] = useState<Step>({ phase: 'form' })
   const [tl, setTl] = useState<
