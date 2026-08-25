@@ -60,6 +60,13 @@ export function priceUnit(network: Network): PriceUnit {
   return network === 'mainnet' ? 'USD' : 'USDC'
 }
 
+// The broker turns down any trade worth less than a dollar, and a single XLM is
+// well under that, so asking it to price one unit gets nothing back. The probe
+// asks for a size it will quote and divides. Measured on XLM/USDC, the unit
+// price moves 0.1% between 8 and 1000 XLM, so what comes back is the real
+// executable price rather than an average bent by depth.
+const MAINNET_PROBE_XLM = 100
+
 // Mainnet goes through the broker, which aggregates every venue. Testnet has no
 // broker, but Soroswap runs there with a real XLM/USDC pool, so the router
 // quotes a real price off real reserves. Null when neither answers, so callers
@@ -71,12 +78,13 @@ export async function fetchXlmPrice(network: Network): Promise<number | null> {
     const quote = await quoteBroker({
       sellingAsset: 'xlm',
       buyingAsset: `USDC-${issuer}`,
-      sellingAmount: '1',
+      sellingAmount: String(MAINNET_PROBE_XLM),
       slippageTolerance: 0.02,
     })
     if (!quote || quote.status !== 'success') return null
-    const price = Number(quote.estimatedBuyingAmount)
-    return Number.isFinite(price) && price > 0 ? price : null
+    const total = Number(quote.estimatedBuyingAmount)
+    if (!Number.isFinite(total) || total <= 0) return null
+    return total / MAINNET_PROBE_XLM
   }
 
   const t = CONTRACTS.testnet

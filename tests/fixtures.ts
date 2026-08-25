@@ -31,6 +31,12 @@ export const TEST_FACTORY_TESTNET = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHT
 // matches contracts.ts testnet.lobster.readSource (deployer)
 export const TEST_SOURCE_TESTNET = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 
+// matches contracts.ts mainnet.tokens.usdcIssuer and mainnet.broker.endpoint.
+// the best-execution spec reads a live quote from the broker as ground truth,
+// then checks the dashboard shows the same figure.
+export const MAINNET_USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
+export const BROKER_ENDPOINT = process.env.PLAYWRIGHT_BROKER_URL ?? 'https://api.stellar.broker'
+
 // must match shortenAddress in src/utils/format.ts: three ASCII dots, not the
 // ellipsis character, so the DOM text the specs compare against lines up.
 export function shorten(addr: string, n = 8): string {

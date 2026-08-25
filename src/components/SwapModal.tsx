@@ -229,7 +229,11 @@ export default function SwapModal({ open, onClose }: Props) {
             </div>
           )}
 
-          {source !== 'none' && broker && (
+          {/* The broker answers even when nothing here can be signed, and its answer
+              next to the direct route is the whole point of routing through it. It
+              used to be hidden whenever the executable leg fell through, which is
+              exactly when the comparison is worth reading. */}
+          {broker && (
             <div className="bg-bg rounded-lg p-3 text-xs space-y-1">
               <div className="flex justify-between">
                 <span className="text-text-muted">Via Stellar Broker</span>
@@ -237,6 +241,14 @@ export default function SwapModal({ open, onClose }: Props) {
                   {broker.estimatedBuyingAmount} {buying.code}
                 </span>
               </div>
+              {broker.directTrade && (
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Direct route, same size</span>
+                  <span className="font-mono">
+                    {broker.directTrade.buying} {buying.code}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-text-muted">Extra vs direct route</span>
                 <span
@@ -245,12 +257,18 @@ export default function SwapModal({ open, onClose }: Props) {
                     Number(broker.profit) > 0 ? 'text-green' : 'text-text',
                   )}
                 >
-                  {broker.profit}
+                  {broker.profit} {buying.code}
                 </span>
               </div>
               {source === 'soroswap-fallback' && (
                 <p className="text-text-muted pt-1">
                   Price comparison from Stellar Broker. The swap itself runs on Soroswap for now.
+                </p>
+              )}
+              {source === 'none' && (
+                <p className="text-text-muted pt-1">
+                  Live price from Stellar Broker, for reference. Nothing on this pair can be
+                  signed from here right now.
                 </p>
               )}
             </div>
@@ -268,7 +286,9 @@ export default function SwapModal({ open, onClose }: Props) {
           )}
 
           {source === 'none' && !route.isLoading && route.data?.reason && (
-            <p className="text-xs text-coral">{route.data.reason}</p>
+            <p className={cn('text-xs', broker ? 'text-text-muted' : 'text-coral')}>
+              {route.data.reason}
+            </p>
           )}
 
           {networkMismatch && (

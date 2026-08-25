@@ -123,9 +123,13 @@ export default function Overview() {
             {headline}
           </p>
           <p className="text-xs text-text-secondary mt-1">
+            {/* an unpriced total has two different causes, and blaming the
+                market when the wallet is simply empty reads as a broken feed */}
             {usdTotal != null
               ? `Wallet plus vaults, quoted in ${unit === 'USD' ? 'US dollars' : 'testnet USDC'}.`
-              : `No market price on ${network}, so this shows the XLM balance.`}
+              : price == null
+                ? `No price to quote against on ${network} right now, so this shows the XLM balance.`
+                : `Nothing in this wallet can be priced on ${network} yet.`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -165,7 +169,7 @@ export default function Overview() {
               ? network === 'mainnet'
                 ? 'USDC, via Stellar Broker'
                 : 'USDC, via the Soroswap pool'
-              : 'no pool to quote from'
+              : 'no quote right now'
           }
         />
         <Stat
