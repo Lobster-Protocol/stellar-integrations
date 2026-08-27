@@ -31,6 +31,11 @@ export const TEST_FACTORY_TESTNET = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHT
 // matches contracts.ts testnet.lobster.readSource (deployer)
 export const TEST_SOURCE_TESTNET = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 
+// the testnet wallet that owns the demo vaults. the vault specs need an account
+// with cards on the page; TEST_WALLET owns none, which is what makes it the
+// right one for the create path.
+export const DEMO_VAULT_OWNER = 'GCVFDROZF3D565FAURFQBXQEOHT4BPQK2P66JUCL5XQWNWQBOGXMRVQA'
+
 // matches contracts.ts mainnet.tokens.usdcIssuer and mainnet.broker.endpoint.
 // the best-execution spec reads a live quote from the broker as ground truth,
 // then checks the dashboard shows the same figure.

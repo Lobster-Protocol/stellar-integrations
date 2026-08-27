@@ -187,10 +187,13 @@ export function Disclosure({
   summary,
   children,
   defaultOpen = false,
+  onOpenChange,
 }: {
   summary: string
   children: ReactNode
   defaultOpen?: boolean
+  // lets a panel hold off on an expensive read until somebody actually looks
+  onOpenChange?: (open: boolean) => void
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const id = useId()
@@ -198,7 +201,10 @@ export function Disclosure({
     <div>
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setOpen(!open)
+          onOpenChange?.(!open)
+        }}
         aria-expanded={open}
         aria-controls={id}
         className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text"

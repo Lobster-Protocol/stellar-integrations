@@ -1,24 +1,29 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useReducer, useState } from 'react'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useFactoryInfo } from '../integrations/lobster/hooks'
-import { useVaultPositions, VENUE_LABEL } from '../integrations/lobster/position'
+import { useVaultPositions } from '../integrations/lobster/position'
+import {
+  hiddenVaults,
+  hideVault,
+  partitionHidden,
+  showAllVaults,
+} from '../integrations/lobster/hidden-vaults'
 import { useAccountBalances } from '../integrations/horizon/account'
 import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
 import { buildPortfolio } from '../integrations/pricing/portfolio'
 import { CONTRACTS } from '../config/contracts'
-import { formatBalance, formatValue, shortenAddress, stellarExplorer } from '../utils/format'
-import CopyButton from '../components/CopyButton'
+import { formatValue, shortenAddress, stellarExplorer } from '../utils/format'
 import SignDemoTx from '../components/SignDemoTx'
 import LiveDataMeta from '../components/LiveDataMeta'
 import RoutingEngineCard from '../components/RoutingEngineCard'
 import TtlCountdownCard from '../components/TtlCountdownCard'
-import TokenRef from '../components/TokenRef'
 import { Card, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 import VaultActionModal from '../components/VaultActionModal'
+import VaultCard from '../components/VaultCard'
+import CreateVaultModal from '../components/CreateVaultModal'
 import type { VaultAction } from '../integrations/lobster/vault-tx'
 import type { VaultPosition } from '../integrations/lobster/position'
 
@@ -26,6 +31,10 @@ export default function Positions() {
   const { address } = useWallet()
   const { network } = useNetwork()
   const [vaultAction, setVaultAction] = useState<{ vault: VaultPosition; action: VaultAction } | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  // hiding writes straight to localStorage, so a counter is all it takes to
+  // read the list back after a change
+  const [, refreshHidden] = useReducer((n: number) => n + 1, 0)
 
   const factoryInfo = useFactoryInfo(network, address || undefined)
   const vaultsQ = useVaultPositions(network, address)
@@ -43,6 +52,10 @@ export default function Positions() {
   const factoryExplorer = factoryId ? stellarExplorer(network, 'contract', factoryId) : null
   const deployed = vaults.filter((v) => v.venue !== 'idle').length
 
+  const hidden = address ? hiddenVaults(network, address) : []
+  const split = partitionHidden(portfolio.vaults, hidden, (p) => p.vault.address)
+  const totalValue = portfolio.vaults.reduce((sum, p) => sum + p.value, 0)
+
   return (
     <div className="space-y-6">
       {vaultAction && address && (
@@ -57,6 +70,16 @@ export default function Positions() {
         />
       )}
 
+      {createOpen && address && (
+        <CreateVaultModal
+          open
+          onClose={() => setCreateOpen(false)}
+          onDone={() => vaultsQ.refetch()}
+          network={network}
+          caller={address}
+        />
+      )}
+
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold text-text">Positions</h2>
@@ -66,11 +89,21 @@ export default function Positions() {
           </p>
         </div>
         {address && (
-          <LiveDataMeta
-            dataUpdatedAt={vaultsQ.dataUpdatedAt}
-            isFetching={vaultsQ.isFetching}
-            onRefresh={() => vaultsQ.refetch()}
-          />
+          <div className="flex items-center gap-3">
+            {factoryId && (
+              <button
+                onClick={() => setCreateOpen(true)}
+                className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all"
+              >
+                + Create vault
+              </button>
+            )}
+            <LiveDataMeta
+              dataUpdatedAt={vaultsQ.dataUpdatedAt}
+              isFetching={vaultsQ.isFetching}
+              onRefresh={() => vaultsQ.refetch()}
+            />
+          </div>
         )}
       </div>
 
@@ -126,10 +159,13 @@ export default function Positions() {
         <Card>
           <Empty
             action={
-              network === 'testnet' ? (
-                <span className="text-xs text-text-muted">
-                  Sign a testnet transaction below to try the flow end to end.
-                </span>
+              factoryId ? (
+                <button
+                  onClick={() => setCreateOpen(true)}
+                  className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all"
+                >
+                  + Create your first vault
+                </button>
               ) : undefined
             }
           >
@@ -137,107 +173,55 @@ export default function Positions() {
           </Empty>
         </Card>
       ) : (
-        <div className="grid lg:grid-cols-2 gap-4">
-          {portfolio.vaults.map(({ vault: v, value, partial }) => (
-            <Card key={v.address}>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <span className="flex items-center gap-0.5">
-                    <a
-                      href={stellarExplorer(network, 'contract', v.address)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={v.address}
-                      className="font-mono text-sm text-primary hover:underline"
-                    >
-                      {shortenAddress(v.address, 6)}
-                    </a>
-                    <CopyButton value={v.address} what="the vault address" />
-                  </span>
-                  <div className="text-xs text-text-secondary mt-0.5 flex items-center gap-1">
-                    <TokenRef id={v.token0} /> / <TokenRef id={v.token1} />
-                  </div>
-                </div>
-                <span
-                  className={
-                    v.venue === 'idle'
-                      ? 'text-xs px-2.5 py-1 rounded-full bg-bg text-text-muted shrink-0'
-                      : 'text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary shrink-0'
-                  }
-                >
-                  {VENUE_LABEL[v.venue]}
+        <div className="space-y-4">
+          {/* items-start: an open detail must not stretch the card beside it */}
+          <div className="grid lg:grid-cols-2 gap-4 items-start">
+            {split.visible.map(({ vault: v, value, partial }) => (
+              <VaultCard
+                key={v.address}
+                vault={v}
+                value={value}
+                partial={partial}
+                unit={unit}
+                network={network}
+                account={address}
+                priceOf={priceOf}
+                share={totalValue > 0 ? (value / totalValue) * 100 : 0}
+                onAction={(action) => setVaultAction({ vault: v, action })}
+                onHide={() => {
+                  hideVault(network, address, v.address)
+                  refreshHidden()
+                }}
+              />
+            ))}
+          </div>
+
+          {split.hidden.length > 0 && (
+            <Card>
+              <div className="flex items-center justify-between gap-3 flex-wrap text-xs">
+                <span className="text-text-secondary">
+                  {split.hidden.length} vault{split.hidden.length === 1 ? '' : 's'} hidden in this
+                  browser. They are still on-chain and still yours.
                 </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl bg-bg px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-wider text-text-muted mb-0.5">
-                    <TokenRef id={v.token0} />
-                  </div>
-                  <div className="text-sm text-text tabular-nums">{formatBalance(v.amount0)}</div>
-                </div>
-                <div className="rounded-xl bg-bg px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-wider text-text-muted mb-0.5">
-                    <TokenRef id={v.token1} />
-                  </div>
-                  <div className="text-sm text-text tabular-nums">{formatBalance(v.amount1)}</div>
-                </div>
-                <div className="rounded-xl bg-bg px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-wider text-text-muted mb-0.5">Value</div>
-                  <div className="text-sm text-text tabular-nums">
-                    {formatValue(value, unit)}
-                    {partial && <span className="text-text-muted"> +</span>}
-                  </div>
-                </div>
-              </div>
-
-              {v.venue !== 'idle' && v.poolAddress && (
-                <div className="mt-3 text-xs text-text-secondary">
-                  Working in{' '}
-                  <a
-                    href={stellarExplorer(network, 'contract', v.poolAddress)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-primary hover:underline"
-                  >
-                    {shortenAddress(v.poolAddress)}
-                  </a>
-                  {v.lpShares && (
-                    <span className="text-text-muted"> - {formatBalance(v.lpShares)} pool shares <InfoTip term="lpShares" label="pool shares" /></span>
-                  )}
-                </div>
-              )}
-
-              {!v.complete && (
-                <p className="text-xs text-coral mt-3">
-                  This vault reports a deployed position but would not return its pool.
-                </p>
-              )}
-
-              <div className="mt-3 pt-3 flex items-center justify-between gap-2 flex-wrap" style={{ borderTop: '1px solid rgba(13, 45, 76, 0.06)' }}>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setVaultAction({ vault: v, action: 'deposit' })}
-                    className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-semibold hover:bg-primary-dark transition-all"
-                  >
-                    Deposit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVaultAction({ vault: v, action: 'withdraw' })}
-                    disabled={Number(v.amount0) === 0 && Number(v.amount1) === 0}
-                    className="px-3 py-1.5 rounded-full bg-bg text-text text-xs font-semibold ring-1 ring-primary/20 hover:bg-bg/70 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Withdraw
-                  </button>
-                </div>
-                <Link to="/activity" className="text-xs text-primary hover:underline">
-                  Moves that touched this wallet
-                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    showAllVaults(network, address)
+                    refreshHidden()
+                  }}
+                  className="text-primary hover:underline"
+                >
+                  Show them again
+                </button>
               </div>
             </Card>
-          ))}
+          )}
+
+          {split.visible.length === 0 && (
+            <Card>
+              <Empty>Every vault this wallet owns is hidden in this browser.</Empty>
+            </Card>
+          )}
         </div>
       )}
 
