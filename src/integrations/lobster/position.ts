@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { CONTRACTS, type Network } from '../../config/contracts'
+import { Address, type xdr } from '@stellar/stellar-sdk'
+
 import { simulateRead, contractErrorCode } from '../stellar/read'
 import { stroopsToDecimal } from '../stellar/amount'
 import { getPoolsByUser } from './factory'
@@ -33,8 +35,13 @@ export interface VaultPosition {
   token0: string
   token1: string
   venue: Venue
+  // sitting in the vault itself, waiting to be put to work
   amount0: string
   amount1: string
+  // what the vault's share of the pool represents, null while it holds no
+  // position or when the pool would not answer
+  pooled0: string | null
+  pooled1: string | null
   poolAddress: string | null
   lpShares: string | null
   // true when the vault answered every read we asked of it
@@ -47,12 +54,22 @@ const LP_GETTER: Record<Exclude<Venue, 'idle'>, string> = {
   aquarius: 'get_lp_aquarius',
 }
 
+// get_amounts_tokens is documented as the balances held "not in pools", so on a
+// vault that is working it reads close to zero. What the position is actually
+// worth comes from the pool: these return the vault's share of the reserves.
+const POOLED_GETTER: Record<Exclude<Venue, 'idle'>, string> = {
+  soroswap: 'get_amounts_from_soroswap',
+  phoenix: 'get_amounts_from_phoenix',
+  aquarius: 'get_amounts_from_aquarius',
+}
+
 async function readVault(
   network: Network,
   source: string,
   pool: { lobsterAddress: string; owner: string; token0: string; token1: string },
 ): Promise<VaultPosition> {
-  const read = <T>(method: string) => simulateRead<T>(network, source, pool.lobsterAddress, method)
+  const read = <T>(method: string, args?: xdr.ScVal[]) =>
+    simulateRead<T>(network, source, pool.lobsterAddress, method, args)
 
   const base = {
     address: pool.lobsterAddress,
@@ -72,6 +89,8 @@ async function readVault(
     venue,
     amount0: stroopsToDecimal(amounts[0]),
     amount1: stroopsToDecimal(amounts[1]),
+    pooled0: null,
+    pooled1: null,
     poolAddress: null,
     lpShares: null,
     complete: true,
@@ -80,12 +99,18 @@ async function readVault(
   if (venue === 'idle') return position
 
   try {
-    const [poolAddress, lp] = await Promise.all([
-      read<string>('get_actual_pool'),
-      read<bigint | [bigint, string]>(LP_GETTER[venue]),
-    ])
+    // the pool address comes first: every other read of a working vault takes it
+    const poolAddress = await read<string>('get_actual_pool')
     position.poolAddress = poolAddress
+    const arg = [new Address(poolAddress).toScVal()]
+
+    const [lp, pooled] = await Promise.all([
+      read<bigint | [bigint, string]>(LP_GETTER[venue], arg),
+      read<[bigint, bigint]>(POOLED_GETTER[venue], arg),
+    ])
     position.lpShares = stroopsToDecimal(Array.isArray(lp) ? lp[0] : lp)
+    position.pooled0 = stroopsToDecimal(pooled[0])
+    position.pooled1 = stroopsToDecimal(pooled[1])
   } catch (err) {
     // a vault that reports a venue but refuses the pool read is in a state we
     // cannot describe, so say so rather than show it as empty
@@ -115,19 +140,31 @@ export function useVaultPositions(network: Network, user: string | null) {
   })
 }
 
-// Value a vault leg by leg. Only tokens we have a price for contribute, so a
-// pair with one unpriceable side reports what it can and flags the rest.
-export function valueVault(
-  p: VaultPosition,
-  priceOf: (tokenId: string) => number | null,
-): { value: number; partial: boolean } {
+// Everything a vault controls, token by token: what sits in it, plus what its
+// pool position represents. A vault that is working holds almost nothing
+// directly, so counting only the first would report a live position as empty.
+export function vaultLegs(p: VaultPosition): Array<[string, string]> {
   const legs: Array<[string, string]> = [
     [p.token0, p.amount0],
     [p.token1, p.amount1],
   ]
+  if (p.pooled0) legs.push([p.token0, p.pooled0])
+  if (p.pooled1) legs.push([p.token1, p.pooled1])
+  return legs
+}
+
+// Value a vault leg by leg. Only tokens we have a price for contribute, so a
+// pair with one unpriceable side reports what it can and flags the rest. A
+// working vault whose pool would not answer is flagged too: its total is short
+// by whatever the position holds, and saying so beats quoting a number that is
+// missing most of it.
+export function valueVault(
+  p: VaultPosition,
+  priceOf: (tokenId: string) => number | null,
+): { value: number; partial: boolean } {
   let value = 0
-  let partial = false
-  for (const [id, amount] of legs) {
+  let partial = p.venue !== 'idle' && (p.pooled0 === null || p.pooled1 === null)
+  for (const [id, amount] of vaultLegs(p)) {
     const price = priceOf(id)
     if (price == null) {
       if (Number(amount) > 0) partial = true

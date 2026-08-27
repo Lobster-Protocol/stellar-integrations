@@ -65,12 +65,21 @@ export default function VaultCard({
   const [open, setOpen] = useState(false)
   const detail = useVaultDetail(network, account, v, open)
 
-  const legValue = (id: string, amount: string): number | null => {
+  // a working vault holds its tokens in the pool, not in itself, so the headline
+  // per token is the two added together
+  const total = (idle: string, pooled: string | null) => Number(idle) + Number(pooled ?? 0)
+  const held0 = total(v.amount0, v.pooled0)
+  const held1 = total(v.amount1, v.pooled1)
+  const working = v.pooled0 !== null || v.pooled1 !== null
+
+  const legValue = (id: string, amount: number): number | null => {
     const price = priceOf(id)
-    return price == null ? null : Number(amount) * price
+    return price == null ? null : amount * price
   }
-  const value0 = legValue(v.token0, v.amount0)
-  const value1 = legValue(v.token1, v.amount1)
+  const value0 = legValue(v.token0, held0)
+  const value1 = legValue(v.token1, held1)
+  // withdraw_contract only moves what sits in the vault, so the button follows
+  // the idle balance rather than the total
   const empty = Number(v.amount0) === 0 && Number(v.amount1) === 0
 
   return (
@@ -109,7 +118,7 @@ export default function VaultCard({
           <div className="text-[10px] uppercase tracking-wider text-text-muted mb-0.5">
             <TokenRef id={v.token0} />
           </div>
-          <div className="text-sm text-text tabular-nums">{formatBalance(v.amount0)}</div>
+          <div className="text-sm text-text tabular-nums">{formatBalance(String(held0))}</div>
           <div className="text-[10px] text-text-muted tabular-nums">
             {value0 == null ? 'no price' : formatValue(value0, unit)}
           </div>
@@ -118,7 +127,7 @@ export default function VaultCard({
           <div className="text-[10px] uppercase tracking-wider text-text-muted mb-0.5">
             <TokenRef id={v.token1} />
           </div>
-          <div className="text-sm text-text tabular-nums">{formatBalance(v.amount1)}</div>
+          <div className="text-sm text-text tabular-nums">{formatBalance(String(held1))}</div>
           <div className="text-[10px] text-text-muted tabular-nums">
             {value1 == null ? 'no price' : formatValue(value1, unit)}
           </div>
@@ -134,6 +143,12 @@ export default function VaultCard({
           </div>
         </div>
       </div>
+
+      {working && (
+        <p className="mt-3 text-xs text-text-secondary">
+          Most of that is in the pool, not in the vault itself. The split is in the details below.
+        </p>
+      )}
 
       {v.venue !== 'idle' && v.poolAddress && (
         <div className="mt-3 text-xs text-text-secondary">
@@ -166,6 +181,22 @@ export default function VaultCard({
             <Row label="Working on">
               <span className="text-text">{VENUE_LABEL[v.venue]}</span>
             </Row>
+            <Row label="Idle in the vault">
+              <span className="text-text tabular-nums">
+                {formatBalance(v.amount0)} / {formatBalance(v.amount1)}
+              </span>
+            </Row>
+            {v.venue !== 'idle' && (
+              <Row label="In the pool">
+                {v.pooled0 !== null && v.pooled1 !== null ? (
+                  <span className="text-text tabular-nums">
+                    {formatBalance(v.pooled0)} / {formatBalance(v.pooled1)}
+                  </span>
+                ) : (
+                  <span className="text-text-muted">the pool would not say</span>
+                )}
+              </Row>
+            )}
             {v.venue !== 'idle' && (
               <>
                 <Row label="Pool">

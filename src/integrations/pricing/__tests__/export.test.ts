@@ -28,6 +28,8 @@ function vault(over: Partial<VaultPosition> = {}): VaultPosition {
     venue: 'soroswap',
     amount0: '100',
     amount1: '0',
+    pooled0: null,
+    pooled1: null,
     poolAddress: null,
     lpShares: null,
     complete: true,

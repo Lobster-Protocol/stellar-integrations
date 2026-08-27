@@ -1,7 +1,7 @@
 import type { Network } from '../../config/contracts'
 import { tokenLabel } from '../stellar/token-registry'
 import { shortenAddress } from '../../utils/format'
-import { valueVault, VENUE_LABEL, type VaultPosition } from '../lobster/position'
+import { valueVault, vaultLegs, VENUE_LABEL, type VaultPosition } from '../lobster/position'
 import type { ValuedBalance } from './price'
 
 export interface Slice {
@@ -40,10 +40,7 @@ export function buildPortfolio(
     if (l.usd != null && l.usd > 0) assets.set(l.code, (assets.get(l.code) ?? 0) + l.usd)
   }
   for (const { vault } of vaults) {
-    for (const [id, amount] of [
-      [vault.token0, vault.amount0],
-      [vault.token1, vault.amount1],
-    ] as Array<[string, string]>) {
+    for (const [id, amount] of vaultLegs(vault)) {
       const p = priceOf(id)
       if (p == null) continue
       const v = Number(amount) * p
