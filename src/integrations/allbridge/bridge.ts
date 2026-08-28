@@ -48,12 +48,26 @@ export async function quoteBridge(
   const sourceUsdc = await resolveUsdc(sdk, sourceChain)
   const stellarUsdc = await resolveUsdc(sdk, ChainSymbol.SRB)
 
+  // allbridge parks a pool by cranking its feeShare toward 1 (a live pool sits
+  // near 0.003). the stellar usdc pool is closed like this today, which makes the
+  // fee math underflow the received amount to zero. show a clear corridor-down
+  // message instead of the sdk's "amount must be greater than zero".
+  const destFee = Number((stellarUsdc as { feeShare?: number | string }).feeShare)
+  if (!Number.isFinite(destFee) || destFee >= 0.5) {
+    throw new Error(
+      'The Allbridge USDC pool into Stellar is closed right now. Bridging will work again once the pool reopens.',
+    )
+  }
+
   // no cctp on stellar yet; allbridge messenger still delivers native usdc
   const messenger = Messenger.ALLBRIDGE
-  const amountOutFloat = await sdk.getAmountToBeReceived(
+  // the token list ships an empty poolInfo, so the plain getAmountToBeReceived
+  // underflows to zero. read the live pool state from chain.
+  const amountOutFloat = await sdk.getAmountToBeReceivedFromChain(
     req.amount,
     sourceUsdc,
     stellarUsdc,
+    messenger,
   )
   const gasFee = await sdk.getGasFeeOptions(sourceUsdc, stellarUsdc, messenger)
 

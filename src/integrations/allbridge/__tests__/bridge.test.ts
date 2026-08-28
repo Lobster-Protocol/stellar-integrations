@@ -10,7 +10,8 @@ const TOKENS = {
   ETH: { symbol: 'USDC', chainSymbol: 'ETH', bridgeAddress: '0xBRIDGE-ETH', decimals: 6, transferTime: TRANSFER_TIME },
   ARB: { symbol: 'USDC', chainSymbol: 'ARB', bridgeAddress: '0xBRIDGE-ARB', decimals: 6, transferTime: TRANSFER_TIME },
   BSC: { symbol: 'USDC', chainSymbol: 'BSC', bridgeAddress: '0xBRIDGE-BSC', decimals: 6, transferTime: TRANSFER_TIME },
-  SRB: { symbol: 'USDC', chainSymbol: 'SRB', bridgeAddress: 'CBRIDGE-SRB', decimals: 7, transferTime: {} },
+  // a healthy allbridge pool sits near 0.003; a parked one is cranked toward 1
+  SRB: { symbol: 'USDC', chainSymbol: 'SRB', bridgeAddress: 'CBRIDGE-SRB', decimals: 7, transferTime: {}, feeShare: 0.003 },
 }
 
 type SendArgs = {
@@ -25,7 +26,7 @@ type ApproveArgs = { token: { chainSymbol: string }; owner: string; amount: stri
 function buildSdkMock() {
   return {
     tokensByChain: vi.fn(async (chain: string) => [TOKENS[chain as keyof typeof TOKENS]]),
-    getAmountToBeReceived: vi.fn(async () => '49.85'),
+    getAmountToBeReceivedFromChain: vi.fn(async () => '49.85'),
     getGasFeeOptions: vi.fn(async () => ({
       native: { float: '0.0021' },
       stablecoin: { float: '0.5' },
@@ -80,6 +81,13 @@ describe('quoteBridge', () => {
     ])
     const q = await quoteBridge(sdk as never, VALID_REQ, false)
     expect(q.estimatedTimeSeconds).toBeNull()
+  })
+
+  it('flags the corridor as down when the stellar pool feeShare is parked high', async () => {
+    sdk.tokensByChain.mockImplementation(async (chain: string) => [
+      chain === 'SRB' ? { ...TOKENS.SRB, feeShare: 0.9999 } : TOKENS[chain as keyof typeof TOKENS],
+    ])
+    await expect(quoteBridge(sdk as never, VALID_REQ, false)).rejects.toThrow(/pool into Stellar is closed/i)
   })
 
   it('flattens gas fee objects to their float string', async () => {

@@ -28,6 +28,7 @@ import {
 import { buildTrustlineXdr, submitTrustlineTx } from '../integrations/allbridge/trustline'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { hasWalletConnectProjectId } from '../integrations/evm/config'
+import { simulateBridgeQuote } from '../integrations/allbridge/simulate'
 
 interface Props {
   open: boolean
@@ -52,7 +53,7 @@ type Step =
   | { phase: 'form' }
   | { phase: 'approving' }
   | { phase: 'sending' }
-  | { phase: 'submitted'; hash?: string; sourceChain?: EvmSourceChain }
+  | { phase: 'submitted'; hash?: string; sourceChain?: EvmSourceChain; simulated?: boolean }
   | { phase: 'failed'; msg: string }
 
 export default function DepositModal({ open, onClose, initialChain }: Props) {
@@ -139,13 +140,24 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
       return
     }
 
-    if (!bridgeRequest || !evmChain || !evm.address) {
-      setStep({ phase: 'failed', msg: 'Connect both wallets and enter an amount.' })
+    // testnet has no real bridge (allbridge is mainnet-only, and there is no usdc
+    // on stellar testnet). run a labelled walkthrough so the flow is visible end
+    // to end; nothing moves and the result screen is badged as a simulation.
+    if (network !== 'mainnet') {
+      if (!evmChain || !amount || Number(amount) <= 0) {
+        setStep({ phase: 'failed', msg: 'Pick a source chain and an amount to run the testnet walkthrough.' })
+        return
+      }
+      setStep({ phase: 'approving' })
+      await new Promise((r) => setTimeout(r, 700))
+      setStep({ phase: 'sending' })
+      await new Promise((r) => setTimeout(r, 900))
+      setStep({ phase: 'submitted', sourceChain: evmChain, simulated: true })
       return
     }
 
-    if (network !== 'mainnet') {
-      setStep({ phase: 'failed', msg: 'Allbridge only runs on mainnet. Switch the network first.' })
+    if (!bridgeRequest || !evmChain || !evm.address) {
+      setStep({ phase: 'failed', msg: 'Connect both wallets and enter an amount.' })
       return
     }
 
@@ -220,7 +232,10 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
     }
   }
 
-  const quote = quoteQuery.data
+  const quote =
+    network !== 'mainnet' && isBridge && amount && Number(amount) > 0
+      ? simulateBridgeQuote(amount)
+      : quoteQuery.data
 
   return (
     <div
@@ -241,18 +256,23 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
       >
         {step.phase === 'submitted' ? (
           <div className="text-center py-6">
+            {step.simulated && (
+              <div className="mb-4 inline-block rounded-full bg-amber-500/10 text-amber-500 text-[11px] font-semibold px-3 py-1">
+                Simulation - no funds moved
+              </div>
+            )}
             <div className="w-12 h-12 rounded-full bg-green/10 flex items-center justify-center mx-auto mb-4">
               <Check className="text-green" size={22} />
             </div>
             <h3 className="text-lg font-semibold text-text mb-2">
-              {isBridge ? 'Bridge started' : 'Deposit started'}
+              {step.simulated ? 'Bridge simulated' : isBridge ? 'Bridge started' : 'Deposit started'}
             </h3>
             <p className="text-sm text-text-secondary mb-1">
               {isBridge
                 ? `Bridging ${amount} USDC from ${selectedChain.label}`
                 : `Depositing ${amount} USDC`}
             </p>
-            {step.hash && step.sourceChain && (
+            {!step.simulated && step.hash && step.sourceChain && (
               <a
                 href={EVM_EXPLORER_TX[step.sourceChain](step.hash)}
                 target="_blank"
@@ -263,7 +283,9 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
               </a>
             )}
             <p className="text-xs text-text-muted mt-3">
-              Funds arrive on Stellar once the transaction on the source chain confirms, through Allbridge Core. Keep an eye on your balance.
+              {step.simulated
+                ? 'This is a labelled walkthrough on testnet. Allbridge has no testnet and there is no USDC on Stellar testnet, so no real transfer runs here. Switch to mainnet to bridge real USDC.'
+                : 'Funds arrive on Stellar once the transaction on the source chain confirms, through Allbridge Core. Keep an eye on your balance.'}
             </p>
             <button
               onClick={onClose}
@@ -393,27 +415,29 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                         : '-'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="flex items-center gap-1">
-                    Trustline <InfoTip term="trustline" label="a trustline" />
-                  </span>
-                  {trustlineQuery.isLoading ? (
-                    <span className="text-text-muted">Checking...</span>
-                  ) : trustlineRequired ? (
-                    <button
-                      onClick={handleCreateTrustline}
-                      disabled={tl.phase === 'creating'}
-                      className="text-coral font-medium underline disabled:opacity-50"
-                    >
-                      {tl.phase === 'creating' ? 'Creating...' : tl.phase === 'failed' ? 'Retry trustline' : 'Create trustline'}
-                    </button>
-                  ) : (
-                    <span className="text-green font-medium">Active</span>
-                  )}
-                </div>
+                {network === 'mainnet' && (
+                  <div className="flex justify-between">
+                    <span className="flex items-center gap-1">
+                      Trustline <InfoTip term="trustline" label="a trustline" />
+                    </span>
+                    {trustlineQuery.isLoading ? (
+                      <span className="text-text-muted">Checking...</span>
+                    ) : trustlineRequired ? (
+                      <button
+                        onClick={handleCreateTrustline}
+                        disabled={tl.phase === 'creating'}
+                        className="text-coral font-medium underline disabled:opacity-50"
+                      >
+                        {tl.phase === 'creating' ? 'Creating...' : tl.phase === 'failed' ? 'Retry trustline' : 'Create trustline'}
+                      </button>
+                    ) : (
+                      <span className="text-green font-medium">Active</span>
+                    )}
+                  </div>
+                )}
                 {network === 'testnet' && (
-                  <div className="mt-2 pt-2 border-t border-text-muted/10 text-coral">
-                    Allbridge runs on mainnet only. Switch to mainnet to send a real transfer.
+                  <div className="mt-2 pt-2 border-t border-text-muted/10 text-amber-500">
+                    Simulation only: Allbridge has no testnet, so this walks the flow without moving funds. Switch to mainnet for a real transfer.
                   </div>
                 )}
                 {tl.phase === 'failed' && (
@@ -435,7 +459,7 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                 !amount ||
                 Number(amount) <= 0 ||
                 isWorking ||
-                (isBridge && (!evm.address || network === 'testnet' || !trustlineOk))
+                (isBridge && network === 'mainnet' && (!evm.address || !trustlineOk))
               }
               className="w-full py-3 rounded-full bg-primary text-white font-semibold text-sm transition-all hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
             >

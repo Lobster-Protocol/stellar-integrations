@@ -167,8 +167,9 @@ export default function Bridges() {
         <Corridor chains={chains.map((c) => EVM_CHAIN_NAME[c])} live={live} />
         {!live && (
           <p className="text-xs text-coral mt-3">
-            Allbridge has no testnet deployment, so nothing can be bridged while the dashboard is on
-            testnet. Switch to mainnet to send a real transfer.
+            Allbridge has no testnet deployment, so no real USDC can move while the dashboard is on
+            testnet. Opening the bridge form here runs a labelled walkthrough of the steps with
+            nothing sent. Switch to mainnet for a real transfer.
           </p>
         )}
       </Card>
@@ -208,8 +209,10 @@ export default function Bridges() {
               >
                 the bridge form
               </button>
-              . The amount you receive and the arrival estimate come from a live Allbridge quote at
-              that moment.
+              .{' '}
+              {live
+                ? 'The amount you receive and the arrival estimate come from a live Allbridge quote at that moment.'
+                : 'On testnet this runs a labelled walkthrough with a sample quote, so you can see the steps without any funds moving.'}
             </span>
           </li>
         </ol>
