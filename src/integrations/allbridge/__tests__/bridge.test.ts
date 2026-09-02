@@ -6,11 +6,13 @@ import type { BridgeRequest } from '../types'
 
 // the source token carries the avg transfer time to stellar (SRB), in ms
 const TRANSFER_TIME = { [ChainSymbol.SRB]: { [Messenger.ALLBRIDGE]: 180_000 } }
+// a healthy allbridge pool sits near 0.003; a parked one is cranked toward 1.
+// every entry carries the field so overriding one in a test still produces the
+// same shape, which is what the sdk hands back.
 const TOKENS = {
-  ETH: { symbol: 'USDC', chainSymbol: 'ETH', bridgeAddress: '0xBRIDGE-ETH', decimals: 6, transferTime: TRANSFER_TIME },
-  ARB: { symbol: 'USDC', chainSymbol: 'ARB', bridgeAddress: '0xBRIDGE-ARB', decimals: 6, transferTime: TRANSFER_TIME },
-  BSC: { symbol: 'USDC', chainSymbol: 'BSC', bridgeAddress: '0xBRIDGE-BSC', decimals: 6, transferTime: TRANSFER_TIME },
-  // a healthy allbridge pool sits near 0.003; a parked one is cranked toward 1
+  ETH: { symbol: 'USDC', chainSymbol: 'ETH', bridgeAddress: '0xBRIDGE-ETH', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003 },
+  ARB: { symbol: 'USDC', chainSymbol: 'ARB', bridgeAddress: '0xBRIDGE-ARB', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003 },
+  BSC: { symbol: 'USDC', chainSymbol: 'BSC', bridgeAddress: '0xBRIDGE-BSC', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003 },
   SRB: { symbol: 'USDC', chainSymbol: 'SRB', bridgeAddress: 'CBRIDGE-SRB', decimals: 7, transferTime: {}, feeShare: 0.003 },
 }
 

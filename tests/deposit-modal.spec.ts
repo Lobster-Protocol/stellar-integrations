@@ -32,7 +32,10 @@ test.describe('DepositModal - Allbridge wiring', () => {
     await expect(page.getByRole('button', { name: /Bridge & Deposit/ })).toBeVisible()
   })
 
-  test('Bridge button stays disabled without a connected EVM wallet', async ({ page }) => {
+  test('on mainnet the bridge stays locked without an EVM wallet', async ({ page }) => {
+    // this is the leg that moves real money, so the guard belongs on the network
+    // where it applies rather than on testnet, which only ever simulates
+    await page.addInitScript(() => localStorage.setItem('lob_network', 'mainnet'))
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()
     await page.getByRole('button', { name: /Ethereum/ }).click()
@@ -40,19 +43,19 @@ test.describe('DepositModal - Allbridge wiring', () => {
     const submitBtn = page.getByRole('button', { name: /Bridge & Deposit/ })
     await expect(submitBtn).toBeDisabled()
 
-    // an amount alone does not unlock it - bridging needs an EVM wallet on mainnet
+    // an amount alone does not unlock it, bridging needs an EVM wallet
     await page.getByPlaceholder('0.00').fill('100')
     await expect(submitBtn).toBeDisabled()
   })
 
-  test('on testnet, the modal warns that Allbridge runs on mainnet only', async ({ page }) => {
+  test('on testnet, the modal says nothing will actually move', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()
     await page.getByRole('button', { name: /Ethereum/ }).click()
 
-    await expect(
-      page.getByText(/Allbridge runs on mainnet only/i),
-    ).toBeVisible()
+    await expect(page.getByText(/Simulation only/i)).toBeVisible()
+    await expect(page.getByText(/without moving funds/i)).toBeVisible()
+    await expect(page.getByText(/Switch to mainnet for a real transfer/i)).toBeVisible()
   })
 
   test('opens from the Bridges page and lands on the bridge flow', async ({ page }) => {
