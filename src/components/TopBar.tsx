@@ -16,7 +16,7 @@ interface Props {
 export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props) {
   const { address, walletName, connecting, connect, disconnect } = useWallet()
   const { network, setNetwork } = useNetwork()
-  const { mode, dfnsAddress } = useCustody()
+  const { mode, dfnsAddress, setMode } = useCustody()
 
   return (
     <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-bg-card/60 backdrop-blur-sm" style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.06)' }}>
@@ -59,6 +59,7 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           </button>
         </div>
 
+        {/* Browser wallet: its own connection, connect/disconnect here. */}
         {address ? (
           <div className="flex items-center gap-2">
             <div className="hidden sm:block text-right">
@@ -76,20 +77,6 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
                 <CopyButton value={address} what="your wallet address" />
               </span>
             </div>
-            {mode === 'dfns' && dfnsAddress && (
-              <div className="hidden sm:block text-right border-l border-text-muted/20 pl-2 ml-1">
-                <p className="text-[10px] text-text-muted leading-none">DFNS</p>
-                <a
-                  href={stellarExplorer(network, 'account', dfnsAddress)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={dfnsAddress}
-                  className="text-xs text-text font-mono hover:text-primary hover:underline"
-                >
-                  {shortenAddress(dfnsAddress, 5)}
-                </a>
-              </div>
-            )}
             <button
               onClick={disconnect}
               aria-label="Disconnect wallet"
@@ -106,6 +93,33 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           >
             {connecting ? '...' : 'Connect Wallet'}
           </button>
+        )}
+
+        {/* DFNS custody: a separate connection. Shown whenever custody is on,
+            independent of the browser wallet, with its own off switch. Turning
+            it on lives on the Audit page (custody toggle). */}
+        {mode === 'dfns' && dfnsAddress && (
+          <div className="hidden sm:flex items-center gap-1.5 border-l border-text-muted/20 pl-2 ml-1">
+            <div className="text-right">
+              <p className="text-[10px] text-text-muted leading-none">DFNS</p>
+              <a
+                href={stellarExplorer(network, 'account', dfnsAddress)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={dfnsAddress}
+                className="text-xs text-text font-mono hover:text-primary hover:underline"
+              >
+                {shortenAddress(dfnsAddress, 5)}
+              </a>
+            </div>
+            <button
+              onClick={() => setMode('wallet-kit')}
+              aria-label="Turn off DFNS custody"
+              className="text-[10px] text-text-muted hover:text-error px-1.5 py-0.5 rounded-full hover:bg-error/5 transition-colors"
+            >
+              off
+            </button>
+          </div>
         )}
       </div>
     </div>
