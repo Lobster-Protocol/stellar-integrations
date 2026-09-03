@@ -39,7 +39,7 @@ export default function SignDemoTx() {
   // not the connected browser wallet; the relay guard rejects any other source.
   const source = isDfns ? dfnsAddress : address
 
-  async function handleAction(kind: 'ping' | 'transfer' | 'small' | 'large' | 'trustline') {
+  async function handleAction(kind: 'ping' | 'transfer' | 'payment' | 'trustline') {
     if (!source || inFlight.current) return
     inFlight.current = true
     try {
@@ -57,12 +57,8 @@ export default function SignDemoTx() {
         return
       }
       let xdr: string
-      if (kind === 'small' || kind === 'large') {
-        // the two sit on either side of the 5 USD line in the treasury policy,
-        // which is the whole point of having both: the small one clears with no
-        // human, the large one waits for a named approver. both pay the
-        // treasury itself, so the balance never moves.
-        xdr = await buildTreasuryPaymentTx(network, source, kind === 'small' ? '0.0100000' : '80.0000000')
+      if (kind === 'payment') {
+        xdr = await buildTreasuryPaymentTx(network, source, '0.0100000')
       } else if (kind === 'trustline') {
         xdr = await buildTreasuryTrustlineTx(network, source)
       } else {
@@ -139,12 +135,13 @@ export default function SignDemoTx() {
           <>
             The treasury wallet is held by DFNS and signed by its MPC network{' '}
             <InfoTip term="mpc" label="MPC signing" />. Every request is checked against the treasury
-            approval rules first, and the buttons deliberately land on both sides of them. The 0.01
-            XLM payment is under the limit, so it signs and broadcasts on its own and the hash shows
-            up straight away. The 80 XLM one is over it, so it waits for a named approver first.
-            Calling the Factory is a contract read, which DFNS cannot put a dollar value on, so that
-            one waits too. Every button pays the treasury itself, so the balance never moves. The
-            rules are listed on the{' '}
+            rule first, and the buttons deliberately land on both sides of it. The rule allows a
+            payment to an address on the treasury list and holds everything else for a named
+            approver. The first payment button asks DFNS to build the payment, so it can read the
+            recipient, see our own address and let it through: the hash lands in seconds with nobody
+            in the loop. The other buttons hand DFNS a signed envelope instead, which it cannot read
+            a recipient out of, so those wait for the approver. Every one of them pays the treasury
+            itself, so the balance never moves. The rule is listed on the{' '}
             <a href="/audit" className="text-coral hover:underline">
               Audit
             </a>{' '}
@@ -213,21 +210,14 @@ export default function SignDemoTx() {
                 disabled={busy}
                 className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Pay 0.01 XLM to itself, no approver
+                Pay 0.01 XLM to itself, no approver needed
               </button>
               <button
-                onClick={() => handleAction('small')}
+                onClick={() => handleAction('payment')}
                 disabled={busy}
                 className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Pay 0.01 XLM, under the limit
-              </button>
-              <button
-                onClick={() => handleAction('large')}
-                disabled={busy}
-                className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Pay 80 XLM, over the limit
+                Pay 0.01 XLM as raw XDR, needs an approver
               </button>
               <button
                 onClick={() => handleAction('trustline')}
