@@ -459,6 +459,7 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                 !amount ||
                 Number(amount) <= 0 ||
                 isWorking ||
+                !stellarAddr ||
                 (isBridge && network === 'mainnet' && (!evm.address || !trustlineOk))
               }
               className="w-full py-3 rounded-full bg-primary text-white font-semibold text-sm transition-all hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"

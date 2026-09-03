@@ -35,7 +35,17 @@ export async function buildTrustlineXdr(
   network: Network,
 ): Promise<string> {
   const server = getHorizonServer(network)
-  const account = await server.loadAccount(accountId)
+  let account
+  try {
+    account = await server.loadAccount(accountId)
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new Error(
+        `This account is not funded on ${network} yet. Add some XLM first, then turn on the trustline.`,
+      )
+    }
+    throw err
+  }
   return new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: networkPassphrase(network),

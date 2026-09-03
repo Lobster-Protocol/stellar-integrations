@@ -1,4 +1,5 @@
 import {
+  Account,
   Contract,
   TransactionBuilder,
   BASE_FEE,
@@ -10,7 +11,7 @@ import {
 } from '@stellar/stellar-sdk'
 
 import { CONTRACTS, type Network } from '../../config/contracts'
-import { getSorobanServer, networkPassphrase } from '../lobster/client'
+import { getSorobanServer, networkPassphrase, loadFunded } from '../lobster/client'
 import { RestoreRequiredError } from '../lobster/factory'
 import { assertAccountId, assertContractId } from '../stellar/strkey-guards'
 
@@ -51,13 +52,9 @@ export async function quoteSoroswapDirect(
   }
 
   const server = getSorobanServer(params.network)
-  let sourceAccount
-  try {
-    sourceAccount = await server.getAccount(params.callerAccount)
-  } catch {
-    // caller not on-chain yet on this network
-    return null
-  }
+  // read-only sim: a quote moves nothing, so a fabricated source lets an
+  // unfunded (not-yet-created) caller still get a price.
+  const sourceAccount = new Account(params.callerAccount, '0')
 
   const router = new Contract(routerId)
   const amountIn = nativeToScVal(params.amountInStroops, { type: 'i128' })
@@ -99,7 +96,7 @@ export async function buildSoroswapSwapTx(params: SoroswapBuildParams): Promise<
   if (params.minAmountOut <= 0n) throw new Error('soroswap swap needs a positive min amount out')
 
   const server = getSorobanServer(params.network)
-  const source = await server.getAccount(params.callerAccount)
+  const source = await loadFunded(server, params.callerAccount, params.network)
   const router = new Contract(routerId)
 
   const amountIn = nativeToScVal(params.amountInStroops, { type: 'i128' })

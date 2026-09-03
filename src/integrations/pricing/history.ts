@@ -3,7 +3,7 @@ import { NotFoundError } from '@stellar/stellar-sdk'
 
 import type { Network } from '../../config/contracts'
 import { getHorizonServer } from '../horizon/client'
-import { getAccountBalances } from '../horizon/account'
+import { getAccountBalances, useAccountBalances } from '../horizon/account'
 import { decimalToStroops, stroopsToDecimal } from '../stellar/amount'
 
 // Horizon's own ceiling per page, and how many pages we are willing to walk
@@ -297,10 +297,14 @@ export function densify(points: BalancePoint[], target = 320): BalancePoint[] {
 }
 
 export function useBalanceHistory(network: Network, account: string | null) {
+  // a wallet with no funds has no history and is not on-chain, so skip the
+  // ledger replay until balances confirm the account exists.
+  const balances = useAccountBalances(network, account)
+  const exists = balances.isSuccess && balances.data.length > 0
   return useQuery<BalanceHistory>({
     queryKey: ['balance-history', network, account],
     queryFn: () => getBalanceHistory(network, account!),
-    enabled: !!account,
+    enabled: !!account && exists,
     staleTime: 5 * 60_000,
     retry: 1,
   })

@@ -173,13 +173,35 @@ export default function Allocation() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat
           label="Total value"
-          value={total > 0 ? formatValue(total, unit) : 'n/a'}
+          value={
+            held.length + vaults.length === 0
+              ? formatValue(0, unit)
+              : total > 0
+                ? formatValue(total, unit)
+                : 'n/a'
+          }
           sub={unit === 'USDC' ? 'quoted in testnet USDC' : 'wallet plus vaults'}
         />
-        <Stat label="In wallet" value={formatValue(walletValue, unit)} sub={`${held.length} assets`} />
+        <Stat
+          label="In wallet"
+          value={
+            held.length === 0
+              ? formatValue(0, unit)
+              : walletValue > 0
+                ? formatValue(walletValue, unit)
+                : 'n/a'
+          }
+          sub={`${held.length} assets`}
+        />
         <Stat
           label="In vaults"
-          value={formatValue(vaultValue, unit)}
+          value={
+            vaults.length === 0
+              ? formatValue(0, unit)
+              : vaultValue > 0
+                ? formatValue(vaultValue, unit)
+                : 'n/a'
+          }
           sub={`${vaults.length} position${vaults.length === 1 ? '' : 's'}`}
           tone="accent"
         />

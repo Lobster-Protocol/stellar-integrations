@@ -96,7 +96,9 @@ const mainnet: NetworkContracts = {
     // not on mainnet yet
     factory: '',
     wasmHash: '',
-    readSource: '',
+    // all-zero account: a read-only sim source for the mainnet price quote, which
+    // needs no funds. the factory itself is not deployed on mainnet yet.
+    readSource: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
   },
   friendbot: '',
 }

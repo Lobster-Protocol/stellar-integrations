@@ -317,7 +317,7 @@ export default function Performance() {
         )}
       </Card>
 
-      {flows && (
+      {flows && history && history.points.length > 0 && (
         <Card>
           <CardHead
             title="Where the XLM went"

@@ -7,7 +7,7 @@ import {
   rpc,
 } from '@stellar/stellar-sdk'
 
-import { getSorobanServer, networkPassphrase } from './client'
+import { getSorobanServer, networkPassphrase, loadFunded } from './client'
 import { submitSignedXdr, waitForTx, type SorobanRestorePreamble } from './factory'
 import { decimalToStroops } from '../stellar/amount'
 import type { Network } from './types'
@@ -32,7 +32,7 @@ export async function buildVaultActionTx(
 ): Promise<{ xdr: string; restorePreamble?: SorobanRestorePreamble }> {
   const server = getSorobanServer(network)
   const vault = new Contract(vaultAddress)
-  const source = await server.getAccount(caller)
+  const source = await loadFunded(server, caller, network)
 
   const args = [
     new Address(caller).toScVal(),

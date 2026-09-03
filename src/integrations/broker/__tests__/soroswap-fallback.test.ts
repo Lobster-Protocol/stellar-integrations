@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../../lobster/client', () => ({
-  getSorobanServer: vi.fn(),
-  networkPassphrase: vi.fn(() => 'Test SDF Network ; September 2015'),
-}))
+vi.mock('../../lobster/client', async () => {
+  const actual = await vi.importActual<typeof import('../../lobster/client')>('../../lobster/client')
+  return {
+    ...actual,
+    getSorobanServer: vi.fn(),
+    networkPassphrase: vi.fn(() => 'Test SDF Network ; September 2015'),
+  }
+})
 
 // testnet now carries a real soroswap router, so blank it here to keep the
 // no-router guard tests meaningful.
@@ -22,7 +26,7 @@ const { getSorobanServer } = await import('../../lobster/client')
 const getSorobanServerMock = getSorobanServer as ReturnType<typeof vi.fn>
 
 import { quoteSoroswapDirect, buildSoroswapSwapTx } from '../soroswap-fallback'
-import { Account } from '@stellar/stellar-sdk'
+import { Account, nativeToScVal } from '@stellar/stellar-sdk'
 
 const VALID_PARAMS = {
   network: 'mainnet' as const,
@@ -43,13 +47,17 @@ describe('quoteSoroswapDirect', () => {
     expect(getSorobanServerMock).not.toHaveBeenCalled()
   })
 
-  it('returns null when getAccount throws (caller account not on chain)', async () => {
+  it('quotes via a fabricated source, so an unfunded caller never blocks on getAccount', async () => {
+    const getAccount = vi.fn().mockRejectedValue(new Error('account not found'))
     getSorobanServerMock.mockReturnValue({
-      getAccount: vi.fn().mockRejectedValue(new Error('account not found')),
-      simulateTransaction: vi.fn(),
+      getAccount,
+      simulateTransaction: vi.fn().mockResolvedValue({
+        result: { retval: nativeToScVal([100_000_000n, 97_000_000n], { type: 'i128' }) },
+      }),
     })
     const r = await quoteSoroswapDirect(VALID_PARAMS)
-    expect(r).toBeNull()
+    expect(r).toBe(97_000_000n)
+    expect(getAccount).not.toHaveBeenCalled()
   })
 
   it('returns null on a simulation error', async () => {

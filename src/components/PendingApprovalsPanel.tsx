@@ -7,6 +7,9 @@ export default function PendingApprovalsPanel() {
   const approvals = useDfnsPendingApprovals()
   const decide = useDfnsApprove()
   const [reason, setReason] = useState<Record<string, string>>({})
+  // a version-skewed relay could answer 200 with a body that has no `items`;
+  // normalise once so nothing downstream dereferences undefined and throws.
+  const items = approvals.data?.items ?? []
 
   if (!import.meta.env.VITE_LOBSTER_API_URL) {
     return null
@@ -19,7 +22,7 @@ export default function PendingApprovalsPanel() {
           Pending approvals <InfoTip term="approval" label="an approval" />
         </h3>
         <span className="text-xs text-text-muted">
-          {approvals.isLoading ? '...' : `${approvals.data?.items.length ?? 0}`}
+          {approvals.isLoading ? '...' : `${items.length}`}
         </span>
       </div>
 
@@ -27,11 +30,11 @@ export default function PendingApprovalsPanel() {
         <p className="text-xs text-text-muted">Loading...</p>
       ) : approvals.isError ? (
         <p className="text-xs text-coral">{(approvals.error as Error).message}</p>
-      ) : (approvals.data?.items.length ?? 0) === 0 ? (
+      ) : items.length === 0 ? (
         <p className="text-xs text-text-muted">Nothing is waiting for approval.</p>
       ) : (
         <ul className="space-y-3">
-          {approvals.data!.items.map((a) => (
+          {items.map((a) => (
             <li key={a.id} className="rounded-2xl border border-text-muted/15 px-3 py-3">
               <div className="flex items-center justify-between text-xs mb-2">
                 <span className="font-mono text-text-secondary truncate">{a.id}</span>

@@ -39,6 +39,9 @@ function isTerminalKind(k: DfnsEventKind): boolean {
 export default function MpcSignatureFeed() {
   const events = useDfnsSignatureStream()
 
+  // no relay wired, nothing to stream: stay hidden like the sibling panels
+  if (!import.meta.env.VITE_LOBSTER_API_URL) return null
+
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
       <div className="flex items-center justify-between mb-3">

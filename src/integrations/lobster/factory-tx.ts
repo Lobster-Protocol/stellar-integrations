@@ -1,6 +1,6 @@
 import { Contract, TransactionBuilder, BASE_FEE, Address, rpc } from '@stellar/stellar-sdk'
 
-import { getSorobanServer, networkPassphrase } from './client'
+import { getSorobanServer, networkPassphrase, loadFunded } from './client'
 import { submitSignedXdr, waitForTx, type SorobanRestorePreamble } from './factory'
 import { CONTRACTS, type Network } from '../../config/contracts'
 
@@ -18,7 +18,7 @@ export async function buildCreatePoolTx(
 
   const server = getSorobanServer(network)
   const factory = new Contract(factoryId)
-  const source = await server.getAccount(caller)
+  const source = await loadFunded(server, caller, network)
 
   const tx = new TransactionBuilder(source, {
     fee: BASE_FEE,

@@ -17,8 +17,13 @@ export default function MicaExportButton() {
         headers: token ? { 'x-lobster-token': token } : undefined,
       })
       if (!res.ok) throw new Error(`export ${res.status}`)
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      const text = await res.text()
+      const parsed = JSON.parse(text) as { records?: unknown[] }
+      if (!parsed.records || parsed.records.length === 0) {
+        setError('No settled transactions to export yet.')
+        return
+      }
+      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
       const a = document.createElement('a')
       a.href = url
       a.download = `mica-export-${new Date().toISOString().slice(0, 10)}.json`

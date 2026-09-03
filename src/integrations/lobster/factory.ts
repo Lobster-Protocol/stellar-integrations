@@ -1,4 +1,5 @@
 import {
+  Account,
   Contract,
   TransactionBuilder,
   BASE_FEE,
@@ -9,7 +10,7 @@ import {
 } from '@stellar/stellar-sdk'
 
 import { CONTRACTS } from '../../config/contracts'
-import { getSorobanServer, networkPassphrase } from './client'
+import { getSorobanServer, networkPassphrase, loadFunded } from './client'
 import { assertAccountId } from '../stellar/strkey-guards'
 import type { FactoryInfo, LobsterPool, Network } from './types'
 
@@ -32,7 +33,8 @@ async function readContract<T = unknown>(
 ): Promise<T> {
   const server = getSorobanServer(network)
   const factory = new Contract(getFactoryId(network))
-  const sourceAccount = await server.getAccount(account)
+  // read-only sim: fabricated source so an unfunded caller can still read.
+  const sourceAccount = new Account(account, '0')
   const tx = new TransactionBuilder(sourceAccount, {
     fee: BASE_FEE,
     networkPassphrase: networkPassphrase(network),
@@ -137,7 +139,7 @@ export async function buildPingTx(
 ): Promise<{ xdr: string; restorePreamble?: SorobanRestorePreamble }> {
   const server = getSorobanServer(network)
   const factory = new Contract(getFactoryId(network))
-  const source = await server.getAccount(fromAddress)
+  const source = await loadFunded(server, fromAddress, network)
   const tx = new TransactionBuilder(source, {
     fee: BASE_FEE,
     networkPassphrase: networkPassphrase(network),

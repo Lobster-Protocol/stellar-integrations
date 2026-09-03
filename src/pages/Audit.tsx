@@ -18,7 +18,7 @@ export default function Audit() {
   const configured = !!import.meta.env.VITE_LOBSTER_API_URL
   const walletItems = wallets.data?.items ?? []
   const active = (policies.data?.items ?? []).filter((p) => p.status === 'Active')
-  const waiting = approvals.data?.items.length ?? 0
+  const waiting = (approvals.data?.items ?? []).length
 
   return (
     <div className="space-y-6">

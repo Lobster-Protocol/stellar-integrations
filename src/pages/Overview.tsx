@@ -107,7 +107,7 @@ export default function Overview() {
       ? formatValue(portfolio.total, unit)
       : xlm
         ? `${formatBalance(xlm.balance)} XLM`
-        : '0'
+        : formatValue(0, unit)
 
   return (
     <div className="space-y-6">
@@ -150,7 +150,17 @@ export default function Overview() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat label="In wallet" value={usdTotal != null ? formatValue(usdTotal, unit) : 'n/a'} sub={`${held.length} assets`} />
+        <Stat
+          label="In wallet"
+          value={
+            held.length === 0
+              ? formatValue(0, unit)
+              : usdTotal != null
+                ? formatValue(usdTotal, unit)
+                : 'n/a'
+          }
+          sub={`${held.length} assets`}
+        />
         <Stat
           label={
             <>
