@@ -73,9 +73,13 @@ export function checkSorobanView(op: unknown, allowed: string[]): void {
 // through an inflated fee the amount cap can't see, same as the broker guard.
 const MAX_FEE_STROOPS = 10_000_000n
 
-// what a payment is capped at when the operator set no cap. 1 XLM, against a
-// custody demo that pays itself 0.01, so it is generous for the demo and worth
-// nothing to anybody else.
+// what a payment is capped at when the operator set no cap. two cases, because
+// they carry different risk. with no whitelist either, the only destination left
+// is the treasury itself, and an account paying itself loses nothing but the
+// fee, so the ceiling can be roomy enough for the custody demo to cross the
+// approval threshold. with a whitelist set but no cap, the destination can be
+// somebody else, so it stays tight.
+const SELF_ONLY_CAP_STROOPS = 1_000_000_000n
 const FALLBACK_CAP_STROOPS = 10_000_000n
 
 export class SignGuardRejected extends Error {
@@ -195,10 +199,11 @@ export function readSignGuardConfig(): SignGuardConfig | null {
   // treasury to any address for any amount. a probe on 2026-09-03 got one
   // accepted. permissive now only means the operator may leave the two
   // variables unset: the treasury falls back to paying itself, under a low cap.
+  const selfOnly = list.length === 0
   return {
     treasuryAddress: treasury,
-    destinationWhitelist: list.length > 0 ? list : [treasury],
-    maxAmountStroops: cap > 0n ? cap : FALLBACK_CAP_STROOPS,
+    destinationWhitelist: selfOnly ? [treasury] : list,
+    maxAmountStroops: cap > 0n ? cap : selfOnly ? SELF_ONLY_CAP_STROOPS : FALLBACK_CAP_STROOPS,
     sorobanViewContracts: viewContracts(),
   }
 }

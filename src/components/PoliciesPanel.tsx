@@ -1,5 +1,5 @@
 import { useDfnsPolicies } from '../integrations/dfns/hooks'
-import { Card, CardHead, Disclosure, Empty } from './ui'
+import { Card, CardHead, Disclosure, Empty, NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
 
 // A policy that is not Active cannot hold anything back, so the live ones lead
@@ -11,7 +11,12 @@ export default function PoliciesPanel() {
   const policies = useDfnsPolicies()
 
   if (!import.meta.env.VITE_LOBSTER_API_URL) {
-    return null
+    return (
+      <NotConfigured title="Signing policies" needs="VITE_LOBSTER_API_URL">
+        The rules DFNS checks before a custody key is allowed to sign. This build has no relay to
+        read them from.
+      </NotConfigured>
+    )
   }
 
   const items = policies.data?.items ?? []
@@ -43,8 +48,9 @@ export default function PoliciesPanel() {
       ) : (
         <div className="space-y-3">
           {active.length === 0 ? (
-            <p className="text-xs text-coral">
-              No active rule. Nothing is being held back for approval right now.
+            <p className="text-xs text-warn">
+              No active rule, so nothing is being held back for approval right now. That is a
+              setting on the custody account, not a fault.
             </p>
           ) : (
             <ul className="space-y-2">

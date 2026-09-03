@@ -11,7 +11,10 @@ export default function RoutingFeedCard({ bare = false }: { bare?: boolean }) {
 
   const body =
     entries.length === 0 ? (
-      <Empty>No swap routed from this browser yet. Open the swap panel from Overview to try one.</Empty>
+      <Empty>
+        No swap routed from this browser yet. Connect a wallet, then use the Swap button on the
+        Overview page.
+      </Empty>
     ) : (
       <ul className="divide-y divide-border">
         {entries.slice(0, 10).map((e, i) => (

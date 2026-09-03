@@ -301,10 +301,24 @@ export default function SwapModal({ open, onClose }: Props) {
           {!address ? (
             <p className="text-xs text-text-muted">Connect a Stellar wallet to confirm.</p>
           ) : source === 'broker' ? (
-            <p className="text-xs text-text-muted">
-              Live best-execution quote from Stellar Broker, comparing Soroswap, Aquarius
-              and Phoenix.
-            </p>
+            <>
+              {/* the broker leg is priced here but not signed here, so a
+                  reviewer gets a disabled control and the reason instead of
+                  a quote with nothing under it */}
+              <button
+                type="button"
+                disabled
+                className="w-full px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold opacity-40 cursor-not-allowed"
+              >
+                Cannot be signed from here
+              </button>
+              <p className="text-xs text-text-muted">
+                Live best-execution quote from Stellar Broker, comparing Soroswap, Aquarius and
+                Phoenix. The dashboard prices this route but does not sign it: signing a broker
+                route is not switched on here. Pick a pair that routes through Soroswap to trade
+                from this panel.
+              </p>
+            </>
           ) : source === 'soroswap-fallback' ? (
             <button
               onClick={handleConfirmFallback}

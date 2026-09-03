@@ -45,3 +45,35 @@ export async function pollSignatureStatus(
     await new Promise((r) => setTimeout(r, interval))
   }
 }
+
+export interface TransferOutcome {
+  id: string
+  status: string
+  txHash: string | null
+  held: boolean
+}
+
+// Asks DFNS to build and send the payment itself. That is the one request shape
+// its approval rules can read, so it is the only way to show a rule letting
+// something through rather than holding it. Everything the dashboard signs as
+// raw XDR is held by any policy at all.
+export async function requestTransfer(to: string, stroops: string): Promise<TransferOutcome> {
+  const res = await relayFetch('/dfns/transfer', {
+    method: 'POST',
+    body: JSON.stringify({ to, stroops }),
+  })
+  const body = (await res.json().catch(() => ({}))) as {
+    id?: string
+    status?: string
+    txHash?: string | null
+    held?: boolean
+    error?: string
+  }
+  if (!res.ok) throw new Error(body.error ?? `the relay refused the transfer (${res.status})`)
+  return {
+    id: body.id ?? '',
+    status: body.status ?? 'Unknown',
+    txHash: body.txHash ?? null,
+    held: Boolean(body.held),
+  }
+}

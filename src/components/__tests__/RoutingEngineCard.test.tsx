@@ -28,19 +28,27 @@ describe('RoutingEngineCard', () => {
     }
   })
 
-  it('shows the broker enabled on mainnet with no partner-key jargon when the key is unset', () => {
+  it('calls the broker configured on mainnet, with no partner-key jargon, when the key is unset', () => {
     localStorage.setItem('lob_network', 'mainnet')
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', '')
     wrap(<RoutingEngineCard />)
-    expect(screen.getByText(/enabled/i)).toBeInTheDocument()
+    expect(screen.getByText('configured', { exact: true })).toBeInTheDocument()
     expect(screen.queryByText(/partner key/i)).not.toBeInTheDocument()
   })
 
-  it('still reads enabled on mainnet when the partner key is set', () => {
+  it('still reads configured on mainnet when the partner key is set', () => {
     localStorage.setItem('lob_network', 'mainnet')
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', 'test-key')
     wrap(<RoutingEngineCard />)
-    expect(screen.getByText(/enabled/i)).toBeInTheDocument()
+    expect(screen.getByText('configured', { exact: true })).toBeInTheDocument()
+  })
+
+  it('never claims a state it did not measure', () => {
+    localStorage.setItem('lob_network', 'mainnet')
+    const { container } = wrap(<RoutingEngineCard />)
+    // green is reserved for something actually called, and this card calls nothing
+    expect(container.querySelectorAll('.bg-green')).toHaveLength(0)
+    expect(screen.getByText(/Neither has been called/i)).toBeInTheDocument()
   })
 
   it('shows the broker as mainnet only when on testnet', () => {

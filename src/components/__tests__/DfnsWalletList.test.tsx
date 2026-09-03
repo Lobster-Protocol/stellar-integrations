@@ -15,11 +15,18 @@ beforeEach(() => {
   fetchSpy = vi.fn()
   globalThis.fetch = fetchSpy as unknown as typeof fetch
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
+  localStorage.clear()
 })
 
 afterEach(() => {
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', ORIG_API)
+  localStorage.clear()
 })
+
+// holding the operator token is what reveals the wallet-creation form
+function asOperator() {
+  localStorage.setItem('lob_operator_token', 'test-operator-token')
+}
 
 function wrap(node: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -33,17 +40,29 @@ function wrap(node: React.ReactNode) {
 }
 
 describe('DfnsWalletList', () => {
-  it('returns null when VITE_LOBSTER_API_URL is unset', () => {
+  it('names the missing configuration instead of disappearing when the api url is unset', () => {
     Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', '')
-    const { container } = wrap(<DfnsWalletList />)
-    expect(container).toBeEmptyDOMElement()
+    wrap(<DfnsWalletList />)
+    expect(screen.getByText(/DFNS wallets/)).toBeInTheDocument()
+    expect(screen.getByText(/VITE_LOBSTER_API_URL is not set/)).toBeInTheDocument()
   })
 
-  it('shows the empty state with the New wallet button when no wallets exist', async () => {
+  it('reads the list without offering to create anything by default', async () => {
+    fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) })
+    wrap(<DfnsWalletList />)
+    await waitFor(() => expect(screen.getByText(/No wallets yet/i)).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'New wallet' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('New wallet name')).not.toBeInTheDocument()
+    expect(screen.getByText(/created in the DFNS console by an operator/i)).toBeInTheDocument()
+  })
+
+  it('shows the creation form to an operator', async () => {
+    asOperator()
     fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) })
     wrap(<DfnsWalletList />)
     await waitFor(() => expect(screen.getByText(/No wallets yet/i)).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'New wallet' })).toBeInTheDocument()
+    expect(screen.getByLabelText('New wallet name')).toBeInTheDocument()
   })
 
   it('renders a wallet row with a friendbot button for testnet wallets', async () => {

@@ -44,16 +44,34 @@ so the two routing proofs are mainnet. The DFNS custody proofs are on testnet.
 | a broker route our decoder reads, one Soroswap pool and two Aquarius pools in a single ledger. **not our transaction**, it is a live broker route on mainnet we decode to show what the broker bundles | [`f5a3533f`](https://stellar.expert/explorer/public/tx/f5a3533f2b92a3159d7eedcb443806f6ef998159b39e8556c65fed73d7b4bea6) |
 | fallback straight to the Soroswap router, no broker in the path | [`766cd060`](https://stellar.expert/explorer/public/tx/766cd0602dfb2f59f812397331dac4121480c84b6a1104c3462541fb786096e6) |
 | Soroswap swap signed by DFNS MPC on mainnet, no broker in the path | [`056593f3`](https://stellar.expert/explorer/public/tx/056593f3a49c5c6011af6732f95b9f5f928ba0707024547a6e4d09f61f336fa5) |
-| Soroban call signed by DFNS MPC, not a local key | [`96f4bcfe`](https://stellar.expert/explorer/testnet/tx/96f4bcfe2e72cac9a6f2ddd06946d47b55ea340664798dade7c71ff41bbb7d4a) |
-| Soroban call signed by DFNS MPC, first run | [`bd5db00a`](https://stellar.expert/explorer/testnet/tx/bd5db00a38a40327cdf906f27af94afcce39e679fd81d01a93bacf3479f3ef41) |
-| DFNS policy, auto-approved under the limit | [`e379a0d3`](https://stellar.expert/explorer/testnet/tx/e379a0d33452495abefce7277fa17324be1d44b506df36203ea2ba8eaa62fc5a) |
+| Soroban call signed by DFNS MPC, not a local key. `get_admin` on the Factory, held for an approver and released by one | [`96f4bcfe`](https://stellar.expert/explorer/testnet/tx/96f4bcfe2e72cac9a6f2ddd06946d47b55ea340664798dade7c71ff41bbb7d4a) |
+| the same Soroban call, first run | [`bd5db00a`](https://stellar.expert/explorer/testnet/tx/bd5db00a38a40327cdf906f27af94afcce39e679fd81d01a93bacf3479f3ef41) |
+| DFNS policy, cleared with no approver because the recipient is on the list | [`6e845650`](https://stellar.expert/explorer/testnet/tx/6e845650071acb0dafa21ee048d28d20472ebb3b3f5e47ffc43b334b07df5d8e) |
 | DFNS policy, cleared only after a second approver | [`67d46c3f`](https://stellar.expert/explorer/testnet/tx/67d46c3f1d65fe654d2d0e9b9dd141a28052eb3679841fe831e899cb14ca8958) |
 | DFNS policy, cleared only after a second approver, first run | [`90023887`](https://stellar.expert/explorer/testnet/tx/90023887d0980bba1a48309d1236b28e6884a944de0d65cf561dd94e457d2f74) |
+| an earlier treasury payment, signed before any approval policy existed on the account | [`e379a0d3`](https://stellar.expert/explorer/testnet/tx/e379a0d33452495abefce7277fa17324be1d44b506df36203ea2ba8eaa62fc5a) |
 
 Every hash above except `f5a3533f` is sourced from a wallet we control: the DFNS
 treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, or the deployer.
 `f5a3533f` is somebody else's broker route, kept because it is what our decoder
 reads; it is labelled as such rather than counted as our own execution.
+
+### How the two approval paths differ
+
+The testnet treasury runs one rule: a payment to an address on its list clears on
+its own, a payment anywhere else waits for a named approver. The approval group
+names the approver and excludes whoever asked, so the dashboard cannot release
+its own request. `6e845650` went to the treasury itself and settled with no
+approval recorded against it. `67d46c3f` went through a second person.
+
+Worth knowing if you try to reproduce this. DFNS reads a policy against a
+transfer request, where it builds the payment and knows the asset and the
+recipient. It cannot read one against a raw signing request: ask it to evaluate
+an amount and it answers "only supported on a transfer request", ask it for a
+recipient and it answers "recipient address not specified". Either way the rule
+fails closed and holds the signature. Amount rules have a second problem on
+testnet, where DFNS has no market price for testXLM and says so. That is why the
+rule here is written on the recipient rather than on a dollar figure.
 
 ## Stack
 

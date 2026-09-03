@@ -222,6 +222,23 @@ describe('readSignGuardConfig', () => {
     }
   })
 
+  it('keeps the cap tight when a whitelist is set but no cap is', () => {
+    // the destination can be somebody else here, so the roomy self-payment
+    // ceiling must not apply
+    process.env.DFNS_TREASURY_ADDRESS = TREASURY
+    process.env.DFNS_GUARD_PERMISSIVE = '1'
+    process.env.DFNS_DESTINATION_WHITELIST = OTHER
+    try {
+      const cfg = readSignGuardConfig()
+      expect(cfg!.destinationWhitelist).toEqual([OTHER])
+      expect(cfg!.maxAmountStroops).toBe(10_000_000n)
+    } finally {
+      delete process.env.DFNS_TREASURY_ADDRESS
+      delete process.env.DFNS_GUARD_PERMISSIVE
+      delete process.env.DFNS_DESTINATION_WHITELIST
+    }
+  })
+
   it('keeps the operator whitelist and cap when both are set', () => {
     process.env.DFNS_TREASURY_ADDRESS = TREASURY
     process.env.DFNS_GUARD_PERMISSIVE = '1'

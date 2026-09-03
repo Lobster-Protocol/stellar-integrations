@@ -49,6 +49,19 @@ const CHAINS: Array<{ id: 'stellar' | EvmChain; label: string; bridge: boolean }
 
 const USDC_ASSET_CODE = 'USDC'
 
+// wagmi throws when no extension answers the injected connector, and the raw
+// message ("Connector not found.") reads like a bug in the page rather than a
+// missing wallet.
+function readableConnectError(message: string): string {
+  if (/connector not found|no injected|provider not found|window\.ethereum/i.test(message)) {
+    return 'No browser wallet answered. Install MetaMask or Rabby, then try again.'
+  }
+  if (/user rejected|user denied|rejected the request/i.test(message)) {
+    return 'The wallet turned the connection down.'
+  }
+  return message.split('\n')[0].slice(0, 160)
+}
+
 type Step =
   | { phase: 'form' }
   | { phase: 'approving' }
@@ -69,7 +82,7 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
   const { network } = useNetwork()
 
   const evm = useAccount()
-  const { connectors, connect, isPending: isConnecting } = useConnect()
+  const { connectors, connect, isPending: isConnecting, error: connectError } = useConnect()
   const { disconnect } = useDisconnect()
 
   const selectedChain = CHAINS.find((c) => c.id === chain)!
@@ -232,10 +245,11 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
     }
   }
 
+  // off mainnet these two figures come from simulateBridgeQuote, so they get
+  // labelled rather than sitting in the same rows a live quote fills.
+  const sampleQuote = network !== 'mainnet' && isBridge
   const quote =
-    network !== 'mainnet' && isBridge && amount && Number(amount) > 0
-      ? simulateBridgeQuote(amount)
-      : quoteQuery.data
+    sampleQuote && amount && Number(amount) > 0 ? simulateBridgeQuote(amount) : quoteQuery.data
 
   return (
     <div
@@ -368,6 +382,11 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                     </div>
                   )}
                 </div>
+                {connectError && !evm.address && (
+                  <p className="text-[10px] text-coral">
+                    {readableConnectError(connectError.message)}
+                  </p>
+                )}
                 {!hasWalletConnectProjectId && !evm.address && (
                   <p className="text-[10px] text-text-muted">
                     Mobile wallets (via WalletConnect) need extra setup. Browser wallets like
@@ -398,13 +417,19 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                   <span className="text-text font-medium">Allbridge Core</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>You receive</span>
+                  <span>
+                    You receive
+                    {sampleQuote && <span className="text-amber-500"> (sample)</span>}
+                  </span>
                   <span className="text-text">
                     {quote ? `${quote.amountOutFloat} USDC` : amount ? '...' : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Estimated arrival</span>
+                  <span>
+                    Estimated arrival
+                    {sampleQuote && <span className="text-amber-500"> (sample)</span>}
+                  </span>
                   <span className="text-text">
                     {quote
                       ? quote.estimatedTimeSeconds != null
@@ -451,6 +476,12 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                 Direct Stellar deposits aren't available yet. For now, bridge USDC from another
                 chain.
               </div>
+            )}
+
+            {!stellarAddr && (
+              <p className="mb-3 text-xs text-text-secondary">
+                Connect a Stellar wallet first. The USDC needs a Stellar account to land in.
+              </p>
             )}
 
             <button

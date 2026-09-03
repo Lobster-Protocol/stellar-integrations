@@ -21,9 +21,15 @@ aliases the import to the esm source. That alias is in both `vite.config.ts` and
 3. Check the quote against the local guards (slippage ceiling, profit sanity, a
    ratio cap versus the direct trade). A quote that deviates too far is rejected,
    not retried at a worse price.
-4. Confirm. The broker hands back each leg as an unsigned envelope for the signer,
-   then a per-leg hash through the sign callback once it's accepted. The hash
-   isn't in the final event, so it has to be captured at sign time.
+4. Show the comparison. The dashboard prints the broker estimate next to the
+   same size on the direct route and the gap between them, which is the whole
+   point of asking the broker.
+
+Confirming through the broker is not wired in the dashboard. `confirmQuote`
+needs a quote set over the broker trading socket, and a keyless quote never sets
+one, so the confirm always failed and the leg was taken out. The broker answer is
+a live price reference; the signable route is the direct Soroswap one below. Our
+evidence runner still drives `confirmQuote` with a partner key, outside the app.
 
 ## Single ledger, multiple DEXs
 
@@ -40,17 +46,24 @@ crosses two venues.
 
 ## Fallback
 
-When the broker has no route or the connection fails, routing calls the Soroswap
-router directly through `@stellar/stellar-sdk`, no broker SDK involved. It quotes
-with `router_get_amounts_out` and swaps with `swap_exact_tokens_for_tokens`, with
-a minimum-out floor that refuses a zero. The connection failure is the trigger;
-there's no separate health ping.
+When the broker has no route, or the connection fails, or no partner key is set,
+routing calls the Soroswap router directly through `@stellar/stellar-sdk`, no
+broker SDK involved. It quotes with `router_get_amounts_out` and swaps with
+`swap_exact_tokens_for_tokens`, with a minimum-out floor that refuses a zero.
+Nothing pings the broker for health. The decision is local: which network is
+selected, whether a partner key is present, and whether a router address exists
+for that network.
 
 ## Networks
 
-The broker is mainnet only, and Soroswap has no testnet router, so both the
-best-execution path and its fallback run on mainnet. There's no testnet broker to
-point at.
+The broker is mainnet only. There's no testnet broker to point at, so the
+best-execution comparison only appears when the network toggle is on mainnet.
+
+Soroswap does run on testnet. The testnet factory and router are wired in
+`src/config/contracts.ts`, along with three extra swap tokens on top of XLM and
+USDC, each with a Soroswap pool that actually fills. So the direct route
+executes on either network, and on testnet routing goes straight to it. Aquarius
+has no testnet deployment and stays empty there.
 
 ## Where it lives
 

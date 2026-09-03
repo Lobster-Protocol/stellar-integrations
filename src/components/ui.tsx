@@ -41,6 +41,26 @@ export function Empty({ children, action }: { children: ReactNode; action?: Reac
   )
 }
 
+// A panel whose backing service is missing from this build's configuration.
+// It stays on the page, named and inert, instead of vanishing: someone running
+// a clone can see the feature exists and read what it waits on.
+export function NotConfigured({
+  title,
+  needs,
+  children,
+}: {
+  title: ReactNode
+  needs: string
+  children: ReactNode
+}) {
+  return (
+    <Card className="opacity-70">
+      <CardHead title={title} note={children} />
+      <p className="text-[11px] text-text-muted">Off in this build: {needs} is not set.</p>
+    </Card>
+  )
+}
+
 export function Failed({ what, onRetry }: { what: string; onRetry: () => void }) {
   return (
     <div className="py-6 text-center text-xs space-y-2">

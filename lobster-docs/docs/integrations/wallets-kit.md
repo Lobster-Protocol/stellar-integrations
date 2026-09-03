@@ -20,7 +20,9 @@ Only the address and the wallet name are stored, never a key or a signed payload
 
 `signTransaction` takes the XDR and an options object with the network passphrase
 and address, and returns the signed XDR. The dashboard submits that to Soroban RPC and polls for
-inclusion. The Ping Factory panel on `/positions` is the reference round trip.
+inclusion. The "Sign a testnet transaction" panel on `/positions` is the
+reference round trip, and its button reads "Call the Factory with" followed by
+the connected wallet's name.
 
 ## One signer interface
 

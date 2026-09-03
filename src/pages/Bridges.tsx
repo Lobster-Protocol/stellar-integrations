@@ -22,7 +22,7 @@ const DepositModal = lazy(() => import('../components/DepositModal'))
 
 // The corridor drawn end to end: an EVM chain, the Allbridge pool that carries
 // the value across, and the Stellar account it lands on.
-function Corridor({ chains, live }: { chains: string[]; live: boolean }) {
+function Corridor({ chains, configured }: { chains: string[]; configured: boolean }) {
   return (
     <div className="flex items-stretch gap-2 text-xs">
       <div className="flex-1 rounded-2xl bg-bg px-3 py-3">
@@ -53,7 +53,7 @@ function Corridor({ chains, live }: { chains: string[]; live: boolean }) {
         <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">Through</div>
         <div className="text-text font-medium">Allbridge Core</div>
         <div className="text-text-muted mt-1.5">
-          {live ? 'moves USDC across' : 'mainnet only'}
+          {configured ? 'carries USDC across' : 'mainnet only'}
         </div>
       </div>
 
@@ -86,7 +86,9 @@ export default function Bridges() {
   const activityQ = useActivity(network, address)
 
   const chains = (Object.keys(EVM_USDC) as EvmChain[]).filter((c) => EVM_BRIDGEABLE[c])
-  const live = !!CONTRACTS[network].allbridge.bridge
+  // an address in the registry, not a reachable bridge. nothing here has called
+  // Allbridge, so the tiles say configured and never say live.
+  const configured = !!CONTRACTS[network].allbridge.bridge
   const [depositOpen, setDepositOpen] = useState(false)
 
   let trustlineLabel: string
@@ -144,7 +146,11 @@ export default function Bridges() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat label="Provider" value="Allbridge Core" sub={live ? 'live on this network' : 'mainnet only'} />
+        <Stat
+          label="Provider"
+          value="Allbridge Core"
+          sub={configured ? 'address set for mainnet' : 'mainnet only'}
+        />
         <Stat label="Token" value="USDC" sub={`${chains.length} source chains`} />
         <Stat
           label={
@@ -156,7 +162,19 @@ export default function Bridges() {
           tone={trustlineLabel === 'Active' ? 'up' : trustlineLabel === 'Missing' ? 'down' : 'plain'}
           sub="needed before USDC can arrive"
         />
-        <Stat label="Arrivals seen" value={String(arrivals.length)} sub="USDC credits on this account" />
+        <Stat
+          label="Arrivals seen"
+          value={address && activityQ.isSuccess ? String(arrivals.length) : '-'}
+          sub={
+            !address
+              ? 'no wallet connected'
+              : activityQ.isSuccess
+                ? 'USDC credits on this account'
+                : activityQ.isError
+                  ? 'could not read this account'
+                  : 'reading this account'
+          }
+        />
       </div>
 
       <Card>
@@ -164,8 +182,8 @@ export default function Bridges() {
           title="The route"
           note="USDC leaves another chain, crosses the Allbridge bridge, and lands as USDC in the Stellar account you have connected."
         />
-        <Corridor chains={chains.map((c) => EVM_CHAIN_NAME[c])} live={live} />
-        {!live && (
+        <Corridor chains={chains.map((c) => EVM_CHAIN_NAME[c])} configured={configured} />
+        {!configured && (
           <p className="text-xs text-coral mt-3">
             Allbridge has no testnet deployment, so no real USDC can move while the dashboard is on
             testnet. Opening the bridge form here runs a labelled walkthrough of the steps with
@@ -210,7 +228,7 @@ export default function Bridges() {
                 the bridge form
               </button>
               .{' '}
-              {live
+              {configured
                 ? 'The amount you receive and the arrival estimate come from a live Allbridge quote at that moment.'
                 : 'On testnet this runs a labelled walkthrough with a sample quote, so you can see the steps without any funds moving.'}
             </span>

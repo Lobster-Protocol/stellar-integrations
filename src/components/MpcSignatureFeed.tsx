@@ -1,6 +1,7 @@
 import { useDfnsSignatureStream } from '../integrations/dfns/useDfnsSignatureStream'
 import type { DfnsEventKind } from '../integrations/dfns/types'
 import { formatRelativeAgo } from '../utils/format'
+import { NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
 
 const KIND_LABEL: Record<DfnsEventKind, string> = {
@@ -39,8 +40,14 @@ function isTerminalKind(k: DfnsEventKind): boolean {
 export default function MpcSignatureFeed() {
   const events = useDfnsSignatureStream()
 
-  // no relay wired, nothing to stream: stay hidden like the sibling panels
-  if (!import.meta.env.VITE_LOBSTER_API_URL) return null
+  if (!import.meta.env.VITE_LOBSTER_API_URL) {
+    return (
+      <NotConfigured title="Signing activity" needs="VITE_LOBSTER_API_URL">
+        The lifecycle events DFNS custody sends as a webhook, streamed as they land. This build has
+        no relay to stream from.
+      </NotConfigured>
+    )
+  }
 
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
@@ -53,7 +60,10 @@ export default function MpcSignatureFeed() {
 
       {events.length === 0 ? (
         <p className="text-xs text-text-muted">
-          Nothing yet. Sign something from the wallet and it shows up here.
+          Empty. This feed carries one thing: the events DFNS custody sends the relay by webhook.
+          A signature from your browser wallet is not one of them and will not appear. The relay
+          keeps the events in memory too, so the feed starts over from nothing every time the
+          service restarts.
         </p>
       ) : (
         <ul className="divide-y divide-text-muted/10">

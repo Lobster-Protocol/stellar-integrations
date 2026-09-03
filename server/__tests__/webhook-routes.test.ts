@@ -7,9 +7,13 @@ vi.hoisted(() => {
   process.env.DFNS_STELLAR_NETWORK = 'StellarTestnet'
   process.env.DFNS_TREASURY_ADDRESS = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
   // permissive flag keeps existing /dfns/sign tests passing without
-  // having to hand them a destination whitelist + amount cap. real
-  // deploys must set both or the route returns 503.
+  // having to hand them an amount cap. real deploys must set one or the
+  // route returns 503.
   process.env.DFNS_GUARD_PERMISSIVE = '1'
+  // permissive stopped meaning "any destination" once the guard started
+  // falling back to the treasury paying itself, so the sample payment's
+  // destination has to be listed for these tests to reach the sign path.
+  process.env.DFNS_DESTINATION_WHITELIST = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
 })
 
 const { listPoliciesMock, listWalletsMock, createWalletMock, broadcastMock, waitMock, statusMock } = vi.hoisted(() => ({
@@ -61,6 +65,14 @@ function buildSampleXdr(): string {
 // the sign endpoint set + send the token; the token-guard suite asserts
 // the 401 branch with no token presented.
 const SIGN_API_TOKEN = 'test-api-token-32-chars-long-x'
+// the two custody writes (create a wallet, decide an approval) sit behind a
+// second, server-only token on top of the api token.
+const OPERATOR_TOKEN = 'test-operator-token-40-chars-long-value'
+const WRITE_HEADERS = {
+  'content-type': 'application/json',
+  authorization: `Bearer ${SIGN_API_TOKEN}`,
+  'x-lobster-operator-token': OPERATOR_TOKEN,
+}
 
 beforeEach(() => {
   listPoliciesMock.mockReset()
@@ -74,6 +86,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.LOBSTER_API_TOKEN
+  delete process.env.LOBSTER_OPERATOR_TOKEN
 })
 
 describe('GET /dfns/policies and /dfns/wallets', () => {
@@ -105,6 +118,7 @@ describe('POST /dfns/wallets', () => {
   // so set it and present it to reach the real create path.
   beforeEach(() => {
     process.env.LOBSTER_API_TOKEN = SIGN_API_TOKEN
+    process.env.LOBSTER_OPERATOR_TOKEN = OPERATOR_TOKEN
   })
 
   it('creates a stellar testnet wallet with name + network', async () => {
@@ -118,7 +132,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify({ name: 'lobster-testnet-1', network: 'StellarTestnet' }),
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
+        headers: WRITE_HEADERS,
       }),
     )
     expect(res.status).toBe(200)
@@ -130,7 +144,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify({ name: 'foo', network: 'Ethereum' }),
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
+        headers: WRITE_HEADERS,
       }),
     )
     expect(res.status).toBe(400)
@@ -142,7 +156,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify({ network: 'StellarTestnet' }),
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
+        headers: WRITE_HEADERS,
       }),
     )
     expect(res.status).toBe(400)
@@ -154,7 +168,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: '{ malformed',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
+        headers: WRITE_HEADERS,
       }),
     )
     expect(res.status).toBe(400)
@@ -166,7 +180,7 @@ describe('POST /dfns/wallets', () => {
       new Request('http://localhost/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify({ name: 'x', network: 'StellarTestnet' }),
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${SIGN_API_TOKEN}` },
+        headers: WRITE_HEADERS,
       }),
     )
     expect(res.status).toBe(502)
@@ -277,11 +291,17 @@ describe('GET /dfns/sign/:id/status', () => {
 describe('POST /dfns/approvals/:id/decision', () => {
   it('fails closed with 503 when LOBSTER_API_TOKEN is unset', async () => {
     delete process.env.LOBSTER_API_TOKEN
+    // operator token present and presented, so the 503 can only come from the
+    // missing api token rather than from the operator gate in front of it
+    process.env.LOBSTER_OPERATOR_TOKEN = OPERATOR_TOKEN
     const res = await app.fetch(
       new Request('http://localhost/dfns/approvals/ap-1/decision', {
         method: 'POST',
         body: JSON.stringify({ value: 'Approved' }),
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-lobster-operator-token': OPERATOR_TOKEN,
+        },
       }),
     )
     expect(res.status).toBe(503)

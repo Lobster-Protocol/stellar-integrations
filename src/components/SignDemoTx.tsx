@@ -4,7 +4,7 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { buildTreasuryPaymentTx, buildTreasuryTrustlineTx } from '../integrations/dfns/demo-tx'
-import { pollSignatureStatus } from '../integrations/dfns/relay'
+import { pollSignatureStatus, requestTransfer } from '../integrations/dfns/relay'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer, cn } from '../utils/format'
 import { InfoTip } from './InfoTip'
@@ -16,9 +16,10 @@ type State =
   | { phase: 'submitting' }
   | { phase: 'pending' }
   | { phase: 'confirmed'; txHash: string }
+  | { phase: 'cleared'; ref: string; held: boolean }
   | { phase: 'failed'; errorMsg: string }
 
-const RESTING_PHASES: ReadonlyArray<State['phase']> = ['idle', 'confirmed', 'failed']
+const RESTING_PHASES: ReadonlyArray<State['phase']> = ['idle', 'confirmed', 'cleared', 'failed']
 
 export default function SignDemoTx() {
   const { address, walletName } = useWallet()
@@ -38,14 +39,30 @@ export default function SignDemoTx() {
   // not the connected browser wallet; the relay guard rejects any other source.
   const source = isDfns ? dfnsAddress : address
 
-  async function handleAction(kind: 'ping' | 'payment' | 'trustline') {
+  async function handleAction(kind: 'ping' | 'transfer' | 'small' | 'large' | 'trustline') {
     if (!source || inFlight.current) return
     inFlight.current = true
     try {
       setState({ phase: 'building' })
+      if (kind === 'transfer') {
+        // dfns builds this payment itself, which is the only request shape its
+        // approval rules can read. the destination is the treasury and it is on
+        // the list, so the rule lets it through with nobody in the loop.
+        const out = await requestTransfer(source, '100000')
+        if (out.txHash) setState({ phase: 'confirmed', txHash: out.txHash })
+        // a transfer cannot be polled from here: the relay credential is not
+        // allowed to read transfers back, so say where it went rather than
+        // promising a hash that will never arrive on its own.
+        else setState({ phase: 'cleared', ref: out.id, held: out.held })
+        return
+      }
       let xdr: string
-      if (kind === 'payment') {
-        xdr = await buildTreasuryPaymentTx(network, source, '0.0100000')
+      if (kind === 'small' || kind === 'large') {
+        // the two sit on either side of the 5 USD line in the treasury policy,
+        // which is the whole point of having both: the small one clears with no
+        // human, the large one waits for a named approver. both pay the
+        // treasury itself, so the balance never moves.
+        xdr = await buildTreasuryPaymentTx(network, source, kind === 'small' ? '0.0100000' : '80.0000000')
       } else if (kind === 'trustline') {
         xdr = await buildTreasuryTrustlineTx(network, source)
       } else {
@@ -105,6 +122,7 @@ export default function SignDemoTx() {
     submitting: 'Submitting...',
     pending: 'Awaiting approval...',
     confirmed: 'Call again',
+    cleared: 'Call again',
     failed: 'Retry',
   }
   const phaseText: Partial<Record<State['phase'], string>> = {
@@ -120,10 +138,17 @@ export default function SignDemoTx() {
         {isDfns ? (
           <>
             The treasury wallet is held by DFNS and signed by its MPC network{' '}
-            <InfoTip term="mpc" label="MPC signing" />. Try a small payment to itself, or turning on
-            a trustline <InfoTip term="trustline" label="a trustline" /> for the Lobster token. Each
-            one is checked against the approval rules, then sent on-chain by DFNS. Nothing leaves the
-            account; the hash below is the proof it happened.
+            <InfoTip term="mpc" label="MPC signing" />. Every request is checked against the treasury
+            approval rules first, and the buttons deliberately land on both sides of them. The 0.01
+            XLM payment is under the limit, so it signs and broadcasts on its own and the hash shows
+            up straight away. The 80 XLM one is over it, so it waits for a named approver first.
+            Calling the Factory is a contract read, which DFNS cannot put a dollar value on, so that
+            one waits too. Every button pays the treasury itself, so the balance never moves. The
+            rules are listed on the{' '}
+            <a href="/audit" className="text-coral hover:underline">
+              Audit
+            </a>{' '}
+            page.
           </>
         ) : (
           <>
@@ -173,7 +198,9 @@ export default function SignDemoTx() {
             <div className="flex flex-wrap gap-2">
               {/* the Soroban leg: a read-only Factory view, signed by MPC. it is
                   what a reviewer needs to see a soroban tx come out of DFNS, and
-                  the signer admits it because a view moves nothing. */}
+                  the signer admits it because a view moves nothing. DFNS cannot
+                  put a dollar value on a contract call, so it never slips under
+                  an amount threshold and always waits for an approver. */}
               <button
                 onClick={() => handleAction('ping')}
                 disabled={busy}
@@ -182,11 +209,25 @@ export default function SignDemoTx() {
                 Call the Factory (DFNS MPC)
               </button>
               <button
-                onClick={() => handleAction('payment')}
+                onClick={() => handleAction('transfer')}
                 disabled={busy}
                 className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Sign a treasury payment (DFNS MPC)
+                Pay 0.01 XLM to itself, no approver
+              </button>
+              <button
+                onClick={() => handleAction('small')}
+                disabled={busy}
+                className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Pay 0.01 XLM, under the limit
+              </button>
+              <button
+                onClick={() => handleAction('large')}
+                disabled={busy}
+                className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Pay 80 XLM, over the limit
               </button>
               <button
                 onClick={() => handleAction('trustline')}
@@ -214,6 +255,30 @@ export default function SignDemoTx() {
             <div className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2">
               Waiting for approval in DFNS. Someone else has to approve it
               (the app can't approve its own request), then the hash shows up here.
+            </div>
+          )}
+
+          {state.phase === 'cleared' && (
+            <div className="text-xs text-text-secondary">
+              <div className={cn('font-medium mb-1', state.held ? 'text-primary' : 'text-green')}>
+                {state.held
+                  ? 'Held for an approver, because the recipient is not on the treasury list'
+                  : 'Sent with no approval, because the recipient is on the treasury list'}
+              </div>
+              <div className="font-mono break-all bg-bg rounded-lg px-2 py-1">{state.ref}</div>
+              <p className="mt-1">
+                {state.held
+                  ? 'It stays queued until a named approver releases it in the DFNS console.'
+                  : 'DFNS took the payment straight to the network. It lands on the treasury account within a few seconds.'}
+              </p>
+              <a
+                href={stellarExplorer(network, 'account', source ?? '')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-1 text-primary hover:underline"
+              >
+                Open the treasury account
+              </a>
             </div>
           )}
 

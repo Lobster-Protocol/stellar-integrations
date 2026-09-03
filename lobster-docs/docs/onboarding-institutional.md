@@ -32,6 +32,10 @@ The messenger is Allbridge's own; CCTP isn't a Stellar path. Decimals differ by
 chain, six on Ethereum and Arbitrum against seven on Stellar, and the SDK
 converts when it builds the transfer.
 
+The Allbridge USDC pool into Stellar is closed at the moment, so the quote step
+stops with a clear message rather than building a transfer that cannot land. The
+integration page has the detail.
+
 The institutional angle here is the fee model and the minimum that makes a bridge
 worth doing, not the mechanics. Those are stable.
 
@@ -41,12 +45,20 @@ A single private key is a non-starter under MiCA or any institutional risk
 policy. DFNS holds the keys as threshold shares, so no node ever has the whole
 key, and signing sits behind an approval policy.
 
-Lobster routes every signature through a custody layer. Below a configured
-threshold a transaction auto-approves in seconds; above it, named approvers sign
-off from the dashboard. Destinations are whitelisted independently of the key
-material, so a compromised service account still can't send funds to an unknown
-address. Every signature event streams to the dashboard and into an audit log
-built for MiCA reporting.
+Lobster routes every signature through a custody layer, and the policy decides
+what needs a human. Below a configured threshold a transfer clears on its own; at
+or above it a named approver has to release it. Whatever the threshold, the
+identity that started the request cannot clear it, so the initiating leg and the
+approving leg are two different users. Thresholds are configuration rather than
+code, and ours are set so the approval path is the normal one.
+
+Deciding a held request is an operator control, not something a dashboard
+visitor does. The pending approvals panel carries Approve and Deny for whoever
+holds the operator credential, and the same decision can be taken in the DFNS
+console. Destinations are whitelisted independently of the key material, so a
+compromised service account still can't send funds to an unknown address. Every
+signature event streams to the dashboard and into an audit log built for MiCA
+reporting.
 
 The signer is an interface, so the same execution code runs against a connected
 browser wallet for a small desk or against DFNS for a regulated one. Changing

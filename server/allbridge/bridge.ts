@@ -38,7 +38,21 @@ export async function quote(chain: EvmChain, amount: string): Promise<BridgeQuot
   const dst = await resolveUsdc(ChainSymbol.SRB)
   const messenger = Messenger.ALLBRIDGE
 
-  const amountOut = await sdk.getAmountToBeReceived(amount, src, dst)
+  // allbridge parks a pool by cranking its feeShare toward 1 (a live pool sits
+  // near 0.003). the stellar usdc pool is closed like this today, which makes the
+  // fee math underflow the received amount to zero. the browser path already says
+  // so plainly; this one used to hand back the sdk's "amount must be greater than
+  // zero" as a 502, which reads like our own service is down.
+  const destFee = Number((dst as { feeShare?: number | string }).feeShare)
+  if (!Number.isFinite(destFee) || destFee >= 0.5) {
+    throw new Error(
+      'The Allbridge USDC pool into Stellar is closed right now. Bridging will work again once the pool reopens.',
+    )
+  }
+
+  // the token list ships an empty poolInfo, so the plain getAmountToBeReceived
+  // underflows to zero. read the live pool state from chain.
+  const amountOut = await sdk.getAmountToBeReceivedFromChain(amount, src, dst, messenger)
   const gasFee = await sdk.getGasFeeOptions(src, dst, messenger)
   const etaMs = sdk.getAverageTransferTime(src, dst, messenger)
 

@@ -5,8 +5,9 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { shortenAddress, stellarExplorer } from '../utils/format'
 import { isAccountId } from '../integrations/stellar/strkey-guards'
 import { friendbotFund } from '../integrations/stellar/friendbot'
+import { isOperator } from '../integrations/dfns/operator'
 import type { Network } from '../config/contracts'
-import { Card, CardHead, Empty } from './ui'
+import { Card, CardHead, Empty, NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
 
 type FundState = 'pending' | 'done' | { error: string }
@@ -31,9 +32,17 @@ export default function DfnsWalletList() {
   const { network } = useNetwork()
   const [name, setName] = useState('')
   const [funding, setFunding] = useState<Record<string, FundState>>({})
+  // creating a wallet writes to the live custody org, so the form belongs to an
+  // operator. everybody else gets the same list, read only.
+  const operator = isOperator()
 
   if (!import.meta.env.VITE_LOBSTER_API_URL) {
-    return null
+    return (
+      <NotConfigured title="DFNS wallets" needs="VITE_LOBSTER_API_URL">
+        The wallets whose keys DFNS custody holds, grouped by network. This build has no relay to
+        read them from.
+      </NotConfigured>
+    )
   }
 
   const dfnsNetwork: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
@@ -76,23 +85,31 @@ export default function DfnsWalletList() {
         meta={<span className="text-xs text-text-muted">{items.length} total</span>}
       />
 
-      <div className="flex gap-2 mb-3">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="wallet name"
-          className="flex-1 bg-bg rounded-lg px-3 py-2 text-sm"
-        />
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={create.isPending}
-          className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40"
-        >
-          {create.isPending ? 'Creating...' : 'New wallet'}
-        </button>
-      </div>
+      {operator ? (
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="wallet name"
+            aria-label="New wallet name"
+            className="flex-1 bg-bg rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={create.isPending}
+            className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40"
+          >
+            {create.isPending ? 'Creating...' : 'New wallet'}
+          </button>
+        </div>
+      ) : (
+        <p className="text-xs text-text-muted mb-3">
+          Read only. New custody wallets are created in the DFNS console by an operator, so this
+          list shows what exists rather than offering to add to it.
+        </p>
+      )}
 
       {create.isError && <p className="text-xs text-coral mb-2">{(create.error as Error).message}</p>}
 

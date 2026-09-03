@@ -38,7 +38,7 @@ afterEach(() => {
 
 describe('createTreasuryAmountPolicy', () => {
   it('falls back to 50_000 USD when DFNS_POLICY_AMOUNT_LIMIT_USD is unset', async () => {
-    await createTreasuryAmountPolicy({ approverUserIds: ['u1', 'u2'], quorum: 2, autoRejectTimeoutMin: 60 })
+    await createTreasuryAmountPolicy({ walletIds: ['wa-1'], approverUserIds: ['u1', 'u2'], quorum: 2, autoRejectTimeoutMin: 60 })
     const body = createPolicyMock.mock.calls[0][0].body as Record<string, unknown>
     const rule = body.rule as { configuration: { limit: number; currency: string } }
     expect(rule.configuration.limit).toBe(50_000)
@@ -47,7 +47,7 @@ describe('createTreasuryAmountPolicy', () => {
 
   it('reads DFNS_POLICY_AMOUNT_LIMIT_USD when set', async () => {
     process.env.DFNS_POLICY_AMOUNT_LIMIT_USD = '25000'
-    await createTreasuryAmountPolicy({ approverUserIds: ['u1'], quorum: 1, autoRejectTimeoutMin: 60 })
+    await createTreasuryAmountPolicy({ walletIds: ['wa-1'], approverUserIds: ['u1'], quorum: 1, autoRejectTimeoutMin: 60 })
     const body = createPolicyMock.mock.calls[0][0].body as Record<string, unknown>
     const rule = body.rule as { configuration: { limit: number } }
     expect(rule.configuration.limit).toBe(25_000)
@@ -55,6 +55,7 @@ describe('createTreasuryAmountPolicy', () => {
 
   it('passes approver userIds verbatim into the approvalGroups', async () => {
     await createTreasuryAmountPolicy({
+      walletIds: ['wa-1'],
       approverUserIds: ['us-aaa', 'us-bbb', 'us-ccc'],
       quorum: 2,
       autoRejectTimeoutMin: 10_080,
@@ -71,7 +72,7 @@ describe('createTreasuryAmountPolicy', () => {
 
 describe('createAutoApproveAmountPolicy', () => {
   it('falls back to 100 USD when env is unset and no arg', async () => {
-    await createAutoApproveAmountPolicy()
+    await createAutoApproveAmountPolicy(['wa-1'])
     const body = createPolicyMock.mock.calls[0][0].body as Record<string, unknown>
     const rule = body.rule as { configuration: { limit: number } }
     expect(rule.configuration.limit).toBe(100)
@@ -79,14 +80,14 @@ describe('createAutoApproveAmountPolicy', () => {
 
   it('takes the explicit limitUsd arg over env', async () => {
     process.env.DFNS_POLICY_AUTO_APPROVE_LIMIT_USD = '500'
-    await createAutoApproveAmountPolicy(250)
+    await createAutoApproveAmountPolicy(['wa-1'], 250)
     const body = createPolicyMock.mock.calls[0][0].body as Record<string, unknown>
     const rule = body.rule as { configuration: { limit: number } }
     expect(rule.configuration.limit).toBe(250)
   })
 
   it('uses action kind NoAction (auto approve)', async () => {
-    await createAutoApproveAmountPolicy(10)
+    await createAutoApproveAmountPolicy(['wa-1'], 10)
     const body = createPolicyMock.mock.calls[0][0].body as { action: { kind: string } }
     expect(body.action.kind).toBe('NoAction')
   })
@@ -98,7 +99,7 @@ describe('createRecipientWhitelistPolicy', () => {
       'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
       'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
     ]
-    await createRecipientWhitelistPolicy(allowed)
+    await createRecipientWhitelistPolicy(['wa-1'], allowed)
     const body = createPolicyMock.mock.calls[0][0].body as {
       rule: { kind: string; configuration: { addresses: string[] } }
       action: { kind: string }
@@ -116,5 +117,35 @@ describe('listPolicies / archivePolicy', () => {
 
     await archivePolicy('pol-42')
     expect(archivePolicyMock).toHaveBeenCalledWith({ policyId: 'pol-42' })
+  })
+})
+
+describe('policy scoping', () => {
+  it('scopes every policy to the wallet ids it was given', async () => {
+    await createTreasuryAmountPolicy({
+      walletIds: ['wa-a', 'wa-b'],
+      approverUserIds: ['u1'],
+      quorum: 1,
+      autoRejectTimeoutMin: 60,
+    })
+    const body = createPolicyMock.mock.calls[0][0].body as {
+      filters: { walletId: { in: string[] } }
+    }
+    expect(body.filters.walletId.in).toEqual(['wa-a', 'wa-b'])
+  })
+
+  it('refuses a policy that would cover no wallet', async () => {
+    // a tag filter used to sit here and matched nothing, because our wallets
+    // carry no tags and the api cannot add one. an empty scope is the same
+    // silent no-op, so it throws instead.
+    await expect(
+      createTreasuryAmountPolicy({
+        walletIds: [],
+        approverUserIds: ['u1'],
+        quorum: 1,
+        autoRejectTimeoutMin: 60,
+      }),
+    ).rejects.toThrow(/at least one wallet id/i)
+    expect(createPolicyMock).not.toHaveBeenCalled()
   })
 })

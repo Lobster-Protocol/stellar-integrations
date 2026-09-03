@@ -1,5 +1,10 @@
 import { useCustody } from '../contexts/CustodyContext'
-import { useDfnsWallets, useDfnsPolicies, useDfnsPendingApprovals } from '../integrations/dfns/hooks'
+import {
+  useDfnsWallets,
+  useDfnsPolicies,
+  useDfnsPendingApprovals,
+  RelayError,
+} from '../integrations/dfns/hooks'
 import CustodyModeToggle from '../components/CustodyModeToggle'
 import DfnsWalletList from '../components/DfnsWalletList'
 import PendingApprovalsPanel from '../components/PendingApprovalsPanel'
@@ -8,6 +13,19 @@ import MpcSignatureFeed from '../components/MpcSignatureFeed'
 import MicaExportButton from '../components/MicaExportButton'
 import { Card, Empty, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
+
+// A 401 proves the relay answered: /health returns 200 and the read is the part
+// that was turned down. Calling that unreachable sends a reader off hunting for
+// a service that is running.
+function readFailure(err: unknown): string {
+  if (err instanceof RelayError && err.status === 401) {
+    return 'relay answered, no valid API token'
+  }
+  if (err instanceof RelayError && err.status === 503) {
+    return 'relay answered, custody not configured'
+  }
+  return 'custody service unreachable'
+}
 
 export default function Audit() {
   const { mode } = useCustody()
@@ -35,7 +53,8 @@ export default function Audit() {
       {!configured ? (
         <Card>
           <Empty>
-            The custody service is not wired up in this build, so there is nothing to audit here.
+            The custody service is not wired up in this build (VITE_LOBSTER_API_URL is not set),
+            so the figures below cannot be filled in.
           </Empty>
         </Card>
       ) : (
@@ -56,7 +75,7 @@ export default function Audit() {
             sub={
               wallets.isSuccess
                 ? `${walletItems.filter((w) => w.network === 'Stellar').length} on mainnet`
-                : 'custody service unreachable'
+                : readFailure(wallets.error)
             }
           />
           {/* a failed read is not a finding: only call signing ungated once we
@@ -70,12 +89,11 @@ export default function Audit() {
             value={policies.isSuccess ? String(active.length) : '-'}
             sub={
               !policies.isSuccess
-                ? 'custody service unreachable'
+                ? readFailure(policies.error)
                 : active.length === 0
                   ? 'nothing has to be approved'
                   : 'each matching payment needs approval'
             }
-            tone={policies.isSuccess && active.length === 0 ? 'down' : 'plain'}
           />
           <Stat
             label={
@@ -86,7 +104,7 @@ export default function Audit() {
             value={approvals.isSuccess ? String(waiting) : '-'}
             sub={
               !approvals.isSuccess
-                ? 'custody service unreachable'
+                ? readFailure(approvals.error)
                 : waiting === 0
                   ? 'nothing held'
                   : 'held until approved'

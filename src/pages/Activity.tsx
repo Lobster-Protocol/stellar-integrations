@@ -108,6 +108,15 @@ export default function Activity() {
   const oldest = events.at(-1)?.at
   const windowSub = oldest ? `back to ${new Date(oldest).toLocaleDateString('en-GB')}` : undefined
 
+  // zero is a finding about a wallet we read. with no wallet, or a read that
+  // failed, there is no number to give, so the tiles show a dash and say why.
+  const counted = !!address && q.isSuccess
+  const noCount = !address
+    ? 'no wallet connected'
+    : q.isError
+      ? 'could not read this account'
+      : 'reading this account'
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -129,7 +138,13 @@ export default function Activity() {
               : 'Every operation on this account, not only the ones loaded below'
           }
           disabledHint={
-            filters.reversed ? 'The end date is before the start date' : 'Connect a wallet first'
+            filters.reversed
+              ? 'The end date is before the start date'
+              : !address
+                ? 'Connect a wallet first'
+                : accountExists === 'missing'
+                  ? `This wallet is not on the ${network} ledger yet, so it has no history to export`
+                  : 'Still checking this account on Stellar'
           }
         />
       </div>
@@ -142,25 +157,27 @@ export default function Activity() {
               <InfoTip term="operation" label="an operation" />
             </>
           }
-          value={String(events.length)}
-          sub={filters.windowed ? describeWindow(filters) : windowSub}
+          value={counted ? String(events.length) : '-'}
+          sub={counted ? (filters.windowed ? describeWindow(filters) : windowSub) : noCount}
         />
         <Stat
           label="Deliberate actions"
-          value={String(deliberate)}
-          sub="swaps, transfers, liquidity"
-          tone="accent"
+          value={counted ? String(deliberate) : '-'}
+          sub={counted ? 'swaps, transfers, liquidity' : noCount}
+          tone={counted ? 'accent' : 'plain'}
         />
         <Stat
           label="Failed"
-          value={String(failed)}
-          tone={failed > 0 ? 'down' : 'plain'}
+          value={counted ? String(failed) : '-'}
+          tone={counted && failed > 0 ? 'down' : 'plain'}
           sub={
-            failed > 0
-              ? 'check the feed below'
-              : filters.windowed
-                ? 'none in this range'
-                : 'none so far'
+            !counted
+              ? noCount
+              : failed > 0
+                ? 'check the feed below'
+                : filters.windowed
+                  ? 'none in this range'
+                  : 'none so far'
           }
         />
       </div>

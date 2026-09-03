@@ -55,7 +55,10 @@ export default function TtlCountdownCard() {
           Contract storage lease <InfoTip term="ttl" label="the storage lease" />
         </h3>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-text-muted">live | on-chain | {network}</span>
+          {/* a failed read is not a live one, so the badge goes with the data */}
+          {!ttl.isError && (
+            <span className="text-[11px] text-text-muted">live | on-chain | {network}</span>
+          )}
           <LiveDataMeta
             dataUpdatedAt={ttl.dataUpdatedAt}
             isFetching={ttl.isFetching}
@@ -70,9 +73,7 @@ export default function TtlCountdownCard() {
       {ttl.isLoading ? (
         <p className="text-xs text-text-muted">Loading...</p>
       ) : ttl.isError ? (
-        <p className="text-xs text-text-secondary">
-          No storage data on {network} yet.
-        </p>
+        <p className="text-xs text-text-secondary">{(ttl.error as Error).message}</p>
       ) : !ttl.data || ttl.data.statuses.length === 0 ? (
         <p className="text-xs text-text-secondary">No storage entries tracked yet.</p>
       ) : (

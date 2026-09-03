@@ -13,9 +13,11 @@ export default function RoutingEngineCard({ bare = false }: { bare?: boolean }) 
   const lastRoute = useRoutingLog()[0] ?? null
   const health = getRoutingHealth(network)
 
-  // config/env state, not a live probe. green = enabled on this network.
+  // read off this build's config, never probed. so no green anywhere in the two
+  // tiles below: green is for something we measured, and the last route is the
+  // only measured thing on this card.
   const brokerStatus = health.brokerQuoteEnabled
-    ? 'enabled'
+    ? 'configured'
     : network === 'mainnet'
       ? 'not configured'
       : 'mainnet only'
@@ -45,7 +47,7 @@ export default function RoutingEngineCard({ bare = false }: { bare?: boolean }) 
           <div className="flex items-center gap-2">
             <span
               className={`inline-block w-2 h-2 rounded-full ${
-                health.brokerQuoteEnabled ? 'bg-green' : 'bg-text-muted/40'
+                health.brokerQuoteEnabled ? 'bg-primary/60' : 'bg-text-muted/40'
               }`}
             />
             <span className="text-text">{brokerStatus}</span>
@@ -59,14 +61,21 @@ export default function RoutingEngineCard({ bare = false }: { bare?: boolean }) 
           <div className="flex items-center gap-2">
             <span
               className={`inline-block w-2 h-2 rounded-full ${
-                health.fallbackEnabled ? 'bg-green' : 'bg-text-muted/40'
+                health.fallbackEnabled ? 'bg-primary/60' : 'bg-text-muted/40'
               }`}
             />
             <span className="text-text">Soroswap router</span>
           </div>
-          <div className="text-text-muted mt-1">{health.fallbackEnabled ? 'configured' : 'not configured'}</div>
+          <div className="text-text-muted mt-1">
+            {health.fallbackEnabled ? 'router address configured' : 'no router configured'}
+          </div>
         </div>
       </div>
+
+      <p className="text-[11px] text-text-muted mt-2">
+        Both tiles read the addresses this build was set up with. Neither has been called, so a
+        configured route can still turn out to be unavailable at the moment you swap.
+      </p>
 
       <div className="mt-3">
         <div className="text-text-muted text-xs mb-1">Exchanges it compares</div>

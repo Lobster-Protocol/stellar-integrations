@@ -1,7 +1,11 @@
 # Allbridge Core
 
-Allbridge Core bridges USDC from an EVM chain to Stellar. Lobster leans on it
-two ways: capital inflow, and topping up the arbitrage reserve.
+Allbridge Core bridges USDC from an EVM chain to Stellar. Lobster uses it for
+capital inflow.
+
+One thing to know before reading the rest: the USDC pool on the Stellar side is
+closed today, so no transfer completes. The section below says what that looks
+like and how the code handles it.
 
 ## Setup
 
@@ -20,7 +24,30 @@ config rather than inlined.
    CCTP isn't supported for Stellar.
 5. Broadcast on the source chain. That tx hash is the EVM-side proof.
 6. The Allbridge relayer delivers USDC on Stellar. The client makes no Soroban
-   call here; the funds land in about two minutes.
+   call here. Delivery time comes from the SDK for that corridor rather than a
+   figure we invent, and when the SDK gives none we show none.
+
+## The Stellar USDC pool is closed
+
+Allbridge has parked the USDC pool on the Stellar side. A live pool carries a
+`feeShare` around 0.003; this one reads 0.9999, which is Allbridge's marker for a
+disabled pool and takes anything you send down to zero. `transferTime` for
+Stellar comes back empty on every corridor, and the pool read from chain is
+heavily drained.
+
+So `quoteBridge` refuses before the SDK can throw its own "amount must be greater
+than zero". It checks `feeShare` first and fails closed: at or above 0.5, or
+unreadable, the quote stops with "The Allbridge USDC pool into Stellar is closed
+right now. Bridging will work again once the pool reopens." Reopening it is
+Allbridge's decision, not something in this codebase.
+
+The quote itself reads the pool from chain, through
+`getAmountToBeReceivedFromChain`, because the token list ships an empty
+`poolInfo` and the plain call underflows to zero even on a healthy pool.
+
+On testnet there is no Allbridge network at all and no USDC on Stellar testnet,
+so the dashboard offers a walkthrough instead. It is badged in the UI as
+"Simulation - no funds moved" and the mainnet path is untouched by it.
 
 ## Fees and amounts
 
@@ -32,12 +59,15 @@ pay off.
 ## Decimals
 
 USDC is six decimals on Ethereum and Arbitrum, seven on Stellar, eighteen on BNB;
-the SDK converts when it builds the transfer. The arbitrage outbound leg, Stellar
-back to EVM, isn't wired yet.
+the SDK converts when it builds the transfer. BNB is refused on our side because
+the allowance scaling on the send path assumes six decimals, so the corridors are
+Ethereum and Arbitrum.
 
 ## Where it lives
 
 `src/integrations/allbridge/` holds the client, the quote and send builders, the
-trustline helpers, and the arb-reserve. The EVM broadcast is in
-`src/integrations/evm/send.ts`. Canonical addresses (the USDC contract, bridge,
-pool, and issuer) sit in `src/config/contracts.ts`, keyed by network.
+trustline helpers, and the testnet walkthrough in `simulate.ts`. The EVM
+broadcast is in `src/integrations/evm/send.ts`. Canonical addresses (the USDC
+contract, bridge, pool, and issuer) sit in `src/config/contracts.ts`, keyed by
+network. There is no outbound leg from Stellar back to EVM. That code was never
+written, so nothing here covers it.

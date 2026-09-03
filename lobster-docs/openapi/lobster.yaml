@@ -9,12 +9,15 @@ info:
     when the upstream call fails or the credentials are missing, and the sign
     path answers 503 until its env is in place.
 servers:
+  - url: https://lobster-bff.onrender.com
+    description: deployed relay
   - url: http://localhost:8787
     description: local dev (hono)
 tags:
   - name: health
   - name: monitoring
   - name: dfns
+  - name: allbridge
 security:
   - lobsterToken: []
   - bearerAuth: []
@@ -120,9 +123,18 @@ paths:
       summary: Sign and broadcast a Stellar tx via MPC
       description: >
         Inspects the XDR against the sign guard (op allowlist, treasury source,
-        destination whitelist, amount cap), then signs through DFNS and returns
-        the signed XDR. Fail-closed: 503 when the API token, the wallet id, or
-        the guard env is unset.
+        destination whitelist, amount cap, fee ceiling), then signs through DFNS.
+        A Soroban invocation passes only as a read-only view on a contract listed
+        in DFNS_SOROBAN_VIEW_CONTRACTS, with no arguments and no authorization
+        entries; an empty list means no Soroban invocation signs at all.
+        Fee-bump and restoreFootprint envelopes are refused.
+
+        Three answers on success. A classic tx DFNS broadcast itself comes back
+        as {txHash}. A Soroban tx comes back as {signedTxXdr} for the caller to
+        submit. A tx an approval policy is holding comes back as
+        {pending: true, id}, and the caller polls /dfns/sign/{id}/status for the
+        hash. Fail-closed: 503 when the API token, the wallet id, or the guard
+        env is unset.
       requestBody:
         required: true
         content:
@@ -136,10 +148,33 @@ paths:
                   type: string
                   description: optional, must match the server's configured network
       responses:
-        '200': { description: signed xdr }
-        '400': { description: bad json, missing xdr, network mismatch, or blocked by the sign guard }
+        '200': { description: signed xdr, broadcast hash, or a pending approval id }
+        '400': { description: bad json, missing xdr, network mismatch, fee-bump or restoreFootprint envelope, or blocked by the sign guard }
         '401': { description: token required and missing or wrong }
+        '409': { description: a treasury signature is already awaiting approval; body carries pending and id }
+        '502': { description: DFNS rejected or failed the signature }
         '503': { description: API token, wallet id, or sign guard not configured }
+  /dfns/sign/{id}/status:
+    get:
+      tags: [dfns]
+      summary: Poll a signature held for approval
+      description: >
+        Reads the current DFNS status of a signature that /dfns/sign returned as
+        pending. The multi-approver flow depends on it: the dashboard shows the
+        pending state, polls here, and gets the transaction hash once a second
+        identity approves. Returns status, txHash and reason.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+          description: the signature id /dfns/sign handed back with pending
+      responses:
+        '200': { description: current status, with txHash once it has broadcast }
+        '400': { description: missing signature id }
+        '401': { description: token required and missing or wrong }
+        '502': { description: DFNS read failed }
+        '503': { description: DFNS_STELLAR_WALLET_ID not set }
   /dfns/audit/export:
     get:
       tags: [dfns]
@@ -170,6 +205,115 @@ paths:
       responses:
         '200': { description: event stream }
         '401': { description: token required and missing or wrong }
+  /allbridge/tokens:
+    get:
+      tags: [allbridge]
+      summary: Tokens Allbridge Core lists for a source chain
+      description: >
+        Read-only passthrough to the Allbridge Core API. Allbridge is mainnet
+        only, so these routes always target mainnet. Nothing here signs or holds
+        a secret, so none of them are token-gated.
+      security: []
+      parameters:
+        - name: chain
+          in: query
+          required: true
+          schema: { type: string, enum: [ETH, ARB] }
+      responses:
+        '200': { description: token list, each with symbol, decimals, tokenAddress, bridgeAddress, chainSymbol }
+        '400': { description: chain must be ETH or ARB }
+        '502': { description: Allbridge call failed }
+  /allbridge/quote:
+    post:
+      tags: [allbridge]
+      summary: Quote a USDC transfer into Stellar
+      description: >
+        Returns amountIn, amountOut, etaSeconds (null when the corridor omits a
+        transfer time) and gasFeeOptions keyed by payment method. The USDC pool
+        on the Stellar side is closed upstream at the moment, which surfaces here
+        as a 502.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceChain, amount]
+              properties:
+                sourceChain: { type: string, enum: [ETH, ARB] }
+                amount:
+                  type: string
+                  description: positive USDC amount, at most 6 decimals
+      responses:
+        '200': { description: quote }
+        '400': { description: body failed validation }
+        '502': { description: Allbridge call failed }
+  /allbridge/status:
+    get:
+      tags: [allbridge]
+      summary: Delivery status of a transfer
+      description: >
+        Delivery on Stellar is automatic; this is how a caller learns the
+        transfer landed. txId is the EVM hash the send returned.
+      security: []
+      parameters:
+        - name: chain
+          in: query
+          required: true
+          schema: { type: string, enum: [ETH, ARB] }
+        - name: txId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: transfer status }
+        '400': { description: chain must be ETH or ARB, or txId missing }
+        '502': { description: Allbridge call failed }
+  /allbridge/raw/approve:
+    post:
+      tags: [allbridge]
+      summary: Build an unsigned ERC-20 approve for the bridge
+      description: >
+        Build only. The caller's wallet or custodial signer signs and broadcasts;
+        this service never does.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceChain, amount, owner]
+              properties:
+                sourceChain: { type: string, enum: [ETH, ARB] }
+                amount: { type: string, description: positive USDC amount, at most 6 decimals }
+                owner: { type: string, description: EVM address, 0x plus 40 hex }
+      responses:
+        '200': { description: rawTx }
+        '400': { description: body failed validation }
+        '502': { description: Allbridge call failed }
+  /allbridge/raw/send:
+    post:
+      tags: [allbridge]
+      summary: Build an unsigned bridge send from EVM to Stellar
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceChain, amount, fromAddress, toAddress]
+              properties:
+                sourceChain: { type: string, enum: [ETH, ARB] }
+                amount: { type: string, description: positive USDC amount, at most 6 decimals }
+                fromAddress: { type: string, description: EVM address, 0x plus 40 hex }
+                toAddress: { type: string, description: Stellar account id, G plus 55 base32 }
+      responses:
+        '200': { description: rawTx }
+        '400': { description: body failed validation }
+        '502': { description: Allbridge call failed }
 components:
   securitySchemes:
     lobsterToken:

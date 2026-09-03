@@ -14,6 +14,7 @@ import { listWallets, createStellarWallet } from './dfns/wallets'
 import { DfnsStellarNetworkSchema } from './dfns/types'
 import { broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData, isTerminal, getSignatureStatus } from './dfns/sign'
 import { inspectSignXdr, readSignGuardConfig, SignGuardRejected } from './dfns/sign-guard'
+import { transferNative } from './dfns/transfer'
 import { reSequence } from './dfns/resequence'
 import { unresolvedSignature, trackPending, clearPending } from './dfns/inflight'
 import { registerAllbridgeRoutes } from './allbridge/routes'
@@ -66,6 +67,29 @@ const tokenGuard = async (c: Context, next: Next) => {
     c.req.header('x-lobster-token') ||
     c.req.query('token') ||
     ''
+  const a = Buffer.from(presented)
+  const b = Buffer.from(required)
+  if (a.length === 0 || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return c.text('unauthorized', 401)
+  }
+  return next()
+}
+
+// second gate, on top of tokenGuard, for the two routes that write to the
+// custody org: creating a wallet and deciding an approval. LOBSTER_API_TOKEN is
+// inlined into the browser bundle by vite, so every visitor of the dashboard
+// holds it and it cannot stand alone in front of a write. this token never
+// reaches the client. unset means the routes stay shut, like /dfns/sign does
+// without LOBSTER_API_TOKEN.
+const operatorGuard = async (c: Context, next: Next) => {
+  const required = process.env.LOBSTER_OPERATOR_TOKEN
+  if (!required) {
+    return c.json(
+      { error: 'LOBSTER_OPERATOR_TOKEN must be set before this route is enabled' },
+      503,
+    )
+  }
+  const presented = c.req.header('x-lobster-operator-token') ?? ''
   const a = Buffer.from(presented)
   const b = Buffer.from(required)
   if (a.length === 0 || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
@@ -164,7 +188,7 @@ app.get('/dfns/wallets', tokenGuard, async (c) => {
   }
 })
 
-app.post('/dfns/wallets', rateLimit, tokenGuard, async (c) => {
+app.post('/dfns/wallets', rateLimit, tokenGuard, operatorGuard, async (c) => {
   // fail-closed like /dfns/sign: creating a wallet writes to the custody account,
   // and the token guard is a no-op when the env is unset.
   if (!process.env.LOBSTER_API_TOKEN) {
@@ -197,7 +221,7 @@ app.get('/dfns/approvals', tokenGuard, async (c) => {
   }
 })
 
-app.post('/dfns/approvals/:id/decision', rateLimit, tokenGuard, async (c) => {
+app.post('/dfns/approvals/:id/decision', rateLimit, tokenGuard, operatorGuard, async (c) => {
   // fail-closed like /dfns/sign: deciding an approval authorizes a pending
   // signature, so it carries the same risk as signing. the token guard is a
   // no-op without the env, and we will not let a misconfigured deploy approve
@@ -232,6 +256,47 @@ function serverPassphrase(): string {
   if (net === 'Stellar') return Networks.PUBLIC
   return Networks.TESTNET
 }
+
+// A payment DFNS builds itself, rather than an envelope we hand it. That is the
+// only shape its approval rules can actually read, so it is the one request that
+// a rule can wave through. Same bounds as /dfns/sign: the destination has to be
+// on the whitelist and the amount under the cap.
+app.post('/dfns/transfer', rateLimit, tokenGuard, async (c) => {
+  if (!process.env.LOBSTER_API_TOKEN) {
+    return c.json({ error: 'LOBSTER_API_TOKEN must be set before /dfns/transfer is enabled' }, 503)
+  }
+  const walletId = process.env.DFNS_STELLAR_WALLET_ID
+  if (!walletId) return c.json({ error: 'DFNS_STELLAR_WALLET_ID not set' }, 503)
+  const guard = readSignGuardConfig()
+  if (!guard) {
+    return c.json(
+      { error: 'sign guard not configured: set DFNS_TREASURY_ADDRESS, DFNS_DESTINATION_WHITELIST and DFNS_MAX_AMOUNT_STROOPS, or DFNS_GUARD_PERMISSIVE=1 for tests' },
+      503,
+    )
+  }
+  let body: { to?: string; stroops?: string }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'bad json' }, 400)
+  }
+  if (!body.to || !body.stroops) return c.json({ error: 'to and stroops are required' }, 400)
+  try {
+    const out = await transferNative(walletId, { to: body.to, stroops: body.stroops }, guard)
+    const held = Boolean((out as { approvalId?: string }).approvalId)
+    return c.json({
+      id: out.id,
+      status: out.status,
+      approvalId: (out as { approvalId?: string }).approvalId ?? null,
+      txHash: (out as { txHash?: string }).txHash ?? null,
+      held,
+    })
+  } catch (err) {
+    if (err instanceof SignGuardRejected) return c.json({ error: err.message }, 400)
+    const msg = err instanceof Error ? err.message : 'transfer failed'
+    return c.json({ error: msg }, 502)
+  }
+})
 
 app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
   // fail-closed: refuse to sign anything when the shared token is unset.
