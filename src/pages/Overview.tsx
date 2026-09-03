@@ -16,7 +16,7 @@ import {
 import { useRecordNav } from '../integrations/pricing/nav'
 import { useVaultPositions, VENUE_LABEL } from '../integrations/lobster/position'
 import { useActivity, KIND_LABEL } from '../integrations/horizon/activity'
-import { CONTRACTS } from '../config/contracts'
+import { CONTRACTS, EVM_USDC, EVM_BRIDGEABLE, type EvmChain } from '../config/contracts'
 import { formatBalance, formatValue, shortenAddress, stellarExplorer } from '../utils/format'
 import { CHART_COLORS, TOOLTIP_STYLE } from '../utils/recharts'
 import lobsterIcon from '../assets/lobster-icon.png'
@@ -83,6 +83,9 @@ export default function Overview() {
   // same computation Allocation renders, so the two pages can never disagree
   const portfolio = buildPortfolio(lines, vaults, priceOf, network)
   const alloc = portfolio.byAsset
+  // land the deposit modal on a working bridge tab; the stellar-direct path
+  // isn't wired, so opening on it would dead-end
+  const bridgeChains = (Object.keys(EVM_USDC) as EvmChain[]).filter((c) => EVM_BRIDGEABLE[c])
 
   // the same reconstruction Performance draws, thinned to a sparkline
   const priceByKey: Record<string, number> = {}
@@ -113,7 +116,7 @@ export default function Overview() {
   return (
     <div className="space-y-6">
       <Suspense fallback={null}>
-        <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} />
+        <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} initialChain={bridgeChains[0]} />
         <SwapModal open={swapOpen} onClose={() => setSwapOpen(false)} />
       </Suspense>
 

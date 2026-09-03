@@ -20,7 +20,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <img src={lobsterLogo} alt="Lobster" className="h-8 w-auto" />
       </div>
 
-      <nav className="flex-1 px-3 space-y-0.5">
+      <nav aria-label="Main" className="flex-1 px-3 space-y-0.5">
         {NAV_ITEMS.map(item => (
           <NavLink
             key={item.to}
