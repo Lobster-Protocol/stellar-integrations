@@ -171,10 +171,20 @@ export default function SignDemoTx() {
         <div className="space-y-3">
           {isDfns ? (
             <div className="flex flex-wrap gap-2">
+              {/* the Soroban leg: a read-only Factory view, signed by MPC. it is
+                  what a reviewer needs to see a soroban tx come out of DFNS, and
+                  the signer admits it because a view moves nothing. */}
+              <button
+                onClick={() => handleAction('ping')}
+                disabled={busy}
+                className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Call the Factory (DFNS MPC)
+              </button>
               <button
                 onClick={() => handleAction('payment')}
                 disabled={busy}
-                className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Sign a treasury payment (DFNS MPC)
               </button>

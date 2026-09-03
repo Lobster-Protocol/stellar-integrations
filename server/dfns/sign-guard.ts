@@ -1,4 +1,4 @@
-import { type Transaction, type FeeBumpTransaction } from '@stellar/stellar-sdk'
+import { Address, xdr, type Transaction, type FeeBumpTransaction } from '@stellar/stellar-sdk'
 import { decimalToStroops } from '../../src/integrations/stellar/amount'
 
 // only value-bounded classic ops may sign from the treasury. soroban calls and
@@ -12,6 +12,53 @@ const ALLOWED_OPS = new Set([
   'bumpSequence',
   'changeTrust',
 ])
+
+// A soroban invocation is admitted only as a named view on a contract the
+// operator listed, carrying no authorization entries. A view returns a value and
+// signs nothing away; without auth entries the invocation cannot move a token,
+// because a SAC transfer needs the treasury's own authorization to be attached.
+// Anything else stays out, for the reason above.
+const SOROBAN_VIEW_METHODS = new Set([
+  'get_admin',
+  'get_pool_count',
+  'get_wasm_hash',
+  'get_owner',
+  'get_multisig',
+])
+
+function viewContracts(): string[] {
+  return (process.env.DFNS_SOROBAN_VIEW_CONTRACTS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+// Throws unless the operation is one of those views. Reads the invocation out of
+// the envelope rather than trusting anything the caller says about it.
+export function checkSorobanView(op: unknown, allowed: string[]): void {
+  if (allowed.length === 0) {
+    throw new SignGuardRejected('soroban views are not enabled on this signer')
+  }
+  const { func, auth } = op as { func?: xdr.HostFunction; auth?: unknown[] }
+  if (auth && auth.length > 0) {
+    throw new SignGuardRejected('soroban invocation carries authorization entries')
+  }
+  if (!func || func.switch().name !== 'hostFunctionTypeInvokeContract') {
+    throw new SignGuardRejected('only a contract invocation is allowed, not an upload or a deploy')
+  }
+  const call = func.invokeContract()
+  const contract = Address.fromScAddress(call.contractAddress()).toString()
+  if (!allowed.includes(contract)) {
+    throw new SignGuardRejected(`contract ${contract} is not in the view allowlist`)
+  }
+  const fn = call.functionName().toString()
+  if (!SOROBAN_VIEW_METHODS.has(fn)) {
+    throw new SignGuardRejected(`${fn}() is not a read-only method`)
+  }
+  if (call.args().length > 0) {
+    throw new SignGuardRejected(`${fn}() takes no arguments on this path`)
+  }
+}
 
 // 1 XLM. no classic treasury op needs a fee this large; bounding it stops a drain
 // through an inflated fee the amount cap can't see, same as the broker guard.
@@ -31,6 +78,10 @@ export interface SignGuardConfig {
   // env-set list of destinations any payment / path payment may target.
   // empty list = whitelist disabled (testing path); production should set it.
   destinationWhitelist: string[]
+  // env-set contracts a read-only soroban view may target. absent or empty means
+  // no soroban invocation signs at all, which is the default everywhere it is
+  // not explicitly configured.
+  sorobanViewContracts?: string[]
   // env-set hard cap for any payment-style op, expressed in stroops.
   // 0 = no cap (testing path); production should set a positive value.
   maxAmountStroops: bigint
@@ -82,6 +133,10 @@ export function inspectSignXdr(
     throw new SignGuardRejected(`tx fee ${tx.fee} stroops is over the ${MAX_FEE_STROOPS} ceiling`)
   }
   for (const op of t.operations) {
+    if (op.type === 'invokeHostFunction') {
+      checkSorobanView(op, cfg.sorobanViewContracts ?? [])
+      continue
+    }
     if (!ALLOWED_OPS.has(op.type)) {
       throw new SignGuardRejected(`op type ${op.type} is not allowed`)
     }
@@ -124,5 +179,6 @@ export function readSignGuardConfig(): SignGuardConfig | null {
     treasuryAddress: treasury,
     destinationWhitelist: list,
     maxAmountStroops: cap,
+    sorobanViewContracts: viewContracts(),
   }
 }

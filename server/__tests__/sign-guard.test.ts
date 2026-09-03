@@ -149,7 +149,8 @@ describe('inspectSignXdr', () => {
     // the real usdc sac, straight from contracts.ts
     const usdcSac = CONTRACTS.mainnet.tokens.usdcSac
     const tx = buildSorobanTransfer(usdcSac, OTHER, 1_000_000n)
-    expect(() => inspectSignXdr(tx, baseCfg)).toThrow(/not allowed/i)
+    // still refused: the default config lists no view contract at all
+    expect(() => inspectSignXdr(tx, baseCfg)).toThrow(/not enabled/i)
   })
 })
 
@@ -210,5 +211,78 @@ describe('readSignGuardConfig', () => {
       delete process.env.DFNS_TREASURY_ADDRESS
       delete process.env.DFNS_GUARD_PERMISSIVE
     }
+  })
+})
+
+// A soroban view is the one invocation the treasury signer admits, and only
+// because a view returns a value and carries no authorization to move anything.
+describe('soroban views', () => {
+  const FACTORY = CONTRACTS.testnet.lobster.factory
+  const noViews = { treasuryAddress: TREASURY, destinationWhitelist: [], maxAmountStroops: 0n }
+  const viewCfg = { ...noViews, sorobanViewContracts: [FACTORY] }
+
+  function buildView(contractId: string, fn: string, args: xdr.ScVal[] = []) {
+    const hostFn = xdr.HostFunction.hostFunctionTypeInvokeContract(
+      new xdr.InvokeContractArgs({
+        contractAddress: Address.fromString(contractId).toScAddress(),
+        functionName: fn,
+        args,
+      }),
+    )
+    return new TransactionBuilder(new Account(TREASURY, '1'), {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(Operation.invokeHostFunction({ func: hostFn, auth: [] }))
+      .setTimeout(60)
+      .build()
+  }
+
+  it('admits a named view on a listed contract', () => {
+    expect(() => inspectSignXdr(buildView(FACTORY, 'get_admin'), viewCfg)).not.toThrow()
+  })
+
+  it('refuses a contract that was never listed', () => {
+    const other = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'
+    expect(() => inspectSignXdr(buildView(other, 'get_admin'), viewCfg)).toThrow(/not in the view allowlist/i)
+  })
+
+  it('refuses a method that is not a view, on a listed contract', () => {
+    expect(() => inspectSignXdr(buildView(FACTORY, 'create_pool'), viewCfg)).toThrow(/not a read-only method/i)
+  })
+
+  it('refuses a transfer even on a listed contract', () => {
+    const tx = buildSorobanTransfer(FACTORY, OTHER, 1_000_000n)
+    expect(() => inspectSignXdr(tx, viewCfg)).toThrow(/not a read-only method/i)
+  })
+
+  it('refuses a view that carries arguments', () => {
+    const withArg = buildView(FACTORY, 'get_admin', [Address.fromString(TREASURY).toScVal()])
+    expect(() => inspectSignXdr(withArg, viewCfg)).toThrow(/takes no arguments/i)
+  })
+
+  it('refuses an invocation carrying authorization entries', () => {
+    const tx = buildView(FACTORY, 'get_admin')
+    // an auth entry is what lets an invocation move a token, so its presence
+    // alone disqualifies the call however harmless the method looks
+    const op = tx.operations[0] as unknown as { auth: unknown[] }
+    op.auth = [{}]
+    expect(() => inspectSignXdr(tx, viewCfg)).toThrow(/authorization entries/i)
+  })
+
+  it('signs nothing soroban when no contract is listed', () => {
+    expect(() => inspectSignXdr(buildView(FACTORY, 'get_admin'), noViews)).toThrow(/not enabled/i)
+  })
+
+  it('still refuses a wasm upload on a configured signer', () => {
+    const upload = xdr.HostFunction.hostFunctionTypeUploadContractWasm(Buffer.from([1, 2, 3]))
+    const tx = new TransactionBuilder(new Account(TREASURY, '1'), {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(Operation.invokeHostFunction({ func: upload, auth: [] }))
+      .setTimeout(60)
+      .build()
+    expect(() => inspectSignXdr(tx, viewCfg)).toThrow(/not an upload or a deploy/i)
   })
 })
