@@ -11,15 +11,16 @@ test('mobile: sidebar is hidden, hamburger menu visible', async ({ page }) => {
   const sidebar = page.locator('aside')
   await expect(sidebar).toBeHidden()
 
-  // the hamburger has no accessible name, so match the first icon button
-  const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first()
+  // TopBar labels it, so ask for it by name rather than taking whichever icon
+  // button sits first in the DOM
+  const menuBtn = page.getByRole('button', { name: /Open menu/i })
   await expect(menuBtn).toBeVisible()
 })
 
 test('mobile: hamburger opens nav drawer', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
-  const menuBtn = page.locator('button').filter({ has: page.locator('svg') }).first()
+  const menuBtn = page.getByRole('button', { name: /Open menu/i })
   await menuBtn.click()
   await page.waitForTimeout(300)
 
@@ -43,7 +44,12 @@ test('mobile: connect wallet button works', async ({ page }) => {
   const connectBtn = page.getByRole('button', { name: 'Connect Wallet' }).first()
   await expect(connectBtn).toBeVisible()
   await connectBtn.click()
-  await page.waitForTimeout(2000)
+
+  // the kit modal has to actually come up at phone width, which is the part
+  // the screenshot alone never checked
+  const modal = page.locator('section.stellar-wallets-kit')
+  await expect(modal).toBeVisible()
+  await expect(modal.getByRole('heading', { name: 'Connect Wallet' })).toBeVisible()
 
   await page.screenshot({ path: 'screenshots/mobile-wallet-modal.png' })
 })

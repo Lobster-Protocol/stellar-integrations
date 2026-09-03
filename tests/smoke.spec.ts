@@ -64,18 +64,36 @@ test('navigation between all pages works', async ({ page }) => {
 test('network selector toggles between testnet and mainnet', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
-  await page.getByText('Mainnet', { exact: true }).click()
-  await page.waitForTimeout(300)
-  await page.getByText('Testnet', { exact: true }).click()
-  await page.waitForTimeout(300)
+  const testnet = page.getByRole('button', { name: 'Testnet' })
+  const mainnet = page.getByRole('button', { name: 'Mainnet' })
+
+  // the toggle marks the live network with the raised pill classes, and writes
+  // the choice through to storage, so check both ends of the switch
+  await mainnet.click()
+  await expect(mainnet).toHaveClass(/bg-bg-card/)
+  await expect(testnet).not.toHaveClass(/bg-bg-card/)
+  expect(await page.evaluate(() => localStorage.getItem('lob_network'))).toBe('mainnet')
+
+  await testnet.click()
+  await expect(testnet).toHaveClass(/bg-bg-card/)
+  await expect(mainnet).not.toHaveClass(/bg-bg-card/)
+  expect(await page.evaluate(() => localStorage.getItem('lob_network'))).toBe('testnet')
 })
 
 test('connect wallet button opens auth modal', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
-  const connectBtn = page.getByText('Connect Wallet').first()
-  await connectBtn.click()
-  await page.waitForTimeout(2000)
+  await page.getByRole('button', { name: 'Connect Wallet' }).first().click()
+
+  // the wallets kit appends its own section and lists what it can talk to.
+  // clicking used to be followed by a screenshot and nothing else, so a kit
+  // that never opened still read as a pass.
+  const modal = page.locator('section.stellar-wallets-kit')
+  await expect(modal).toBeVisible()
+  await expect(modal.getByRole('heading', { name: 'Connect Wallet' })).toBeVisible()
+  await expect(modal.getByText('Freighter', { exact: true })).toBeVisible()
+  await expect(modal.getByText('xBull', { exact: true })).toBeVisible()
+
   await page.screenshot({ path: 'screenshots/06-wallet-modal.png', fullPage: true })
 })
 
@@ -90,10 +108,12 @@ test('no critical console errors on any page', async ({ page }) => {
     await page.waitForTimeout(500)
   }
 
+  // three classes of browser noise are not the app misbehaving: a missing
+  // favicon, a 404 from reading an account that is not on the ledger, and a
+  // refused connection to a relay a test build is not expected to have. every
+  // other console error is a real fault, and this used to only log them.
   const critical = errors.filter(
     (e) => !e.includes('favicon') && !e.includes('404') && !e.includes('net::ERR'),
   )
-  if (critical.length > 0) {
-    console.log('Console errors found:', critical)
-  }
+  expect(critical, `unexpected console errors: ${critical.join(' / ')}`).toHaveLength(0)
 })

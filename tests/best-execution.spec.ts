@@ -79,17 +79,32 @@ test.describe('best execution', () => {
     test.skip(truth.status !== 'success', `broker has no quote right now: ${truth.status}`)
 
     await openSwapWithAmount(page, String(PROBE_XLM))
-    await expect(page.getByText('Direct route, same size')).toBeVisible({ timeout: 45000 })
 
-    // three ways this can end: the broker leg is executable, the swap falls back
-    // to Soroswap, or nothing on the pair can be signed. the comparison has to
-    // survive all three, and the page has to say which one it is.
-    const broker = page.getByText('Live best-execution quote from Stellar Broker')
-    const fallback = page.getByRole('button', { name: /^Confirm/ })
-    const reference = page.getByText('Nothing on this pair can be signed from here right now.')
-    const stated =
-      (await broker.count()) + (await fallback.count()) + (await reference.count())
-    expect(stated).toBeGreaterThan(0)
+    // what the name promises, and it holds whichever route wins
+    await expect(page.getByText('Direct route, same size')).toBeVisible({ timeout: 45000 })
+    await expect(page.getByText(/^Via Stellar Broker$/)).toBeVisible()
+
+    // three ways this can end: the broker leg is executable (needs a partner
+    // key in the bundle), the swap falls back to Soroswap, or nothing on the
+    // pair can be signed. exactly one of them, named. summing the three and
+    // taking any non-zero as a pass accepted a page that showed two at once,
+    // and a page that showed a headline with no control under it.
+    const legs = {
+      'broker leg': page.getByText('Live best-execution quote from Stellar Broker'),
+      'soroswap leg': page.getByRole('button', { name: 'Confirm Soroswap swap' }),
+      'reference only': page.getByText('Nothing on this pair can be signed from here right now.'),
+    }
+    const named: string[] = []
+    for (const [name, leg] of Object.entries(legs)) {
+      if ((await leg.count()) > 0) named.push(name)
+    }
+    expect(named, 'the swap has to name exactly one route it would use').toHaveLength(1)
+
+    // and the named leg has to be complete, not just labelled
+    if (named[0] === 'soroswap leg') {
+      await expect(page.getByText('Direct via Soroswap')).toBeVisible()
+      await expect(page.getByText('Price comparison from Stellar Broker')).toBeVisible()
+    }
   })
 
   test('asks for a price the broker will actually quote', async ({ page }) => {

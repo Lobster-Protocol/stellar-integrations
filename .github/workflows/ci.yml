@@ -11,6 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
+    # The custody panels and the specs that drive them only exist when the
+    # dashboard is built against a relay url, and vite bakes that in at build
+    # time, so it has to be set for `npm run build` and not only for the
+    # playwright step. Both values are deliberately fake: the specs that touch
+    # the relay serve their own responses through page.route, and 127.0.0.1
+    # means anything they miss is refused by the runner instead of reaching a
+    # real service. Never point these at production.
+    env:
+      VITE_LOBSTER_API_URL: http://127.0.0.1:8787
+      VITE_LOBSTER_API_TOKEN: ci-placeholder-token
+
     steps:
       - uses: actions/checkout@v4
 

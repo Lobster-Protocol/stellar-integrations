@@ -16,6 +16,10 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /Performance/ }).click()
     await expect(page).toHaveURL(/\/performance$/)
+    // the curve, not just the route: the card frame is there either way, so
+    // the plotted series is what says the history actually came back
+    await expect(page.getByRole('heading', { name: 'Wallet balance over time' })).toBeVisible()
+    await expect(page.locator('.recharts-area-curve').first()).toBeVisible({ timeout: 25_000 })
   })
 
   test('Activity routes to /activity and renders the heading', async ({ page }) => {
@@ -35,6 +39,13 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
     await expect(page).toHaveURL(/\/bridges$/)
+    // the provider tile names who carries the USDC across, which is the piece
+    // the test is called after. anchored on the tile so a stray mention of the
+    // name elsewhere on the page cannot stand in for it.
+    const provider = page
+      .getByText('Provider', { exact: true })
+      .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]')
+    await expect(provider).toContainText('Allbridge Core')
   })
 
   test('Positions navigates to /positions and renders the heading', async ({ page }) => {
@@ -87,7 +98,9 @@ test.describe('Mobile responsiveness', () => {
 
   test('hamburger opens drawer with the 6 nav items', async ({ page }) => {
     await gotoNoWallet(page)
-    const hamburger = page.locator('button').filter({ has: page.locator('svg') }).first()
+    // by accessible name, not "first button holding an svg": that matched
+    // whichever icon button happened to come first in the DOM
+    const hamburger = page.getByRole('button', { name: /Open menu/i })
     await hamburger.click()
     for (const label of ['Overview', 'Performance', 'Activity', 'Allocation', 'Bridges', 'Positions']) {
       await expect(page.getByRole('link', { name: new RegExp(`^${label}$`) }).first()).toBeVisible()
@@ -122,9 +135,14 @@ test.describe('Network toggle', () => {
       localStorage.setItem('lob_network', 'devnet')
     })
     await page.goto(BASE, { waitUntil: 'domcontentloaded' })
-    // After mount the corrupted value is replaced with 'testnet' on next set; we
-    // assert the UI state reflects testnet (the Testnet button is highlighted).
-    await expect(page.getByRole('button', { name: 'Testnet' })).toBeVisible()
+
+    // both buttons are always on screen, so their visibility proves nothing.
+    // the selected one carries the raised pill classes, and that is the only
+    // place the fallback shows up until something writes the value back.
+    await expect(page.getByRole('button', { name: 'Testnet' })).toHaveClass(/bg-bg-card/)
+    await expect(page.getByRole('button', { name: 'Mainnet' })).not.toHaveClass(/bg-bg-card/)
+    // and the app really is reading testnet: the footer names the live network
+    await expect(page.locator('footer')).toContainText('testnet')
   })
 
   test('mainnet on /positions shows the not-deployed notice', async ({ page }) => {

@@ -11,20 +11,21 @@ test.describe('Routing engine card', () => {
     await expect(page.getByText(/Stellar Broker/i).first()).toBeVisible()
   })
 
-  test('reads broker as enabled off the endpoint without leaking the key state', async ({ page }) => {
+  test('reads the broker off the endpoint without leaking the key state', async ({ page }) => {
     // the broker only runs on mainnet, where quoting is keyless, so the card
-    // reads "enabled" off the configured endpoint with no partner-key wording
-    // on the face. on testnet it reads "mainnet only".
+    // reads the endpoint this build was set up with and says nothing about the
+    // partner key. on testnet the same tile reads "mainnet only".
     await page.addInitScript(() => localStorage.setItem('lob_network', 'mainnet'))
     await page.goto(BASE + '/positions', { waitUntil: 'domcontentloaded' })
-    await expect(page.getByText(/^enabled$/)).toBeVisible()
+    await expect(page.getByText(/^configured$/)).toBeVisible()
     await expect(page.getByText(/partner key/i)).toHaveCount(0)
   })
 
   test('reflects the fallback availability for the active network', async ({ page }) => {
     await page.goto(BASE + '/positions', { waitUntil: 'domcontentloaded' })
-    // the card only claims a route it can take: either the soroswap router is
-    // wired for the active network, or it reads as not configured.
-    await expect(page.getByText(/^(configured|not configured)$/i).first()).toBeVisible()
+    // the direct-exchange tile names the router it would fall back to and says
+    // whether this build has an address for it, one way or the other
+    await expect(page.getByText('Soroswap router')).toBeVisible()
+    await expect(page.getByText(/^(router address configured|no router configured)$/)).toBeVisible()
   })
 })

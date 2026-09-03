@@ -47,7 +47,13 @@ test.describe('DFNS MPC signing path', () => {
     // the network busy, so idle never fires.
     await page.goto('/positions', { waitUntil: 'domcontentloaded' })
 
-    const btn = page.getByRole('button', { name: /Sign a treasury payment with DFNS MPC/i })
+    // the under-limit payment is the one this spec is about: the dashboard
+    // builds the xdr and hands it to /dfns/sign. its neighbour of the same
+    // amount asks the relay to build and send the transfer itself, which never
+    // touches this endpoint. an older wording ("Sign a treasury payment with
+    // DFNS MPC") matched no button at all, so the spec died on the locator
+    // rather than on the signing path it exists to cover.
+    const btn = page.getByRole('button', { name: /under the limit/i })
     await expect(btn).toBeVisible()
 
     const signReq = page.waitForRequest((req) => req.url().includes('/dfns/sign') && req.method() === 'POST')
