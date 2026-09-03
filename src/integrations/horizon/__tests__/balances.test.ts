@@ -115,8 +115,11 @@ describe('getAccountBalances', () => {
     await expect(getAccountBalances('testnet', 'GFAIL')).rejects.toThrow('rate limit')
   })
 
-  it('re-throws errors that LOOK like 404 but aren\'t NotFoundError instances', async () => {
+  it('treats a bare 404 as missing even without a NotFoundError instance', async () => {
+    // instanceof can miss when two sdk copies are loaded, and a 404 on an account
+    // read only ever means the account is not there, so the status is enough.
     loadAccount.mockRejectedValueOnce({ response: { status: 404 } })
-    await expect(getAccountBalances('testnet', 'GWEIRD')).rejects.toBeTruthy()
+    const result = await getAccountBalances('testnet', 'GWEIRD')
+    expect(result).toEqual([])
   })
 })

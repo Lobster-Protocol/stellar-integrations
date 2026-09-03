@@ -14,7 +14,7 @@ import {
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useAccountBalances } from '../integrations/horizon/account'
+import { useAccountBalances, useAccountExists } from '../integrations/horizon/account'
 import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
 import { buildPortfolio } from '../integrations/pricing/portfolio'
 import { useVaultPositions } from '../integrations/lobster/position'
@@ -75,6 +75,7 @@ function FlowRow({
 export default function Performance() {
   const { address } = useWallet()
   const { network } = useNetwork()
+  const missing = useAccountExists(network, address) === 'missing'
   const balancesQ = useAccountBalances(network, address)
   const priceQ = useXlmPrice(network)
   const historyQ = useBalanceHistory(network, address)
@@ -226,13 +227,13 @@ export default function Performance() {
           label="Market move"
           value={change != null ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : 'n/a'}
           tone={change == null || change === 0 ? 'plain' : change > 0 ? 'up' : 'down'}
-          sub={observed ?? 'needs a second snapshot'}
+          sub={observed ?? (missing ? 'not on this network yet' : 'needs a second snapshot')}
         />
         <Stat
           label="Deepest dip"
           value={drawdown != null ? `${drawdown.toFixed(2)}%` : 'n/a'}
           tone={drawdown != null && drawdown < 0 ? 'down' : 'plain'}
-          sub={observed ?? 'needs a second snapshot'}
+          sub={observed ?? (missing ? 'not on this network yet' : 'needs a second snapshot')}
         />
       </div>
 
@@ -253,7 +254,11 @@ export default function Performance() {
         ) : historyQ.isError ? (
           <Failed what="Couldn't read this account's history." onRetry={() => historyQ.refetch()} />
         ) : series.length < 2 ? (
-          <Empty>Not enough history on {network} yet. One move is enough to start the curve.</Empty>
+          <Empty>
+            {missing
+              ? `No history to plot until this wallet is funded on ${network}.`
+              : `Not enough history on ${network} yet. One move is enough to start the curve.`}
+          </Empty>
         ) : (
           <>
             <ChartFrame

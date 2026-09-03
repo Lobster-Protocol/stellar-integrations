@@ -1,4 +1,5 @@
 import {
+  Account,
   Contract,
   TransactionBuilder,
   BASE_FEE,
@@ -20,7 +21,7 @@ export class ContractReadError extends Error {
 }
 
 // a contract view is read by simulating the call from an account that never
-// signs, so any funded account on the network will do.
+// signs, so a fabricated source works and the source need not exist on-chain.
 export async function simulateRead<T>(
   network: Network,
   source: string,
@@ -29,7 +30,7 @@ export async function simulateRead<T>(
   args: xdr.ScVal[] = [],
 ): Promise<T> {
   const server = getSorobanServer(network)
-  const account = await server.getAccount(source)
+  const account = new Account(source, '0')
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: networkPassphrase(network),

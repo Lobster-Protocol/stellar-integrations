@@ -3,7 +3,7 @@ import { Address, Horizon, NotFoundError, scValToNative, xdr } from '@stellar/st
 
 import type { Network } from '../../config/contracts'
 import { getHorizonServer } from './client'
-import { useAccountBalances } from './account'
+import { useAccountExists } from './account'
 
 type OpRecord = Horizon.ServerApi.OperationRecord
 type BalanceChange = Horizon.HorizonApi.BalanceChange
@@ -229,8 +229,7 @@ const PAGE = 30
 export function useActivity(network: Network, account: string | null) {
   // a wallet with no funds is not on-chain yet, so it has no operations and
   // asking Horizon just 404s. wait until balances confirm the account exists.
-  const balances = useAccountBalances(network, account)
-  const exists = balances.isSuccess && balances.data.length > 0
+  const exists = useAccountExists(network, account) === 'live'
   return useInfiniteQuery({
     queryKey: ['activity', network, account],
     initialPageParam: '',

@@ -1,4 +1,4 @@
-import { TransactionBuilder, Operation, Asset, BASE_FEE } from '@stellar/stellar-sdk'
+import { TransactionBuilder, Operation, Asset, BASE_FEE, NotFoundError } from '@stellar/stellar-sdk'
 
 import { CONTRACTS, type Network } from '../../config/contracts'
 import { getHorizonServer } from '../horizon/client'
@@ -16,7 +16,17 @@ export async function buildTreasuryPaymentTx(
   amountXlm: string,
 ): Promise<string> {
   const server = getHorizonServer(network)
-  const account = await server.loadAccount(treasury)
+  let account
+  try {
+    account = await server.loadAccount(treasury)
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new Error(
+        `This wallet is not funded on ${network} yet. Add some XLM (use friendbot on testnet) first.`,
+      )
+    }
+    throw err
+  }
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: networkPassphrase(network),
@@ -38,7 +48,17 @@ export async function buildTreasuryTrustlineTx(
   const { code, issuer } = CONTRACTS[network].lobsAsset
   if (!issuer) throw new Error(`no trustline demo asset configured on ${network}`)
   const server = getHorizonServer(network)
-  const account = await server.loadAccount(treasury)
+  let account
+  try {
+    account = await server.loadAccount(treasury)
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      throw new Error(
+        `This wallet is not funded on ${network} yet. Add some XLM (use friendbot on testnet) first.`,
+      )
+    }
+    throw err
+  }
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: networkPassphrase(network),

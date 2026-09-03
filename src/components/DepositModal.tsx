@@ -422,7 +422,9 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                     </span>
                     {trustlineQuery.isLoading ? (
                       <span className="text-text-muted">Checking...</span>
-                    ) : trustlineRequired ? (
+                    ) : trustlineOk ? (
+                      <span className="text-green font-medium">Active</span>
+                    ) : (
                       <button
                         onClick={handleCreateTrustline}
                         disabled={tl.phase === 'creating'}
@@ -430,8 +432,6 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                       >
                         {tl.phase === 'creating' ? 'Creating...' : tl.phase === 'failed' ? 'Retry trustline' : 'Create trustline'}
                       </button>
-                    ) : (
-                      <span className="text-green font-medium">Active</span>
                     )}
                   </div>
                 )}

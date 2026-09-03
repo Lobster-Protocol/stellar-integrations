@@ -30,7 +30,7 @@ export async function loadFunded(server: rpc.Server, caller: string, network: Ne
     // the soroban rpc throws a plain Error("Account not found: G...") here, not
     // Horizon's NotFoundError, so match the message too rather than the class.
     const msg = err instanceof Error ? err.message : String(err)
-    if (err instanceof NotFoundError || /account not found|not.?found/i.test(msg)) {
+    if (err instanceof NotFoundError || /account not found/i.test(msg)) {
       throw new Error(
         `This wallet is not funded on ${network} yet. Add some XLM (use friendbot on testnet) to cover the network fee, then try again.`,
       )

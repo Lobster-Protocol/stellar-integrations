@@ -4,6 +4,7 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 import { useNetwork } from '../contexts/NetworkContext'
 import { useWallet } from '../contexts/WalletContext'
 import { useActivity, KIND_LABEL, type ActivityKind } from '../integrations/horizon/activity'
+import { useAccountExists } from '../integrations/horizon/account'
 import { CHART_COLORS, CHART_MUTED, TOOLTIP_STYLE, AXIS_TICK } from '../utils/recharts'
 import { fetchAllActivity, activityCsv, activityJson, type FullHistory } from '../integrations/horizon/export'
 import { exportName } from '../utils/csv'
@@ -35,6 +36,9 @@ export default function Activity() {
   const { address } = useWallet()
   const { network } = useNetwork()
   const q = useActivity(network, address)
+  // a wallet that is not on-chain yet has no history to export, so the download
+  // must not hand back a file that asserts a confirmed empty ledger.
+  const accountExists = useAccountExists(network, address)
   // the same dates, search and tab the feed below reads, so the tiles, the chart
   // and the download can never describe different sets of operations
   const filters = useActivityFilters()
@@ -118,7 +122,7 @@ export default function Activity() {
           label={filters.windowed ? 'Selected dates' : 'Full history'}
           name={exportName(exportBase, { account: address, network })}
           formats={formats}
-          disabled={!address || filters.reversed}
+          disabled={!address || filters.reversed || accountExists !== 'live'}
           hint={
             filters.windowed
               ? `Every operation ${describeWindow(filters)}, read from Horizon rather than from the rows below`

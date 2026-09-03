@@ -54,8 +54,9 @@ export async function fetchAllActivity(
     try {
       records = (await call.call()).records
     } catch (err) {
-      // an account Horizon has never seen has no history, which is not a failure
-      if (err instanceof NotFoundError) return done(true)
+      // an account Horizon has never seen is not on-chain, so there is no history
+      // to read: mark the export incomplete rather than asserting a confirmed zero.
+      if (err instanceof NotFoundError) return done(false)
       throw err
     }
 

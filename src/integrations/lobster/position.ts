@@ -6,7 +6,7 @@ import { Address, type xdr } from '@stellar/stellar-sdk'
 import { simulateRead, contractErrorCode } from '../stellar/read'
 import { stroopsToDecimal } from '../stellar/amount'
 import { getPoolsByUser } from './factory'
-import { useAccountBalances } from '../horizon/account'
+import { useAccountExists } from '../horizon/account'
 
 export type Venue = 'soroswap' | 'phoenix' | 'aquarius' | 'idle'
 
@@ -155,8 +155,7 @@ export async function getVaultPositions(
 export function useVaultPositions(network: Network, user: string | null) {
   // an unfunded wallet is not on-chain and owns no vaults, so skip the read
   // until balances confirm the account exists rather than 404 for nothing.
-  const balances = useAccountBalances(network, user)
-  const exists = balances.isSuccess && balances.data.length > 0
+  const exists = useAccountExists(network, user) === 'live'
   return useQuery({
     queryKey: ['lobster', 'vaults', network, user],
     queryFn: () => getVaultPositions(network, user!),

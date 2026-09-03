@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
 import Footer from './components/Footer'
+import AccountMissingNotice from './components/AccountMissingNotice'
 
 // route-level code split keeps the initial bundle to the chrome only
 const Overview = lazy(() => import('./pages/Overview'))
@@ -117,6 +118,7 @@ export default function App() {
               menuOpen={mobileMenuOpen}
             />
             <main id="main-content" tabIndex={-1} className="flex-1 p-4 sm:p-6 overflow-y-auto">
+              <AccountMissingNotice />
               <Suspense fallback={<RouteFallback />}>
                 <Routes>
                   <Route path="/" element={<Overview />} />

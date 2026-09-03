@@ -4,7 +4,7 @@ import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip } fr
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useAccountBalances } from '../integrations/horizon/account'
+import { useAccountBalances, useAccountExists } from '../integrations/horizon/account'
 import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
 import { buildPortfolio, share } from '../integrations/pricing/portfolio'
 import {
@@ -32,6 +32,7 @@ const SwapModal = lazy(() => import('../components/SwapModal'))
 export default function Overview() {
   const { address, connect, connecting } = useWallet()
   const { network } = useNetwork()
+  const missing = useAccountExists(network, address) === 'missing'
   const [depositOpen, setDepositOpen] = useState(false)
   const [swapOpen, setSwapOpen] = useState(false)
 
@@ -125,7 +126,9 @@ export default function Overview() {
           <p className="text-xs text-text-secondary mt-1">
             {/* an unpriced total has two different causes, and blaming the
                 market when the wallet is simply empty reads as a broken feed */}
-            {usdTotal != null
+            {missing
+              ? `Nothing to value until this wallet is funded on ${network}.`
+              : usdTotal != null
               ? `Wallet plus vaults, quoted in ${unit === 'USD' ? 'US dollars' : 'testnet USDC'}.`
               : price == null
                 ? `No price to quote against on ${network} right now, so this shows the XLM balance.`

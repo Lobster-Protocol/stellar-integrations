@@ -2,7 +2,8 @@ import type { Address } from 'viem'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { hasTrustline } from './trustline'
-import { useAccountBalances } from '../horizon/account'
+import { useAccountExists, isAccountMissing } from '../horizon/account'
+import { getHorizonServer } from '../horizon/client'
 import {
   quoteBridge,
   buildBridgeTx,
@@ -31,8 +32,7 @@ export function useTrustline(
 ) {
   // gate on the account existing so a brand-new mainnet wallet does not fire a
   // loadAccount that only 404s; balances is the shared existence probe.
-  const balances = useAccountBalances(network, accountId)
-  const exists = balances.isSuccess && balances.data.length > 0
+  const exists = useAccountExists(network, accountId) === 'live'
   return useQuery<boolean>({
     queryKey: [NS, 'trustline', accountId, assetCode, assetIssuer, network],
     queryFn: () => hasTrustline(accountId!, assetCode, assetIssuer, network),
@@ -88,6 +88,19 @@ export function useBridgeSend() {
   return useMutation({
     mutationFn: async (req: BridgeRequest) => {
       const sdk = getAllbridgeSdk()
+      // bridged USDC lands as a payment, and Stellar bounces a payment to an
+      // account that is not created yet, so refuse before anything is spent on
+      // the source chain rather than let the funds leave and never arrive.
+      try {
+        await getHorizonServer('mainnet').loadAccount(req.toAddress)
+      } catch (err) {
+        if (isAccountMissing(err)) {
+          throw new Error(
+            'The destination Stellar account is not created on-chain yet. Fund it and add the USDC trustline first, otherwise the bridged USDC cannot land.',
+          )
+        }
+        throw err
+      }
       const raw = await buildBridgeTx(sdk, req)
       return sendAllbridgeEvmTx(raw, req.sourceChain)
     },

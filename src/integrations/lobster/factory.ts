@@ -84,23 +84,9 @@ export async function getFactoryInfo(
 
 export async function getPoolsByUser(network: Network, user: string): Promise<LobsterPool[]> {
   assertAccountId(user)
-  const server = getSorobanServer(network)
-  // freshly imported wallets on mainnet 404 on getAccount before
-  // simulation. no pools to read in that case; return [] instead of
-  // crashing the UI.
-  let source: string
-  try {
-    source = readSource(network, user)
-    await server.getAccount(source)
-  } catch (err) {
-    if (err instanceof Error && /not found|404/i.test(err.message)) return []
-    if (err && typeof err === 'object' && 'response' in err) {
-      const r = (err as { response?: { status?: number } }).response
-      if (r?.status === 404) return []
-    }
-    throw err
-  }
-
+  // the sim runs from a fabricated source, so an unfunded wallet reads fine and
+  // just comes back with no pools - no getAccount probe, no 404 in the console.
+  const source = readSource(network, user)
   const raw = await readContract<Array<{
     lobster_address: string
     owner: string

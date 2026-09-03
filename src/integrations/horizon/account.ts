@@ -47,7 +47,7 @@ export async function getAccountBalances(
       .map((b) => mapBalance(b))
       .filter((b): b is AccountBalance => b !== null)
   } catch (err) {
-    if (err instanceof NotFoundError) return []  // account not on-chain here
+    if (isAccountMissing(err)) return []  // account not on-chain here
     throw err
   }
 
@@ -72,4 +72,32 @@ export function useAccountBalances(network: Network, accountId: string | null) {
     staleTime: 20_000,
     retry: 1,
   })
+}
+
+// a brand-new account is not created on-chain until it is funded, so each layer
+// reports it differently: Horizon 404s with NotFoundError, the soroban rpc throws
+// a plain Error("Account not found: G..."). Test all three shapes so "the account
+// does not exist" is never taken for a real fault.
+export function isAccountMissing(err: unknown): boolean {
+  if (err instanceof NotFoundError) return true
+  if (err && typeof err === 'object') {
+    const status = (err as { response?: { status?: number } }).response?.status
+    if (status === 404) return true
+    const msg = (err as { message?: unknown }).message
+    if (typeof msg === 'string' && /account not found/i.test(msg)) return true
+  }
+  return false
+}
+
+export type AccountExistence = 'unknown' | 'missing' | 'live'
+
+// derived from the balances read, so it costs no extra request: a live account
+// lists at least its native XLM, a missing one comes back empty, and a Horizon
+// outage stays 'unknown' rather than reading as an empty wallet.
+export function useAccountExists(network: Network, accountId: string | null): AccountExistence {
+  const balances = useAccountBalances(network, accountId)
+  if (!accountId) return 'unknown'
+  if (balances.isError) return 'unknown'
+  if (balances.isSuccess) return balances.data.length > 0 ? 'live' : 'missing'
+  return 'unknown'
 }

@@ -4,7 +4,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useAccountBalances } from '../integrations/horizon/account'
+import { useAccountBalances, useAccountExists } from '../integrations/horizon/account'
 import {
   useXlmPrice,
   valueBalances,
@@ -88,6 +88,7 @@ function Legend({ data }: { data: Slice[] }) {
 export default function Allocation() {
   const { address } = useWallet()
   const { network } = useNetwork()
+  const missing = useAccountExists(network, address) === 'missing'
   const balancesQ = useAccountBalances(network, address)
   const priceQ = useXlmPrice(network)
   const vaultsQ = useVaultPositions(network, address)
@@ -208,7 +209,13 @@ export default function Allocation() {
         <Stat
           label="Unpriced"
           value={String(unpriced.length)}
-          sub={unpriced.length ? unpriced.map((l) => l.code).join(', ') : 'everything has a price'}
+          sub={
+            unpriced.length
+              ? unpriced.map((l) => l.code).join(', ')
+              : missing
+                ? 'nothing held yet'
+                : 'everything has a price'
+          }
         />
       </div>
 
@@ -219,7 +226,11 @@ export default function Allocation() {
             note="Share of value per token. Tokens with no market pool are left out rather than counted at a made-up price."
           />
           {byAsset.length === 0 ? (
-            <Empty>Nothing here can be priced on {network} yet.</Empty>
+            <Empty>
+              {missing
+                ? `Nothing to allocate until this wallet is funded on ${network}.`
+                : `Nothing here can be priced on ${network} yet.`}
+            </Empty>
           ) : (
             <div className="grid grid-cols-[1fr_1fr] items-center gap-4">
               <Donut data={byAsset} label="Share of portfolio value per token" />
