@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 
-import { valueVault, vaultLegs, type VaultPosition } from '../position'
+import {
+  isVaultEmpty,
+  lastMoveByVault,
+  valueVault,
+  vaultLegs,
+  type VaultPosition,
+} from '../position'
 import { buildPortfolio } from '../../pricing/portfolio'
 
 const XLM = 'CXLM'
@@ -106,5 +112,52 @@ describe('buildPortfolio with a working vault', () => {
     const p = buildPortfolio([], [working], priceOf, 'testnet')
     const xlm = p.byAsset.find((a) => a.value === 1000)
     expect(xlm).toBeDefined()
+  })
+})
+
+describe('isVaultEmpty', () => {
+  it('calls a vault with nothing in it empty', () => {
+    expect(isVaultEmpty(vault({ amount0: '0', amount1: '0' }))).toBe(true)
+  })
+
+  it('does not call a working vault empty just because it holds nothing idle', () => {
+    const working = vault({ venue: 'soroswap', amount0: '0', amount1: '0', pooled0: '500', pooled1: '0' })
+    expect(isVaultEmpty(working)).toBe(false)
+  })
+
+  it('counts a leg it cannot price as something', () => {
+    expect(isVaultEmpty(vault({ amount0: '0', amount1: '5000' }))).toBe(false)
+  })
+})
+
+describe('lastMoveByVault', () => {
+  const ev = (at: string, contractId?: string, counterparty?: string) => ({
+    at,
+    contractId,
+    moves: counterparty ? [{ counterparty }] : [],
+  })
+
+  it('keeps the most recent move per vault', () => {
+    const m = lastMoveByVault([
+      ev('2026-08-20T10:00:00Z', 'CVAULT1'),
+      ev('2026-06-01T10:00:00Z', 'CVAULT1'),
+      ev('2026-07-04T10:00:00Z', 'CVAULT2'),
+    ])
+    expect(m.get('CVAULT1')).toBe('2026-08-20T10:00:00Z')
+    expect(m.get('CVAULT2')).toBe('2026-07-04T10:00:00Z')
+  })
+
+  it('reads a vault out of the other side of a transfer', () => {
+    const m = lastMoveByVault([ev('2026-08-01T00:00:00Z', undefined, 'CVAULT9')])
+    expect(m.get('CVAULT9')).toBe('2026-08-01T00:00:00Z')
+  })
+
+  it('ignores a counterparty that is an account rather than a contract', () => {
+    const m = lastMoveByVault([ev('2026-08-01T00:00:00Z', undefined, 'GSOMEBODY')])
+    expect(m.size).toBe(0)
+  })
+
+  it('leaves out a vault with no move in what was read', () => {
+    expect(lastMoveByVault([]).has('CVAULT1')).toBe(false)
   })
 })

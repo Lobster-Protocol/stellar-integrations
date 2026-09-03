@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   hiddenVaults,
   hideVault,
+  hideVaults,
   showVault,
   showAllVaults,
   partitionHidden,
@@ -83,5 +84,25 @@ describe('partitionHidden', () => {
     const out = partitionHidden(items, ['zzz'], key)
     expect(out.visible).toHaveLength(3)
     expect(out.hidden).toHaveLength(0)
+  })
+})
+
+describe('hideVaults', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('hides a batch in one go', () => {
+    hideVaults('testnet', A, ['C1', 'C2', 'C3'])
+    expect(hiddenVaults('testnet', A).sort()).toEqual(['C1', 'C2', 'C3'])
+  })
+
+  it('adds to what was already hidden without duplicating', () => {
+    hideVault('testnet', A, 'C1')
+    hideVaults('testnet', A, ['C1', 'C2'])
+    expect(hiddenVaults('testnet', A).sort()).toEqual(['C1', 'C2'])
+  })
+
+  it('does nothing when given an empty batch', () => {
+    hideVaults('testnet', A, [])
+    expect(hiddenVaults('testnet', A)).toEqual([])
   })
 })

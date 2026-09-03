@@ -50,6 +50,14 @@ export function hideVault(network: Network, account: string, vault: string) {
   write(store)
 }
 
+export function hideVaults(network: Network, account: string, vaults: string[]) {
+  if (vaults.length === 0) return
+  const store = read()
+  const key = scope(network, account)
+  store[key] = [...new Set([...(store[key] ?? []), ...vaults])]
+  write(store)
+}
+
 export function showVault(network: Network, account: string, vault: string) {
   const store = read()
   const key = scope(network, account)

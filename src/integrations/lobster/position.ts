@@ -127,7 +127,28 @@ export async function getVaultPositions(
   const pools = await getPoolsByUser(network, user)
   if (pools.length === 0) return []
   const source = user || CONTRACTS[network].lobster.readSource
-  return Promise.all(pools.map((p) => readVault(network, source, p)))
+  // one vault whose storage TTL expired (or hits a transient rpc error) must not
+  // hide the healthy ones, so settle each independently and flag a failed read
+  // instead of rejecting the whole list.
+  const settled = await Promise.allSettled(pools.map((p) => readVault(network, source, p)))
+  return settled.map((r, i) =>
+    r.status === 'fulfilled'
+      ? r.value
+      : {
+          address: pools[i].lobsterAddress,
+          owner: pools[i].owner,
+          token0: pools[i].token0,
+          token1: pools[i].token1,
+          venue: 'idle' as const,
+          amount0: '0',
+          amount1: '0',
+          pooled0: null,
+          pooled1: null,
+          poolAddress: null,
+          lpShares: null,
+          complete: false,
+        },
+  )
 }
 
 export function useVaultPositions(network: Network, user: string | null) {
@@ -151,6 +172,33 @@ export function vaultLegs(p: VaultPosition): Array<[string, string]> {
   if (p.pooled0) legs.push([p.token0, p.pooled0])
   if (p.pooled1) legs.push([p.token1, p.pooled1])
   return legs
+}
+
+// A vault holding nothing, neither in itself nor in a pool, is clutter on a
+// list. Tested against every leg rather than the idle balance alone, so a
+// working position is never mistaken for an empty one.
+export function isVaultEmpty(p: VaultPosition): boolean {
+  return vaultLegs(p).every(([, amount]) => Number(amount) === 0)
+}
+
+// The last time the owner moved anything on each vault, taken from the activity
+// already read. A vault missing from the map has had no move in the operations
+// loaded so far, which is not the same as never, so callers show nothing rather
+// than claim it has been idle forever.
+export function lastMoveByVault(
+  events: Array<{ at: string; contractId?: string; moves: Array<{ counterparty?: string }> }>,
+): Map<string, string> {
+  const seen = new Map<string, string>()
+  for (const e of events) {
+    const touched = new Set<string>()
+    if (e.contractId) touched.add(e.contractId)
+    for (const m of e.moves) if (m.counterparty?.startsWith('C')) touched.add(m.counterparty)
+    for (const id of touched) {
+      const prev = seen.get(id)
+      if (!prev || e.at > prev) seen.set(id, e.at)
+    }
+  }
+  return seen
 }
 
 // Value a vault leg by leg. Only tokens we have a price for contribute, so a

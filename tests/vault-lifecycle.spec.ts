@@ -75,34 +75,91 @@ test.describe('vault detail', () => {
 
   test('hides a vault locally and brings it back', async ({ page }) => {
     await asOwner(page)
-    const cards = page.getByRole('button', { name: 'Hide' })
+    const cards = page.getByRole('button', { name: 'Hide', exact: true })
     await expect(cards.first()).toBeVisible({ timeout: 30000 })
     const before = await cards.count()
     expect(before).toBeGreaterThan(0)
 
     await cards.first().click()
     await expect(page.getByText(/vaults? hidden in this browser/)).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Hide' })).toHaveCount(before - 1)
+    await expect(page.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(before - 1)
 
     // the wording has to be clear that nothing left the chain
     await expect(page.getByText(/still on-chain and still yours/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Show them again' }).click()
-    await expect(page.getByRole('button', { name: 'Hide' })).toHaveCount(before)
+    await expect(page.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(before)
   })
 
   test('remembers what was hidden across a reload', async ({ page }) => {
     await asOwner(page)
-    const hide = page.getByRole('button', { name: 'Hide' })
+    const hide = page.getByRole('button', { name: 'Hide', exact: true })
     await expect(hide.first()).toBeVisible({ timeout: 30000 })
     const before = await hide.count()
     await hide.first().click()
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.getByText(/vaults? hidden in this browser/)).toBeVisible({ timeout: 30000 })
-    await expect(page.getByRole('button', { name: 'Hide' })).toHaveCount(before - 1)
+    await expect(page.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(before - 1)
 
     await page.getByRole('button', { name: 'Show them again' }).click()
-    await expect(page.getByRole('button', { name: 'Hide' })).toHaveCount(before)
+    await expect(page.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(before)
+  })
+})
+
+test.describe('a crowded vault list', () => {
+  const OWNER = DEMO_VAULT_OWNER
+
+  async function asOwner(page: import('@playwright/test').Page) {
+    await page.addInitScript((a) => {
+      localStorage.setItem('lob_addr', a)
+      localStorage.setItem('lob_wname', 'Freighter')
+    }, OWNER)
+    await page.goto('/positions', { waitUntil: 'domcontentloaded' })
+  }
+
+  // reading the whole card and pulling the figure out beats a text selector,
+  // which would need its own escaping just to find a number
+  async function cardValues(page: import('@playwright/test').Page): Promise<number[]> {
+    const texts = await page
+      .locator('div.rounded-3xl')
+      .filter({ hasText: 'What this vault holds and where' })
+      .allInnerTexts()
+    return texts
+      .map((t) => /VALUE\s+([\d.,]+)/.exec(t)?.[1])
+      .filter((v): v is string => !!v)
+      .map((v) => Number(v.replace(/,/g, '')))
+  }
+
+  test('puts the vault that holds something above the one that does not', async ({ page }) => {
+    await asOwner(page)
+    await expect(page.getByRole('button', { name: 'Hide', exact: true }).first()).toBeVisible({ timeout: 30000 })
+
+    const values = await cardValues(page)
+    expect(values.length).toBeGreaterThan(1)
+    for (let i = 1; i < values.length; i++) {
+      expect(values[i - 1]).toBeGreaterThanOrEqual(values[i])
+    }
+  })
+
+  test('clears the empty ones out of the way in one click, and brings them back', async ({
+    page,
+  }) => {
+    await asOwner(page)
+    const cards = page.getByRole('button', { name: 'Hide', exact: true })
+    await expect(cards.first()).toBeVisible({ timeout: 30000 })
+    const before = await cards.count()
+
+    const tidy = page.getByRole('button', { name: /Tidy away the \d+ empty one/ })
+    await expect(tidy).toBeVisible()
+    const emptied = Number((await tidy.innerText()).replace(/\D/g, ''))
+    expect(emptied).toBeGreaterThan(0)
+    await tidy.click()
+
+    await expect(page.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(before - emptied)
+    await expect(page.getByText(/still on-chain and still yours/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Show them again' }).click()
+    await expect(page.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(before)
   })
 })

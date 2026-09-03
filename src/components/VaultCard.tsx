@@ -48,6 +48,7 @@ export default function VaultCard({
   account,
   priceOf,
   share,
+  lastMove,
   onAction,
   onHide,
 }: {
@@ -59,6 +60,9 @@ export default function VaultCard({
   account: string
   priceOf: (tokenId: string) => number | null
   share: number
+  // when the owner last moved anything on it, if that is in the activity read
+  // so far. absent means unknown, never "never".
+  lastMove?: string
   onAction: (action: VaultAction) => void
   onHide: () => void
 }) {
@@ -178,6 +182,17 @@ export default function VaultCard({
             <Row label="Owner">
               <Ref id={v.owner} network={network} />
             </Row>
+            {lastMove && (
+              <Row label="Last move">
+                <span className="text-text">
+                  {new Date(lastMove).toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </span>
+              </Row>
+            )}
             <Row label="Working on">
               <span className="text-text">{VENUE_LABEL[v.venue]}</span>
             </Row>
