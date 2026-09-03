@@ -230,8 +230,8 @@ paths:
       description: >
         Returns amountIn, amountOut, etaSeconds (null when the corridor omits a
         transfer time) and gasFeeOptions keyed by payment method. The USDC pool
-        on the Stellar side is closed upstream at the moment, which surfaces here
-        as a 502.
+        on the Stellar side is closed upstream at the moment, so this route
+        answers 502 and names the closed corridor as the reason.
       security: []
       requestBody:
         required: true
