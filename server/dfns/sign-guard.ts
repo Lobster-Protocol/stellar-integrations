@@ -1,5 +1,6 @@
 import { Address, xdr, type Transaction, type FeeBumpTransaction } from '@stellar/stellar-sdk'
 import { decimalToStroops } from '../../src/integrations/stellar/amount'
+import { CONTRACTS } from '../../src/config/contracts'
 
 // only value-bounded classic ops may sign from the treasury. soroban calls and
 // DEX offers are excluded: their outflow escapes the amount cap and destination
@@ -26,10 +27,18 @@ const SOROBAN_VIEW_METHODS = new Set([
   'get_multisig',
 ])
 
+// the operator can name the contracts explicitly. with none named we fall back
+// to our own factory ids instead of to nothing, because a zero-argument view on
+// a contract we deployed gives a caller nothing, while an unset variable meant
+// the one button a reviewer is asked to press failed with a config message.
 function viewContracts(): string[] {
-  return (process.env.DFNS_SOROBAN_VIEW_CONTRACTS ?? '')
+  const named = (process.env.DFNS_SOROBAN_VIEW_CONTRACTS ?? '')
     .split(',')
     .map((s) => s.trim())
+    .filter(Boolean)
+  if (named.length > 0) return named
+  return Object.values(CONTRACTS)
+    .map((c) => c.lobster.factory)
     .filter(Boolean)
 }
 
@@ -64,6 +73,11 @@ export function checkSorobanView(op: unknown, allowed: string[]): void {
 // through an inflated fee the amount cap can't see, same as the broker guard.
 const MAX_FEE_STROOPS = 10_000_000n
 
+// what a payment is capped at when the operator set no cap. 1 XLM, against a
+// custody demo that pays itself 0.01, so it is generous for the demo and worth
+// nothing to anybody else.
+const FALLBACK_CAP_STROOPS = 10_000_000n
+
 export class SignGuardRejected extends Error {
   constructor(message: string) {
     super(message)
@@ -75,15 +89,16 @@ export interface SignGuardConfig {
   // env-set address of the treasury wallet whose key DFNS holds. every tx
   // submitted to /dfns/sign must source from this account.
   treasuryAddress: string
-  // env-set list of destinations any payment / path payment may target.
-  // empty list = whitelist disabled (testing path); production should set it.
+  // destinations any payment / path payment may target. an empty list here
+  // still disables the check, so readSignGuardConfig never hands one over:
+  // when the operator sets nothing it falls back to the treasury itself.
   destinationWhitelist: string[]
-  // env-set contracts a read-only soroban view may target. absent or empty means
-  // no soroban invocation signs at all, which is the default everywhere it is
-  // not explicitly configured.
+  // contracts a read-only soroban view may target. an empty list refuses every
+  // soroban invocation. readSignGuardConfig falls back to our own factory ids
+  // when the operator names none.
   sorobanViewContracts?: string[]
-  // env-set hard cap for any payment-style op, expressed in stroops.
-  // 0 = no cap (testing path); production should set a positive value.
+  // hard cap for any payment-style op, in stroops. 0 disables the check, so
+  // readSignGuardConfig substitutes a low cap rather than passing 0 through.
   maxAmountStroops: bigint
 }
 
@@ -175,10 +190,15 @@ export function readSignGuardConfig(): SignGuardConfig | null {
   // the operator opts in via DFNS_GUARD_PERMISSIVE=1 (testing path only).
   const permissive = process.env.DFNS_GUARD_PERMISSIVE === '1'
   if (!permissive && (list.length === 0 || cap <= 0n)) return null
+  // permissive used to mean unbounded, and the browser token that reaches this
+  // route rides in the public bundle, so anyone could queue a payment from the
+  // treasury to any address for any amount. a probe on 2026-09-03 got one
+  // accepted. permissive now only means the operator may leave the two
+  // variables unset: the treasury falls back to paying itself, under a low cap.
   return {
     treasuryAddress: treasury,
-    destinationWhitelist: list,
-    maxAmountStroops: cap,
+    destinationWhitelist: list.length > 0 ? list : [treasury],
+    maxAmountStroops: cap > 0n ? cap : FALLBACK_CAP_STROOPS,
     sorobanViewContracts: viewContracts(),
   }
 }

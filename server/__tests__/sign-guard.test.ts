@@ -17,6 +17,9 @@ import { CONTRACTS } from '../../src/config/contracts'
 
 const TREASURY = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 const OTHER = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
+const LOBSTER_FACTORY = CONTRACTS.testnet.lobster.factory
+// somebody else's contract, to check a named allowlist replaces the fallback
+const NOT_OUR_CONTRACT = CONTRACTS.mainnet.soroswap.factory
 
 function buildPayment(opts: {
   source?: string
@@ -82,7 +85,10 @@ function buildSorobanTransfer(contractId: string, to: string, amountStroops: big
 describe('inspectSignXdr', () => {
   const baseCfg = { treasuryAddress: TREASURY, destinationWhitelist: [], maxAmountStroops: 0n }
 
-  it('accepts a payment from the treasury to an arbitrary destination when no whitelist is set', () => {
+  it('leaves the destination alone when handed an empty whitelist', () => {
+    // readSignGuardConfig never produces one, it falls back to the treasury.
+    // this pins the primitive so the fallback stays the only thing standing
+    // between a permissive deploy and an arbitrary destination.
     const tx = buildPayment({ destination: OTHER, amount: '10' })
     expect(() => inspectSignXdr(tx, baseCfg)).not.toThrow()
   })
@@ -199,17 +205,64 @@ describe('readSignGuardConfig', () => {
     }
   })
 
-  it('accepts an empty whitelist and zero cap when DFNS_GUARD_PERMISSIVE=1', () => {
+  it('starts a permissive relay without a whitelist or a cap, but not without bounds', () => {
     process.env.DFNS_TREASURY_ADDRESS = TREASURY
     process.env.DFNS_GUARD_PERMISSIVE = '1'
     try {
       const cfg = readSignGuardConfig()
       expect(cfg).not.toBeNull()
-      expect(cfg!.destinationWhitelist).toEqual([])
-      expect(cfg!.maxAmountStroops).toBe(0n)
+      // the treasury paying itself is the only destination left, and the cap is
+      // real. a permissive deploy used to hand back [] and 0n, which turned both
+      // checks off on a route the public bundle token can reach.
+      expect(cfg!.destinationWhitelist).toEqual([TREASURY])
+      expect(cfg!.maxAmountStroops).toBeGreaterThan(0n)
     } finally {
       delete process.env.DFNS_TREASURY_ADDRESS
       delete process.env.DFNS_GUARD_PERMISSIVE
+    }
+  })
+
+  it('keeps the operator whitelist and cap when both are set', () => {
+    process.env.DFNS_TREASURY_ADDRESS = TREASURY
+    process.env.DFNS_GUARD_PERMISSIVE = '1'
+    process.env.DFNS_DESTINATION_WHITELIST = OTHER
+    process.env.DFNS_MAX_AMOUNT_STROOPS = '77'
+    try {
+      const cfg = readSignGuardConfig()
+      expect(cfg!.destinationWhitelist).toEqual([OTHER])
+      expect(cfg!.maxAmountStroops).toBe(77n)
+    } finally {
+      delete process.env.DFNS_TREASURY_ADDRESS
+      delete process.env.DFNS_GUARD_PERMISSIVE
+      delete process.env.DFNS_DESTINATION_WHITELIST
+      delete process.env.DFNS_MAX_AMOUNT_STROOPS
+    }
+  })
+
+  it('admits our own factory as a view target when the operator names none', () => {
+    process.env.DFNS_TREASURY_ADDRESS = TREASURY
+    process.env.DFNS_GUARD_PERMISSIVE = '1'
+    delete process.env.DFNS_SOROBAN_VIEW_CONTRACTS
+    try {
+      const cfg = readSignGuardConfig()
+      expect(cfg!.sorobanViewContracts).toContain(LOBSTER_FACTORY)
+    } finally {
+      delete process.env.DFNS_TREASURY_ADDRESS
+      delete process.env.DFNS_GUARD_PERMISSIVE
+    }
+  })
+
+  it('lets a named view allowlist replace the fallback', () => {
+    process.env.DFNS_TREASURY_ADDRESS = TREASURY
+    process.env.DFNS_GUARD_PERMISSIVE = '1'
+    process.env.DFNS_SOROBAN_VIEW_CONTRACTS = NOT_OUR_CONTRACT
+    try {
+      const cfg = readSignGuardConfig()
+      expect(cfg!.sorobanViewContracts).toEqual([NOT_OUR_CONTRACT])
+    } finally {
+      delete process.env.DFNS_TREASURY_ADDRESS
+      delete process.env.DFNS_GUARD_PERMISSIVE
+      delete process.env.DFNS_SOROBAN_VIEW_CONTRACTS
     }
   })
 })
