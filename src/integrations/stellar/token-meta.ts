@@ -25,17 +25,13 @@ export async function fetchTokenSymbol(
   }
 }
 
-// account the read simulates from: the connected wallet, else the public
-// deployer we keep for anonymous testnet reads. null means we cannot read.
-function sourceFor(network: Network, wallet: string | null): string | null {
-  return wallet || CONTRACTS[network].lobster.readSource || null
-}
-
 export function useTokenSymbol(id: string): string | null {
   const { network } = useNetwork()
   const { address } = useWallet()
   const fromConfig = tokenLabel(id, network)
-  const source = sourceFor(network, address)
+  // the connected wallet, else the public deployer we keep for anonymous
+  // testnet reads. null means there is nothing to simulate from.
+  const source = address || CONTRACTS[network].lobster.readSource || null
 
   const q = useQuery({
     queryKey: ['token-symbol', network, id],

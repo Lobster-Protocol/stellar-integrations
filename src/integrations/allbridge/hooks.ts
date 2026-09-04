@@ -62,7 +62,6 @@ export function useBridgeQuote(req: BridgeRequest | null, trustlineRequired: boo
   })
 }
 
-// only broadcasts when the current allowance is below the deposit
 export function useBridgeApprove() {
   return useMutation({
     mutationFn: async (req: {

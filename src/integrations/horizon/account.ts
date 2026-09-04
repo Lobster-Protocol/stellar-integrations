@@ -47,7 +47,7 @@ export async function getAccountBalances(
       .map((b) => mapBalance(b))
       .filter((b): b is AccountBalance => b !== null)
   } catch (err) {
-    if (isAccountMissing(err)) return []  // account not on-chain here
+    if (isAccountMissing(err)) return []
     throw err
   }
 

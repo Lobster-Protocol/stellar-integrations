@@ -22,8 +22,8 @@ on testnet, funds a fresh one through friendbot.
 
 The service builds the transaction, hands DFNS the unsigned envelope as hex, and
 polls until the signature reaches a terminal state. DFNS broadcasts the result
-itself; for a Soroban call that DFNS doesn't submit, the signed envelope comes
-back for the service to submit through its own RPC. The passphrase is derived
+itself. For a Soroban call that DFNS doesn't submit, the signed envelope comes
+back and the service submits it through its own RPC. The passphrase is derived
 server side from the configured network, and a request whose passphrase disagrees
 is rejected, so a caller can't trick the signer onto the wrong network.
 
@@ -43,11 +43,11 @@ that neither the destination check nor the amount cap can see.
 
 A Soroban invocation is admitted on one narrow path, as a read-only view. Five
 method names pass: `get_admin`, `get_pool_count`, `get_wasm_hash`, `get_owner`
-and `get_multisig`. On top of the name, three things have to hold. The contract
-has to be in an allowlist. The call has to carry no arguments. And the invocation
-has to carry no authorization entries, because a token transfer needs the
-treasury's own authorization attached, while a view returns a value and signs
-nothing away. An upload or a deploy is refused before any of that.
+and `get_multisig`. The name alone isn't enough. The contract has to be on an
+allowlist and the call has to carry no arguments. It also has to carry no
+authorization entries, since a token transfer needs the treasury's own
+authorization attached while a view returns a value and signs nothing away. An
+upload or a deploy is refused before any of that.
 
 The allowlist comes from `DFNS_SOROBAN_VIEW_CONTRACTS`, a comma-separated list of
 contract ids. Name nothing there and it falls back to the Lobster factory ids in
@@ -93,12 +93,14 @@ DFNS posts webhook events for signatures and approvals. The service verifies the
 HMAC signature in constant time, drops replays outside a time window, and
 de-duplicates on the event id, then forwards a metadata-only frame to the
 dashboard over SSE. The raw payload, which carries signed envelopes and approver
-identities, never leaves the server. Wallet transaction and transfer events export as a
-MiCA-shaped audit log, chained record to record so the export verifies end to end.
+identities, never leaves the server. Wallet transaction and transfer events
+export as a MiCA-shaped audit log, chained record to record so the export
+verifies end to end.
 
 ## Where it lives
 
-`server/dfns/` holds the client, signing, policies, approvals and the sign guard;
-`server/webhook.ts` holds the routes, HMAC check and SSE. The browser signer is
-`src/integrations/signer/dfns-signer.ts`, and the dashboard panels (wallets,
-approvals, policies, signature feed, MiCA export) are in `src/components/`.
+`server/dfns/` holds the client, signing, policies, approvals and the sign guard.
+The routes, the HMAC check and the SSE stream are in `server/webhook.ts`. On the
+browser side the signer is `src/integrations/signer/dfns-signer.ts`, and the
+panels (wallets, approvals, policies, signature feed, MiCA export) are in
+`src/components/`.

@@ -1,9 +1,10 @@
 # Institutional onboarding
 
 This is the path a regulated desk follows to put capital to work on Stellar
-through Lobster: custody first, then a bridge in, then an allocation. The three
-pieces below are meant to be reused. If you run institutional capital and want it
-on Stellar, you need all three, whatever your stack looks like.
+through Lobster: a trustline before any money moves, a bridge to get the capital
+across, and custody a risk team will sign off on. Almost none of that is
+specific to us. Build the same thing on another stack and you still need those
+pieces, in roughly that order.
 
 ## Trustline before any inflow
 
@@ -20,7 +21,7 @@ as an error.
 Any team bridging a non-native asset to Stellar needs this guard. It's the
 difference between funds arriving and funds stuck at the bridge.
 
-## The cross-chain bridge layer
+## Getting the capital across
 
 Capital on Ethereum or Arbitrum can't reach Stellar directly. Allbridge Core
 moves USDC across, and Lobster embeds its SDK in the execution path.
@@ -36,8 +37,9 @@ The Allbridge USDC pool into Stellar is closed at the moment, so the quote step
 stops with a clear message rather than building a transfer that cannot land. The
 integration page has the detail.
 
-The institutional angle here is the fee model and the minimum that makes a bridge
-worth doing, not the mechanics. Those are stable.
+The part of this worth copying is the fee arithmetic. Work out the size below
+which a transfer doesn't pay for itself, and enforce it, before you wire up any
+of the SDK calls.
 
 ## MPC custody for regulated capital
 
@@ -45,27 +47,25 @@ A single private key is a non-starter under MiCA or any institutional risk
 policy. DFNS holds the keys as threshold shares, so no node ever has the whole
 key, and signing sits behind an approval policy.
 
-Lobster routes every signature through a custody layer, and the policy decides
-what needs a human. Below a configured threshold a transfer clears on its own; at
-or above it a named approver has to release it. Whatever the threshold, the
-identity that started the request cannot clear it, so the initiating leg and the
-approving leg are two different users. Thresholds are configuration rather than
-code, and ours are set so the approval path is the normal one.
+Every signature Lobster produces goes through that layer, and the policy is what
+decides when a human has to step in. Below a configured amount a transfer clears
+on its own. At or above it a named approver has to release it, and that can
+never be the identity that opened the request, so a held transfer always ends up
+touching two people. The amount is env config rather than code, and ours is set
+so that most transfers take the approval path. Releasing a held request is an
+operator action, taken in the dashboard panel or in the DFNS console; a visitor
+reading the dashboard can't do it.
 
-Deciding a held request is an operator control, not something a dashboard
-visitor does. The pending approvals panel carries Approve and Deny for whoever
-holds the operator credential, and the same decision can be taken in the DFNS
-console. Destinations are whitelisted independently of the key material, so a
-compromised service account still can't send funds to an unknown address. Every
-signature event streams to the dashboard and into an audit log built for MiCA
-reporting.
+Destinations are whitelisted independently of the key material, so a compromised
+service account still can't send funds to an unknown address. Every signature
+event streams to the dashboard and into an audit log built for MiCA reporting.
 
-The signer is an interface, so the same execution code runs against a connected
-browser wallet for a small desk or against DFNS for a regulated one. Changing
-custody doesn't change the strategy.
+The signer is an interface. The same execution code runs against a connected
+browser wallet or against DFNS, so changing custody doesn't change the strategy.
 
 ## A full allocation
 
-A live allocation chains the three: open custody, bridge capital in, then let the
-engine route the swap and open an LP position, signed through the custody layer.
-The dashboard shows the position once the ledger settles.
+Chained together that's one flow: custody wallet open, trustline in place, USDC
+across the bridge, then the engine routes the swap and opens an LP position,
+signed through the custody layer. The dashboard shows the position once the
+ledger settles.

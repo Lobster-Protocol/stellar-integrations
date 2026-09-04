@@ -6,8 +6,8 @@ trade step of a strategy, with a direct Soroswap path as the fallback.
 
 ## Setup
 
-The SDK is `@stellar-broker/client`. It connects over a WebSocket that the client
-opens from an https origin, read from config. The connection needs a partner key;
+`@stellar-broker/client` talks to the broker over a WebSocket the client opens
+from an https origin, read from config. The connection needs a partner key;
 without it the broker leg is disabled and routing drops straight to the fallback.
 The package main field points at a file the bundle doesn't ship, so the build
 aliases the import to the esm source. That alias is in both `vite.config.ts` and
@@ -46,13 +46,12 @@ crosses two venues.
 
 ## Fallback
 
-When the broker has no route, or the connection fails, or no partner key is set,
-routing calls the Soroswap router directly through `@stellar/stellar-sdk`, no
-broker SDK involved. It quotes with `router_get_amounts_out` and swaps with
+No route from the broker, a failed connection, no partner key: on any of those,
+routing calls the Soroswap router directly through `@stellar/stellar-sdk`, with
+no broker SDK in the path. It quotes with `router_get_amounts_out` and swaps with
 `swap_exact_tokens_for_tokens`, with a minimum-out floor that refuses a zero.
-Nothing pings the broker for health. The decision is local: which network is
-selected, whether a partner key is present, and whether a router address exists
-for that network.
+Nothing pings the broker for health. The choice is made locally, off the selected
+network and whether a partner key and a router address exist for it.
 
 ## Networks
 
@@ -67,7 +66,7 @@ has no testnet deployment and stays empty there.
 
 ## Where it lives
 
-`src/integrations/broker/` holds the client, quote, swap, asset mapping, the
-chain guard and the Soroswap fallback. `src/integrations/routing/` holds the
-orchestrator that tries the broker then drops to the fallback. The router and
-endpoint addresses sit in `src/config/contracts.ts`, keyed by network.
+The client, quote, swap, asset mapping, chain guard and Soroswap fallback are all
+under `src/integrations/broker/`. One directory over, `src/integrations/routing/`
+has the orchestrator that tries the broker and drops to the fallback. Router and
+endpoint addresses come from `src/config/contracts.ts`, per network.

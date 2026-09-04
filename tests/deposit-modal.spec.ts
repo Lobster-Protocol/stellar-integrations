@@ -5,8 +5,8 @@ import { gotoWithWallet } from './fixtures'
 // Overview only renders "+ Deposit" once a wallet is connected; gotoWithWallet
 // seeds the same lob_addr / lob_wname keys WalletContext reads on mount.
 
-test.describe('DepositModal - Allbridge wiring', () => {
-  test('opens from the Overview "+ Deposit" button and shows source picker', async ({ page }) => {
+test.describe('depositing from another chain', () => {
+  test('offers the chains USDC can actually come from', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()
 
@@ -19,7 +19,7 @@ test.describe('DepositModal - Allbridge wiring', () => {
     await expect(page.getByRole('button', { name: /BNB/ })).toHaveCount(0)
   })
 
-  test('selecting an EVM source shows the Allbridge Core panel', async ({ page }) => {
+  test('names Allbridge once a source chain is picked', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()
     await page.getByRole('button', { name: /Arbitrum/ }).click()

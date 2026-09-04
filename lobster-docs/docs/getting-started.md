@@ -30,17 +30,19 @@ address list underneath.
 
 ## Sign a testnet transaction
 
-The panel at the bottom of `/positions`, headed "Sign a testnet transaction",
-runs the whole round trip. Its button reads "Call the Factory with" and then the
-name of the wallet you connected. It builds a `get_admin` call as a real
-transaction, hands the XDR to your wallet, submits the signed result to Soroban
-RPC, then polls until a ledger includes it. You pay the resource fee and nothing
-else. On success it shows the tx hash with a link to stellar.expert.
+The panel at the bottom of `/positions` runs the whole round trip. Its button
+reads "Call the Factory with" and then the name of the wallet you connected. It
+builds a `get_admin` call as a real transaction, hands the XDR to your wallet,
+submits the signed result to Soroban RPC, then polls until a ledger includes it.
+You pay the resource fee and nothing else. On success it shows the tx hash with
+a link to stellar.expert.
 
 The same panel has a DFNS MPC tab. There the button reads "Call the Factory
 (DFNS MPC)" and the custody treasury signs instead of your wallet.
 
-That build, sign, submit, confirm loop is what a strategy uses underneath. The
-integration pages cover what sits on top of it: Allbridge brings capital in over
-the bridge, Stellar Broker routes the swaps, and DFNS handles signing when a desk
-needs MPC custody rather than the browser wallet you just used.
+That build, sign, submit, confirm loop is what a strategy uses underneath. What
+sits on top of it is split across the integration pages. Allbridge is how
+capital gets in from an EVM chain, and Stellar Broker is what prices the swap
+across venues. The Wallets Kit page covers the connection you just made. DFNS is
+the other signing path, for a desk that has to keep its keys in MPC custody
+instead of a browser extension.

@@ -106,12 +106,6 @@ export interface SignGuardConfig {
   maxAmountStroops: bigint
 }
 
-function inner(tx: Transaction | FeeBumpTransaction): Transaction {
-  // FeeBumpTransaction wraps an inner Transaction; the source rule applies
-  // to the inner tx where the actual ops live.
-  return 'innerTransaction' in tx ? tx.innerTransaction : tx
-}
-
 // caps the actual outflow. each payment kind carries the spend in a different
 // field (payment.amount, strictSend.sendAmount, strictReceive.sendMax), so the
 // caller passes the right one. when a cap is set we refuse an op with no
@@ -140,10 +134,12 @@ export function inspectSignXdr(
   tx: Transaction | FeeBumpTransaction,
   cfg: SignGuardConfig,
 ): void {
-  const t = inner(tx)
-  if (t.source !== cfg.treasuryAddress) {
+  // a fee bump wraps the real tx; the source rule applies to the inner one,
+  // where the ops live.
+  const inner = 'innerTransaction' in tx ? tx.innerTransaction : tx
+  if (inner.source !== cfg.treasuryAddress) {
     throw new SignGuardRejected(
-      `tx source ${t.source} does not match treasury ${cfg.treasuryAddress}`,
+      `tx source ${inner.source} does not match treasury ${cfg.treasuryAddress}`,
     )
   }
   // the outer fee is what the treasury pays (a fee-bump's inner fee is 0), and the
@@ -151,7 +147,7 @@ export function inspectSignXdr(
   if (BigInt(tx.fee) > MAX_FEE_STROOPS) {
     throw new SignGuardRejected(`tx fee ${tx.fee} stroops is over the ${MAX_FEE_STROOPS} ceiling`)
   }
-  for (const op of t.operations) {
+  for (const op of inner.operations) {
     if (op.type === 'invokeHostFunction') {
       checkSorobanView(op, cfg.sorobanViewContracts ?? [])
       continue

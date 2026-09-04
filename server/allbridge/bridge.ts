@@ -95,7 +95,6 @@ export async function buildSend(
   return (await getAllbridgeSdk().bridge.rawTxBuilder.send(params)) as RawTx
 }
 
-// raw erc-20 approve for the bridge contract on the source chain.
 export async function buildApprove(chain: EvmChain, owner: string, amount: string): Promise<RawTx> {
   const src = await resolveUsdc(toChain(chain))
   return (await getAllbridgeSdk().bridge.rawTxBuilder.approve({ token: src, owner, amount })) as RawTx

@@ -22,11 +22,8 @@ let kitInitialised = false
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { network } = useNetwork()
-  // We rehydrate the address from localStorage to avoid the "Connect"
-  // flash between page loads. The kit session isn't actually re-attached
-  // silently though - the next signTransaction will throw and the user
-  // will need to click Connect. TODO: silent reattach via setWallet +
-  // getAddress on mount.
+  // Rehydrated from localStorage to avoid the "Connect" flash between page
+  // loads. The effect below is what actually re-attaches the kit session.
   const [address, setAddress] = useState<string | null>(() => localStorage.getItem('lob_addr'))
   const [walletName, setWalletName] = useState<string | null>(() => localStorage.getItem('lob_wname'))
   const [connecting, setConnecting] = useState(false)

@@ -172,7 +172,6 @@ export async function extendKeys(
 async function runOnce(config: MonitorConfig, signer?: ExtendSigner): Promise<void> {
   const scan = await scanNetwork(config.network, config.rpcUrl)
 
-  // warn on every key that crossed a band this pass
   for (const a of scan.statuses.filter((s) => s.reading.level !== 'ok')) {
     console.warn(`[ttl-monitor:${config.network}] ${a.reading.level} ${a.keyXdr} ${a.reading.remainingLedgers} ledgers left`)
   }

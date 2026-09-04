@@ -3,9 +3,8 @@
 Allbridge Core bridges USDC from an EVM chain to Stellar. Lobster uses it for
 capital inflow.
 
-One thing to know before reading the rest: the USDC pool on the Stellar side is
-closed today, so no transfer completes. The section below says what that looks
-like and how the code handles it.
+Skip to the pool section if you came here to move money today. The USDC pool on
+the Stellar side is closed, so nothing completes.
 
 ## Setup
 

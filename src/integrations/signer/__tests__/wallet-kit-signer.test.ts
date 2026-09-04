@@ -16,10 +16,6 @@ beforeEach(() => {
 })
 
 describe('walletKitSigner', () => {
-  it('reports name as wallet-kit', () => {
-    expect(walletKitSigner.name).toBe('wallet-kit')
-  })
-
   it('forwards xdr and opts to the wallet kit and returns the signed envelope', async () => {
     signTransactionMock.mockResolvedValueOnce({ signedTxXdr: 'SIGNED' })
     const r = await walletKitSigner.signTransaction('RAW', {

@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NotFoundError } from '@stellar/stellar-sdk'
 import { CONTRACTS } from '../../../config/contracts'
 
-// Mock the client module so getAccountBalances doesn't hit the real Horizon endpoint.
-
 const loadAccount = vi.fn()
 const operationsCall = vi.fn()
 const operationsForAccount = vi.fn(() => ({
@@ -54,10 +52,10 @@ describe('getAccountBalances', () => {
         { asset_type: 'credit_alphanum4', asset_code: 'USDC', asset_issuer: 'GISSUER', balance: '50.0000000' },
       ],
     })
-    const result = await getAccountBalances('testnet', 'GACCOUNT')
-    expect(result).toHaveLength(2)
-    expect(result[0]).toEqual({ code: 'XLM', balance: '100.5000000', isNative: true })
-    expect(result[1]).toEqual({ code: 'USDC', issuer: 'GISSUER', balance: '50.0000000', isNative: false })
+    const balances = await getAccountBalances('testnet', 'GACCOUNT')
+    expect(balances).toHaveLength(2)
+    expect(balances[0]).toEqual({ code: 'XLM', balance: '100.5000000', isNative: true })
+    expect(balances[1]).toEqual({ code: 'USDC', issuer: 'GISSUER', balance: '50.0000000', isNative: false })
   })
 
   it('skips liquidity_pool_shares balance lines', async () => {
@@ -67,9 +65,9 @@ describe('getAccountBalances', () => {
         { asset_type: 'liquidity_pool_shares', liquidity_pool_id: 'abc', balance: '1' },
       ],
     })
-    const result = await getAccountBalances('testnet', 'GACCOUNT')
-    expect(result).toHaveLength(1)
-    expect(result[0].isNative).toBe(true)
+    const balances = await getAccountBalances('testnet', 'GACCOUNT')
+    expect(balances).toHaveLength(1)
+    expect(balances[0].isNative).toBe(true)
   })
 
   it('appends the soroban USDC balance Horizon cannot see', async () => {
@@ -77,14 +75,14 @@ describe('getAccountBalances', () => {
       balances: [{ asset_type: 'native', balance: '9991.0000000' }],
     })
     sorobanTokenBalance.mockResolvedValueOnce(124_200_000n) // 12.42 USDC in stroops
-    const result = await getAccountBalances('testnet', 'GACCOUNT')
+    const balances = await getAccountBalances('testnet', 'GACCOUNT')
     expect(sorobanTokenBalance).toHaveBeenCalledWith(
       'testnet',
       CONTRACTS.testnet.tokens.usdcSac,
       'GACCOUNT',
     )
-    expect(result).toHaveLength(2)
-    expect(result[1]).toEqual({
+    expect(balances).toHaveLength(2)
+    expect(balances[1]).toEqual({
       code: 'USDC',
       issuer: CONTRACTS.testnet.tokens.usdcSac,
       balance: '12.4200000',
@@ -99,15 +97,15 @@ describe('getAccountBalances', () => {
         { asset_type: 'credit_alphanum4', asset_code: 'USDC', asset_issuer: 'GISSUER', balance: '5' },
       ],
     })
-    const result = await getAccountBalances('testnet', 'GACCOUNT')
+    const balances = await getAccountBalances('testnet', 'GACCOUNT')
     expect(sorobanTokenBalance).not.toHaveBeenCalled()
-    expect(result).toHaveLength(2)
+    expect(balances).toHaveLength(2)
   })
 
-  it('returns [] when the account is not found (NotFoundError)', async () => {
+  it('reads an account that is not on the ledger as holding nothing', async () => {
     loadAccount.mockRejectedValueOnce(makeNotFound())
-    const result = await getAccountBalances('testnet', 'GMISSING')
-    expect(result).toEqual([])
+    const balances = await getAccountBalances('testnet', 'GMISSING')
+    expect(balances).toEqual([])
   })
 
   it('re-throws non-404 errors', async () => {
@@ -119,7 +117,7 @@ describe('getAccountBalances', () => {
     // instanceof can miss when two sdk copies are loaded, and a 404 on an account
     // read only ever means the account is not there, so the status is enough.
     loadAccount.mockRejectedValueOnce({ response: { status: 404 } })
-    const result = await getAccountBalances('testnet', 'GWEIRD')
-    expect(result).toEqual([])
+    const balances = await getAccountBalances('testnet', 'GWEIRD')
+    expect(balances).toEqual([])
   })
 })

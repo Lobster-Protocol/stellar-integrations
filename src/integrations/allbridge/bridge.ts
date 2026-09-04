@@ -120,7 +120,6 @@ export async function buildBridgeTx(
   return (await sdk.bridge.rawTxBuilder.send(params)) as RawEvmTx
 }
 
-// usdc approve raw tx for the bridge contract on the source chain
 export async function buildBridgeApproveTx(
   sdk: AllbridgeCoreSdk,
   ownerAddress: string,

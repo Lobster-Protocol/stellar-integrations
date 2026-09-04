@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { seedWallet } from './fixtures'
 
-test.describe('SwapModal - Stellar Broker wiring', () => {
+test.describe('the swap form', () => {
   test('opens from the Overview Swap button and shows the asset form', async ({ page }) => {
     await seedWallet(page)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
@@ -23,7 +23,6 @@ test.describe('SwapModal - Stellar Broker wiring', () => {
     await page.locator('select').nth(1).selectOption('XLM')
 
     await expect(page.getByText('Selling and buying must differ.')).toBeVisible()
-    // confirm buttons (broker or fallback) must not appear when the form is invalid
     await expect(page.getByRole('button', { name: /Confirm (broker|Soroswap) swap/ })).toHaveCount(0)
   })
 

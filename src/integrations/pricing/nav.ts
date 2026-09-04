@@ -37,8 +37,6 @@ export interface NavStats {
   observedHours: number | null
 }
 
-// portfolio stats over the recorded series: total move since the first point,
-// and the worst peak-to-trough drawdown (which needs at least two points).
 export function computeNavStats(history: NavPoint[]): NavStats {
   const first = history[0]
   const latest = history[history.length - 1]
@@ -77,7 +75,6 @@ export function recordNav(network: Network, address: string | null, usd: number 
   }
 }
 
-// records one point per render where the portfolio is priced, throttled by recordNav
 export function useRecordNav(network: Network, address: string | null, usd: number | null): void {
   useEffect(() => {
     recordNav(network, address, usd)

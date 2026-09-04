@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test'
 
 import { gotoWithWallet } from './fixtures'
 
-test.describe('Positions page - live on-chain data', () => {
-  test('reachable via sidebar and renders the heading', async ({ page }) => {
+test.describe('positions', () => {
+  test('is reachable from the sidebar', async ({ page }) => {
     await gotoWithWallet(page, '/')
     await page.getByRole('link', { name: 'Positions', exact: true }).click()
     await expect(page).toHaveURL(/\/positions$/)

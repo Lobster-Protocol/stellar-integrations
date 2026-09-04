@@ -7,12 +7,12 @@ async function gotoNoWallet(page: Page) {
 }
 
 test.describe('Cross-page navigation', () => {
-  test('Overview renders Portfolio header on /', async ({ page }) => {
+  test('opens on the portfolio', async ({ page }) => {
     await gotoWithWallet(page)
     await expect(page.getByText('Portfolio').first()).toBeVisible()
   })
 
-  test('Performance renders a chart', async ({ page }) => {
+  test('performance comes back with a plotted series', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /Performance/ }).click()
     await expect(page).toHaveURL(/\/performance$/)
@@ -22,20 +22,20 @@ test.describe('Cross-page navigation', () => {
     await expect(page.locator('.recharts-area-curve').first()).toBeVisible({ timeout: 25_000 })
   })
 
-  test('Activity routes to /activity and renders the heading', async ({ page }) => {
+  test('activity answers under its own heading after a sidebar click', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Activity$/ }).click()
     await expect(page).toHaveURL(/\/activity$/)
     await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
   })
 
-  test('Allocation navigates to /allocation', async ({ page }) => {
+  test('allocation is a real route, not a tab that leaves the url alone', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /Allocation/ }).click()
     await expect(page).toHaveURL(/\/allocation$/)
   })
 
-  test('Bridges navigates to /bridges and shows Allbridge provider info', async ({ page }) => {
+  test('the bridges tile names who carries the USDC across', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
     await expect(page).toHaveURL(/\/bridges$/)
@@ -48,7 +48,7 @@ test.describe('Cross-page navigation', () => {
     await expect(provider).toContainText('Allbridge Core')
   })
 
-  test('Positions navigates to /positions and renders the heading', async ({ page }) => {
+  test('positions is reachable from the sidebar', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: 'Positions', exact: true }).click()
     await expect(page).toHaveURL(/\/positions$/)
@@ -79,10 +79,9 @@ test.describe('Cross-page navigation', () => {
     await expect(page).toHaveURL(/\/activity$/)
   })
 
-  test('sidebar active highlight follows the URL', async ({ page }) => {
+  test('the sidebar marks the page you are actually on', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /Performance/ }).click()
-    // The active link has the primary-tinted classes
     const active = page.getByRole('link', { name: /Performance/ })
     await expect(active).toHaveClass(/bg-primary/)
   })
@@ -91,12 +90,12 @@ test.describe('Cross-page navigation', () => {
 test.describe('Mobile responsiveness', () => {
   test.use({ viewport: { width: 375, height: 812 } })
 
-  test('sidebar hidden, hamburger visible at iPhone-X viewport', async ({ page }) => {
+  test('hides the sidebar at phone width', async ({ page }) => {
     await gotoNoWallet(page)
     await expect(page.locator('aside').first()).toBeHidden()
   })
 
-  test('hamburger opens drawer with the 6 nav items', async ({ page }) => {
+  test('the drawer carries every nav item, not a subset', async ({ page }) => {
     await gotoNoWallet(page)
     // by accessible name, not "first button holding an svg": that matched
     // whichever icon button happened to come first in the DOM
@@ -107,7 +106,7 @@ test.describe('Mobile responsiveness', () => {
     }
   })
 
-  test('Connect Wallet button reachable on mobile', async ({ page }) => {
+  test('leaves a way to connect on a phone', async ({ page }) => {
     await gotoNoWallet(page)
     // Two Connect Wallet buttons render when no wallet is connected: one
     // in the TopBar and one in the Overview empty state. We only assert
@@ -117,13 +116,13 @@ test.describe('Mobile responsiveness', () => {
 })
 
 test.describe('Network toggle', () => {
-  test('TopBar shows Testnet and Mainnet buttons', async ({ page }) => {
+  test('offers both networks in the top bar', async ({ page }) => {
     await gotoWithWallet(page)
     await expect(page.getByRole('button', { name: 'Testnet' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Mainnet' })).toBeVisible()
   })
 
-  test('clicking Mainnet persists choice to localStorage', async ({ page }) => {
+  test('remembers mainnet once it is picked', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Mainnet' }).click()
     const stored = await page.evaluate(() => localStorage.getItem('lob_network'))
@@ -145,7 +144,7 @@ test.describe('Network toggle', () => {
     await expect(page.locator('footer')).toContainText('testnet')
   })
 
-  test('mainnet on /positions shows the not-deployed notice', async ({ page }) => {
+  test('says positions has nothing deployed on mainnet yet', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Mainnet' }).click()
     await page.getByRole('link', { name: 'Positions', exact: true }).click()
@@ -153,19 +152,19 @@ test.describe('Network toggle', () => {
   })
 })
 
-test.describe('Accessibility basics', () => {
-  test('close-modal button has aria-label', async ({ page }) => {
+test.describe('controls that are icons still have names', () => {
+  test('the deposit modal close button says what it closes', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()
     await expect(page.getByRole('button', { name: /Close deposit modal/i })).toBeVisible()
   })
 
-  test('disconnect button has aria-label', async ({ page }) => {
+  test('the disconnect control names itself', async ({ page }) => {
     await gotoWithWallet(page)
     await expect(page.getByRole('button', { name: /Disconnect wallet/i })).toBeVisible()
   })
 
-  test('every route has an h2 or h3 heading', async ({ page }) => {
+  test('no route lands without a heading to jump to', async ({ page }) => {
     await gotoWithWallet(page)
     for (const path of ['/', '/performance', '/activity', '/allocation', '/bridges', '/positions']) {
       await page.goto(`${BASE}${path}`)

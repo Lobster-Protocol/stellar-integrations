@@ -80,7 +80,6 @@ export interface StellarTxSnapshot {
     price?: string
     side?: McaSide
   }>
-  // optional dfns + decision blocks attached at the tx level
   dfns?: z.infer<typeof McaDfnsBlockSchema>
   decision?: z.infer<typeof McaDecisionBlockSchema>
 }
@@ -158,9 +157,8 @@ export function toEsmaJson(records: McaRecord[]): string {
   return JSON.stringify({ records }, null, 2)
 }
 
-// reviewer / auditor side: walk the chain and confirm every record's body
-// hashes to its recordHash and that prevRecordHash matches the previous
-// record. returns the index of the first broken record or -1 when valid.
+// the auditor's side of the chain: returns the index of the first broken
+// record, or -1 when the whole export verifies.
 export function verifyChain(records: McaRecord[]): number {
   let prev: string | null = null
   for (let i = 0; i < records.length; i++) {

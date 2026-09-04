@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { seedWallet } from './fixtures'
 
-test.describe('Audit page - DFNS wiring', () => {
+test.describe('the custody page', () => {
   test('renders the audit chrome with all the custody panels', async ({ page }) => {
     await seedWallet(page)
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })

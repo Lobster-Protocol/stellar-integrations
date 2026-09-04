@@ -60,9 +60,8 @@ test.describe('Live Factory reads match the /positions DOM', () => {
     // The factory card shows "Reading from Soroban RPC..." until the
     // simulation resolves, after which "Pools created" appears.
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
-    // Use the h3 heading to anchor on the Factory card only (the page
-    // subtitle also contains the words "Factory contract").
-    // the stat labels carry a help tip beside them, so anchor on the card
+    // anchor on the card through its h3: the page subtitle also carries the
+    // words "Factory contract", and the stat labels each carry a help tip
     const card = page
       .getByRole('heading', { name: /Factory contract/ })
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
@@ -72,8 +71,8 @@ test.describe('Live Factory reads match the /positions DOM', () => {
   test('Factory pool_count from on-chain matches the rendered Pools created', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
-    // The "Pools created" label sits above the stat value in the same Stat block.
-    // the whole stat block, so the assertion survives markup changes
+    // the label and the value share a Stat block, so read the block rather
+    // than the label, and a markup reshuffle does not break the check
     const stat = page.getByText(/^Pools created$/i).locator('..')
     await expect(stat).toContainText(String(truth.poolCount))
   })
@@ -97,7 +96,7 @@ test.describe('Live Factory reads match the /positions DOM', () => {
     )
   })
 
-  test('LiveDataMeta refresh button triggers a network call (Soroban RPC)', async ({ page }) => {
+  test('refreshing the factory card really goes back to the chain', async ({ page }) => {
     let sorobanCalls = 0
     page.on('request', (req) => {
       if (req.url().includes('soroban-testnet.stellar.org')) sorobanCalls++
@@ -119,7 +118,7 @@ test.describe('Live Factory reads match the /positions DOM', () => {
     expect(sorobanCalls).toBeGreaterThan(callsBefore)
   })
 
-  test('"updated ..." label appears, advances over time, and stays present', async ({ page }) => {
+  test('the age label keeps counting rather than freezing at "just now"', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 
@@ -137,20 +136,18 @@ test.describe('Live Factory reads match the /positions DOM', () => {
     expect(second).not.toBe(first)
   })
 
-  test('Switching network to mainnet hides the testnet Factory (UI reacts to context)', async ({ page }) => {
+  test('switching to mainnet stops showing the testnet factory', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByRole('heading', { name: 'Factory contract' })).toBeVisible({ timeout: 30_000 })
 
     await page.getByRole('button', { name: 'Mainnet' }).click()
-    // The page should now show the "Not deployed on mainnet yet" branch.
     await expect(page.getByText(/not deployed on mainnet/i)).toBeVisible({
       timeout: 10_000,
     })
-    // And the live testnet admin G-address should no longer be visible.
     await expect(page.locator(`text=${shorten(SOURCE, 8)}`)).toHaveCount(0)
   })
 
-  test('Network toggle persists across reload (localStorage round-trip)', async ({ page, context }) => {
+  test('the network choice survives a reload', async ({ page, context }) => {
     await page.goto(BASE)
     await page.getByRole('button', { name: 'Mainnet' }).click()
     await page.waitForTimeout(150)
@@ -158,20 +155,18 @@ test.describe('Live Factory reads match the /positions DOM', () => {
     const stored = await page.evaluate(() => localStorage.getItem('lob_network'))
     expect(stored).toBe('mainnet')
 
-    // Hard reload - the stored value must survive and the TopBar must
-    // come back with "Mainnet" already selected.
     await page.reload()
     const mainnetBtn = page.getByRole('button', { name: 'Mainnet' })
     await expect(mainnetBtn).toHaveClass(/text-green/)
 
-    // Cleanup so we don't pollute the next test.
+    // the toggle writes to a shared origin, so put it back for whoever runs next
     await context.clearCookies()
     await page.evaluate(() => localStorage.removeItem('lob_network'))
   })
 })
 
-test.describe('Live Horizon reads match Activity and Balances', () => {
-  test('OnChainActivityCard is silent when no wallet is connected (no Horizon call)', async ({ page }) => {
+test.describe('Activity with no wallet connected', () => {
+  test('makes no Horizon call at all', async ({ page }) => {
     let horizonCalls = 0
     page.on('request', (req) => {
       if (req.url().includes('horizon-testnet.stellar.org')) horizonCalls++
@@ -182,7 +177,6 @@ test.describe('Live Horizon reads match Activity and Balances', () => {
     // stayed silent. networkidle never settles here with the live polling.
     await page.waitForTimeout(1500)
 
-    // No wallet -> OnChainActivityCard returns null, no Horizon call.
     expect(horizonCalls).toBe(0)
   })
 })

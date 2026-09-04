@@ -38,33 +38,33 @@ vi.mock('@stellar/stellar-sdk', async () => {
 
 const TESTNET_SOURCE = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 
-describe('lobster/client', () => {
-  it('returns the public passphrase for mainnet', () => {
+describe('network passphrase', () => {
+  it('gives mainnet the public passphrase', () => {
     expect(networkPassphrase('mainnet')).toBe(Networks.PUBLIC)
   })
-  it('returns the testnet passphrase for testnet', () => {
+  it('gives testnet its own, so a signature cannot cross networks', () => {
     expect(networkPassphrase('testnet')).toBe(Networks.TESTNET)
   })
 })
 
 describe('handleSendResult', () => {
-  it('returns hash on PENDING', () => {
+  it('takes PENDING as sent and hands back the hash', () => {
     expect(handleSendResult({ status: 'PENDING', hash: 'h1' })).toBe('h1')
   })
-  it('returns hash on DUPLICATE', () => {
+  it('treats DUPLICATE as already sent rather than as a failure', () => {
     expect(handleSendResult({ status: 'DUPLICATE', hash: 'h2' })).toBe('h2')
   })
-  it('throws TryAgainLaterError on TRY_AGAIN_LATER', () => {
+  it('raises TryAgainLaterError so the caller can back off', () => {
     expect(() => handleSendResult({ status: 'TRY_AGAIN_LATER', hash: 'hx' })).toThrow(
       TryAgainLaterError,
     )
   })
-  it('throws an Error with the payload on ERROR', () => {
+  it('carries the error payload out rather than a bare status', () => {
     expect(() =>
       handleSendResult({ status: 'ERROR', hash: 'hx', errorResult: { e: 'malformed' } }),
     ).toThrow(/malformed/)
   })
-  it('throws on unknown statuses', () => {
+  it('refuses a status it does not know instead of guessing', () => {
     expect(() => handleSendResult({ status: 'WAT', hash: 'hz' })).toThrow(/Unknown/)
   })
 })

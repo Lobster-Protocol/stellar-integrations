@@ -20,7 +20,6 @@ export function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ')
 }
 
-// short "Ns ago / Nm ago / Nh ago" given a unix seconds or millis timestamp
 export function formatRelativeAgo(input: { unixSec?: number; ms?: number }): string {
   const ms = input.ms ?? (input.unixSec ? input.unixSec * 1000 : Date.now())
   const diffSec = (Date.now() - ms) / 1000
@@ -29,7 +28,6 @@ export function formatRelativeAgo(input: { unixSec?: number; ms?: number }): str
   return `${Math.floor(diffSec / 3600)}h ago`
 }
 
-// compact magnitude: 1.2M / 3.4K / 5.67
 export function compactNumber(n: number): string {
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
   if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`

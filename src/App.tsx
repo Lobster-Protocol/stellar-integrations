@@ -16,7 +16,6 @@ const Bridges = lazy(() => import('./pages/Bridges'))
 const Positions = lazy(() => import('./pages/Positions'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
-// basic error boundary so the app doesn't white-screen
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
   static getDerivedStateFromError(error: Error) { return { error } }
@@ -52,8 +51,6 @@ export default function App() {
   const drawerCloseBtnRef = useRef<HTMLButtonElement | null>(null)
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
 
-  // Escape closes the drawer. Focus moves to the close button on open
-  // and back to the menu trigger on close.
   useEffect(() => {
     if (!mobileMenuOpen) {
       menuButtonRef.current?.focus()
@@ -79,12 +76,10 @@ export default function App() {
 
       <div className="flex min-h-screen flex-col">
         <div className="flex flex-1 min-h-0">
-          {/* desktop sidebar */}
           <aside className="w-56 shrink-0 hidden lg:flex flex-col bg-bg-card h-screen sticky top-0" style={{ borderRight: '1px solid rgba(13, 45, 76, 0.08)' }}>
             <Sidebar />
           </aside>
 
-          {/* mobile drawer overlay */}
           {mobileMenuOpen && (
             <div
               id="mobile-nav-drawer"

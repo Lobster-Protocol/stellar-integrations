@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { seedWallet } from './fixtures'
 
-test.describe('PendingApprovalsPanel on the audit page', () => {
+test.describe('the approval queue', () => {
   test('names the state of the approval queue, or says the service is not wired', async ({
     page,
   }) => {

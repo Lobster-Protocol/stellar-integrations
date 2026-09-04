@@ -38,19 +38,19 @@ describe('toViemTxArgs', () => {
 })
 
 describe('toUsdcBaseUnits (6 decimals)', () => {
-  it('1 USDC = 1_000_000', () => {
+  it('scales a whole unit by 1e6', () => {
     expect(toUsdcBaseUnits('1')).toBe(1_000_000n)
   })
 
-  it('handles decimals up to 6 places', () => {
+  it('keeps the sixth decimal, the last one USDC has', () => {
     expect(toUsdcBaseUnits('0.123456')).toBe(123_456n)
   })
 
-  it('handles small fractional amounts', () => {
+  it('does not round the smallest unit away to zero', () => {
     expect(toUsdcBaseUnits('0.000001')).toBe(1n)
   })
 
-  it('handles large amounts', () => {
+  it('stays exact at a million, past what a float would hold', () => {
     expect(toUsdcBaseUnits('1000000')).toBe(1_000_000_000_000n)
   })
 })

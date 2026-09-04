@@ -46,9 +46,9 @@ beforeEach(() => {
 describe('quoteBroker', () => {
   it('returns a parsed quote on success', async () => {
     estimateSwap.mockResolvedValueOnce(SUCCESS_RAW)
-    const result = await quoteBroker(VALID_PARAMS)
-    expect(result?.status).toBe('success')
-    expect(result?.estimatedBuyingAmount).toBe('23.45')
+    const quote = await quoteBroker(VALID_PARAMS)
+    expect(quote?.status).toBe('success')
+    expect(quote?.estimatedBuyingAmount).toBe('23.45')
   })
 
   it('returns null when the server signals no quote (codes 11/12/13)', async () => {

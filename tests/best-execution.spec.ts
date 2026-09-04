@@ -69,8 +69,8 @@ test.describe('best execution', () => {
 
     // the page quotes a moment after this spec did, so allow for market drift
     // while still proving it is the same number and not a placeholder
-    const expected = Number(truth.estimatedBuyingAmount)
-    expect(Math.abs(broker! - expected) / expected).toBeLessThan(0.05)
+    const live = Number(truth.estimatedBuyingAmount)
+    expect(Math.abs(broker! - live) / live).toBeLessThan(0.05)
     expect(broker!).toBeGreaterThanOrEqual(direct!)
   })
 

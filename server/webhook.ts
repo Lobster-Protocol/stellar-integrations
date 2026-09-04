@@ -131,7 +131,6 @@ app.use('*', cors({
   credentials: true,
 }))
 
-// allbridge core bridge (mainnet-only): read/quote/status + unsigned tx build
 registerAllbridgeRoutes(app)
 
 // storage ttl read for the dashboard countdown. public, since it only reads
@@ -443,7 +442,7 @@ app.post('/webhooks/dfns', async (c) => {
 // in-memory event ring buffer mapped to mica records. legal review supplies
 // the dti + venue resolvers later; the skeleton fills 'UNKNOWN' so the
 // export is valid json an auditor can inspect today.
-function eventToSnapshot(evt: DfnsWebhookEvent): StellarTxSnapshot | null {
+function eventToSnapshot(evt: DfnsWebhookEvent): StellarTxSnapshot {
   const data = (evt.data ?? {}) as Record<string, unknown>
   const hash = typeof data['txHash'] === 'string' ? (data['txHash'] as string) : evt.id
   const closeTime = evt.date ?? new Date(evt.timestampSent * 1000).toISOString()
@@ -482,7 +481,6 @@ app.get('/dfns/audit/export', tokenGuard, (c) => {
     // which carry no txHash and would double-count the same trade under evt.id.
     .filter((e) => e.kind === 'wallet.transaction.confirmed' || e.kind === 'wallet.transfer.confirmed')
     .map((e) => eventToSnapshot(e))
-    .filter((s): s is StellarTxSnapshot => !!s)
   // one continuous hash chain across every tx so the whole export verifies
   // end to end rather than breaking at each tx boundary.
   const records: ReturnType<typeof buildMcaRecords> = []

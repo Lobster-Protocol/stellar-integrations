@@ -2,9 +2,12 @@ import { test, expect } from '@playwright/test'
 
 import { BASE } from './fixtures'
 
+// this file doubles as the screenshot pass for the phone layout, which is why
+// it walks ground ux-navigation already covers. the images it writes go in the
+// submission, so the walk stays even where the assertions live elsewhere too.
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
 
-test('mobile: sidebar is hidden, hamburger menu visible', async ({ page }) => {
+test('trades the sidebar for a menu button at phone width', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
   await page.screenshot({ path: 'screenshots/mobile-overview.png' })
 
@@ -17,7 +20,7 @@ test('mobile: sidebar is hidden, hamburger menu visible', async ({ page }) => {
   await expect(menuBtn).toBeVisible()
 })
 
-test('mobile: hamburger opens nav drawer', async ({ page }) => {
+test('gets to performance through the drawer', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   const menuBtn = page.getByRole('button', { name: /Open menu/i })
@@ -38,7 +41,7 @@ test('mobile: hamburger opens nav drawer', async ({ page }) => {
   await page.screenshot({ path: 'screenshots/mobile-performance.png' })
 })
 
-test('mobile: connect wallet button works', async ({ page }) => {
+test('brings the wallets kit up at phone width', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   const connectBtn = page.getByRole('button', { name: 'Connect Wallet' }).first()

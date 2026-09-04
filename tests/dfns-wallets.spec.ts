@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { seedWallet } from './fixtures'
 
-test.describe('DfnsWalletList on the audit page', () => {
+test.describe('the custody wallet list', () => {
   test('lists the custody wallets when the service is wired, and says so when it is not', async ({
     page,
   }) => {

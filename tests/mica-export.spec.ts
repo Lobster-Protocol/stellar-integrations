@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { seedWallet } from './fixtures'
 
-test.describe('MicaExportButton on the audit page', () => {
+test.describe('the MiCA export control', () => {
   test('offers the export when the custody service is wired, and says so when it is not', async ({
     page,
   }) => {

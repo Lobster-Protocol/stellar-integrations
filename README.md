@@ -54,7 +54,7 @@ so the two routing proofs are mainnet. The DFNS custody proofs are on testnet.
 Every hash above except `f5a3533f` is sourced from a wallet we control: the DFNS
 treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, or the deployer.
 `f5a3533f` is somebody else's broker route, kept because it is what our decoder
-reads; it is labelled as such rather than counted as our own execution.
+reads. The row says so instead of counting it as our own execution.
 
 ### How the two approval paths differ
 

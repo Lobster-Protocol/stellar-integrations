@@ -38,8 +38,6 @@ export function registerAllbridgeRoutes(app: Hono): void {
     }
   })
 
-  // delivery on stellar is automatic; this is how a caller learns the transfer
-  // landed. txId is the evm hash the send returned.
   app.get('/allbridge/status', async (c) => {
     const chain = c.req.query('chain')
     const txId = c.req.query('txId')

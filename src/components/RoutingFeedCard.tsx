@@ -4,7 +4,6 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { stellarExplorer, formatRelativeAgo } from '../utils/format'
 import { Card, CardHead, Empty } from './ui'
 
-// `bare` drops the card chrome so this can sit inside another card's disclosure
 export default function RoutingFeedCard({ bare = false }: { bare?: boolean }) {
   const { network } = useNetwork()
   const entries = useRoutingLog()

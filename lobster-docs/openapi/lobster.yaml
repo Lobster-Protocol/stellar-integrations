@@ -129,12 +129,12 @@ paths:
         entries; an empty list means no Soroban invocation signs at all.
         Fee-bump and restoreFootprint envelopes are refused.
 
-        Three answers on success. A classic tx DFNS broadcast itself comes back
-        as {txHash}. A Soroban tx comes back as {signedTxXdr} for the caller to
-        submit. A tx an approval policy is holding comes back as
-        {pending: true, id}, and the caller polls /dfns/sign/{id}/status for the
-        hash. Fail-closed: 503 when the API token, the wallet id, or the guard
-        env is unset.
+        Success looks different depending on what you sent. DFNS broadcasts a
+        classic tx itself, so that answer is {txHash}. A Soroban tx comes back as
+        {signedTxXdr} for the caller to submit. If an approval policy is holding
+        the request you get {pending: true, id} instead, and you poll
+        /dfns/sign/{id}/status for the hash once it clears. Fail-closed: 503 when
+        the API token, the wallet id, or the guard env is unset.
       requestBody:
         required: true
         content:
@@ -211,8 +211,8 @@ paths:
       summary: Tokens Allbridge Core lists for a source chain
       description: >
         Read-only passthrough to the Allbridge Core API. Allbridge is mainnet
-        only, so these routes always target mainnet. Nothing here signs or holds
-        a secret, so none of them are token-gated.
+        only, so these routes always target mainnet. None of them are
+        token-gated: nothing here signs or holds a secret.
       security: []
       parameters:
         - name: chain

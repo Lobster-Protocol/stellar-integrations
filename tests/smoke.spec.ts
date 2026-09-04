@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { BASE } from './fixtures'
 
-test('homepage loads and shows sidebar', async ({ page }) => {
+test('serves the shell: sidebar, logo, a way to connect', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
   await page.screenshot({ path: 'screenshots/01-overview.png', fullPage: true })
 
@@ -21,31 +21,31 @@ test('overview shows the connect prompt when not connected', async ({ page }) =>
   await expect(page.getByText('Connect your wallet to get started')).toBeVisible()
 })
 
-test('performance page loads', async ({ page }) => {
+test('performance asks for a wallet instead of drawing an empty curve', async ({ page }) => {
   await page.goto(BASE + '/performance', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Performance' })).toBeVisible()
   // no wallet connected, so it asks to connect rather than showing numbers
   await expect(page.getByText(/Connect a wallet to rebuild its history/i)).toBeVisible()
 })
 
-test('activity page loads', async ({ page }) => {
+test('activity answers on its own url', async ({ page }) => {
   await page.goto(BASE + '/activity', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
 })
 
-test('allocation page loads', async ({ page }) => {
+test('allocation says why it has nothing to spread yet', async ({ page }) => {
   await page.goto(BASE + '/allocation', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Allocation', exact: true })).toBeVisible()
   await expect(page.getByText(/Connect a wallet to see how its value is spread/i)).toBeVisible()
 })
 
-test('bridges page loads with the Allbridge provider', async ({ page }) => {
+test('bridges names Allbridge as the provider', async ({ page }) => {
   await page.goto(BASE + '/bridges', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Bridges', exact: true })).toBeVisible()
   await expect(page.getByText('Allbridge Core').first()).toBeVisible()
 })
 
-test('navigation between all pages works', async ({ page }) => {
+test('walks the sidebar end to end and every page answers', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   for (const [link, expectedText] of [
@@ -61,7 +61,7 @@ test('navigation between all pages works', async ({ page }) => {
   }
 })
 
-test('network selector toggles between testnet and mainnet', async ({ page }) => {
+test('writes the network choice through to storage, both ways', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   const testnet = page.getByRole('button', { name: 'Testnet' })
@@ -80,7 +80,7 @@ test('network selector toggles between testnet and mainnet', async ({ page }) =>
   expect(await page.evaluate(() => localStorage.getItem('lob_network'))).toBe('testnet')
 })
 
-test('connect wallet button opens auth modal', async ({ page }) => {
+test('brings up the wallets kit with wallets in it', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   await page.getByRole('button', { name: 'Connect Wallet' }).first().click()
@@ -97,7 +97,7 @@ test('connect wallet button opens auth modal', async ({ page }) => {
   await page.screenshot({ path: 'screenshots/06-wallet-modal.png', fullPage: true })
 })
 
-test('no critical console errors on any page', async ({ page }) => {
+test('leaves no console error behind past the known browser noise', async ({ page }) => {
   const errors: string[] = []
   page.on('console', (msg) => {
     if (msg.type() === 'error') errors.push(msg.text())

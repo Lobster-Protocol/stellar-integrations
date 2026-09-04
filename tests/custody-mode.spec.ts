@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 import { seedWallet } from './fixtures'
 
 test.describe('Custody mode toggle', () => {
-  test('defaults to wallet kit on a fresh browser', async ({ page }) => {
+  test('offers both custody modes side by side', async ({ page }) => {
     await seedWallet(page)
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 

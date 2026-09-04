@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test'
 
-// prod smoke for the meta and a11y batch. one test per artifact so a
-// regression points straight at the missing piece. raw http where possible
-// to keep assertions cheap and errors specific.
+// what a deploy has to serve before anyone logs in. raw http where it can be,
+// so a failure names the missing header or file rather than a locator. split
+// one per artifact on purpose: a batched version told us "something is off"
+// and nothing more.
 import { BASE } from './fixtures'
 
-test.describe('prod meta and a11y assertions', () => {
-  test('robots.txt is served', async ({ request }) => {
+test.describe('what the deploy serves before anyone logs in', () => {
+  test('serves a robots.txt at all', async ({ request }) => {
     const r = await request.get(`${BASE}/robots.txt`)
     expect(r.status()).toBe(200)
     expect((await r.text()).toLowerCase()).toContain('user-agent')
@@ -16,7 +17,6 @@ test.describe('prod meta and a11y assertions', () => {
     const r = await request.get(BASE)
     const html = await r.text()
     expect(html).toMatch(/name="robots"\s+content="noindex/)
-    // robots.txt also blocks crawling
     const robots = await (await request.get(`${BASE}/robots.txt`)).text()
     expect(robots).toMatch(/Disallow:\s*\//)
     // No social / OG leakage while the dashboard is still in dev
@@ -24,15 +24,14 @@ test.describe('prod meta and a11y assertions', () => {
     expect(html).not.toMatch(/name="twitter:site"/)
   })
 
-  test('custom /404 page renders with NotFound content', async ({ page }) => {
+  test('a dead route gets our own 404, with a way back', async ({ page }) => {
     await page.goto(`${BASE}/this-route-does-not-exist`)
-    // App routes unknown -> /404 -> NotFound component
     await expect(page.getByRole('heading', { name: '404' })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('link', { name: /Go to Overview/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /Go to Positions/i })).toBeVisible()
   })
 
-  test('Footer is rendered on root with licence + Factory link', async ({ page }) => {
+  test('the footer carries the licence and a link to the factory', async ({ page }) => {
     await page.goto(BASE)
     const footer = page.locator('footer')
     await expect(footer).toBeVisible({ timeout: 15_000 })
@@ -41,25 +40,22 @@ test.describe('prod meta and a11y assertions', () => {
     await expect(footer.getByRole('link', { name: /Factory/i })).toBeVisible()
   })
 
-  test('Skip-to-content link exists and targets main', async ({ page }) => {
+  test('keyboard users can skip straight to the content', async ({ page }) => {
     await page.goto(BASE)
     const skip = page.getByRole('link', { name: /Skip to main content/i })
     await expect(skip).toHaveAttribute('href', '#main-content')
     await expect(page.locator('#main-content')).toBeVisible()
   })
 
-  test('Positions page renders Factory card + LiveDataMeta refresh button', async ({ page }) => {
+  test('positions comes back with the factory card and its refresh', async ({ page }) => {
     await page.goto(`${BASE}/positions`)
     await expect(page.getByRole('heading', { name: /Factory contract/i })).toBeVisible({ timeout: 15_000 })
-    // "updated ..." label from LiveDataMeta
     await expect(page.getByText(/updated /).first()).toBeVisible()
-    // Refresh icon button
     await expect(page.getByRole('button', { name: /Refresh/i }).first()).toBeVisible()
   })
 
-  test('Bridges page shows live Trustline branch (Connect wallet, not hardcoded Active)', async ({ page }) => {
+  test('the trustline tile reads the wallet, never a hardcoded Active', async ({ page }) => {
     await page.goto(`${BASE}/bridges`)
-    // No wallet connected -> live branch shows "Connect wallet"
     await expect(page.getByText('Connect wallet').first()).toBeVisible({ timeout: 15_000 })
     // and the trustline tile reports the live branch, never a hardcoded Active.
     // the label carries a help tip beside it, so anchor on the tile, not the word
@@ -71,16 +67,14 @@ test.describe('prod meta and a11y assertions', () => {
     await expect(trustline).not.toContainText('Active')
   })
 
-  test('Mobile drawer toggle button has aria-expanded + aria-controls', async ({ page }) => {
+  test('the drawer toggle names the drawer it opens, and Escape closes it', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 })
     await page.goto(BASE)
     const menuBtn = page.getByRole('button', { name: /Open menu/i })
     await expect(menuBtn).toBeVisible({ timeout: 15_000 })
     await expect(menuBtn).toHaveAttribute('aria-controls', 'mobile-nav-drawer')
     await menuBtn.click()
-    // drawer opens, role=dialog
     await expect(page.locator('#mobile-nav-drawer[role="dialog"]')).toBeVisible()
-    // close on Escape
     await page.keyboard.press('Escape')
     await expect(page.locator('#mobile-nav-drawer')).not.toBeVisible()
   })

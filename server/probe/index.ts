@@ -118,8 +118,9 @@ async function readAccount(a: AccountTarget): Promise<AccountReading> {
     const body = (await res.json()) as Parameters<typeof parseBalances>[0]
     return { exists: true as const, ...parseBalances(body, a.usdcIssuer) }
   })
-  if (!r.ok || !r.value) return { role: a.role, network: a.network, exists: false, xlm: 0 }
-  if (!r.value.exists) return { role: a.role, network: a.network, exists: false, xlm: 0 }
+  if (!r.ok || !r.value || !r.value.exists) {
+    return { role: a.role, network: a.network, exists: false, xlm: 0 }
+  }
   return { role: a.role, network: a.network, exists: true, xlm: r.value.xlm, usdc: r.value.usdc }
 }
 
@@ -132,8 +133,6 @@ export async function scan(): Promise<ScanResult> {
   return { probes: soroswap ? [...probes, soroswap] : probes, accounts }
 }
 
-// prometheus exposition for a scan: up + latency per target, balances and an
-// exists flag per account.
 export function formatMetrics(s: ScanResult): string {
   const lines = [
     '# HELP lobster_probe_up dependency reachable (1) or down (0)',
