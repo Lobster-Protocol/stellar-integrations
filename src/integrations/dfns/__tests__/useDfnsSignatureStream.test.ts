@@ -56,12 +56,13 @@ describe('useDfnsSignatureStream', () => {
     expect(MockEventSource.lastInstance).toBeNull()
   })
 
-  it('opens an EventSource against /sse with credentials', () => {
+  it('opens an EventSource against the active relay /sse', () => {
     renderHook(() => useDfnsSignatureStream())
     const es = MockEventSource.lastInstance
     expect(es).not.toBeNull()
     expect(es!.url).toBe('http://localhost:8787/sse')
-    expect(es!.withCredentials).toBe(true)
+    // no ambient cookies: the token rides in the query, not a cookie session
+    expect(es!.withCredentials).toBe(false)
   })
 
   it('appends the api token as a ?token= query when configured', () => {

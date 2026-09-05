@@ -41,7 +41,7 @@ describe('PendingApprovalsPanel', () => {
     Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', '')
     wrap(<PendingApprovalsPanel />)
     expect(screen.getByText(/Pending approvals/)).toBeInTheDocument()
-    expect(screen.getByText(/VITE_LOBSTER_API_URL is not set/)).toBeInTheDocument()
+    expect(screen.getByText(/a DFNS profile is not set/)).toBeInTheDocument()
   })
 
   it('shows the empty state when no approvals are returned', async () => {

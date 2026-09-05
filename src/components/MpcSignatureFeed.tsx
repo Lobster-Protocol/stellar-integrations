@@ -1,4 +1,5 @@
 import { useDfnsSignatureStream } from '../integrations/dfns/useDfnsSignatureStream'
+import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import type { DfnsEventKind } from '../integrations/dfns/types'
 import { formatRelativeAgo } from '../utils/format'
 import { NotConfigured } from './ui'
@@ -39,10 +40,11 @@ function isTerminalKind(k: DfnsEventKind): boolean {
 
 export default function MpcSignatureFeed() {
   const events = useDfnsSignatureStream()
+  const hasRelay = useHasActiveRelay()
 
-  if (!import.meta.env.VITE_LOBSTER_API_URL) {
+  if (!hasRelay) {
     return (
-      <NotConfigured title="Signing activity" needs="VITE_LOBSTER_API_URL">
+      <NotConfigured title="Signing activity" needs="a DFNS profile">
         The lifecycle events DFNS custody sends as a webhook, streamed as they land. This build has
         no relay to stream from.
       </NotConfigured>

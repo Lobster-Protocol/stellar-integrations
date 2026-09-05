@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { useDfnsPendingApprovals, useDfnsApprove } from '../integrations/dfns/hooks'
 import { isOperator } from '../integrations/dfns/operator'
+import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import { NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
 
@@ -15,10 +16,11 @@ export default function PendingApprovalsPanel() {
   // a version-skewed relay could answer 200 with a body that has no `items`;
   // normalise once so nothing downstream dereferences undefined and throws.
   const items = approvals.data?.items ?? []
+  const hasRelay = useHasActiveRelay()
 
-  if (!import.meta.env.VITE_LOBSTER_API_URL) {
+  if (!hasRelay) {
     return (
-      <NotConfigured title="Pending approvals" needs="VITE_LOBSTER_API_URL">
+      <NotConfigured title="Pending approvals" needs="a DFNS profile">
         Payments a signing policy is holding back until a person signs off. This build has no relay
         to read them from.
       </NotConfigured>

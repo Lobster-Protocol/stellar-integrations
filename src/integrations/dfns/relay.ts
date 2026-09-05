@@ -1,15 +1,19 @@
-// one place for the bff relay convention: base url from env, the shared auth
-// header, the cookie credentials, json content-type when there is a body.
-export function relayFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const base = import.meta.env.VITE_LOBSTER_API_URL
-  if (!base) throw new Error('VITE_LOBSTER_API_URL not set')
-  const token = import.meta.env.VITE_LOBSTER_API_TOKEN
+import { activeRelay, type ActiveRelay } from './profiles'
+
+// One place for the relay convention: base url and read token come from the ACTIVE
+// dfns profile, not a build-time env, so the dashboard can talk to the client's own
+// relay. A caller can pass a bound relay to pin a multi-step flow (a poll) to the
+// profile it started on, so a mid-flow switch cannot redirect it to another relay.
+// bearer token in a header, no ambient cookies (the relay reads no cookie).
+export function relayFetch(path: string, init: RequestInit = {}, bound?: ActiveRelay): Promise<Response> {
+  const relay = bound ?? activeRelay()
+  if (!relay) throw new Error('No DFNS profile is selected')
   const headers: Record<string, string> = {
     ...(init.headers as Record<string, string> | undefined),
-    ...(token ? { 'x-lobster-token': token } : {}),
+    ...(relay.apiToken ? { 'x-lobster-token': relay.apiToken } : {}),
   }
   if (init.body && !headers['content-type']) headers['content-type'] = 'application/json'
-  return fetch(`${base}${path}`, { credentials: 'include', ...init, headers })
+  return fetch(`${relay.baseUrl}${path}`, { ...init, headers })
 }
 
 // polls a pending dfns signature until it confirms on chain (returns the hash) or
@@ -23,9 +27,12 @@ export async function pollSignatureStatus(
   const interval = opts.intervalMs ?? 4_000
   const timeout = opts.timeoutMs ?? 30 * 60_000
   const start = Date.now()
+  // bind the relay at the start so a profile switch mid-poll cannot send the id to
+  // a different relay.
+  const bound = activeRelay() ?? undefined
   let hardErrors = 0
   for (;;) {
-    const res = await relayFetch(`/dfns/sign/${id}/status`, { signal: opts.signal })
+    const res = await relayFetch(`/dfns/sign/${id}/status`, { signal: opts.signal }, bound)
     if (res.ok) {
       hardErrors = 0
       const body = (await res.json()) as { status?: string; txHash?: string; reason?: string }

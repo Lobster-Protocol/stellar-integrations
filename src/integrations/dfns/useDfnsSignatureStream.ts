@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { DfnsEventKindSchema, type DfnsEvent, type DfnsEventKind } from './types'
+import { useActiveRelay } from './use-profiles'
 
 const MAX_EVENTS = 500
 
@@ -17,14 +18,26 @@ const SUBSCRIBED_KINDS: DfnsEventKind[] = [
 
 export function useDfnsSignatureStream(): DfnsEvent[] {
   const [events, setEvents] = useState<DfnsEvent[]>([])
+  const relay = useActiveRelay()
+  const profileId = relay?.profileId
+  const baseUrl = relay?.baseUrl
+  const apiToken = relay?.apiToken
+
+  // a profile switch starts a fresh feed, so the previous profile's events never
+  // linger under the new one. reset during render (react's documented way to
+  // derive state from a changed input), not in the effect.
+  const seenProfile = useRef(profileId)
+  if (seenProfile.current !== profileId) {
+    seenProfile.current = profileId
+    setEvents([])
+  }
 
   useEffect(() => {
-    const base = import.meta.env.VITE_LOBSTER_API_URL
-    if (!base) return
-    // EventSource can't set headers, so the shared token rides as a query param
-    const token = import.meta.env.VITE_LOBSTER_API_TOKEN
-    const url = token ? `${base}/sse?token=${encodeURIComponent(token)}` : `${base}/sse`
-    const es = new EventSource(url, { withCredentials: true })
+    // the old stream (and its token in the url) is torn down by the cleanup below.
+    if (!baseUrl) return
+    // EventSource can't set headers, so the token rides as a query param
+    const url = apiToken ? `${baseUrl}/sse?token=${encodeURIComponent(apiToken)}` : `${baseUrl}/sse`
+    const es = new EventSource(url)
     const handler = (e: MessageEvent) => {
       try {
         const evt = JSON.parse(e.data) as DfnsEvent
@@ -39,7 +52,7 @@ export function useDfnsSignatureStream(): DfnsEvent[] {
       for (const k of SUBSCRIBED_KINDS) es.removeEventListener(k, handler)
       es.close()
     }
-  }, [])
+  }, [profileId, baseUrl, apiToken])
 
   return events
 }

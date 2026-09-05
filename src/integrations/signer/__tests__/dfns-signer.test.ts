@@ -22,11 +22,11 @@ afterEach(() => {
 })
 
 describe('dfnsSigner.signTransaction', () => {
-  it('throws when VITE_LOBSTER_API_URL is unset', async () => {
+  it('throws when no dfns profile is selected', async () => {
     Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', '')
     await expect(
       dfnsSigner.signTransaction('XDR', { networkPassphrase: PASSPHRASE, address: ACCOUNT }),
-    ).rejects.toThrow(/VITE_LOBSTER_API_URL/)
+    ).rejects.toThrow(/No DFNS profile is selected/)
   })
 
   it('posts to /dfns/sign and returns the signed envelope', async () => {
@@ -42,7 +42,6 @@ describe('dfnsSigner.signTransaction', () => {
       'http://localhost:8787/dfns/sign',
       expect.objectContaining({
         method: 'POST',
-        credentials: 'include',
       }),
     )
     expect(r.signedTxXdr).toBe('SIGNED')

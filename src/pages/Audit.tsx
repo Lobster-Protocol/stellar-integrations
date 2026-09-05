@@ -5,6 +5,7 @@ import {
   useDfnsPendingApprovals,
   RelayError,
 } from '../integrations/dfns/hooks'
+import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import CustodyModeToggle from '../components/CustodyModeToggle'
 import DfnsWalletList from '../components/DfnsWalletList'
 import PendingApprovalsPanel from '../components/PendingApprovalsPanel'
@@ -33,7 +34,7 @@ export default function Audit() {
   const policies = useDfnsPolicies()
   const approvals = useDfnsPendingApprovals()
 
-  const configured = !!import.meta.env.VITE_LOBSTER_API_URL
+  const configured = useHasActiveRelay()
   const walletItems = wallets.data?.items ?? []
   const active = (policies.data?.items ?? []).filter((p) => p.status === 'Active')
   const waiting = (approvals.data?.items ?? []).length

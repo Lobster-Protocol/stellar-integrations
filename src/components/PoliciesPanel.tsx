@@ -1,4 +1,5 @@
 import { useDfnsPolicies } from '../integrations/dfns/hooks'
+import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import { Card, CardHead, Disclosure, Empty, NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
 
@@ -9,10 +10,11 @@ const LIVE = 'Active'
 
 export default function PoliciesPanel() {
   const policies = useDfnsPolicies()
+  const hasRelay = useHasActiveRelay()
 
-  if (!import.meta.env.VITE_LOBSTER_API_URL) {
+  if (!hasRelay) {
     return (
-      <NotConfigured title="Signing policies" needs="VITE_LOBSTER_API_URL">
+      <NotConfigured title="Signing policies" needs="a DFNS profile">
         The rules DFNS checks before a custody key is allowed to sign. This build has no relay to
         read them from.
       </NotConfigured>

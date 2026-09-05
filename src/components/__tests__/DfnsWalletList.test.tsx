@@ -44,7 +44,7 @@ describe('DfnsWalletList', () => {
     Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', '')
     wrap(<DfnsWalletList />)
     expect(screen.getByText(/DFNS wallets/)).toBeInTheDocument()
-    expect(screen.getByText(/VITE_LOBSTER_API_URL is not set/)).toBeInTheDocument()
+    expect(screen.getByText(/a DFNS profile is not set/)).toBeInTheDocument()
   })
 
   it('reads the list without offering to create anything by default', async () => {

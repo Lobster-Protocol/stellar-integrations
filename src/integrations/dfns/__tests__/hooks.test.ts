@@ -43,7 +43,8 @@ describe('useDfnsPolicies', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     const call = fetchSpy.mock.calls[0][1] as RequestInit
     expect((call.headers as Record<string, string>)['x-lobster-token']).toBe('token-32-chars')
-    expect(call.credentials).toBe('include')
+    // bearer token in a header, no ambient cookies sent cross-origin
+    expect(call.credentials).toBeUndefined()
   })
 
   it('omits the token header when the env is empty', async () => {
@@ -107,11 +108,11 @@ describe('useCreateDfnsWallet', () => {
 })
 
 describe('useDfnsPendingApprovals', () => {
-  it('polls and includes credentials', async () => {
+  it('polls the active relay without sending ambient cookies', async () => {
     fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) })
     const { result } = renderHook(() => useDfnsPendingApprovals(), { wrapper: wrap() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     const call = fetchSpy.mock.calls[0][1] as RequestInit
-    expect(call.credentials).toBe('include')
+    expect(call.credentials).toBeUndefined()
   })
 })

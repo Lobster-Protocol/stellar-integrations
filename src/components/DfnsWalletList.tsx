@@ -6,6 +6,7 @@ import { shortenAddress, stellarExplorer } from '../utils/format'
 import { isAccountId } from '../integrations/stellar/strkey-guards'
 import { friendbotFund } from '../integrations/stellar/friendbot'
 import { isOperator } from '../integrations/dfns/operator'
+import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import type { Network } from '../config/contracts'
 import { Card, CardHead, Empty, NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
@@ -35,10 +36,11 @@ export default function DfnsWalletList() {
   // creating a wallet writes to the live custody org, so the form belongs to an
   // operator. everybody else gets the same list, read only.
   const operator = isOperator()
+  const hasRelay = useHasActiveRelay()
 
-  if (!import.meta.env.VITE_LOBSTER_API_URL) {
+  if (!hasRelay) {
     return (
-      <NotConfigured title="DFNS wallets" needs="VITE_LOBSTER_API_URL">
+      <NotConfigured title="DFNS wallets" needs="a DFNS profile">
         The wallets whose keys DFNS custody holds, grouped by network. This build has no relay to
         read them from.
       </NotConfigured>

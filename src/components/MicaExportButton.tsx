@@ -1,24 +1,23 @@
 import { useState } from 'react'
 
+import { relayFetch } from '../integrations/dfns/relay'
+import { useActiveRelay } from '../integrations/dfns/use-profiles'
+
 export default function MicaExportButton() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // an export with no records is not a failure, so it never renders in coral
   const [note, setNote] = useState<string | null>(null)
 
-  const base = import.meta.env.VITE_LOBSTER_API_URL
+  const relay = useActiveRelay()
 
   async function handleClick() {
-    if (!base) return
+    if (!relay) return
     setBusy(true)
     setError(null)
     setNote(null)
     try {
-      const token = import.meta.env.VITE_LOBSTER_API_TOKEN
-      const res = await fetch(`${base}/dfns/audit/export`, {
-        credentials: 'include',
-        headers: token ? { 'x-lobster-token': token } : undefined,
-      })
+      const res = await relayFetch('/dfns/audit/export')
       if (!res.ok) throw new Error(`export ${res.status}`)
       const text = await res.text()
       const parsed = JSON.parse(text) as { records?: unknown[] }
@@ -53,7 +52,7 @@ export default function MicaExportButton() {
         <button
           type="button"
           onClick={handleClick}
-          disabled={busy || !base}
+          disabled={busy || !relay}
           className="px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {busy ? 'Building...' : 'Download JSON'}
@@ -63,10 +62,9 @@ export default function MicaExportButton() {
         ISO 20022 record-keeping export aligned with ESMA RTS Table 3. Maps recent DFNS transaction
         and transfer events to the MiCA record schema.
       </p>
-      {!base && (
+      {!relay && (
         <p className="text-[11px] text-text-muted mt-2">
-          Off in this build: VITE_LOBSTER_API_URL is not set, so there is no relay to ask for the
-          records.
+          No DFNS profile is selected, so there is no relay to ask for the records.
         </p>
       )}
       {note && <p className="text-xs text-text-muted mt-2">{note}</p>}

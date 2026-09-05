@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useCustody, type CustodyMode } from '../contexts/CustodyContext'
 import { cn } from '../utils/format'
 import { InfoTip } from './InfoTip'
+import ConnectDfnsPanel from './ConnectDfnsPanel'
 
 const OPTIONS: Array<{ value: CustodyMode; label: string; sub: string; badge?: string }> = [
   { value: 'wallet-kit', label: 'Browser wallet', sub: 'sign with Freighter, LOBSTR, xBull or Albedo' },
@@ -77,25 +78,13 @@ export default function CustodyModeToggle() {
         {showByo ? 'Hide' : 'Connect your own DFNS'}
       </button>
       {showByo && (
-        <div className="mt-2 rounded-2xl bg-bg px-3 py-3 text-xs text-text-secondary space-y-2">
+        <div className="mt-2 rounded-2xl bg-bg px-3 py-3 text-xs text-text-secondary space-y-3">
           <p>
-            To run custody on your own DFNS instead of this sandbox, you connect your
-            organization's DFNS. There is no key to paste here, and there never will be. What it
-            takes:
+            Point the dashboard at a DFNS relay you run yourself, so the keys stay in your own DFNS
+            org. You need your own DFNS organization (DFNS sets these up with you) and a relay running
+            the Lobster server with your DFNS credentials. There is no key to paste here.
           </p>
-          <ul className="list-disc pl-4 space-y-1">
-            <li>
-              your own DFNS organization. DFNS sets these up with you, there is no self-serve
-              sign-up yet.
-            </li>
-            <li>a service account scoped to read wallets and sign on one treasury wallet, nothing wider</li>
-            <li>the treasury wallet you want Lobster to watch, on testnet first, then mainnet</li>
-            <li>your own approvers and the approval rule you want held on payouts</li>
-          </ul>
-          <p>
-            Your signing key stays inside your DFNS. Lobster orchestrates and can be turned off at
-            any time. Talk to the team to switch this on for your organization.
-          </p>
+          <ConnectDfnsPanel />
         </div>
       )}
     </div>
