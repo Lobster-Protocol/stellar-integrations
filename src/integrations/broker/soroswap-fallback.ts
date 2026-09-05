@@ -79,6 +79,10 @@ export async function quoteSoroswapDirect(
 export interface SoroswapBuildParams extends SoroswapQuoteParams {
   minAmountOut: bigint
   deadlineUnix: number
+  // tx timebound in seconds. widened for a multisig owner so the envelope does
+  // not expire (tx_too_late) while a quorum signs it. must move together with
+  // deadlineUnix, which is the separate in-contract deadline.
+  timeoutSecs?: number
 }
 
 // builds the prepared swap_exact_tokens_for_tokens xdr, ready to sign.
@@ -110,7 +114,7 @@ export async function buildSoroswapSwapTx(params: SoroswapBuildParams): Promise<
     networkPassphrase: networkPassphrase(params.network),
   })
     .addOperation(router.call('swap_exact_tokens_for_tokens', amountIn, minOut, path, to, deadline))
-    .setTimeout(180)
+    .setTimeout(params.timeoutSecs ?? 180)
     .build()
 
   const sim = await server.simulateTransaction(tx)

@@ -8,12 +8,19 @@ import { brokerAssetToSac } from '../integrations/broker/asset-mapping'
 import { swapTokensFor } from '../config/contracts'
 import type { Network } from '../integrations/lobster/types'
 import { stellarExplorer } from '../utils/format'
+import { useAccountSigning } from '../integrations/stellar/use-account-signing'
+import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
+import CoSignPanel from './CoSignPanel'
+
+// widened for a multisig owner so a quorum has time to sign the frozen envelope.
+const MULTISIG_TIMEOUT_SECS = 3600
 
 type Phase =
   | { k: 'form' }
   | { k: 'building' }
   | { k: 'signing' }
   | { k: 'submitting' }
+  | { k: 'collecting'; xdr: string }
   | { k: 'done'; hash: string }
   | { k: 'failed'; msg: string }
 
@@ -39,6 +46,8 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
   const [code1, setCode1] = useState(tokens[1]?.code ?? '')
   const [phase, setPhase] = useState<Phase>({ k: 'form' })
   const inFlight = useRef(false)
+  const signingQ = useAccountSigning(network, caller)
+  const multi = signingQ.data ? isMultisig(signingQ.data) : false
 
   useEffect(() => {
     if (!open) {
@@ -66,9 +75,15 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
     inFlight.current = true
     try {
       setPhase({ k: 'building' })
-      const built = await buildCreatePoolTx(network, caller, sac0, sac1)
+      const built = await buildCreatePoolTx(network, caller, sac0, sac1, multi ? MULTISIG_TIMEOUT_SECS : 60)
       if (!built.xdr) {
         setPhase({ k: 'failed', msg: 'The Factory storage has expired on-chain and needs restoring first.' })
+        return
+      }
+      if (multi) {
+        // a quorum account signs the frozen envelope together, so hand off to the
+        // co-sign panel rather than signing once here. never rebuild after this.
+        setPhase({ k: 'collecting', xdr: built.xdr })
         return
       }
       setPhase({ k: 'signing' })
@@ -132,8 +147,38 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
               </button>
             </div>
           </div>
+        ) : phase.k === 'collecting' ? (
+          <div className="space-y-3">
+            <p className="text-xs text-text-secondary">
+              This account uses shared control. Sign your part, then send the transaction to another
+              signer, or paste their signed copy back here.
+            </p>
+            {signingQ.data && (
+              <CoSignPanel
+                network={network}
+                signing={signingQ.data}
+                baseXdr={phase.xdr}
+                connected={caller}
+                submit={async (xdr) => {
+                  const hash = await submitSignedXdr(network, xdr)
+                  const final = await waitForTx(network, hash)
+                  if (final.status !== 'SUCCESS') throw new Error(`the network reported ${final.status}`)
+                  return hash
+                }}
+                onSubmitted={(hash) => {
+                  setPhase({ k: 'done', hash })
+                  onDone()
+                }}
+              />
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
+            {multi && signingQ.data && (
+              <div className="rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-[11px]">
+                This account uses shared control. Creating a vault needs {requiredWeight(signingQ.data, 'med')} signatures.
+              </div>
+            )}
             <div className="flex gap-2">
               <label className="text-xs text-text-secondary w-24 self-center">First token</label>
               <select value={t0?.code} onChange={(e) => setCode0(e.target.value)} className="flex-1 bg-bg rounded-lg px-3 py-2 text-sm">

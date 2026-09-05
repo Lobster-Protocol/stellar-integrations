@@ -29,6 +29,10 @@ export async function buildVaultActionTx(
   caller: string,
   amount0: string,
   amount1: string,
+  // a single-sig call submits in seconds; a multisig call has to collect a quorum
+  // across people, so its timebound is widened well past the 60s default or the
+  // envelope expires (tx_too_late) before the second signature arrives.
+  timeoutSecs = 60,
 ): Promise<{ xdr: string; restorePreamble?: SorobanRestorePreamble }> {
   const server = getSorobanServer(network)
   const vault = new Contract(vaultAddress)
@@ -45,7 +49,7 @@ export async function buildVaultActionTx(
     networkPassphrase: networkPassphrase(network),
   })
     .addOperation(vault.call(METHOD[action], ...args))
-    .setTimeout(60)
+    .setTimeout(timeoutSecs)
     .build()
 
   const sim = await server.simulateTransaction(tx)

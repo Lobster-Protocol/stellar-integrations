@@ -14,6 +14,7 @@ const Audit = lazy(() => import('./pages/Audit'))
 const Allocation = lazy(() => import('./pages/Allocation'))
 const Bridges = lazy(() => import('./pages/Bridges'))
 const Positions = lazy(() => import('./pages/Positions'))
+const SharedControl = lazy(() => import('./pages/SharedControl'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -123,6 +124,7 @@ export default function App() {
                   <Route path="/allocation" element={<Allocation />} />
                   <Route path="/bridges" element={<Bridges />} />
                   <Route path="/positions" element={<Positions />} />
+                  <Route path="/shared-control" element={<SharedControl />} />
                   <Route path="/404" element={<NotFound />} />
                   <Route path="*" element={<Navigate to="/404" replace />} />
                 </Routes>

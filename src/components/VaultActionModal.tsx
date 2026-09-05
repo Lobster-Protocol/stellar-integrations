@@ -7,13 +7,21 @@ import { buildVaultActionTx, submitSignedXdr, waitForTx, type VaultAction } from
 import type { VaultPosition } from '../integrations/lobster/position'
 import type { Network } from '../integrations/lobster/types'
 import { stellarExplorer, formatBalance, cn } from '../utils/format'
+import { useAccountSigning } from '../integrations/stellar/use-account-signing'
+import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
+import CoSignPanel from './CoSignPanel'
 import TokenRef from './TokenRef'
+
+// a quorum call has to gather signatures across people, so its envelope needs a
+// timebound wide enough to survive that instead of the 60s single-sig default.
+const MULTISIG_TIMEOUT_SECS = 3600
 
 type Phase =
   | { k: 'form' }
   | { k: 'building' }
   | { k: 'signing' }
   | { k: 'submitting' }
+  | { k: 'collecting'; xdr: string }
   | { k: 'done'; hash: string }
   | { k: 'failed'; msg: string }
 
@@ -33,6 +41,8 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   const [phase, setPhase] = useState<Phase>({ k: 'form' })
   const inFlight = useRef(false)
   const titleId = useId()
+  const signingQ = useAccountSigning(network, caller)
+  const multi = signingQ.data ? isMultisig(signingQ.data) : false
 
   useEffect(() => {
     if (!open) {
@@ -56,9 +66,24 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
     inFlight.current = true
     try {
       setPhase({ k: 'building' })
-      const built = await buildVaultActionTx(network, vault.address, action, caller, amount0 || '0', amount1 || '0')
+      const built = await buildVaultActionTx(
+        network,
+        vault.address,
+        action,
+        caller,
+        amount0 || '0',
+        amount1 || '0',
+        multi ? MULTISIG_TIMEOUT_SECS : 60,
+      )
       if (!built.xdr) {
         setPhase({ k: 'failed', msg: "This vault's storage has expired on-chain and needs restoring before this call." })
+        return
+      }
+      if (multi) {
+        // a quorum account cannot go through on one signature, so hand the frozen
+        // assembled envelope to the co-sign panel to gather the rest. never
+        // rebuild it after this point or the collected signatures stop matching.
+        setPhase({ k: 'collecting', xdr: built.xdr })
         return
       }
       setPhase({ k: 'signing' })
@@ -129,8 +154,39 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
               </button>
             </div>
           </div>
+        ) : phase.k === 'collecting' ? (
+          <div className="space-y-3">
+            <p className="text-xs text-text-secondary">
+              This account uses shared control. Your signature alone is not enough. Sign your part,
+              then send the transaction to another signer, or paste their signed copy back here.
+            </p>
+            {signingQ.data && (
+              <CoSignPanel
+                network={network}
+                signing={signingQ.data}
+                baseXdr={phase.xdr}
+                connected={caller}
+                submit={async (xdr) => {
+                  const hash = await submitSignedXdr(network, xdr)
+                  const final = await waitForTx(network, hash)
+                  if (final.status !== 'SUCCESS') throw new Error(`the network reported ${final.status}`)
+                  return hash
+                }}
+                onSubmitted={(hash) => {
+                  setPhase({ k: 'done', hash })
+                  onDone()
+                }}
+              />
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
+            {multi && signingQ.data && (
+              <div className="rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-[11px]">
+                This account uses shared control. {requiredWeight(signingQ.data, 'med')} signatures
+                approve each move.
+              </div>
+            )}
             {[0, 1].map((i) => {
               const tokenId = i === 0 ? vault.token0 : vault.token1
               const value = i === 0 ? amount0 : amount1

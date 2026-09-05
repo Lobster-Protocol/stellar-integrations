@@ -1,33 +1,16 @@
-import { DfnsApiClient } from '@dfns/sdk'
-import { AsymmetricKeySigner } from '@dfns/sdk-keysigner'
-import { readFileSync } from 'node:fs'
+import type { DfnsApiClient } from '@dfns/sdk'
 
-import { requireEnv } from '../env'
+import { dfnsClientFor } from '../tenants/client'
+import { requireDemoTenant } from '../tenants/demo'
 
-let cached: DfnsApiClient | null = null
-
-// the key content can come straight from an env var (cloud deploys where there
-// is no file to mount), falling back to a path for local dev. a value pasted on
-// a single line keeps its \n escaped, so unescape it.
-function loadPrivateKey(): string {
-  const inline = process.env.DFNS_PRIVATE_KEY
-  if (inline) return inline.replace(/\\n/g, '\n')
-  return readFileSync(requireEnv('DFNS_PRIVATE_KEY_PATH'), 'utf-8')
-}
-
+// DEPRECATED 2026-09: the demo tenant's dfns client. kept so the routes that
+// still read process.env keep working while they are threaded through the tenant
+// registry. new code resolves a tenant (getTenantStore().get(id)) and calls
+// dfnsClientFor(tenant). the singleton that used to live here is gone; the
+// per-tenant factory owns client construction and caching now, and this delegates
+// to it with the env-sourced demo tenant so behavior is unchanged.
 export function getDfnsClient(): DfnsApiClient {
-  if (cached) return cached
-  const privateKey = loadPrivateKey()
-  const signer = new AsymmetricKeySigner({
-    credId: requireEnv('DFNS_CRED_ID'),
-    privateKey,
-  })
-  cached = new DfnsApiClient({
-    baseUrl: requireEnv('DFNS_API_URL'),
-    authToken: requireEnv('DFNS_AUTH_TOKEN'),
-    signer,
-  })
-  return cached
+  return dfnsClientFor(requireDemoTenant())
 }
 
 // listing one wallet is the lightest authenticated call. fail-fast on

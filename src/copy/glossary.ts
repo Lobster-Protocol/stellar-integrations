@@ -19,6 +19,9 @@ export type GlossaryKey =
   | 'operation'
   | 'admin'
   | 'lpShares'
+  | 'sharedControl'
+  | 'quorum'
+  | 'signer'
 
 export const GLOSSARY: Record<GlossaryKey, string> = {
   trustline:
@@ -40,4 +43,8 @@ export const GLOSSARY: Record<GlossaryKey, string> = {
   operation: 'A single step inside a transaction: one payment, one swap, one trustline change. One transaction can bundle several.',
   admin: 'The account allowed to manage this contract, for example to change its settings.',
   lpShares: 'Your slice of a liquidity pool. Redeem them to take back your share of the two tokens in it.',
+  sharedControl:
+    'Your account set so more than one key has to sign before it can move funds. The keys stay with you and whoever you choose as co-signers.',
+  quorum: 'How many signatures out of the total have to sign before a transaction is allowed through.',
+  signer: 'A key allowed to sign for an account. An account can have several, each with a weight that counts toward the quorum.',
 }

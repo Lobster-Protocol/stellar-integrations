@@ -47,30 +47,44 @@ export interface SoroswapConfirmArgs {
   signer: Signer
 }
 
+// builds the prepared soroswap swap envelope, ready to sign. split out of the
+// one-shot mutation so a multisig owner can freeze this envelope once and gather
+// a quorum on it. windowSecs widens BOTH clocks that would otherwise expire mid
+// signing: the tx timebound and the in-contract deadline. it does not sign or
+// submit. the minAmountOut (1% haircut) is frozen here, so if the pool moves past
+// it before the quorum completes the swap is declined on-chain, never filled at a
+// worse price.
+export async function buildSoroswapConfirmTx(
+  args: SoroswapConfirmArgs,
+  windowSecs = SOROSWAP_DEADLINE_SEC,
+): Promise<string> {
+  const sellingTokenId = brokerAssetToSac(args.params.sellingAsset, args.network)
+  const buyingTokenId = brokerAssetToSac(args.params.buyingAsset, args.network)
+  if (!sellingTokenId || !buyingTokenId) {
+    throw new Error('soroswap fallback: asset to SAC mapping not available on this network')
+  }
+  const amountInStroops = toStroops(args.params.sellingAmount ?? '0')
+  if (!amountInStroops) throw new Error('soroswap fallback: invalid amount')
+
+  const minAmountOut = (args.buyingStroops * BigInt(Math.floor((1 - SOROSWAP_SLIPPAGE) * 10_000))) / 10_000n
+  const deadlineUnix = Math.floor(Date.now() / 1000) + windowSecs
+
+  return buildSoroswapSwapTx({
+    network: args.network,
+    callerAccount: args.account,
+    sellingTokenId,
+    buyingTokenId,
+    amountInStroops,
+    minAmountOut,
+    deadlineUnix,
+    timeoutSecs: windowSecs,
+  })
+}
+
 export function useSoroswapConfirm() {
   return useMutation({
     mutationFn: async (args: SoroswapConfirmArgs): Promise<string> => {
-      const sellingTokenId = brokerAssetToSac(args.params.sellingAsset, args.network)
-      const buyingTokenId = brokerAssetToSac(args.params.buyingAsset, args.network)
-      if (!sellingTokenId || !buyingTokenId) {
-        throw new Error('soroswap fallback: asset to SAC mapping not available on this network')
-      }
-      const amountInStroops = toStroops(args.params.sellingAmount ?? '0')
-      if (!amountInStroops) throw new Error('soroswap fallback: invalid amount')
-
-      const minAmountOut = (args.buyingStroops * BigInt(Math.floor((1 - SOROSWAP_SLIPPAGE) * 10_000))) / 10_000n
-      const deadlineUnix = Math.floor(Date.now() / 1000) + SOROSWAP_DEADLINE_SEC
-
-      const xdr = await buildSoroswapSwapTx({
-        network: args.network,
-        callerAccount: args.account,
-        sellingTokenId,
-        buyingTokenId,
-        amountInStroops,
-        minAmountOut,
-        deadlineUnix,
-      })
-
+      const xdr = await buildSoroswapConfirmTx(args)
       const { signedTxXdr } = await args.signer.signTransaction(xdr, {
         networkPassphrase: args.networkPassphrase,
         address: args.account,

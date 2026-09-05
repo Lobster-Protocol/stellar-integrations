@@ -6,14 +6,22 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { getWalletNetworkPassphrase } from '../integrations/signer/wallet-network'
-import { useSoroswapConfirm } from '../integrations/broker/hooks'
+import { useSoroswapConfirm, buildSoroswapConfirmTx } from '../integrations/broker/hooks'
 import { useSwapRoute } from '../integrations/routing/hooks'
 import { swapTokensFor } from '../config/contracts'
 import { networkPassphrase } from '../integrations/lobster/client'
+import { submitSignedXdr, waitForTx } from '../integrations/lobster/factory'
+import { useAccountSigning } from '../integrations/stellar/use-account-signing'
+import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
 import { cn, stellarExplorer } from '../utils/format'
 import { appendRoutingEntry } from '../integrations/broker/routing-log'
 import type { BrokerQuoteParams } from '../integrations/broker/types'
 import { InfoTip } from './InfoTip'
+import CoSignPanel from './CoSignPanel'
+
+// a quorum swap widens both the tx timebound and the in-contract deadline so the
+// frozen envelope survives while the signers sign, past the 180s single-sig value.
+const MULTISIG_WINDOW_SECS = 3600
 
 interface Props {
   open: boolean
@@ -71,6 +79,14 @@ export default function SwapModal({ open, onClose }: Props) {
 
   const route = useSwapRoute(params, address, network)
   const confirmFallback = useSoroswapConfirm()
+  const signingQ = useAccountSigning(network, address)
+  const multi = signingQ.data ? isMultisig(signingQ.data) : false
+  // multisig swap runs as build-once then gather a quorum, so it needs its own
+  // local state rather than the one-shot mutation the single-sig path uses.
+  const [coSign, setCoSign] = useState<{ baseXdr: string } | null>(null)
+  const [multiHash, setMultiHash] = useState<string | null>(null)
+  const [multiErr, setMultiErr] = useState<string | null>(null)
+  const [multiBuilding, setMultiBuilding] = useState(false)
 
   // the wallet keeps its own network selection, separate from the app toggle.
   // if they differ the wallet refuses to sign, so read it and warn up front.
@@ -95,13 +111,43 @@ export default function SwapModal({ open, onClose }: Props) {
     !!soroswap &&
     !confirmFallback.isPending &&
     !!params &&
-    !networkMismatch
+    !networkMismatch &&
+    // don't send a multisig account down the one-shot path while its signers are
+    // still being read, and don't restart once a quorum collection is underway.
+    !signingQ.isLoading &&
+    !multiBuilding &&
+    !coSign
 
   async function handleConfirmFallback() {
     if (!canConfirmFallback || !soroswap || !params) return
+    // a swap spends the connected wallet's own funds, so it always signs with the
+    // wallet kit, never the dfns relay (which only signs treasury ops).
+    if (multi) {
+      // build the envelope once with widened clocks, then hand it to the co-sign
+      // panel. never rebuild after this, or the gathered signatures stop matching.
+      setMultiErr(null)
+      setMultiBuilding(true)
+      try {
+        const baseXdr = await buildSoroswapConfirmTx(
+          {
+            account: address!,
+            network,
+            networkPassphrase: networkPassphrase(network),
+            params,
+            buyingStroops: soroswap.buyingStroops,
+            signer: walletKitSigner,
+          },
+          MULTISIG_WINDOW_SECS,
+        )
+        setCoSign({ baseXdr })
+      } catch (e) {
+        setMultiErr(readableSwapError(e instanceof Error ? e.message : 'Something went wrong'))
+      } finally {
+        setMultiBuilding(false)
+      }
+      return
+    }
     try {
-      // a swap spends the connected wallet's own funds, so it always signs with
-      // the wallet kit, never the dfns relay (which only signs treasury ops).
       const hash = await confirmFallback.mutateAsync({
         account: address!,
         network,
@@ -320,13 +366,56 @@ export default function SwapModal({ open, onClose }: Props) {
               </p>
             </>
           ) : source === 'soroswap-fallback' ? (
-            <button
-              onClick={handleConfirmFallback}
-              disabled={!canConfirmFallback}
-              className="w-full px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {confirmFallback.isPending ? 'Awaiting signature...' : 'Confirm Soroswap swap'}
-            </button>
+            <>
+              {multi && signingQ.data && !coSign && (
+                <div className="rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-[11px]">
+                  This account uses shared control. This swap needs {requiredWeight(signingQ.data, 'med')}{' '}
+                  signatures. The quoted rate is locked in when you start. If the market moves more than 1%
+                  before every signer approves, the swap is declined on-chain and you start over.
+                </div>
+              )}
+              {!coSign && (
+                <button
+                  onClick={handleConfirmFallback}
+                  disabled={!canConfirmFallback}
+                  className="w-full px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {confirmFallback.isPending
+                    ? 'Awaiting signature...'
+                    : multiBuilding
+                      ? 'Building...'
+                      : 'Confirm Soroswap swap'}
+                </button>
+              )}
+              {coSign && signingQ.data && !multiHash && (
+                <CoSignPanel
+                  network={network}
+                  signing={signingQ.data}
+                  baseXdr={coSign.baseXdr}
+                  connected={address!}
+                  submit={async (xdr) => {
+                    const hash = await submitSignedXdr(network, xdr)
+                    const final = await waitForTx(network, hash)
+                    if (final.status !== 'SUCCESS') throw new Error(`the network reported ${final.status}`)
+                    return hash
+                  }}
+                  onSubmitted={(hash) => {
+                    setMultiHash(hash)
+                    appendRoutingEntry({
+                      ts: Date.now(),
+                      path: 'soroswap-fallback',
+                      sellingAsset: params!.sellingAsset,
+                      buyingAsset: params!.buyingAsset,
+                      sellingAmount: params!.sellingAmount ?? '',
+                      buyingAmount: soroswap!.buyingAmount,
+                      txHash: hash,
+                      network,
+                    })
+                  }}
+                />
+              )}
+              {multiErr && <p className="text-xs text-coral break-words">{multiErr}</p>}
+            </>
           ) : null}
 
           {confirmFallback.isError && (
@@ -334,11 +423,11 @@ export default function SwapModal({ open, onClose }: Props) {
               {readableSwapError((confirmFallback.error as Error).message)}
             </p>
           )}
-          {fallbackHash && (
+          {(fallbackHash || multiHash) && (
             <div className="text-xs text-green">
               Swap confirmed.{' '}
               <a
-                href={stellarExplorer(network, 'tx', fallbackHash)}
+                href={stellarExplorer(network, 'tx', (fallbackHash || multiHash)!)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline"

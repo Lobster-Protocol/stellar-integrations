@@ -12,6 +12,9 @@ export async function buildCreatePoolTx(
   caller: string,
   token0Sac: string,
   token1Sac: string,
+  // widened for a multisig owner so a quorum has time to sign the same envelope,
+  // the same reason vault-tx takes this, past the 60s single-sig default.
+  timeoutSecs = 60,
 ): Promise<{ xdr: string; restorePreamble?: SorobanRestorePreamble }> {
   const factoryId = CONTRACTS[network].lobster.factory
   if (!factoryId) throw new Error(`Lobster Factory not deployed on ${network} yet`)
@@ -32,7 +35,7 @@ export async function buildCreatePoolTx(
         new Address(token1Sac).toScVal(),
       ),
     )
-    .setTimeout(60)
+    .setTimeout(timeoutSecs)
     .build()
 
   const sim = await server.simulateTransaction(tx)
