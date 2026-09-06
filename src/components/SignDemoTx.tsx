@@ -8,6 +8,7 @@ import { pollSignatureStatus, requestTransfer } from '../integrations/dfns/relay
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer, cn } from '../utils/format'
 import { InfoTip } from './InfoTip'
+import { WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
 
 type State =
   | { phase: 'idle' }
@@ -22,7 +23,7 @@ type State =
 const RESTING_PHASES: ReadonlyArray<State['phase']> = ['idle', 'confirmed', 'cleared', 'failed']
 
 export default function SignDemoTx() {
-  const { address, walletName } = useWallet()
+  const { address, walletName, walletId } = useWallet()
   const { network } = useNetwork()
   const { signer, dfnsAddress, setMode } = useCustody()
 
@@ -35,6 +36,9 @@ export default function SignDemoTx() {
   useEffect(() => () => abortRef.current?.abort(), [])
 
   const isDfns = signer.name === 'dfns'
+  // a DFNS wallet connected over WalletConnect signs on the left tab (it is the
+  // connected wallet); the right tab is the separate relay-treasury demo.
+  const isWc = walletId === WALLET_CONNECT_ID
   // dfns signs from the mpc treasury, so the tx must source from that account and
   // not the connected browser wallet; the relay guard rejects any other source.
   const source = isDfns ? dfnsAddress : address
@@ -165,7 +169,7 @@ export default function SignDemoTx() {
             !isDfns ? 'bg-bg-card text-primary shadow-sm' : 'text-text-muted',
           )}
         >
-          Browser wallet
+          {isWc ? 'Your DFNS wallet' : 'Browser wallet'}
         </button>
         <button
           type="button"
@@ -175,14 +179,14 @@ export default function SignDemoTx() {
             isDfns ? 'bg-bg-card text-primary shadow-sm' : 'text-text-muted',
           )}
         >
-          DFNS MPC
+          DFNS relay (advanced)
         </button>
       </div>
 
       {!source ? (
         <p className="text-xs text-text-muted">
           {isDfns
-            ? 'No DFNS treasury wallet on this network yet. Create one in the custody panel to try this.'
+            ? 'This is the advanced DFNS relay demo - a server you run and connect from + MPC. Your own connected DFNS wallet signs under the other tab, no relay needed.'
             : 'Connect a Stellar wallet to try this.'}
         </p>
       ) : network === 'mainnet' ? (

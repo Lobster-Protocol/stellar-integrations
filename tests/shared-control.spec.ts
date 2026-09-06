@@ -8,9 +8,9 @@ import { gotoWithWallet, TEST_WALLET } from './fixtures'
 // which is covered by the module's unit tests and the on-chain proof, not here.
 
 test.describe('shared control', () => {
-  test('is reachable from the nav and renders the co-sign card', async ({ page }) => {
-    await gotoWithWallet(page)
-    await page.getByRole('link', { name: /^Shared control$/ }).click()
+  test('renders the co-sign card at /shared-control', async ({ page }) => {
+    // shared control is an advanced route, off the main nav; reached directly.
+    await gotoWithWallet(page, '/shared-control')
     await expect(page).toHaveURL(/\/shared-control$/)
 
     await expect(page.getByRole('heading', { level: 2, name: 'Shared control' })).toBeVisible()

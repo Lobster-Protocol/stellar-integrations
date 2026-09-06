@@ -161,7 +161,9 @@ test.describe('controls that are icons still have names', () => {
 
   test('the disconnect control names itself', async ({ page }) => {
     await gotoWithWallet(page)
-    await expect(page.getByRole('button', { name: /Disconnect wallet/i })).toBeVisible()
+    // disconnect now lives in the wallet chip's menu, reached by an aria-labelled trigger
+    await page.getByRole('button', { name: 'Connected wallet' }).click()
+    await expect(page.getByRole('menuitem', { name: /Disconnect/i })).toBeVisible()
   })
 
   test('no route lands without a heading to jump to', async ({ page }) => {
