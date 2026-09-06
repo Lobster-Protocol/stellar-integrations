@@ -5,6 +5,7 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { shortenAddress, cn, stellarExplorer } from '../utils/format'
 import CopyButton from './CopyButton'
 import ConnectMpcControl from './ConnectMpcControl'
+import PairMultisigControl from './PairMultisigControl'
 import lobsterIcon from '../assets/lobster-icon.png'
 
 interface Props {
@@ -76,6 +77,7 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
                 <CopyButton value={address} what="your wallet address" />
               </span>
             </div>
+            <PairMultisigControl key={`${network}:${address}`} address={address} network={network} />
             <button
               onClick={disconnect}
               aria-label="Disconnect wallet"
