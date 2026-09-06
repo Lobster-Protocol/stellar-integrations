@@ -10,6 +10,7 @@ import {
   useCreateDfnsWallet,
   RelayError,
 } from '../hooks'
+import { setActiveProfile, DEMO_PROFILE_ID } from '../profiles'
 
 const ORIG_API = import.meta.env.VITE_LOBSTER_API_URL
 const ORIG_TOKEN = import.meta.env.VITE_LOBSTER_API_TOKEN
@@ -22,6 +23,8 @@ beforeEach(() => {
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_TOKEN', '')
   localStorage.clear()
+  // the demo is no longer the default active profile, so these reads opt into it.
+  setActiveProfile(DEMO_PROFILE_ID)
 })
 
 afterEach(() => {

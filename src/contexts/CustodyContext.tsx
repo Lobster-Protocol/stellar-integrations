@@ -4,6 +4,8 @@ import type { Signer } from '../integrations/signer/types'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { dfnsSigner } from '../integrations/signer/dfns-signer'
 import { useDfnsWallets } from '../integrations/dfns/hooks'
+import { useActiveProfile, useSelectedWallet } from '../integrations/dfns/use-profiles'
+import type { DfnsNetwork } from '../integrations/dfns/profiles'
 import { useNetwork } from './NetworkContext'
 import { isAccountId } from '../integrations/stellar/strkey-guards'
 
@@ -31,6 +33,9 @@ export function CustodyProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<CustodyMode>(readInitial)
   const { network } = useNetwork()
   const wallets = useDfnsWallets()
+  const activeProfile = useActiveProfile()
+  const target: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
+  const picked = useSelectedWallet(target)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, mode)
@@ -38,10 +43,19 @@ export function CustodyProvider({ children }: { children: ReactNode }) {
 
   const dfnsAddress = useMemo(() => {
     if (mode !== 'dfns') return null
-    const target = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
-    const match = wallets.data?.items.find((w) => w.network === target && isAccountId(w.address))
+    // no dfns custody until a profile is connected. connecting a client relay
+    // selects it; the demo is opt-in and never acts as custody on mainnet.
+    if (!activeProfile) return null
+    if (activeProfile.kind === 'demo' && network === 'mainnet') return null
+    const items = wallets.data?.items ?? []
+    // the operator's explicit pick wins, as long as the relay still reports it on
+    // this network. otherwise fall back to the one wallet that matches.
+    if (picked && items.some((w) => w.address === picked.address && w.network === target)) {
+      return picked.address
+    }
+    const match = items.find((w) => w.network === target && isAccountId(w.address))
     return match?.address ?? null
-  }, [mode, network, wallets.data])
+  }, [mode, network, target, wallets.data, activeProfile, picked])
 
   const value = useMemo<CustodyCtx>(
     () => ({

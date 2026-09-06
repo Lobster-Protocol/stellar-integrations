@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi } from 'vitest'
 
 import PendingApprovalsPanel from '../PendingApprovalsPanel'
+import { setActiveProfile, DEMO_PROFILE_ID } from '../../integrations/dfns/profiles'
 
 const ORIG_API = import.meta.env.VITE_LOBSTER_API_URL
 
@@ -14,6 +15,8 @@ beforeEach(() => {
   globalThis.fetch = fetchSpy as unknown as typeof fetch
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   localStorage.clear()
+  // the demo is opt-in now; this panel reads the active profile, so select it.
+  setActiveProfile(DEMO_PROFILE_ID)
 })
 
 afterEach(() => {

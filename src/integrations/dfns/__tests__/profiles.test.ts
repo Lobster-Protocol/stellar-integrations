@@ -10,11 +10,15 @@ import {
   addClientProfile,
   removeClientProfile,
   assertRelayUrl,
+  selectedWallet,
+  setSelectedWallet,
+  clearSelectedWallet,
 } from '../profiles'
 
-// the test env sets VITE_LOBSTER_API_URL, so the demo profile is present and is
-// the default active one. these cover the client-profile crud + the active
-// selection the multi-profile custody switch relies on.
+// the test env sets VITE_LOBSTER_API_URL, so the demo profile is present, but it
+// is opt-in: nothing is active until a profile is picked, so a client never lands
+// silently on our org. these cover the client-profile crud + the active selection
+// the multi-profile custody switch relies on.
 
 beforeEach(() => {
   localStorage.clear()
@@ -23,9 +27,12 @@ beforeEach(() => {
 const conn = { label: 'Acme DFNS', relayBaseUrl: 'https://relay.acme.test', apiToken: 'read-tok' }
 
 describe('dfns profiles', () => {
-  it('starts with no client profiles and the demo active', () => {
+  it('starts with no client profiles and nothing active', () => {
     expect(clientProfiles()).toEqual([])
-    expect(activeProfileId()).toBe(DEMO_PROFILE_ID)
+    // the demo exists, but it is not the default: nothing resolves until picked.
+    expect(listProfiles().some((p) => p.id === DEMO_PROFILE_ID)).toBe(true)
+    expect(activeProfileId()).toBeNull()
+    expect(activeProfile()).toBeNull()
   })
 
   it('adds a client profile and makes it the active one', () => {
@@ -51,24 +58,25 @@ describe('dfns profiles', () => {
     expect(activeProfile()?.id).toBe(a.id)
   })
 
-  it('falls back off a removed active profile to one that still resolves', () => {
+  it('deselects when the active profile is removed, never falling back to the demo', () => {
     const a = addClientProfile({ ...conn, label: 'A' })
     const b = addClientProfile({ ...conn, label: 'B' })
     expect(activeProfileId()).toBe(b.id)
     removeClientProfile(b.id)
     expect(clientProfiles().some((p) => p.id === b.id)).toBe(false)
-    const fell = activeProfileId()
-    expect(fell).not.toBe(b.id)
-    expect(listProfiles().some((p) => p.id === fell)).toBe(true)
-    // a still resolves
+    // removing the active profile leaves nothing active: not the other client, and
+    // above all not the demo. the operator picks again on purpose.
+    expect(activeProfileId()).toBeNull()
     expect(clientProfiles().some((p) => p.id === a.id)).toBe(true)
   })
 
   it('ignores a stored active id that no longer resolves', () => {
-    addClientProfile(conn)
+    const p = addClientProfile(conn)
+    expect(activeProfileId()).toBe(p.id)
     setActiveProfile('client-gone')
-    expect(activeProfileId()).not.toBe('client-gone')
-    expect(activeProfile()).not.toBeNull()
+    // an unresolvable stored id selects nothing; it never silently falls back.
+    expect(activeProfileId()).toBeNull()
+    expect(activeProfile()).toBeNull()
   })
 
   it('refuses to add a client profile with an unsafe relay url', () => {
@@ -102,5 +110,39 @@ describe('assertRelayUrl (the money-token destination guard)', () => {
 
   it('allows http on localhost only for the demo', () => {
     expect(assertRelayUrl('http://localhost:8787', 'demo')).toBe('http://localhost:8787')
+  })
+
+  it('refuses a client relay url that is actually the lobster demo relay', () => {
+    // a client who pastes our own relay as "their own" would route their ops onto
+    // our org. the check keys on the demo host, so set it to a public one to reach it.
+    const orig = import.meta.env.VITE_LOBSTER_API_URL
+    Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'https://demo.lobster.example')
+    try {
+      expect(() => assertRelayUrl('https://demo.lobster.example/', 'client')).toThrow(/Lobster demo relay/)
+    } finally {
+      Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', orig)
+    }
+  })
+})
+
+describe('selectedWallet (which of a client org wallets acts as custody)', () => {
+  const conn = { label: 'Acme DFNS', relayBaseUrl: 'https://relay.acme.test', apiToken: 'read-tok' }
+
+  it('remembers a pick per profile and per network, and clears it', () => {
+    const p = addClientProfile(conn)
+    expect(selectedWallet(p.id, 'StellarTestnet')).toBeNull()
+    setSelectedWallet(p.id, { walletId: 'wa-1', address: 'GABC', network: 'StellarTestnet' })
+    expect(selectedWallet(p.id, 'StellarTestnet')?.address).toBe('GABC')
+    // a different network keeps its own pick, independent of testnet
+    expect(selectedWallet(p.id, 'Stellar')).toBeNull()
+    clearSelectedWallet(p.id, 'StellarTestnet')
+    expect(selectedWallet(p.id, 'StellarTestnet')).toBeNull()
+  })
+
+  it('forgets a profile pick when the profile is removed', () => {
+    const p = addClientProfile(conn)
+    setSelectedWallet(p.id, { walletId: 'wa-1', address: 'GABC', network: 'StellarTestnet' })
+    removeClientProfile(p.id)
+    expect(selectedWallet(p.id, 'StellarTestnet')).toBeNull()
   })
 })

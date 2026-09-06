@@ -6,6 +6,7 @@ import { vi } from 'vitest'
 
 import DfnsWalletList from '../DfnsWalletList'
 import { NetworkProvider } from '../../contexts/NetworkContext'
+import { setActiveProfile, DEMO_PROFILE_ID } from '../../integrations/dfns/profiles'
 
 const ORIG_API = import.meta.env.VITE_LOBSTER_API_URL
 
@@ -16,6 +17,8 @@ beforeEach(() => {
   globalThis.fetch = fetchSpy as unknown as typeof fetch
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   localStorage.clear()
+  // the demo is opt-in now; this list reads the active profile, so select it.
+  setActiveProfile(DEMO_PROFILE_ID)
 })
 
 afterEach(() => {

@@ -1,0 +1,242 @@
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Check } from 'lucide-react'
+
+import { useCustody } from '../contexts/CustodyContext'
+import { useNetwork } from '../contexts/NetworkContext'
+import { useActiveProfile } from '../integrations/dfns/use-profiles'
+import { useDfnsWallets } from '../integrations/dfns/hooks'
+import { setSelectedWallet, removeClientProfile, type DfnsNetwork } from '../integrations/dfns/profiles'
+import { shortenAddress, stellarExplorer, cn } from '../utils/format'
+import CopyButton from './CopyButton'
+import ConnectRelayForm from './ConnectRelayForm'
+
+// The top-right "+ MPC" control. A client connects the relay they run for their
+// own DFNS, picks which of their wallets acts as custody, and sees that address
+// here. It never shows or routes to Lobster's own org: the demo profile is
+// opt-in from the Audit page and is shown, if active, plainly as a testnet demo.
+// Approvals are not handled here; they happen in the client's own DFNS console.
+export default function ConnectMpcControl() {
+  const { mode, dfnsAddress, setMode } = useCustody()
+  const { network } = useNetwork()
+  const active = useActiveProfile()
+  const target: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
+  const [open, setOpen] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  const isClient = active?.kind === 'client'
+  const isDemo = active?.kind === 'demo'
+  const showClientChip = mode === 'dfns' && isClient && !!dfnsAddress
+  const showDemoChip = mode === 'dfns' && isDemo && !!dfnsAddress
+
+  function toggle() {
+    setAdding(false)
+    setOpen((v) => !v)
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      {showClientChip ? (
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 hover:bg-primary/10 transition-colors"
+        >
+          <span className="text-[10px] text-text-muted leading-none">Your DFNS</span>
+          <span className="text-xs text-text font-mono">{shortenAddress(dfnsAddress, 4)}</span>
+          <NetTag network={network} />
+        </button>
+      ) : showDemoChip ? (
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/5 px-2.5 py-1 hover:bg-amber-500/10 transition-colors"
+        >
+          <span className="text-[10px] text-amber-600 leading-none">DFNS demo</span>
+          <span className="text-xs text-text font-mono">{shortenAddress(dfnsAddress, 4)}</span>
+          <span className="rounded-full bg-amber-500/10 text-amber-600 text-[9px] font-semibold px-1.5 py-0.5">
+            testnet
+          </span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label="Connect your DFNS MPC wallet"
+          className="flex items-center gap-1 rounded-full border border-text-muted/25 px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-bg hover:text-text transition-colors"
+        >
+          <Plus size={13} />
+          MPC
+        </button>
+      )}
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-text-muted/15 bg-bg-card shadow-lg p-3 z-50 text-left">
+          {active?.kind === 'client' && !adding ? (
+            <ClientPanel
+              network={network}
+              target={target}
+              profileId={active.id}
+              currentAddress={dfnsAddress}
+              onPicked={() => {
+                setMode('dfns')
+                setOpen(false)
+              }}
+              onAddAnother={() => setAdding(true)}
+              onDisconnect={() => {
+                removeClientProfile(active.id)
+                setMode('wallet-kit')
+                setOpen(false)
+              }}
+            />
+          ) : active?.kind === 'demo' && !adding ? (
+            <div className="space-y-2">
+              <p className="text-xs text-text-secondary">
+                You are viewing Lobster's testnet demo custody, not your own DFNS. Connect the relay
+                you run for your own DFNS to use your own MPC.
+              </p>
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="w-full rounded-full bg-primary text-white text-xs font-semibold py-1.5"
+              >
+                Connect your own DFNS
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-text">Connect your own DFNS</p>
+              <p className="text-[11px] text-text-muted">
+                Point the dashboard at the relay you run for your DFNS org. Its key never leaves your
+                DFNS, and your approvals stay in your own DFNS console.
+              </p>
+              <ConnectRelayForm
+                onSaved={() => setAdding(false)}
+                onCancel={() => (isClient || isDemo ? setAdding(false) : setOpen(false))}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NetTag({ network }: { network: 'testnet' | 'mainnet' }) {
+  return (
+    <span
+      className={cn(
+        'rounded-full text-[9px] font-semibold px-1.5 py-0.5',
+        network === 'mainnet' ? 'bg-green/10 text-green' : 'bg-amber-500/10 text-amber-600',
+      )}
+    >
+      {network}
+    </span>
+  )
+}
+
+function ClientPanel({
+  network,
+  target,
+  profileId,
+  currentAddress,
+  onPicked,
+  onAddAnother,
+  onDisconnect,
+}: {
+  network: 'testnet' | 'mainnet'
+  target: DfnsNetwork
+  profileId: string
+  currentAddress: string | null
+  onPicked: () => void
+  onAddAnother: () => void
+  onDisconnect: () => void
+}) {
+  const wallets = useDfnsWallets()
+  const items = (wallets.data?.items ?? []).filter((w) => w.network === target)
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-text">Your DFNS wallets</p>
+        <NetTag network={network} />
+      </div>
+
+      {wallets.isLoading ? (
+        <p className="text-[11px] text-text-muted">Reading your wallets...</p>
+      ) : wallets.isError ? (
+        <p className="text-[11px] text-coral break-words">
+          Could not read your relay. Check it is running and reachable.
+        </p>
+      ) : items.length === 0 ? (
+        <p className="text-[11px] text-text-muted">
+          No wallet on {network} in this DFNS org. Create one in your DFNS console, then reopen this.
+        </p>
+      ) : (
+        <ul className="space-y-1">
+          {items.map((w) => {
+            const isCurrent = currentAddress === w.address
+            return (
+              <li key={w.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedWallet(profileId, { walletId: w.id, address: w.address, network: target })
+                    onPicked()
+                  }}
+                  className={cn(
+                    'w-full flex items-center gap-2 rounded-xl px-2.5 py-1.5 border text-left transition-colors',
+                    isCurrent ? 'border-primary bg-primary/5' : 'border-text-muted/15 hover:bg-bg',
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs text-text truncate">{w.name || 'wallet'}</span>
+                    <span className="block text-[10px] text-text-muted font-mono">{shortenAddress(w.address, 5)}</span>
+                  </span>
+                  {isCurrent && <Check size={14} className="text-primary shrink-0" />}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {currentAddress && (
+        <div className="flex items-center gap-1.5 rounded-xl bg-bg px-2.5 py-1.5">
+          <span className="text-[10px] text-text-muted">In use</span>
+          <a
+            href={stellarExplorer(network, 'account', currentAddress)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-text font-mono hover:text-primary hover:underline"
+          >
+            {shortenAddress(currentAddress, 5)}
+          </a>
+          <CopyButton value={currentAddress} what="your DFNS wallet address" />
+        </div>
+      )}
+
+      <p className="text-[10px] text-text-muted">
+        Approvals for these wallets happen in your own DFNS console, not here.
+      </p>
+
+      <div className="flex items-center justify-between pt-1">
+        <button type="button" onClick={onAddAnother} className="text-[11px] text-primary hover:underline">
+          Connect another DFNS
+        </button>
+        <button type="button" onClick={onDisconnect} className="text-[11px] text-text-muted hover:text-coral">
+          Disconnect
+        </button>
+      </div>
+    </div>
+  )
+}

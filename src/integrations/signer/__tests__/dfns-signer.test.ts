@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 import { dfnsSigner } from '../dfns-signer'
+import { setActiveProfile, DEMO_PROFILE_ID } from '../../dfns/profiles'
 
 const PASSPHRASE = 'Test SDF Network ; September 2015'
 const ACCOUNT = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
@@ -12,8 +13,11 @@ let fetchSpy: ReturnType<typeof vi.fn>
 beforeEach(() => {
   fetchSpy = vi.fn()
   globalThis.fetch = fetchSpy as unknown as typeof fetch
+  localStorage.clear()
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_TOKEN', '')
+  // the demo is no longer the default active profile, so the signer path opts in.
+  setActiveProfile(DEMO_PROFILE_ID)
 })
 
 afterEach(() => {

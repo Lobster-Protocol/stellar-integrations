@@ -6,8 +6,11 @@ import {
   listProfiles,
   activeProfile,
   activeRelay,
+  selectedWallet,
   type DfnsProfile,
   type ActiveRelay,
+  type DfnsNetwork,
+  type SelectedWallet,
 } from './profiles'
 
 // the store version is a primitive that changes on every profile/selection change,
@@ -30,4 +33,12 @@ export function useActiveRelay(): ActiveRelay | null {
 
 export function useHasActiveRelay(): boolean {
   return useActiveRelay() !== null
+}
+
+// the wallet picked inside the active profile for this network, or null. drives
+// which dfns address the dashboard treats as custody (see CustodyContext).
+export function useSelectedWallet(network: DfnsNetwork): SelectedWallet | null {
+  useSyncExternalStore(subscribe, storeVersion, storeVersion)
+  const p = activeProfile()
+  return p ? selectedWallet(p.id, network) : null
 }

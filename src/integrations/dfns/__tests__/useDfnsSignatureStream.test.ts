@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
 import { useDfnsSignatureStream } from '../useDfnsSignatureStream'
+import { setActiveProfile, DEMO_PROFILE_ID } from '../profiles'
 
 const ORIG_API = import.meta.env.VITE_LOBSTER_API_URL
 const ORIG_TOKEN = import.meta.env.VITE_LOBSTER_API_TOKEN
@@ -38,8 +39,11 @@ class MockEventSource {
 beforeEach(() => {
   MockEventSource.lastInstance = null
   vi.stubGlobal('EventSource', MockEventSource)
+  localStorage.clear()
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_TOKEN', '')
+  // the stream follows the active profile; the demo is opt-in now, so select it.
+  setActiveProfile(DEMO_PROFILE_ID)
 })
 
 afterEach(() => {

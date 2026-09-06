@@ -11,9 +11,17 @@ beforeEach(() => {
 })
 
 describe('ConnectDfnsPanel', () => {
-  it('lists the demo profile as a testnet sandbox', () => {
+  it('lists the demo profile as a testnet sandbox, not active by default', () => {
     render(<ConnectDfnsPanel />)
     expect(screen.getByText('Testnet sandbox')).toBeInTheDocument()
+    // the demo is opt-in now: its "you are on the demo" note only shows once picked,
+    // never by default, so a client is never silently on our org.
+    expect(screen.queryByText(/shared sandbox, not your custody/)).not.toBeInTheDocument()
+  })
+
+  it('shows the demo note only after the operator explicitly picks the demo', () => {
+    render(<ConnectDfnsPanel />)
+    fireEvent.click(screen.getByRole('button', { name: /Lobster demo/ }))
     expect(screen.getByText(/shared sandbox, not your custody/)).toBeInTheDocument()
   })
 

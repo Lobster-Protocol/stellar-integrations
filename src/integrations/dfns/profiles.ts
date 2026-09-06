@@ -33,6 +33,17 @@ export interface ActiveRelay {
   operatorToken: string | null
 }
 
+// the two networks a dfns wallet can be on, named the way dfns names them.
+export type DfnsNetwork = 'Stellar' | 'StellarTestnet'
+
+// the wallet an operator picked, inside a profile, to act as custody. an org can
+// hold several wallets, so the pick is what the client points the dashboard at.
+export interface SelectedWallet {
+  walletId: string
+  address: string
+  network: DfnsNetwork
+}
+
 const PROFILES_KEY = 'lob_dfns_profiles'
 const ACTIVE_KEY = 'lob_dfns_active'
 // the single-relay operator token key that predates profiles; kept as the demo
@@ -105,6 +116,12 @@ export function assertRelayUrl(raw: string, kind: 'demo' | 'client'): string {
     if (isPrivate) {
       throw new Error('A client relay cannot be a private or loopback address; use its public https host.')
     }
+    // a client relay that is actually Lobster's own demo relay would route their
+    // ops onto our org. refuse it: the whole point is their own DFNS, not ours.
+    const demo = import.meta.env.VITE_LOBSTER_API_URL
+    if (demo && u.host === relayHost(demo)) {
+      throw new Error('That is the Lobster demo relay, not your own. Enter the relay you run for your own DFNS.')
+    }
   }
   return raw
 }
@@ -161,7 +178,12 @@ export function activeProfileId(): string | null {
   }
   const all = listProfiles()
   if (stored && all.some((p) => p.id === stored)) return stored
-  return all[0]?.id ?? null
+  // the demo profile is always present (built from env), so falling back to the
+  // first profile made it the default with nothing stored. a client who turned on
+  // dfns custody without connecting their own relay was then routed onto our org,
+  // and their approval landed on our dfns account. nothing is active until a
+  // profile is picked: connecting a client relay selects it, the demo is opt-in.
+  return null
 }
 
 export function activeProfile(): DfnsProfile | null {
@@ -196,16 +218,21 @@ export function addClientProfile(input: Omit<DfnsProfile, 'id' | 'kind'>): DfnsP
 }
 
 export function removeClientProfile(id: string): void {
+  // read this before the write, since afterwards the id no longer resolves and the
+  // check could never match. removing the active profile deselects to nothing (it
+  // never silently promotes another profile, and never the demo).
+  const wasActive = activeProfileId() === id
   write(
     PROFILES_KEY,
     clientProfiles().filter((p) => p.id !== id),
   )
   try {
     sessionStorage.removeItem(operatorKey(id))
+    localStorage.removeItem(selectedWalletKey(id))
   } catch {
     // storage off
   }
-  if (activeProfileId() === id) {
+  if (wasActive) {
     try {
       localStorage.removeItem(ACTIVE_KEY)
     } catch {
@@ -243,6 +270,35 @@ export function setProfileOperatorToken(profile: DfnsProfile, token: string): vo
   } catch {
     // storage off
   }
+  emit()
+}
+
+function selectedWalletKey(id: string): string {
+  return `lob_dfns_wallet_${id}`
+}
+
+// the wallet the operator chose inside a profile, per network. it is a public
+// address so it can live in localStorage; the operator token is the secret and
+// stays in sessionStorage. a profile with several wallets remembers each pick.
+export function selectedWallet(profileId: string, network: DfnsNetwork): SelectedWallet | null {
+  const map = read<Record<string, SelectedWallet>>(selectedWalletKey(profileId), {})
+  const w = map[network]
+  if (!w || typeof w.address !== 'string' || typeof w.walletId !== 'string') return null
+  return w
+}
+
+export function setSelectedWallet(profileId: string, w: SelectedWallet): void {
+  const map = read<Record<string, SelectedWallet>>(selectedWalletKey(profileId), {})
+  write(selectedWalletKey(profileId), { ...map, [w.network]: w })
+  emit()
+}
+
+export function clearSelectedWallet(profileId: string, network: DfnsNetwork): void {
+  const map = read<Record<string, SelectedWallet>>(selectedWalletKey(profileId), {})
+  if (!(network in map)) return
+  const next = { ...map }
+  delete next[network]
+  write(selectedWalletKey(profileId), next)
   emit()
 }
 
