@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Plus, Check } from 'lucide-react'
 
 import { useCustody } from '../contexts/CustodyContext'
+import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useActiveProfile } from '../integrations/dfns/use-profiles'
 import { useDfnsWallets } from '../integrations/dfns/hooks'
@@ -11,13 +12,14 @@ import { shortenAddress, stellarExplorer, cn } from '../utils/format'
 import CopyButton from './CopyButton'
 import ConnectRelayForm from './ConnectRelayForm'
 
-// The top-right "+ MPC" control. A client connects the relay they run for their
-// own DFNS, picks which of their wallets acts as custody, and sees that address
-// here. It never shows or routes to Lobster's own org: the demo profile is
-// opt-in from the Audit page and is shown, if active, plainly as a testnet demo.
-// Approvals are not handled here; they happen in the client's own DFNS console.
+// The top-right "+ MPC" control for connecting a DFNS MPC wallet. The default is
+// WalletConnect - the DFNS wallet pairs from the client's own DFNS console, and
+// signs there. Running your own relay is the advanced fallback. It never routes to
+// Lobster's own org: the demo profile is opt-in from the Audit page and shown, if
+// active, plainly as a testnet demo. Approvals happen in the client's DFNS console.
 export default function ConnectMpcControl() {
   const { mode, dfnsAddress, setMode } = useCustody()
+  const { connectWalletConnect, walletConnectEnabled } = useWallet()
   const { network } = useNetwork()
   const active = useActiveProfile()
   const target: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
@@ -52,9 +54,22 @@ export default function ConnectMpcControl() {
       if (triggerRef.current?.contains(t) || panelRef.current?.contains(t)) return
       setOpen(false)
     }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open])
+
+  // move focus into the panel when it opens: it is portaled to the end of the body,
+  // so without this a keyboard user would have to tab through the whole page to reach it.
+  useEffect(() => {
+    if (open && pos) panelRef.current?.focus()
+  }, [open, pos])
 
   const isClient = active?.kind === 'client'
   const isDemo = active?.kind === 'demo'
@@ -72,6 +87,8 @@ export default function ConnectMpcControl() {
         <button
           type="button"
           onClick={toggle}
+          aria-haspopup="dialog"
+          aria-expanded={open}
           className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 hover:bg-primary/10 transition-colors"
         >
           <span className="text-[10px] text-text-muted leading-none">Your DFNS</span>
@@ -82,6 +99,8 @@ export default function ConnectMpcControl() {
         <button
           type="button"
           onClick={toggle}
+          aria-haspopup="dialog"
+          aria-expanded={open}
           className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/5 px-2.5 py-1 hover:bg-amber-500/10 transition-colors"
         >
           <span className="text-[10px] text-amber-600 leading-none">DFNS demo</span>
@@ -94,6 +113,8 @@ export default function ConnectMpcControl() {
         <button
           type="button"
           onClick={toggle}
+          aria-haspopup="dialog"
+          aria-expanded={open}
           aria-label="Connect your DFNS MPC wallet"
           className="flex items-center gap-1 rounded-full border border-text-muted/25 px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-bg hover:text-text transition-colors"
         >
@@ -107,6 +128,9 @@ export default function ConnectMpcControl() {
         createPortal(
           <div
             ref={panelRef}
+            role="dialog"
+            aria-label="Connect your DFNS MPC wallet"
+            tabIndex={-1}
             style={{
               position: 'fixed',
               top: pos.top,
@@ -114,7 +138,7 @@ export default function ConnectMpcControl() {
               zIndex: 1000,
               maxHeight: `calc(100vh - ${pos.top + 16}px)`,
             }}
-            className="w-80 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl border border-text-muted/15 bg-bg-card shadow-xl p-3 text-left"
+            className="w-80 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl border border-text-muted/15 bg-bg-card shadow-xl p-3 text-left outline-none"
           >
           {active?.kind === 'client' && !adding ? (
             <ClientPanel
@@ -148,16 +172,58 @@ export default function ConnectMpcControl() {
               </button>
             </div>
           ) : (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-text">Connect your own DFNS</p>
-              <p className="text-[11px] text-text-muted">
-                Point the dashboard at the relay you run for your DFNS org. Its key never leaves your
-                DFNS, and your approvals stay in your own DFNS console.
-              </p>
-              <ConnectRelayForm
-                onSaved={() => setAdding(false)}
-                onCancel={() => (isClient || isDemo ? setAdding(false) : setOpen(false))}
-              />
+            <div className="space-y-3">
+              {adding && (isClient || isDemo) && (
+                <button
+                  type="button"
+                  onClick={() => setAdding(false)}
+                  className="text-[11px] text-text-muted hover:text-text"
+                >
+                  &larr; Back
+                </button>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-text">Connect your DFNS MPC wallet</p>
+                <p className="text-[11px] text-text-muted">
+                  Connect over WalletConnect and approve the pairing in your own DFNS console. Your
+                  keys never leave DFNS. It then shows as your connected wallet, top right.
+                </p>
+              </div>
+
+              {walletConnectEnabled ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    // flip to the wallet-kit signer only once the wallet actually
+                    // connects, so a dismissed modal does not drop the current mode.
+                    const addr = await connectWalletConnect()
+                    if (addr) {
+                      setMode('wallet-kit')
+                      setOpen(false)
+                    }
+                  }}
+                  className="w-full rounded-full bg-primary text-white text-xs font-semibold py-2 hover:bg-primary-dark transition-colors"
+                >
+                  Connect with WalletConnect
+                </button>
+              ) : (
+                <p className="rounded-xl bg-amber-500/10 text-amber-600 px-3 py-2 text-[11px]">
+                  WalletConnect is not enabled on this dashboard yet. Ask your admin to set the
+                  WalletConnect project id, or run your own relay below.
+                </p>
+              )}
+
+              <details open={!walletConnectEnabled}>
+                <summary className="text-[11px] text-text-muted cursor-pointer hover:text-text">
+                  Advanced: run your own relay
+                </summary>
+                <div className="mt-2">
+                  <ConnectRelayForm
+                    onSaved={() => setAdding(false)}
+                    onCancel={() => (isClient || isDemo ? setAdding(false) : setOpen(false))}
+                  />
+                </div>
+              </details>
             </div>
           )}
           </div>,

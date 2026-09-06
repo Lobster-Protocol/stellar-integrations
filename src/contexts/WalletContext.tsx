@@ -4,7 +4,7 @@ import { FreighterModule } from '@creit-tech/stellar-wallets-kit/modules/freight
 import { xBullModule } from '@creit-tech/stellar-wallets-kit/modules/xbull'
 import { AlbedoModule, ALBEDO_ID } from '@creit-tech/stellar-wallets-kit/modules/albedo'
 import { LobstrModule } from '@creit-tech/stellar-wallets-kit/modules/lobstr'
-import { WalletConnectModule, WalletConnectTargetChain } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
+import { WalletConnectModule, WalletConnectTargetChain, WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
 import { useNetwork } from './NetworkContext'
 
 interface WalletCtx {
@@ -12,6 +12,11 @@ interface WalletCtx {
   walletName: string | null
   connecting: boolean
   connect: () => Promise<void>
+  // open WalletConnect straight away, for a DFNS MPC wallet the client pairs from
+  // their own DFNS console. resolves to the connected address, or null if the
+  // client dismissed the modal. unavailable until the WC project id is set.
+  connectWalletConnect: () => Promise<string | null>
+  walletConnectEnabled: boolean
   disconnect: () => void
 }
 
@@ -51,11 +56,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             url: window.location.origin,
             icons: [`${window.location.origin}/lobster-icon.png`],
           },
-          allowedChains: [
-            network === 'mainnet'
-              ? WalletConnectTargetChain.PUBLIC
-              : WalletConnectTargetChain.TESTNET,
-          ],
+          // both chains, so one session survives a testnet/mainnet toggle: the kit
+          // freezes allowedChains at init and never re-scopes the session on
+          // setNetwork, so a single-chain session would reject the other network.
+          allowedChains: [WalletConnectTargetChain.PUBLIC, WalletConnectTargetChain.TESTNET],
         }),
       )
     }
@@ -100,10 +104,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!kitInitialised) return
     const wid = localStorage.getItem('lob_wid')
     // Albedo and other purely web wallets prompt on every getAddress, so a
-    // mount-time re-attach would pop a window on each load. skip them - they
-    // grant access at sign time instead. extension wallets (Freighter, xBull,
-    // LOBSTR) return silently once the site has been approved.
-    if (!wid || wid === ALBEDO_ID || !localStorage.getItem('lob_addr')) return
+    // mount-time re-attach would pop a window on each load. skip them - they grant
+    // access at sign time instead. WalletConnect is skipped for the opposite reason:
+    // its session is restored from storage by the sign-client, and re-running
+    // getAddress would start a fresh pairing and pop the QR modal on every load.
+    // extension wallets (Freighter, xBull, LOBSTR) return silently once approved.
+    if (!wid || wid === ALBEDO_ID || wid === WALLET_CONNECT_ID || !localStorage.getItem('lob_addr'))
+      return
     let cancelled = false
     void (async () => {
       try {
@@ -123,10 +130,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const connect = useCallback(async () => {
+  // walletId set = open that wallet directly (WalletConnect for a DFNS MPC wallet);
+  // unset = the full chooser. Kept internal so the button's onClick event can never
+  // arrive here as a bogus id.
+  const runConnect = useCallback(async (walletId?: string): Promise<string | null> => {
     setConnecting(true)
     try {
-      const { address: addr } = await StellarWalletsKit.authModal()
+      if (walletId) StellarWalletsKit.setWallet(walletId)
+      // fetchAddress delegates to the module and opens its modal (the WalletConnect
+      // QR); the static getAddress only returns whatever is already in memory.
+      const { address: addr } = walletId
+        ? await StellarWalletsKit.fetchAddress()
+        : await StellarWalletsKit.authModal()
       const mod = StellarWalletsKit.selectedModule
       const picked = mod?.productName || 'Stellar Wallet'
       setAddress(addr)
@@ -137,12 +152,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // instead of only rehydrating the address (which leaves the wallet
       // thinking the site is not connected, so it refuses to sign).
       if (mod?.productId) localStorage.setItem('lob_wid', mod.productId)
+      return addr
     } catch (err: unknown) {
       console.error('wallet connect failed:', err)
+      return null
     } finally {
       setConnecting(false)
     }
   }, [])
+
+  const connect = useCallback(async () => {
+    await runConnect()
+  }, [runConnect])
+  const connectWalletConnect = useCallback(() => runConnect(WALLET_CONNECT_ID), [runConnect])
 
   const disconnect = useCallback(() => {
     setAddress(null)
@@ -154,8 +176,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     StellarWalletsKit.disconnect().catch(() => {})
   }, [])
 
+  // the WC module is only registered when the project id is set (see the init
+  // effect above), so the UI hides the WalletConnect path when it is not.
+  const walletConnectEnabled = !!(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined)
+
   return (
-    <Ctx.Provider value={{ address, walletName, connecting, connect, disconnect }}>
+    <Ctx.Provider
+      value={{ address, walletName, connecting, connect, connectWalletConnect, walletConnectEnabled, disconnect }}
+    >
       {children}
     </Ctx.Provider>
   )
