@@ -23,6 +23,7 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
   const [url, setUrl] = useState('')
   const [readToken, setReadToken] = useState('')
   const [opToken, setOpToken] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [phase, setPhase] = useState<Phase>({ k: 'form' })
 
   async function runVerify() {
@@ -58,15 +59,6 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
       </div>
 
       <label className="block text-text-secondary">
-        Name
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Acme treasury"
-          className="mt-1 w-full bg-bg-card rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary/30"
-        />
-      </label>
-      <label className="block text-text-secondary">
         Relay address
         <input
           value={url}
@@ -81,23 +73,45 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
           type="password"
           value={readToken}
           onChange={(e) => setReadToken(e.target.value)}
-          placeholder="LOBSTER_API_TOKEN"
+          placeholder="the token your relay expects, if any"
           className="mt-1 w-full bg-bg-card rounded-lg px-3 py-2 font-mono outline-none focus:ring-1 focus:ring-primary/30"
         />
       </label>
-      <label className="block text-text-secondary">
-        Operator token (optional, for approving and creating wallets)
-        <input
-          type="password"
-          value={opToken}
-          onChange={(e) => setOpToken(e.target.value)}
-          placeholder="LOBSTER_OPERATOR_TOKEN"
-          className="mt-1 w-full bg-bg-card rounded-lg px-3 py-2 font-mono outline-none focus:ring-1 focus:ring-primary/30"
-        />
-        <span className="block text-[10px] text-text-muted mt-0.5">
-          Kept in this tab only, never written to disk.
-        </span>
-      </label>
+
+      <button
+        type="button"
+        onClick={() => setShowAdvanced((v) => !v)}
+        className="text-[11px] text-primary hover:underline"
+      >
+        {showAdvanced ? 'Hide advanced' : 'Advanced: name it, add an operator token'}
+      </button>
+      {showAdvanced && (
+        <>
+          <label className="block text-text-secondary">
+            Name
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Acme treasury"
+              className="mt-1 w-full bg-bg-card rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary/30"
+            />
+          </label>
+          <label className="block text-text-secondary">
+            Operator token (only to approve or create wallets from here, not needed to connect)
+            <input
+              type="password"
+              value={opToken}
+              onChange={(e) => setOpToken(e.target.value)}
+              placeholder="LOBSTER_OPERATOR_TOKEN"
+              className="mt-1 w-full bg-bg-card rounded-lg px-3 py-2 font-mono outline-none focus:ring-1 focus:ring-primary/30"
+            />
+            <span className="block text-[10px] text-text-muted mt-0.5">
+              Kept in this tab only, never written to disk. Your approvals happen in your own DFNS
+              console, so you usually do not need this.
+            </span>
+          </label>
+        </>
+      )}
 
       <div className="flex items-center gap-2">
         <button
