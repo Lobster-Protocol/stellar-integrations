@@ -1,9 +1,9 @@
 import type { RefObject } from 'react'
-import { Menu, LogOut } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { shortenAddress, cn, stellarExplorer } from '../utils/format'
-import CopyButton from './CopyButton'
+import { cn } from '../utils/format'
+import WalletChip from './WalletChip'
 import ConnectMpcControl from './ConnectMpcControl'
 import PairMultisigControl from './PairMultisigControl'
 import lobsterIcon from '../assets/lobster-icon.png'
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props) {
-  const { address, walletName, connecting, connect, disconnect } = useWallet()
+  const { address, connecting, connect } = useWallet()
   const { network, setNetwork } = useNetwork()
 
   return (
@@ -59,32 +59,13 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           </button>
         </div>
 
-        {/* Browser wallet: its own connection, connect/disconnect here. */}
+        {/* One connected-wallet chip (address actions + disconnect live in its menu),
+            plus the optional multisig-pairing label. When nothing is connected, the
+            plain Connect Wallet button. */}
         {address ? (
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:block text-right">
-              <p className="text-[10px] text-text-muted leading-none">{walletName}</p>
-              <span className="flex items-center justify-end gap-0.5">
-                <a
-                  href={stellarExplorer(network, 'account', address)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={address}
-                  className="text-xs text-text font-mono hover:text-primary hover:underline"
-                >
-                  {shortenAddress(address, 5)}
-                </a>
-                <CopyButton value={address} what="your wallet address" />
-              </span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <WalletChip address={address} network={network} />
             <PairMultisigControl key={`${network}:${address}`} address={address} network={network} />
-            <button
-              onClick={disconnect}
-              aria-label="Disconnect wallet"
-              className="text-xs text-text-muted hover:text-error px-2 py-1 rounded-full hover:bg-error/5 transition-colors"
-            >
-              <LogOut size={14} />
-            </button>
           </div>
         ) : (
           <button
@@ -96,10 +77,9 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           </button>
         )}
 
-        {/* DFNS custody is a separate connection from the browser wallet. The
-            control shows "+ MPC" until the client connects their own DFNS relay
-            and picks a wallet, then shows that wallet. It never routes to our own
-            org: the demo is opt-in from the Audit page. */}
+        {/* DFNS custody: WalletConnect is the default, a relay is the advanced path.
+            Hidden once a DFNS wallet is connected over WalletConnect - that already
+            shows in the wallet chip, so a second "+ MPC" invite would only confuse. */}
         <ConnectMpcControl />
       </div>
     </div>

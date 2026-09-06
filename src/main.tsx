@@ -10,6 +10,7 @@ import { wagmiConfig } from './integrations/evm/config'
 import { WalletProvider } from './contexts/WalletContext'
 import { NetworkProvider } from './contexts/NetworkContext'
 import { CustodyProvider } from './contexts/CustodyContext'
+import { ToastProvider } from './contexts/ToastContext'
 import App from './App'
 import './index.css'
 
@@ -30,11 +31,13 @@ createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
           <NetworkProvider>
-            <WalletProvider>
-              <CustodyProvider>
-                <App />
-              </CustodyProvider>
-            </WalletProvider>
+            <ToastProvider>
+              <WalletProvider>
+                <CustodyProvider>
+                  <App />
+                </CustodyProvider>
+              </WalletProvider>
+            </ToastProvider>
           </NetworkProvider>
         </WagmiProvider>
       </QueryClientProvider>

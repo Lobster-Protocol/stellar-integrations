@@ -6,10 +6,14 @@ import { AlbedoModule, ALBEDO_ID } from '@creit-tech/stellar-wallets-kit/modules
 import { LobstrModule } from '@creit-tech/stellar-wallets-kit/modules/lobstr'
 import { WalletConnectModule, WalletConnectTargetChain, WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
 import { useNetwork } from './NetworkContext'
+import { useToast } from './ToastContext'
 
 interface WalletCtx {
   address: string | null
   walletName: string | null
+  // the connected wallet's module id (e.g. WALLET_CONNECT_ID), so the UI can tell a
+  // DFNS-over-WalletConnect wallet apart from a browser extension wallet.
+  walletId: string | null
   connecting: boolean
   connect: () => Promise<void>
   // open WalletConnect straight away, for a DFNS MPC wallet the client pairs from
@@ -31,7 +35,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // loads. The effect below is what actually re-attaches the kit session.
   const [address, setAddress] = useState<string | null>(() => localStorage.getItem('lob_addr'))
   const [walletName, setWalletName] = useState<string | null>(() => localStorage.getItem('lob_wname'))
+  const [walletId, setWalletId] = useState<string | null>(() => localStorage.getItem('lob_wid'))
   const [connecting, setConnecting] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     if (kitInitialised) return
@@ -133,33 +139,52 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // walletId set = open that wallet directly (WalletConnect for a DFNS MPC wallet);
   // unset = the full chooser. Kept internal so the button's onClick event can never
   // arrive here as a bogus id.
-  const runConnect = useCallback(async (walletId?: string): Promise<string | null> => {
-    setConnecting(true)
-    try {
-      if (walletId) StellarWalletsKit.setWallet(walletId)
-      // fetchAddress delegates to the module and opens its modal (the WalletConnect
-      // QR); the static getAddress only returns whatever is already in memory.
-      const { address: addr } = walletId
-        ? await StellarWalletsKit.fetchAddress()
-        : await StellarWalletsKit.authModal()
-      const mod = StellarWalletsKit.selectedModule
-      const picked = mod?.productName || 'Stellar Wallet'
-      setAddress(addr)
-      setWalletName(picked)
-      localStorage.setItem('lob_addr', addr)
-      localStorage.setItem('lob_wname', picked)
-      // remember which module so we can re-attach the session on the next load
-      // instead of only rehydrating the address (which leaves the wallet
-      // thinking the site is not connected, so it refuses to sign).
-      if (mod?.productId) localStorage.setItem('lob_wid', mod.productId)
-      return addr
-    } catch (err: unknown) {
-      console.error('wallet connect failed:', err)
-      return null
-    } finally {
-      setConnecting(false)
-    }
-  }, [])
+  const runConnect = useCallback(
+    async (openId?: string): Promise<string | null> => {
+      setConnecting(true)
+      try {
+        if (openId) StellarWalletsKit.setWallet(openId)
+        // fetchAddress delegates to the module and opens its modal (the WalletConnect
+        // QR); the static getAddress only returns whatever is already in memory.
+        const { address: addr } = openId
+          ? await StellarWalletsKit.fetchAddress()
+          : await StellarWalletsKit.authModal()
+        const mod = StellarWalletsKit.selectedModule
+        const picked = mod?.productName || 'Stellar Wallet'
+        setAddress(addr)
+        setWalletName(picked)
+        localStorage.setItem('lob_addr', addr)
+        localStorage.setItem('lob_wname', picked)
+        // remember which module so we can re-attach the session on the next load
+        // instead of only rehydrating the address (which leaves the wallet
+        // thinking the site is not connected, so it refuses to sign).
+        if (mod?.productId) {
+          localStorage.setItem('lob_wid', mod.productId)
+          setWalletId(mod.productId)
+        }
+        toast.success(
+          mod?.productId === WALLET_CONNECT_ID
+            ? 'DFNS wallet connected over WalletConnect'
+            : `${picked} connected`,
+        )
+        return addr
+      } catch (err: unknown) {
+        console.error('wallet connect failed:', err)
+        // the kit rejects on both a real failure and the user just closing the
+        // wallet/QR modal - keep a dismissal quiet, shout only on a real error.
+        const m = err instanceof Error ? err.message.toLowerCase() : ''
+        if (/reject|declin|cancel|close|dismiss|expired|abort|user/.test(m)) {
+          toast.info('Connection cancelled.')
+        } else {
+          toast.error('Could not connect. Check your wallet and try again.')
+        }
+        return null
+      } finally {
+        setConnecting(false)
+      }
+    },
+    [toast],
+  )
 
   const connect = useCallback(async () => {
     await runConnect()
@@ -169,12 +194,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const disconnect = useCallback(() => {
     setAddress(null)
     setWalletName(null)
+    setWalletId(null)
     localStorage.removeItem('lob_addr')
     localStorage.removeItem('lob_wname')
     localStorage.removeItem('lob_wid')
     // kit may throw if nothing was connected; tearing down anyway, ignore
     StellarWalletsKit.disconnect().catch(() => {})
-  }, [])
+    toast.info('Wallet disconnected')
+  }, [toast])
 
   // the WC module is only registered when the project id is set (see the init
   // effect above), so the UI hides the WalletConnect path when it is not.
@@ -182,7 +209,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ address, walletName, connecting, connect, connectWalletConnect, walletConnectEnabled, disconnect }}
+      value={{ address, walletName, walletId, connecting, connect, connectWalletConnect, walletConnectEnabled, disconnect }}
     >
       {children}
     </Ctx.Provider>

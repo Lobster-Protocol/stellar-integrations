@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Check } from 'lucide-react'
 
+import { WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
+
 import { useCustody } from '../contexts/CustodyContext'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
@@ -19,7 +21,7 @@ import ConnectRelayForm from './ConnectRelayForm'
 // active, plainly as a testnet demo. Approvals happen in the client's DFNS console.
 export default function ConnectMpcControl() {
   const { mode, dfnsAddress, setMode } = useCustody()
-  const { connectWalletConnect, walletConnectEnabled } = useWallet()
+  const { connectWalletConnect, walletConnectEnabled, walletId, connecting } = useWallet()
   const { network } = useNetwork()
   const active = useActiveProfile()
   const target: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
@@ -75,11 +77,17 @@ export default function ConnectMpcControl() {
   const isDemo = active?.kind === 'demo'
   const showClientChip = mode === 'dfns' && isClient && !!dfnsAddress
   const showDemoChip = mode === 'dfns' && isDemo && !!dfnsAddress
+  const isWcConnected = walletId === WALLET_CONNECT_ID
 
   function toggle() {
     setAdding(false)
     setOpen((v) => !v)
   }
+
+  // a DFNS wallet connected over WalletConnect already shows in the wallet chip, so a
+  // second "+ MPC" invite beside it only confuses. hide this control then - unless we
+  // are in relay (dfns) custody, which keeps its own chip below.
+  if (isWcConnected && !showClientChip && !showDemoChip) return null
 
   return (
     <div ref={triggerRef} className="relative">
@@ -93,6 +101,7 @@ export default function ConnectMpcControl() {
         >
           <span className="text-[10px] text-text-muted leading-none">Your DFNS</span>
           <span className="text-xs text-text font-mono">{shortenAddress(dfnsAddress, 4)}</span>
+          <span className="rounded-full bg-ok/10 text-ok text-[9px] font-semibold px-1.5 py-0.5">Signs</span>
           <NetTag network={network} />
         </button>
       ) : showDemoChip ? (
@@ -193,6 +202,7 @@ export default function ConnectMpcControl() {
               {walletConnectEnabled ? (
                 <button
                   type="button"
+                  disabled={connecting}
                   onClick={async () => {
                     // flip to the wallet-kit signer only once the wallet actually
                     // connects, so a dismissed modal does not drop the current mode.
@@ -202,9 +212,9 @@ export default function ConnectMpcControl() {
                       setOpen(false)
                     }
                   }}
-                  className="w-full rounded-full bg-primary text-white text-xs font-semibold py-2 hover:bg-primary-dark transition-colors"
+                  className="w-full rounded-full bg-primary text-white text-xs font-semibold py-2 hover:bg-primary-dark transition-colors disabled:opacity-50"
                 >
-                  Connect with WalletConnect
+                  {connecting ? 'Connecting...' : 'Connect with WalletConnect'}
                 </button>
               ) : (
                 <p className="rounded-xl bg-amber-500/10 text-amber-600 px-3 py-2 text-[11px]">

@@ -1,8 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, TrendingUp, Activity, PieChart, ArrowLeftRight, Box, ShieldCheck, Users } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Activity, PieChart, ArrowLeftRight, Box, ShieldCheck } from 'lucide-react'
 import { cn } from '../utils/format'
 import lobsterLogo from '../assets/lobster-logo.png'
 
+// Shared control (on-chain multisig) is an advanced path, kept as a route but off the
+// main nav so the everyday flow stays simple. Reach it at /shared-control directly.
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/performance', label: 'Performance', icon: TrendingUp },
@@ -10,7 +12,6 @@ const NAV_ITEMS = [
   { to: '/allocation', label: 'Allocation', icon: PieChart },
   { to: '/bridges', label: 'Bridges', icon: ArrowLeftRight },
   { to: '/positions', label: 'Positions', icon: Box },
-  { to: '/shared-control', label: 'Shared control', icon: Users },
   { to: '/audit', label: 'Audit', icon: ShieldCheck },
 ]
 
