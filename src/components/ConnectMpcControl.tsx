@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Check } from 'lucide-react'
 
 import { useCustody } from '../contexts/CustodyContext'
@@ -22,12 +23,34 @@ export default function ConnectMpcControl() {
   const target: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // the popover renders through a portal on document.body, so the top bar's
+  // backdrop-blur (which traps a z-index) can never let page content paint over
+  // it. anchor it under the trigger with fixed coords, recomputed while open.
+  useLayoutEffect(() => {
+    if (!open) return
+    function place() {
+      const r = triggerRef.current?.getBoundingClientRect()
+      if (r) setPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
     function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
@@ -44,7 +67,7 @@ export default function ConnectMpcControl() {
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={triggerRef} className="relative">
       {showClientChip ? (
         <button
           type="button"
@@ -79,8 +102,20 @@ export default function ConnectMpcControl() {
         </button>
       )}
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-text-muted/15 bg-bg-card shadow-lg p-3 z-50 text-left">
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              right: pos.right,
+              zIndex: 1000,
+              maxHeight: `calc(100vh - ${pos.top + 16}px)`,
+            }}
+            className="w-80 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl border border-text-muted/15 bg-bg-card shadow-xl p-3 text-left"
+          >
           {active?.kind === 'client' && !adding ? (
             <ClientPanel
               network={network}
@@ -125,8 +160,9 @@ export default function ConnectMpcControl() {
               />
             </div>
           )}
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }
