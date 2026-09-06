@@ -29,7 +29,9 @@ function readFailure(err: unknown): string {
 }
 
 export default function Audit() {
-  const { mode } = useCustody()
+  // the "signing with" stat must reflect an actually-resolved DFNS custody address,
+  // not the raw mode flag: mode can be 'dfns' with nothing connected yet.
+  const { dfnsAddress } = useCustody()
   const wallets = useDfnsWallets()
   const policies = useDfnsPolicies()
   const approvals = useDfnsPendingApprovals()
@@ -66,9 +68,9 @@ export default function Audit() {
                 Signing with <InfoTip term="mpc" label="MPC custody" />
               </>
             }
-            value={mode === 'dfns' ? 'DFNS MPC' : 'Browser wallet'}
-            sub={mode === 'dfns' ? 'key split across several servers' : 'keys in your browser wallet'}
-            tone={mode === 'dfns' ? 'accent' : 'plain'}
+            value={dfnsAddress ? 'DFNS MPC' : 'Browser wallet'}
+            sub={dfnsAddress ? 'key split across several servers' : 'keys in your browser wallet'}
+            tone={dfnsAddress ? 'accent' : 'plain'}
           />
           <Stat
             label="Custody wallets"

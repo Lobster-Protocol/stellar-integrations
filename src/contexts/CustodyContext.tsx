@@ -76,8 +76,3 @@ export function useCustody() {
   if (!v) throw new Error('useCustody must be used inside <CustodyProvider>')
   return v
 }
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useSigner(): Signer {
-  return useCustody().signer
-}

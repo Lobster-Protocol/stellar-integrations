@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { useCustody, type CustodyMode } from '../contexts/CustodyContext'
+import { useActiveProfile } from '../integrations/dfns/use-profiles'
 import { cn } from '../utils/format'
 import { InfoTip } from './InfoTip'
 import ConnectDfnsPanel from './ConnectDfnsPanel'
@@ -16,7 +17,8 @@ const OPTIONS: Array<{ value: CustodyMode; label: string; sub: string; badge?: s
 ]
 
 export default function CustodyModeToggle() {
-  const { mode, setMode } = useCustody()
+  const { mode, setMode, dfnsAddress } = useCustody()
+  const active = useActiveProfile()
   const [showByo, setShowByo] = useState(false)
 
   return (
@@ -62,7 +64,7 @@ export default function CustodyModeToggle() {
         })}
       </div>
 
-      {mode === 'dfns' && (
+      {active?.kind === 'demo' && dfnsAddress && (
         <div className="mt-3 rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-xs">
           You are signing through Lobster's shared demo custody on testnet. It shows the
           institutional flow end to end. It is not your organization's own DFNS, and it never
