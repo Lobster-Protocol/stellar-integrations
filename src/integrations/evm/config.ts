@@ -1,30 +1,14 @@
 import { http, createConfig } from 'wagmi'
 import { mainnet, arbitrum, bsc } from 'wagmi/chains'
-import { injected, walletConnect } from 'wagmi/connectors'
+import { injected } from 'wagmi/connectors'
 
-import { FRONTEND_URL } from '../../config/contracts'
-
-// Same projectId we use for LOBSTR mobile via Stellar Wallets Kit.
-// Empty in dev means: no WalletConnect, MetaMask-injected only.
-const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined
-
-const connectors = [
-  injected({ shimDisconnect: true }),
-  ...(projectId
-    ? [
-        walletConnect({
-          projectId,
-          showQrModal: true,
-          metadata: {
-            name: 'Lobster Protocol',
-            description: 'Lobster Protocol dashboard',
-            url: typeof window !== 'undefined' ? window.location.origin : FRONTEND_URL,
-            icons: [`${FRONTEND_URL}/lobster-icon.png`],
-          },
-        }),
-      ]
-    : []),
-]
+// The EVM bridge connects with injected wallets only (MetaMask, Rabby). We deliberately
+// do NOT add wagmi's walletConnect connector: it starts a second WalletConnect Core next
+// to the Stellar Wallets Kit's WC module (same project id), and two cores clobber each
+// other's session state - which broke DFNS-over-WalletConnect signing (the sign request
+// could not find its session, so a swap hung on "Awaiting signature"). One WC core, on the
+// Stellar side, where DFNS custody lives.
+const connectors = [injected({ shimDisconnect: true })]
 
 export const wagmiConfig = createConfig({
   chains: [mainnet, arbitrum, bsc],
@@ -36,7 +20,9 @@ export const wagmiConfig = createConfig({
   },
 })
 
-export const hasWalletConnectProjectId = !!projectId
+// EVM WalletConnect is intentionally not offered (see above); the bridge is injected-only.
+// The DepositModal reads this to point a user with no extension at a browser wallet.
+export const hasWalletConnectProjectId = false
 
 export const EVM_CHAIN_ID = {
   ETH: mainnet.id,
