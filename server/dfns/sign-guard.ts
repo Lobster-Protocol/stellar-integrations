@@ -72,10 +72,12 @@ export function checkSorobanView(op: unknown, allowed: string[]): void {
 // The value methods the treasury may invoke on a contract the operator listed for
 // it: the vault deposit/withdraw the dashboard builds. Unlike a view these carry
 // authorization and move tokens, so they only sign at all when the operator names
-// the contract in DFNS_SOROBAN_TREASURY_CONTRACTS, and they always reach DFNS as a
-// raw transaction it cannot price, so an approval policy holds every one for a
-// human. A drain method like a SAC transfer() is not here, so it stays out even on
-// a listed contract.
+// the contract in DFNS_SOROBAN_TREASURY_CONTRACTS. deposit pays the vault itself;
+// withdraw_contract pays the vault's stored owner, so the operator lists only vaults
+// its own treasury owns, the same trust the payment whitelist already carries. DFNS
+// cannot price a raw transaction, so the approval policy this mode requires is what
+// holds each one for a human. A drain method like a SAC transfer() is not here, so
+// it stays out even on a listed contract.
 const SOROBAN_VALUE_METHODS = new Set(['deposit', 'withdraw_contract'])
 
 // True when the invocation is one of those value calls, on a listed contract,
@@ -97,6 +99,11 @@ export function isTreasuryValueCall(op: unknown, allowed: string[], treasury: st
 // 1 XLM. no classic treasury op needs a fee this large; bounding it stops a drain
 // through an inflated fee the amount cap can't see, same as the broker guard.
 const MAX_FEE_STROOPS = 10_000_000n
+
+// 5 XLM. a soroban op pays a resource fee on top of inclusion, so a real vault
+// deposit can run past the classic ceiling. this higher bound applies only to a tx
+// that carries an admitted value call, so the classic path keeps its tight 1 XLM.
+const MAX_SOROBAN_FEE_STROOPS = 50_000_000n
 
 // what a payment is capped at when the operator set no cap. two cases, because
 // they carry different risk. with no whitelist either, the only destination left
@@ -173,9 +180,16 @@ export function inspectSignXdr(
     )
   }
   // the outer fee is what the treasury pays (a fee-bump's inner fee is 0), and the
-  // amount cap never sees it, so bound it here.
-  if (BigInt(tx.fee) > MAX_FEE_STROOPS) {
-    throw new SignGuardRejected(`tx fee ${tx.fee} stroops is over the ${MAX_FEE_STROOPS} ceiling`)
+  // amount cap never sees it, so bound it here. a soroban value call also pays a
+  // resource fee, so a tx that carries one gets the higher ceiling.
+  const hasValueCall = inner.operations.some(
+    (op) =>
+      op.type === 'invokeHostFunction' &&
+      isTreasuryValueCall(op, cfg.sorobanValueContracts ?? [], cfg.treasuryAddress),
+  )
+  const feeCeiling = hasValueCall ? MAX_SOROBAN_FEE_STROOPS : MAX_FEE_STROOPS
+  if (BigInt(tx.fee) > feeCeiling) {
+    throw new SignGuardRejected(`tx fee ${tx.fee} stroops is over the ${feeCeiling} ceiling`)
   }
   for (const op of inner.operations) {
     if (op.type === 'invokeHostFunction') {

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest'
 
-import { unresolvedSignature, trackPending, clearPending } from '../dfns/inflight'
+import { unresolvedSignature, trackPending, clearPending, peekPending } from '../dfns/inflight'
 
 const isTerminal = (s: string) => s === 'Confirmed' || s === 'Failed' || s === 'Rejected'
 const W = 'wa-test-treasury'
@@ -39,5 +39,16 @@ describe('single-in-flight treasury signatures', () => {
     clearPending(other)
     expect(await unresolvedSignature(other, async () => ({ status: 'Pending' }), isTerminal)).toBeNull()
     expect(await unresolvedSignature(W, async () => ({ status: 'Pending' }), isTerminal)).toBe('sig-1')
+  })
+
+  it('peekPending exposes the tracked id so a status read can match before clearing', () => {
+    expect(peekPending(W)).toBeNull()
+    trackPending(W, 'sig-1')
+    expect(peekPending(W)).toBe('sig-1')
+    // a status read of a different, already terminal id must not match, so the route
+    // that gates clearPending on this equality leaves a still-held signature locked
+    expect('sig-OTHER' === peekPending(W)).toBe(false)
+    clearPending(W)
+    expect(peekPending(W)).toBeNull()
   })
 })

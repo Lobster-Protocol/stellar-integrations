@@ -367,7 +367,7 @@ describe('soroban value calls', () => {
   const noValue = { treasuryAddress: TREASURY, destinationWhitelist: [], maxAmountStroops: 0n }
   const valueCfg = { ...noValue, sorobanValueContracts: [VAULT] }
 
-  function buildValueCall(contractId: string, fn: string, opts: { auth?: boolean; opSource?: string } = {}) {
+  function buildValueCall(contractId: string, fn: string, opts: { auth?: boolean; opSource?: string; fee?: string } = {}) {
     const args = [
       Address.fromString(TREASURY).toScVal(),
       xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: xdr.Int64.fromString('0'), lo: xdr.Uint64.fromString('100') })),
@@ -381,7 +381,7 @@ describe('soroban value calls', () => {
       }),
     )
     const tx = new TransactionBuilder(new Account(TREASURY, '1'), {
-      fee: BASE_FEE,
+      fee: opts.fee ?? BASE_FEE,
       networkPassphrase: Networks.TESTNET,
     })
       .addOperation(Operation.invokeHostFunction({ func: hostFn, auth: [], source: opts.opSource }))
@@ -425,6 +425,18 @@ describe('soroban value calls', () => {
   it('refuses a value call an op sources away from the treasury', () => {
     const tx = buildValueCall(VAULT, 'deposit', { auth: true, opSource: OTHER })
     expect(() => inspectSignXdr(tx, valueCfg)).toThrow(SignGuardRejected)
+  })
+
+  it('admits a value call with a soroban-scale fee the classic ceiling would reject', () => {
+    // 2 XLM: over the 1 XLM classic ceiling, under the 5 XLM soroban one
+    const tx = buildValueCall(VAULT, 'deposit', { auth: true, fee: '20000000' })
+    expect(() => inspectSignXdr(tx, valueCfg)).not.toThrow()
+  })
+
+  it('still bounds a value call fee at the soroban ceiling', () => {
+    // 6 XLM: over the 5 XLM soroban ceiling
+    const tx = buildValueCall(VAULT, 'deposit', { auth: true, fee: '60000000' })
+    expect(() => inspectSignXdr(tx, valueCfg)).toThrow(/over the/i)
   })
 
   it('reads the treasury value contracts from env, trimmed', () => {

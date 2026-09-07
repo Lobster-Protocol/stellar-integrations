@@ -16,7 +16,7 @@ import { broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData, i
 import { inspectSignXdr, readSignGuardConfig, SignGuardRejected } from './dfns/sign-guard'
 import { transferNative } from './dfns/transfer'
 import { reSequence } from './dfns/resequence'
-import { unresolvedSignature, trackPending, clearPending } from './dfns/inflight'
+import { unresolvedSignature, trackPending, clearPending, peekPending } from './dfns/inflight'
 import { registerAllbridgeRoutes } from './allbridge/routes'
 import { listPendingApprovals, decideApproval, type ApprovalDecision } from './dfns/approvals'
 import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
@@ -396,8 +396,17 @@ app.get('/dfns/sign/:id/status', rateLimit, tokenGuard, async (c) => {
   if (!id) return c.json({ error: 'missing signature id' }, 400)
   try {
     const s = await getSignatureStatus(walletId, id)
-    if (isTerminal(s.status)) clearPending(walletId)
-    return c.json({ status: s.status, txHash: s.txHash, reason: s.reason })
+    // a soroban tx ends at Signed with an envelope dfns does not broadcast, so
+    // that is terminal for us too: release the in-flight lock and hand the caller
+    // a ready-to-submit envelope, the same shape the immediate /dfns/sign returns.
+    const signedTxXdr =
+      s.status === 'Signed' && s.signedData
+        ? envelopeFromSignedData(s.signedData, serverPassphrase()).toXDR()
+        : undefined
+    // only the tracked in-flight id may release the lock: a status read of some
+    // other, already terminal id must not clear a signature still held for approval.
+    if ((isTerminal(s.status) || signedTxXdr) && id === peekPending(walletId)) clearPending(walletId)
+    return c.json({ status: s.status, txHash: s.txHash, signedTxXdr, reason: s.reason })
   } catch (err) {
     return c.json({ error: (err as Error).message }, 502)
   }

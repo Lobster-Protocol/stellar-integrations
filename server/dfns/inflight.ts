@@ -31,3 +31,10 @@ export function trackPending(walletId: string, id: string): void {
 export function clearPending(walletId: string): void {
   pending.delete(walletId)
 }
+
+// the id currently tracked for a wallet, or null. a status route confirms a read
+// is about the in-flight signature before it releases the lock, so reading some
+// other, already terminal id cannot clear a signature still held for approval.
+export function peekPending(walletId: string): string | null {
+  return pending.get(walletId) ?? null
+}
