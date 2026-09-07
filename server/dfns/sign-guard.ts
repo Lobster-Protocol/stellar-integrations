@@ -69,6 +69,31 @@ export function checkSorobanView(op: unknown, allowed: string[]): void {
   }
 }
 
+// The value methods the treasury may invoke on a contract the operator listed for
+// it: the vault deposit/withdraw the dashboard builds. Unlike a view these carry
+// authorization and move tokens, so they only sign at all when the operator names
+// the contract in DFNS_SOROBAN_TREASURY_CONTRACTS, and they always reach DFNS as a
+// raw transaction it cannot price, so an approval policy holds every one for a
+// human. A drain method like a SAC transfer() is not here, so it stays out even on
+// a listed contract.
+const SOROBAN_VALUE_METHODS = new Set(['deposit', 'withdraw_contract'])
+
+// True when the invocation is one of those value calls, on a listed contract,
+// sourced by the treasury. It does not throw: a false sends the op on to
+// checkSorobanView, which is what refuses the views-with-auth, the unlisted
+// contracts and everything else. So the value path can only ever widen what is
+// admitted, never narrow what the view path already rejects.
+export function isTreasuryValueCall(op: unknown, allowed: string[], treasury: string): boolean {
+  if (allowed.length === 0) return false
+  const { func, source } = op as { func?: xdr.HostFunction; source?: string }
+  if (source && source !== treasury) return false
+  if (!func || func.switch().name !== 'hostFunctionTypeInvokeContract') return false
+  const call = func.invokeContract()
+  const contract = Address.fromScAddress(call.contractAddress()).toString()
+  if (!allowed.includes(contract)) return false
+  return SOROBAN_VALUE_METHODS.has(call.functionName().toString())
+}
+
 // 1 XLM. no classic treasury op needs a fee this large; bounding it stops a drain
 // through an inflated fee the amount cap can't see, same as the broker guard.
 const MAX_FEE_STROOPS = 10_000_000n
@@ -101,6 +126,11 @@ export interface SignGuardConfig {
   // soroban invocation. readSignGuardConfig falls back to our own factory ids
   // when the operator names none.
   sorobanViewContracts?: string[]
+  // contracts the treasury may invoke a value method on (vault deposit/withdraw).
+  // an empty list refuses every one. no fallback, unlike the view list: a value
+  // call moves tokens, so the operator names each contract explicitly or none
+  // sign at all.
+  sorobanValueContracts?: string[]
   // hard cap for any payment-style op, in stroops. 0 disables the check, so
   // readSignGuardConfig substitutes a low cap rather than passing 0 through.
   maxAmountStroops: bigint
@@ -149,6 +179,9 @@ export function inspectSignXdr(
   }
   for (const op of inner.operations) {
     if (op.type === 'invokeHostFunction') {
+      // a listed value call is admitted; anything else falls to the view path,
+      // which rejects auth entries, unlisted contracts and non-view methods.
+      if (isTreasuryValueCall(op, cfg.sorobanValueContracts ?? [], cfg.treasuryAddress)) continue
       checkSorobanView(op, cfg.sorobanViewContracts ?? [])
       continue
     }
@@ -196,10 +229,17 @@ export function readSignGuardConfig(): SignGuardConfig | null {
   // accepted. permissive now only means the operator may leave the two
   // variables unset: the treasury falls back to paying itself, under a low cap.
   const selfOnly = list.length === 0
+  // the treasury-callable value contracts. named only, no fallback: a value call
+  // moves tokens, so an unset variable means the treasury signs no contract call.
+  const valueContracts = (process.env.DFNS_SOROBAN_TREASURY_CONTRACTS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
   return {
     treasuryAddress: treasury,
     destinationWhitelist: selfOnly ? [treasury] : list,
     maxAmountStroops: cap > 0n ? cap : selfOnly ? SELF_ONLY_CAP_STROOPS : FALLBACK_CAP_STROOPS,
     sorobanViewContracts: viewContracts(),
+    sorobanValueContracts: valueContracts,
   }
 }

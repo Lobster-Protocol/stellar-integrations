@@ -356,3 +356,99 @@ describe('soroban views', () => {
     expect(() => inspectSignXdr(tx, viewCfg)).toThrow(/not an upload or a deploy/i)
   })
 })
+
+// The treasury signs a vault deposit/withdraw only when the operator lists the
+// contract. These carry authorization and move tokens, so the list plus the
+// method allowlist is the whole control: an unlisted contract, or a method that
+// is not deposit/withdraw_contract, stays out. DFNS then holds every admitted one
+// for a human because it cannot price a contract call.
+describe('soroban value calls', () => {
+  const VAULT = CONTRACTS.testnet.lobster.factory
+  const noValue = { treasuryAddress: TREASURY, destinationWhitelist: [], maxAmountStroops: 0n }
+  const valueCfg = { ...noValue, sorobanValueContracts: [VAULT] }
+
+  function buildValueCall(contractId: string, fn: string, opts: { auth?: boolean; opSource?: string } = {}) {
+    const args = [
+      Address.fromString(TREASURY).toScVal(),
+      xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: xdr.Int64.fromString('0'), lo: xdr.Uint64.fromString('100') })),
+      xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: xdr.Int64.fromString('0'), lo: xdr.Uint64.fromString('100') })),
+    ]
+    const hostFn = xdr.HostFunction.hostFunctionTypeInvokeContract(
+      new xdr.InvokeContractArgs({
+        contractAddress: Address.fromString(contractId).toScAddress(),
+        functionName: fn,
+        args,
+      }),
+    )
+    const tx = new TransactionBuilder(new Account(TREASURY, '1'), {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(Operation.invokeHostFunction({ func: hostFn, auth: [], source: opts.opSource }))
+      .setTimeout(60)
+      .build()
+    if (opts.auth) {
+      const op = tx.operations[0] as unknown as { auth: unknown[] }
+      op.auth = [{}]
+    }
+    return tx
+  }
+
+  it('admits a deposit on a listed contract', () => {
+    expect(() => inspectSignXdr(buildValueCall(VAULT, 'deposit'), valueCfg)).not.toThrow()
+  })
+
+  it('admits a withdraw_contract on a listed contract', () => {
+    expect(() => inspectSignXdr(buildValueCall(VAULT, 'withdraw_contract'), valueCfg)).not.toThrow()
+  })
+
+  it('admits a deposit that carries authorization entries', () => {
+    // the view path rejects any auth; the value path is the one that admits it,
+    // since a token move needs the treasury's own authorization attached
+    expect(() => inspectSignXdr(buildValueCall(VAULT, 'deposit', { auth: true }), valueCfg)).not.toThrow()
+  })
+
+  it('refuses a deposit on a contract the operator never listed', () => {
+    const other = CONTRACTS.testnet.soroswap.router
+    expect(() => inspectSignXdr(buildValueCall(other, 'deposit', { auth: true }), valueCfg)).toThrow(SignGuardRejected)
+  })
+
+  it('refuses a SAC transfer even on a listed contract', () => {
+    // the drain method the value allowlist exists to keep out
+    expect(() => inspectSignXdr(buildValueCall(VAULT, 'transfer', { auth: true }), valueCfg)).toThrow(SignGuardRejected)
+  })
+
+  it('refuses every value call when the operator listed none', () => {
+    expect(() => inspectSignXdr(buildValueCall(VAULT, 'deposit', { auth: true }), noValue)).toThrow(SignGuardRejected)
+  })
+
+  it('refuses a value call an op sources away from the treasury', () => {
+    const tx = buildValueCall(VAULT, 'deposit', { auth: true, opSource: OTHER })
+    expect(() => inspectSignXdr(tx, valueCfg)).toThrow(SignGuardRejected)
+  })
+
+  it('reads the treasury value contracts from env, trimmed', () => {
+    process.env.DFNS_TREASURY_ADDRESS = TREASURY
+    process.env.DFNS_GUARD_PERMISSIVE = '1'
+    process.env.DFNS_SOROBAN_TREASURY_CONTRACTS = `${LOBSTER_FACTORY}, ${NOT_OUR_CONTRACT}`
+    try {
+      expect(readSignGuardConfig()!.sorobanValueContracts).toEqual([LOBSTER_FACTORY, NOT_OUR_CONTRACT])
+    } finally {
+      delete process.env.DFNS_TREASURY_ADDRESS
+      delete process.env.DFNS_GUARD_PERMISSIVE
+      delete process.env.DFNS_SOROBAN_TREASURY_CONTRACTS
+    }
+  })
+
+  it('leaves the treasury value contracts empty when unset', () => {
+    process.env.DFNS_TREASURY_ADDRESS = TREASURY
+    process.env.DFNS_GUARD_PERMISSIVE = '1'
+    delete process.env.DFNS_SOROBAN_TREASURY_CONTRACTS
+    try {
+      expect(readSignGuardConfig()!.sorobanValueContracts).toEqual([])
+    } finally {
+      delete process.env.DFNS_TREASURY_ADDRESS
+      delete process.env.DFNS_GUARD_PERMISSIVE
+    }
+  })
+})
