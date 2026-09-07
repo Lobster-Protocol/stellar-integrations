@@ -30,13 +30,23 @@ async function fetchJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>
 }
 
+export interface DfnsApprovalGroup {
+  name?: string
+  quorum?: number
+  approvers?: { userId?: { in?: string[] } }
+}
+
+// The relay forwards the DFNS policy objects verbatim, so the rule configuration
+// (amount limit, recipient list) and the approval quorum ride along. Kept optional
+// because a rule like AlwaysTrigger carries no configuration and a Block/NoAction
+// action carries no group.
 export interface DfnsPolicySummary {
   id: string
   name: string
   status: string
   activityKind: string
-  rule: { kind: string }
-  action: { kind: string }
+  rule: { kind: string; configuration?: Record<string, unknown> }
+  action: { kind: string; approvalGroups?: DfnsApprovalGroup[]; autoRejectTimeout?: number }
 }
 
 export interface DfnsWalletSummary {

@@ -1,4 +1,4 @@
-import { useDfnsPolicies } from '../integrations/dfns/hooks'
+import { useDfnsPolicies, type DfnsPolicySummary } from '../integrations/dfns/hooks'
 import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import { Card, CardHead, Disclosure, Empty, NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
@@ -7,6 +7,39 @@ import { InfoTip } from './InfoTip'
 // and the retired ones go behind a fold. Showing seven rows at equal weight hid
 // the single policy that actually gates signing.
 const LIVE = 'Active'
+
+// The DFNS rule/action objects carry the actual formulation. State it plainly and
+// factually: the amount limit, the size of the recipient list, the approval quorum.
+// The over/under direction of an amount rule is left out on purpose, it depends on
+// the paired action and is easy to state wrong.
+function ruleSummary(rule: DfnsPolicySummary['rule']): string {
+  const c = rule.configuration
+  if (rule.kind === 'TransactionAmountLimit' && c && c.limit != null) {
+    const currency = typeof c.currency === 'string' ? ` ${c.currency}` : ''
+    return `amount limit ${String(c.limit)}${currency}`
+  }
+  if (rule.kind === 'TransactionRecipientWhitelist' && c && Array.isArray(c.addresses)) {
+    const n = c.addresses.length
+    return `recipient whitelist (${n} address${n === 1 ? '' : 'es'})`
+  }
+  if (rule.kind === 'AlwaysTrigger') return 'every request'
+  return rule.kind
+}
+
+function actionSummary(action: DfnsPolicySummary['action']): string {
+  if (action.kind === 'RequestApproval') {
+    const g = action.approvalGroups?.[0]
+    const count = g?.approvers?.userId?.in?.length
+    if (typeof g?.quorum === 'number' && typeof count === 'number') {
+      return `needs ${g.quorum} of ${count} to approve`
+    }
+    if (typeof g?.quorum === 'number') return `needs ${g.quorum} to approve`
+    return 'needs an approver'
+  }
+  if (action.kind === 'NoAction') return 'clears with no approval'
+  if (action.kind === 'Block') return 'blocks the request'
+  return action.kind
+}
 
 export default function PoliciesPanel() {
   const policies = useDfnsPolicies()
@@ -56,19 +89,28 @@ export default function PoliciesPanel() {
             </p>
           ) : (
             <ul className="space-y-2">
-              {active.map((p) => (
-                <li key={p.id} className="rounded-2xl bg-primary/5 px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <span className="text-xs font-medium text-text">{p.name}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green/15 text-green">
-                      active
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-text-secondary mt-1">
-                    {p.rule.kind} then {p.action.kind}
-                  </div>
-                </li>
-              ))}
+              {active.map((p) => {
+                const approvers = p.action.approvalGroups?.[0]?.approvers?.userId?.in ?? []
+                return (
+                  <li key={p.id} className="rounded-2xl bg-primary/5 px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <span className="text-xs font-medium text-text">{p.name}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-green/15 text-green">
+                        active
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-text-secondary mt-1">
+                      {ruleSummary(p.rule)} then {actionSummary(p.action)}
+                    </div>
+                    <div className="text-[10px] text-text-muted mt-1">on {p.activityKind}</div>
+                    {approvers.length > 0 && (
+                      <div className="text-[10px] text-text-muted mt-0.5">
+                        approvers: <span className="font-mono break-all">{approvers.join(', ')}</span>
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           )}
 
@@ -84,6 +126,10 @@ export default function PoliciesPanel() {
               </ul>
             </Disclosure>
           )}
+
+          <p className="text-[10px] text-text-muted">
+            These rules live in your DFNS console. The dashboard reads them, it does not change them.
+          </p>
         </div>
       )}
     </Card>
