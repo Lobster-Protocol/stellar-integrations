@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { useCustody, type CustodyMode } from '../contexts/CustodyContext'
 import { useActiveProfile } from '../integrations/dfns/use-profiles'
+import { setActiveProfile, DEMO_PROFILE_ID } from '../integrations/dfns/profiles'
 import { cn } from '../utils/format'
 import { InfoTip } from './InfoTip'
 import ConnectDfnsPanel from './ConnectDfnsPanel'
@@ -36,7 +37,14 @@ export default function CustodyModeToggle() {
             <button
               key={opt.value}
               type="button"
-              onClick={() => setMode(opt.value)}
+              onClick={() => {
+                setMode(opt.value)
+                // picking the demo also activates its profile, so the wallets,
+                // policies and pending-approval panels light up instead of sitting
+                // empty behind the hidden "connect your own dfns" panel. explicit
+                // opt-in, testnet only: never the default (see profiles.ts).
+                if (opt.value === 'dfns') setActiveProfile(DEMO_PROFILE_ID)
+              }}
               className={cn(
                 'rounded-2xl px-3 py-3 text-left border transition-colors',
                 active
