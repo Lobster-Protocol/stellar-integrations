@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 
-import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
+import { useCustody } from '../contexts/CustodyContext'
+import { awaitDfnsSignature } from '../integrations/dfns/await-signature'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { buildVaultActionTx, submitSignedXdr, waitForTx, type VaultAction } from '../integrations/lobster/vault-tx'
 import type { VaultPosition } from '../integrations/lobster/position'
@@ -21,6 +22,7 @@ type Phase =
   | { k: 'building' }
   | { k: 'signing' }
   | { k: 'submitting' }
+  | { k: 'pending' }
   | { k: 'collecting'; xdr: string }
   | { k: 'done'; hash: string }
   | { k: 'failed'; msg: string }
@@ -41,8 +43,15 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   const [phase, setPhase] = useState<Phase>({ k: 'form' })
   const inFlight = useRef(false)
   const titleId = useId()
-  const signingQ = useAccountSigning(network, caller)
-  const multi = signingQ.data ? isMultisig(signingQ.data) : false
+  const { signer, dfnsAddress, mode } = useCustody()
+  // in dfns mode the treasury signs, so the tx sources from it, not the connected
+  // wallet, and dfns supplies the approval in place of any on-chain quorum.
+  const isDfns = mode === 'dfns' && !!dfnsAddress
+  const source = isDfns ? (dfnsAddress as string) : caller
+  const signingQ = useAccountSigning(network, source)
+  const multi = !isDfns && signingQ.data ? isMultisig(signingQ.data) : false
+  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   useEffect(() => {
     if (!open) {
@@ -59,7 +68,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   const over1 = isWithdraw && amount1 !== '' && Number(amount1) > Number(vault.amount1)
   const nothing =
     (amount0 === '' || Number(amount0) === 0) && (amount1 === '' || Number(amount1) === 0)
-  const busy = phase.k === 'building' || phase.k === 'signing' || phase.k === 'submitting'
+  const busy = phase.k === 'building' || phase.k === 'signing' || phase.k === 'submitting' || phase.k === 'pending'
 
   async function run() {
     if (inFlight.current || nothing || over0 || over1) return
@@ -70,10 +79,10 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         network,
         vault.address,
         action,
-        caller,
+        source,
         amount0 || '0',
         amount1 || '0',
-        multi ? MULTISIG_TIMEOUT_SECS : 60,
+        multi || isDfns ? MULTISIG_TIMEOUT_SECS : 60,
       )
       if (!built.xdr) {
         setPhase({ k: 'failed', msg: "This vault's storage has expired on-chain and needs restoring before this call." })
@@ -87,13 +96,30 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         return
       }
       setPhase({ k: 'signing' })
-      const { signedTxXdr } = await walletKitSigner.signTransaction(built.xdr, {
+      const signed = await signer.signTransaction(built.xdr, {
         networkPassphrase: networkPassphrase(network),
-        address: caller,
+        address: source,
       })
-      if (!signedTxXdr) throw new Error('the wallet did not return a signed transaction')
+      // dfns held the call for a human approval: wait it out, then a soroban tx
+      // lands as an envelope this submits and a classic one as a hash. the wallet
+      // kit returns neither field, so this branch only runs under dfns custody.
+      if (signed.pendingId) {
+        setPhase({ k: 'pending' })
+        const ac = new AbortController()
+        abortRef.current = ac
+        const hash = await awaitDfnsSignature(signed.pendingId, network, ac.signal)
+        setPhase({ k: 'done', hash })
+        onDone()
+        return
+      }
+      if (signed.broadcastHash) {
+        setPhase({ k: 'done', hash: signed.broadcastHash })
+        onDone()
+        return
+      }
+      if (!signed.signedTxXdr) throw new Error('the wallet did not return a signed transaction')
       setPhase({ k: 'submitting' })
-      const hash = await submitSignedXdr(network, signedTxXdr)
+      const hash = await submitSignedXdr(network, signed.signedTxXdr)
       const final = await waitForTx(network, hash)
       if (final.status === 'SUCCESS') {
         setPhase({ k: 'done', hash })
@@ -114,11 +140,13 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
       ? 'Building...'
       : phase.k === 'signing'
         ? 'Awaiting signature...'
-        : phase.k === 'submitting'
-          ? 'Submitting...'
-          : isWithdraw
-            ? 'Withdraw'
-            : 'Deposit'
+        : phase.k === 'pending'
+          ? 'Awaiting approval...'
+          : phase.k === 'submitting'
+            ? 'Submitting...'
+            : isWithdraw
+              ? 'Withdraw'
+              : 'Deposit'
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => { if (!busy) onClose() }}>
@@ -187,6 +215,11 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
                 approve each move.
               </div>
             )}
+            {isDfns && (
+              <div className="rounded-2xl bg-primary/5 text-primary px-3 py-2.5 text-[11px]">
+                Your DFNS treasury signs this move, held for approval in your DFNS console.
+              </div>
+            )}
             {[0, 1].map((i) => {
               const tokenId = i === 0 ? vault.token0 : vault.token1
               const value = i === 0 ? amount0 : amount1
@@ -235,6 +268,12 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
               {submitLabel}
             </button>
 
+            {phase.k === 'pending' && (
+              <p className="text-xs text-primary">
+                Waiting for approval in your DFNS console. Someone else has to approve it, then it
+                settles here.
+              </p>
+            )}
             {phase.k === 'failed' && (
               <p className="text-xs text-coral break-words">{phase.msg}</p>
             )}

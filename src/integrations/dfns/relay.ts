@@ -53,6 +53,51 @@ export async function pollSignatureStatus(
   }
 }
 
+export type SignatureResult = { txHash: string } | { signedTxXdr: string }
+
+// polls a held dfns signature to its end and returns what dfns produced: a classic
+// tx confirms on chain and comes back as a hash; a soroban tx dfns signs but does
+// not broadcast, so it comes back as an envelope the caller submits itself. same
+// wide window and same relay binding as pollSignatureStatus, so a mid-flow profile
+// switch cannot redirect the poll.
+export async function pollSignatureResult(
+  id: string,
+  opts: { intervalMs?: number; timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<SignatureResult> {
+  const interval = opts.intervalMs ?? 4_000
+  const timeout = opts.timeoutMs ?? 30 * 60_000
+  const start = Date.now()
+  const bound = activeRelay() ?? undefined
+  let hardErrors = 0
+  for (;;) {
+    const res = await relayFetch(`/dfns/sign/${id}/status`, { signal: opts.signal }, bound)
+    if (res.ok) {
+      hardErrors = 0
+      const body = (await res.json()) as {
+        status?: string
+        txHash?: string
+        signedTxXdr?: string
+        reason?: string
+      }
+      if (body.status === 'Confirmed') {
+        if (body.txHash) return { txHash: body.txHash }
+        throw new Error('dfns confirmed the signature but returned no tx hash')
+      }
+      // a soroban tx ends here: signed, with an envelope to submit.
+      if (body.signedTxXdr) return { signedTxXdr: body.signedTxXdr }
+      if (body.status === 'Failed' || body.status === 'Rejected') {
+        throw new Error(`dfns ${body.status}${body.reason ? `: ${body.reason}` : ''}`)
+      }
+    } else if (res.status >= 400 && res.status < 500) {
+      throw new Error(`could not read the approval status (${res.status})`)
+    } else if (++hardErrors >= 3) {
+      throw new Error('the DFNS status endpoint is unreachable')
+    }
+    if (Date.now() - start >= timeout) throw new Error('still awaiting approval in the DFNS console')
+    await new Promise((r) => setTimeout(r, interval))
+  }
+}
+
 export interface TransferOutcome {
   id: string
   status: string
