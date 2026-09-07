@@ -8,8 +8,8 @@ test.describe('the custody page', () => {
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     // these render regardless of api wiring
-    await expect(page.getByText('Custody and audit')).toBeVisible()
-    await expect(page.getByText('Custody mode')).toBeVisible()
+    await expect(page.getByText('Institutional custody through DFNS')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'DFNS custody' })).toBeVisible()
     await expect(page.getByRole('heading', { name: /Signing activity/ })).toBeVisible()
 
     // every custody panel now names itself in both states, so the titles no

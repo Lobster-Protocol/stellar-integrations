@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { to: '/allocation', label: 'Allocation', icon: PieChart },
   { to: '/bridges', label: 'Bridges', icon: ArrowLeftRight },
   { to: '/positions', label: 'Positions', icon: Box },
-  { to: '/audit', label: 'Audit', icon: ShieldCheck },
+  { to: '/audit', label: 'Custody', icon: ShieldCheck },
 ]
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {

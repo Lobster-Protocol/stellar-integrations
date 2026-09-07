@@ -6,6 +6,7 @@ import {
 } from '../integrations/dfns/hooks'
 import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import CustodyModeToggle from '../components/CustodyModeToggle'
+import DfnsCustodyIntro from '../components/DfnsCustodyIntro'
 import DfnsWalletList from '../components/DfnsWalletList'
 import PendingApprovalsPanel from '../components/PendingApprovalsPanel'
 import PoliciesPanel from '../components/PoliciesPanel'
@@ -39,21 +40,15 @@ export default function Audit() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-text">
-          Custody and audit <InfoTip term="custody" label="custody" />
-        </h2>
-        <p className="text-xs text-text-secondary mt-1">
-          Who holds the keys, what has to be approved before they sign, and the record that comes
-          out of it.
-        </p>
-      </div>
+      <DfnsCustodyIntro />
+
+      <CustodyModeToggle />
 
       {!configured ? (
         <Card>
           <Empty>
             No DFNS organization is connected yet, so there is nothing to show here. Connect your
-            own DFNS in the panel below, or pick the Lobster testnet demo to see the flow.
+            own DFNS in the panel above, or pick the Lobster testnet demo to see the flow.
           </Empty>
         </Card>
       ) : (
@@ -112,8 +107,6 @@ export default function Audit() {
           />
         </div>
       )}
-
-      <CustodyModeToggle />
 
       <PendingApprovalsPanel />
 
