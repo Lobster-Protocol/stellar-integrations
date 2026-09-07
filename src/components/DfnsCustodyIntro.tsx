@@ -10,7 +10,7 @@ export default function DfnsCustodyIntro() {
         multi-party computation, so no single machine or person ever holds the whole key. Before a
         signature is released it runs through DFNS's policy engine: a small transfer can sign on its
         own, a larger one is held until a second person approves, and whoever started it cannot
-        approve their own. Every signature, approval and transfer arrives here over a DFNS webhook,
+        approve their own. Every signature, approval and transfer shows up here as it happens,
         and the whole record exports as a hash-chained, MiCA-style audit file.
       </p>
     </div>
