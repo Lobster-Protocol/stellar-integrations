@@ -44,9 +44,8 @@ export default function MpcSignatureFeed() {
 
   if (!hasRelay) {
     return (
-      <NotConfigured title="Signing activity" needs="a DFNS profile">
-        The lifecycle events DFNS custody sends as a webhook, streamed as they land. This build has
-        no relay to stream from.
+      <NotConfigured title="Signing activity" needs="a DFNS organization">
+        Signing activity from your DFNS organization, streamed live as it happens.
       </NotConfigured>
     )
   }
@@ -62,9 +61,8 @@ export default function MpcSignatureFeed() {
 
       {events.length === 0 ? (
         <p className="text-xs text-text-muted">
-          Empty. This feed carries one thing: the events DFNS custody sends the relay by webhook.
-          A signature from your browser wallet is not one of them and will not appear. The relay
-          keeps the events in memory too, so the feed starts over from nothing every time the
+          Nothing yet. This shows signing activity from your DFNS organization as it happens.
+          Signatures from a browser wallet do not appear here, and the list starts fresh if the
           service restarts.
         </p>
       ) : (

@@ -56,7 +56,7 @@ export function NotConfigured({
   return (
     <Card className="opacity-70">
       <CardHead title={title} note={children} />
-      <p className="text-[11px] text-text-muted">Off in this build: {needs} is not set.</p>
+      <p className="text-[11px] text-text-muted">Connect {needs} to see this.</p>
     </Card>
   )
 }

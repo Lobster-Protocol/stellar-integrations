@@ -20,7 +20,7 @@ export default function PendingApprovalsPanel() {
 
   if (!hasRelay) {
     return (
-      <NotConfigured title="Pending approvals" needs="a DFNS profile">
+      <NotConfigured title="Pending approvals" needs="a DFNS organization">
         Payments a signing policy is holding back until a person signs off. This build has no relay
         to read them from.
       </NotConfigured>

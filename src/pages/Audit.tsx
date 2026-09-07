@@ -1,4 +1,3 @@
-import { useCustody } from '../contexts/CustodyContext'
 import {
   useDfnsWallets,
   useDfnsPolicies,
@@ -29,9 +28,6 @@ function readFailure(err: unknown): string {
 }
 
 export default function Audit() {
-  // the "signing with" stat must reflect an actually-resolved DFNS custody address,
-  // not the raw mode flag: mode can be 'dfns' with nothing connected yet.
-  const { dfnsAddress } = useCustody()
   const wallets = useDfnsWallets()
   const policies = useDfnsPolicies()
   const approvals = useDfnsPendingApprovals()
@@ -56,8 +52,8 @@ export default function Audit() {
       {!configured ? (
         <Card>
           <Empty>
-            The custody service is not wired up in this build (VITE_LOBSTER_API_URL is not set),
-            so the figures below cannot be filled in.
+            No DFNS organization is connected yet, so there is nothing to show here. Connect your
+            own DFNS in the panel below, or pick the Lobster testnet demo to see the flow.
           </Empty>
         </Card>
       ) : (
@@ -68,9 +64,9 @@ export default function Audit() {
                 Signing with <InfoTip term="mpc" label="MPC custody" />
               </>
             }
-            value={dfnsAddress ? 'DFNS MPC' : 'Browser wallet'}
-            sub={dfnsAddress ? 'key split across several servers' : 'keys in your browser wallet'}
-            tone={dfnsAddress ? 'accent' : 'plain'}
+            value="DFNS MPC"
+            sub="key split across several servers"
+            tone="accent"
           />
           <Stat
             label="Custody wallets"

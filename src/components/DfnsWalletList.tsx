@@ -40,7 +40,7 @@ export default function DfnsWalletList() {
 
   if (!hasRelay) {
     return (
-      <NotConfigured title="DFNS wallets" needs="a DFNS profile">
+      <NotConfigured title="DFNS wallets" needs="a DFNS organization">
         The wallets whose keys DFNS custody holds, grouped by network. This build has no relay to
         read them from.
       </NotConfigured>

@@ -17,37 +17,29 @@ function wrap(node: React.ReactNode) {
   )
 }
 
-describe('CustodyModeToggle', () => {
-  it('renders the browser wallet and the DFNS demo options', () => {
+// The old "Browser wallet vs DFNS (Lobster demo)" mode toggle was removed: you sign with whatever
+// wallet you connect at the top right, and this panel is only about connecting DFNS custody.
+describe('CustodyModeToggle (DFNS custody panel)', () => {
+  it('is titled DFNS custody and leads with connecting your own DFNS', () => {
     wrap(<CustodyModeToggle />)
-    expect(screen.getByText('Custody mode')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Browser wallet/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /DFNS \(Lobster demo\)/ })).toBeInTheDocument()
+    expect(screen.getByText('DFNS custody')).toBeInTheDocument()
+    expect(screen.getByText(/Connect your own DFNS organization/)).toBeInTheDocument()
   })
 
-  it('names the DFNS option a shared testnet sandbox, not the user own custody', () => {
+  it('no longer shows the browser-wallet-vs-DFNS mode toggle', () => {
     wrap(<CustodyModeToggle />)
-    expect(screen.getByText(/not your own DFNS org/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Browser wallet/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /DFNS \(Lobster demo\)/ })).not.toBeInTheDocument()
+  })
+
+  it('offers the Lobster testnet demo as a sandbox row', () => {
+    wrap(<CustodyModeToggle />)
     expect(screen.getByText('Testnet sandbox')).toBeInTheDocument()
   })
 
-  it('explains that connecting your own DFNS never pastes a key', () => {
+  it('reveals the connect-a-relay form', () => {
     wrap(<CustodyModeToggle />)
-    fireEvent.click(screen.getByRole('button', { name: /Connect your own DFNS/ }))
-    expect(screen.getByText(/no key to paste here/)).toBeInTheDocument()
-  })
-
-  it('writes "dfns" to localStorage when the user picks the DFNS demo', () => {
-    localStorage.clear()
-    wrap(<CustodyModeToggle />)
-    fireEvent.click(screen.getByRole('button', { name: /DFNS \(Lobster demo\)/ }))
-    expect(localStorage.getItem('lob_custody_mode')).toBe('dfns')
-  })
-
-  it('writes "wallet-kit" to localStorage when the user picks the browser wallet', () => {
-    localStorage.setItem('lob_custody_mode', 'dfns')
-    wrap(<CustodyModeToggle />)
-    fireEvent.click(screen.getByRole('button', { name: /Browser wallet/ }))
-    expect(localStorage.getItem('lob_custody_mode')).toBe('wallet-kit')
+    fireEvent.click(screen.getByRole('button', { name: /Connect a DFNS relay/ }))
+    expect(screen.getByText(/Enter only a relay you run/)).toBeInTheDocument()
   })
 })

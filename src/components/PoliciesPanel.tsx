@@ -14,7 +14,7 @@ export default function PoliciesPanel() {
 
   if (!hasRelay) {
     return (
-      <NotConfigured title="Signing policies" needs="a DFNS profile">
+      <NotConfigured title="Signing policies" needs="a DFNS organization">
         The rules DFNS checks before a custody key is allowed to sign. This build has no relay to
         read them from.
       </NotConfigured>
