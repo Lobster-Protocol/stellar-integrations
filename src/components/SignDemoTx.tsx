@@ -5,6 +5,7 @@ import { useCustody } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { buildTreasuryPaymentTx, buildTreasuryTrustlineTx } from '../integrations/dfns/demo-tx'
 import { pollSignatureStatus, requestTransfer } from '../integrations/dfns/relay'
+import { readableDfnsError } from '../integrations/dfns/errors'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { stellarExplorer, cn } from '../utils/format'
 import { InfoTip } from './InfoTip'
@@ -147,9 +148,10 @@ export default function SignDemoTx() {
             a recipient out of, so those wait for the approver. Every one of them pays the treasury
             itself, so the balance never moves. The rule is listed on the{' '}
             <a href="/audit" className="text-coral hover:underline">
-              Audit
+              Custody
             </a>{' '}
-            page.
+            page, where the live wallets, policies and audit export already prove the integration
+            with no transaction at all.
           </>
         ) : (
           <>
@@ -245,10 +247,18 @@ export default function SignDemoTx() {
             <p className="text-xs text-text-muted">{phaseText[state.phase]}</p>
           )}
 
+          {!isDfns && isWc && state.phase === 'signing' && (
+            <p className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2">
+              Open your DFNS wallet or console to review and approve this request. It does not sign
+              until you approve it there.
+            </p>
+          )}
+
           {state.phase === 'pending' && (
             <div className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2">
-              Waiting for approval in DFNS. Someone else has to approve it
-              (the app can't approve its own request), then the hash shows up here.
+              Held for approval in DFNS. This is the policy engine holding it (four-eyes: whoever
+              starts a transaction cannot approve it). A designated approver releases it, not you.
+              To watch a signature complete instead, use the "no approver needed" action above.
             </div>
           )}
 
@@ -292,7 +302,7 @@ export default function SignDemoTx() {
           )}
 
           {state.phase === 'failed' && (
-            <div className="text-xs text-coral bg-coral/5 rounded-lg px-3 py-2">{state.errorMsg}</div>
+            <div className="text-xs text-coral bg-coral/5 rounded-lg px-3 py-2">{readableDfnsError(state.errorMsg)}</div>
           )}
         </div>
       )}
