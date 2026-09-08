@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { TransactionBuilder, Networks } from '@stellar/stellar-sdk'
 
-import { seedWallet, TEST_SOURCE_TESTNET } from './fixtures'
+import { seedDfnsDemo, seedWallet, TEST_SOURCE_TESTNET } from './fixtures'
 
 // MPC custody mode swaps in the dfns signer, which posts the built xdr to
 // /dfns/sign. the dfns endpoints are mocked (the real flow needs the sandbox +
@@ -41,6 +41,7 @@ test.describe('DFNS MPC signing path', () => {
       })
     })
 
+    await seedDfnsDemo(page)
     await seedWallet(page)
     await page.addInitScript(() => localStorage.setItem('lob_custody_mode', 'dfns'))
     // domcontentloaded, not networkidle: the dfns wallet poll and any feed keep

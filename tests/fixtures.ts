@@ -48,6 +48,13 @@ export function shorten(addr: string, n = 8): string {
   return `${addr.slice(0, n)}...${addr.slice(-n)}`
 }
 
+// Picking a DFNS profile is opt-in now: nothing is active until someone
+// chooses one, so the custody panels stay dark and the sign buttons never
+// mount. A spec that drives those has to pick the demo the way a person would.
+export async function seedDfnsDemo(page: Page) {
+  await page.addInitScript(() => localStorage.setItem('lob_dfns_active', '__demo__'))
+}
+
 export async function seedWallet(page: Page) {
   await page.addInitScript(([addr, name]) => {
     localStorage.setItem('lob_addr', addr)
