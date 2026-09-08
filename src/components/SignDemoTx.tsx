@@ -198,40 +198,49 @@ export default function SignDemoTx() {
       ) : (
         <div className="space-y-3">
           {isDfns ? (
-            <div className="flex flex-wrap gap-2">
-              {/* the Soroban leg: a read-only Factory view, signed by MPC. it is
-                  what a reviewer needs to see a soroban tx come out of DFNS, and
-                  the signer admits it because a view moves nothing. DFNS cannot
-                  put a dollar value on a contract call, so it never slips under
-                  an amount threshold and always waits for an approver. */}
-              <button
-                onClick={() => handleAction('ping')}
-                disabled={busy}
-                className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Call the Factory (DFNS MPC)
-              </button>
+            <div className="space-y-3">
+              {/* the one path that clears with no human: DFNS builds the payment to the
+                  treasury itself, reads its own address off the list, and lets it through.
+                  this is the "see MPC sign now" button a reviewer should reach first. */}
               <button
                 onClick={() => handleAction('transfer')}
                 disabled={busy}
-                className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Pay 0.01 XLM to itself, no approver needed
+                Sign now with DFNS MPC, no approver needed
               </button>
-              <button
-                onClick={() => handleAction('payment')}
-                disabled={busy}
-                className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Pay 0.01 XLM as raw XDR, needs an approver
-              </button>
-              <button
-                onClick={() => handleAction('trustline')}
-                disabled={busy}
-                className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Turn on a LOBS trustline (DFNS MPC)
-              </button>
+              <div>
+                <p className="text-[11px] text-text-muted mb-2">
+                  Approval demo: these hit the other side of the treasury rule on purpose and wait
+                  for a designated approver in the DFNS console, so they do not finish on this screen
+                  by themselves.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {/* a Soroban view signed by MPC; DFNS can't price a contract call, so it
+                      always waits for an approver. */}
+                  <button
+                    onClick={() => handleAction('ping')}
+                    disabled={busy}
+                    className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Call the Factory (DFNS MPC)
+                  </button>
+                  <button
+                    onClick={() => handleAction('payment')}
+                    disabled={busy}
+                    className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Pay 0.01 XLM as raw XDR, needs an approver
+                  </button>
+                  <button
+                    onClick={() => handleAction('trustline')}
+                    disabled={busy}
+                    className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Turn on a LOBS trustline (DFNS MPC)
+                  </button>
+                </div>
+              </div>
             </div>
           ) : (
             <button
