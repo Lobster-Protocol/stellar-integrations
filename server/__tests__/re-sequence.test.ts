@@ -1,6 +1,15 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { TransactionBuilder, Networks, Account, BASE_FEE, Operation, Asset } from '@stellar/stellar-sdk'
+import {
+  TransactionBuilder,
+  Networks,
+  Account,
+  BASE_FEE,
+  Operation,
+  Asset,
+  Contract,
+  SorobanDataBuilder,
+} from '@stellar/stellar-sdk'
 
 import { rebuildWithSequence } from '../dfns/resequence'
 
@@ -51,5 +60,64 @@ describe('rebuildWithSequence', () => {
     expect(op.type).toBe('payment')
     expect(op.destination).toBe(TREASURY)
     expect(op.amount).toBe('0.0100000')
+  })
+})
+
+// a soroban call held for approval used to come back from the rebuild with no
+// footprint at all, and the network turned it down as malformed. these pin both
+// halves: the resources survive, and the fee that already covered them does not
+// get charged twice.
+describe('rebuildWithSequence on a soroban envelope', () => {
+  const FACTORY = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO'
+  const RESOURCE_FEE = 13211
+
+  function sorobanCallAt(seq: string) {
+    return new TransactionBuilder(new Account(TREASURY, seq), {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(new Contract(FACTORY).call('get_admin'))
+      .setSorobanData(new SorobanDataBuilder().setResourceFee(RESOURCE_FEE).build())
+      .setTimeout(120)
+      .build()
+  }
+
+  function footprintOf(tx: ReturnType<typeof sorobanCallAt>) {
+    const ext = tx.toEnvelope().v1().tx().ext()
+    return ext.switch() === 1 ? ext.sorobanData() : null
+  }
+
+  it('carries the footprint across instead of dropping it', () => {
+    const built = sorobanCallAt('100')
+    expect(footprintOf(built)).not.toBeNull()
+
+    const fresh = rebuildWithSequence(built, new Account(TREASURY, '999'), Networks.TESTNET)
+    expect(footprintOf(fresh)).not.toBeNull()
+  })
+
+  it('keeps the resource budget the simulation worked out', () => {
+    const fresh = rebuildWithSequence(
+      sorobanCallAt('100'),
+      new Account(TREASURY, '999'),
+      Networks.TESTNET,
+    )
+    expect(footprintOf(fresh)!.resourceFee().toString()).toBe(String(RESOURCE_FEE))
+  })
+
+  it('does not charge the resource fee a second time', () => {
+    const built = sorobanCallAt('100')
+    expect(built.fee).toBe(String(Number(BASE_FEE) + RESOURCE_FEE))
+
+    const fresh = rebuildWithSequence(built, new Account(TREASURY, '999'), Networks.TESTNET)
+    expect(fresh.fee).toBe(built.fee)
+  })
+
+  it('still rebinds the sequence', () => {
+    const fresh = rebuildWithSequence(
+      sorobanCallAt('100'),
+      new Account(TREASURY, '999'),
+      Networks.TESTNET,
+    )
+    expect(fresh.sequence).toBe('1000')
   })
 })

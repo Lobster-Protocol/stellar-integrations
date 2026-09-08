@@ -1,7 +1,8 @@
-import { Asset, Operation, TransactionBuilder, BASE_FEE, NotFoundError } from '@stellar/stellar-sdk'
+import { Asset, Operation, TransactionBuilder, NotFoundError } from '@stellar/stellar-sdk'
 import { getHorizonServer } from '../horizon/client'
 import { networkPassphrase } from '../lobster/client'
 import type { Network } from '../lobster/types'
+import { INCLUSION_FEE_STROOPS } from '../../config/contracts'
 
 export async function hasTrustline(
   accountId: string,
@@ -47,7 +48,7 @@ export async function buildTrustlineXdr(
     throw err
   }
   return new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: INCLUSION_FEE_STROOPS,
     networkPassphrase: networkPassphrase(network),
   })
     .addOperation(Operation.changeTrust({ asset: new Asset(assetCode, assetIssuer) }))

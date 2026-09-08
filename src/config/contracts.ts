@@ -196,6 +196,14 @@ export const EVM_RPC_FALLBACK: Record<EvmChain, string> = {
   BSC: 'https://bsc-rpc.publicnode.com',
 }
 
+// What we bid to get into a ledger, before any soroban resource fee. Stellar
+// charges the lowest bid that made it in rather than what you offered, so a
+// generous ceiling costs nothing on a quiet ledger and is the difference
+// between landing and timing out on a busy one. Mainnet has been sitting near
+// capacity where the SDK default of 100 stroops loses the auction every time,
+// which is what the swap timeouts were.
+export const INCLUSION_FEE_STROOPS = '1000000'
+
 export const STELLAR_RPC_FALLBACK: Record<Network, { soroban: string; horizon: string }> = {
   testnet: {
     soroban: 'https://soroban-testnet.stellar.org',

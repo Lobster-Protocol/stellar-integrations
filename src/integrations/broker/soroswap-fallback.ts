@@ -10,7 +10,7 @@ import {
   xdr,
 } from '@stellar/stellar-sdk'
 
-import { CONTRACTS, type Network } from '../../config/contracts'
+import { INCLUSION_FEE_STROOPS, CONTRACTS, type Network } from '../../config/contracts'
 import { getSorobanServer, networkPassphrase, loadFunded } from '../lobster/client'
 import { RestoreRequiredError } from '../lobster/factory'
 import { assertAccountId, assertContractId } from '../stellar/strkey-guards'
@@ -110,7 +110,7 @@ export async function buildSoroswapSwapTx(params: SoroswapBuildParams): Promise<
   const deadline = nativeToScVal(BigInt(params.deadlineUnix), { type: 'u64' })
 
   const tx = new TransactionBuilder(source, {
-    fee: BASE_FEE,
+    fee: INCLUSION_FEE_STROOPS,
     networkPassphrase: networkPassphrase(params.network),
   })
     .addOperation(router.call('swap_exact_tokens_for_tokens', amountIn, minOut, path, to, deadline))

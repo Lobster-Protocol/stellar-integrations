@@ -1,7 +1,6 @@
 import {
   Contract,
   TransactionBuilder,
-  BASE_FEE,
   Address,
   nativeToScVal,
   rpc,
@@ -11,6 +10,7 @@ import { getSorobanServer, networkPassphrase, loadFunded } from './client'
 import { submitSignedXdr, waitForTx, type SorobanRestorePreamble } from './factory'
 import { decimalToStroops } from '../stellar/amount'
 import type { Network } from './types'
+import { INCLUSION_FEE_STROOPS } from '../../config/contracts'
 
 export type VaultAction = 'deposit' | 'withdraw'
 
@@ -45,7 +45,7 @@ export async function buildVaultActionTx(
   ]
 
   const tx = new TransactionBuilder(source, {
-    fee: BASE_FEE,
+    fee: INCLUSION_FEE_STROOPS,
     networkPassphrase: networkPassphrase(network),
   })
     .addOperation(vault.call(METHOD[action], ...args))

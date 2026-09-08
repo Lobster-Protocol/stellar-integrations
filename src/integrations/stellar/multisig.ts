@@ -1,9 +1,10 @@
-import { TransactionBuilder, Operation, Keypair, BASE_FEE, type Transaction } from '@stellar/stellar-sdk'
+import { TransactionBuilder, Operation, Keypair, type Transaction } from '@stellar/stellar-sdk'
 
 import { getHorizonServer } from '../horizon/client'
 import { networkPassphrase } from '../lobster/client'
 import { assertAccountId } from './strkey-guards'
 import type { Network } from '../lobster/types'
+import { INCLUSION_FEE_STROOPS } from '../../config/contracts'
 
 // Stellar-native multisig on the vault's owner account. every value action
 // (vault deposit/withdraw, swap, create-vault) is a soroban invoke whose source
@@ -171,7 +172,7 @@ export async function buildSetOptionsTx(
   const server = getHorizonServer(network)
   const account = await server.loadAccount(accountId)
   const builder = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: INCLUSION_FEE_STROOPS,
     networkPassphrase: networkPassphrase(network),
   })
   // the full signing weight after this change. governance ops (set_options,

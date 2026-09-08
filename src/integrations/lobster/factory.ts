@@ -9,13 +9,16 @@ import {
   rpc,
 } from '@stellar/stellar-sdk'
 
-import { CONTRACTS } from '../../config/contracts'
+import { INCLUSION_FEE_STROOPS, CONTRACTS } from '../../config/contracts'
 import { getSorobanServer, networkPassphrase, loadFunded } from './client'
 import { assertAccountId } from '../stellar/strkey-guards'
 import type { FactoryInfo, LobsterPool, Network } from './types'
 
 const POLL_INTERVAL_MS = 3_000
-const POLL_TIMEOUT_MS = 60_000
+// the envelopes we build stay valid for 180s, so stopping at 60s used to report
+// a timeout on a transaction that was still perfectly able to land. someone who
+// retried on that message could pay twice. wait out the whole window instead.
+const POLL_TIMEOUT_MS = 190_000
 
 function getFactoryId(network: Network): string {
   const id = CONTRACTS[network].lobster.factory
@@ -127,7 +130,7 @@ export async function buildPingTx(
   const factory = new Contract(getFactoryId(network))
   const source = await loadFunded(server, fromAddress, network)
   const tx = new TransactionBuilder(source, {
-    fee: BASE_FEE,
+    fee: INCLUSION_FEE_STROOPS,
     networkPassphrase: networkPassphrase(network),
   })
     .addOperation(factory.call('get_admin'))
@@ -192,5 +195,8 @@ export async function waitForTx(network: Network, hash: string): Promise<rpc.Api
     if (res.status !== 'NOT_FOUND') return res
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
   }
-  throw new Error(`Timed out waiting for tx ${hash} (${POLL_TIMEOUT_MS / 1000}s)`)
+  throw new Error(
+    `No result for ${hash} after ${Math.round(POLL_TIMEOUT_MS / 1000)}s. It has most likely ` +
+      'expired without running, but check the explorer before sending it again.',
+  )
 }

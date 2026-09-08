@@ -1,8 +1,8 @@
-import { Contract, TransactionBuilder, BASE_FEE, Address, rpc } from '@stellar/stellar-sdk'
+import { Contract, TransactionBuilder, Address, rpc } from '@stellar/stellar-sdk'
 
 import { getSorobanServer, networkPassphrase, loadFunded } from './client'
 import { submitSignedXdr, waitForTx, type SorobanRestorePreamble } from './factory'
-import { CONTRACTS, type Network } from '../../config/contracts'
+import { INCLUSION_FEE_STROOPS, CONTRACTS, type Network } from '../../config/contracts'
 
 // create_pool deploys a fresh vault owned by the caller for a token pair. It runs
 // caller.require_auth and takes no other trusted address, so unlike the liquidity
@@ -24,7 +24,7 @@ export async function buildCreatePoolTx(
   const source = await loadFunded(server, caller, network)
 
   const tx = new TransactionBuilder(source, {
-    fee: BASE_FEE,
+    fee: INCLUSION_FEE_STROOPS,
     networkPassphrase: networkPassphrase(network),
   })
     .addOperation(
