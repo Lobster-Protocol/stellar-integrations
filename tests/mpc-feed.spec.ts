@@ -16,7 +16,11 @@ test.describe('the custody page', () => {
     // longer separate a live panel from an off one. the bundle carries the
     // relay url from build-time env this process cannot read, so decide on the
     // one thing only the off state prints.
-    const off = page.getByText(/VITE_LOBSTER_API_URL is not set/)
+    // the panels decide their own state once the relay answers, so anchor on a
+    // title before counting: reading the marker too early made the two tests
+    // disagree about the same page.
+    await expect(page.getByText('DFNS wallets')).toBeVisible()
+    const off = page.getByText(/Connect a DFNS organization to see this/)
     const wired = (await off.count()) === 0
 
     await expect(page.getByText('DFNS wallets')).toBeVisible()
@@ -29,8 +33,10 @@ test.describe('the custody page', () => {
       await expect(page.getByRole('button', { name: /Download JSON/i })).toBeVisible()
       await expect(page.getByText(/^\d+ total$/)).toBeVisible()
     } else {
-      await expect(page.getByText(/custody service is not wired up/i)).toBeVisible()
-      await expect(page.getByRole('button', { name: /Download JSON/i })).toHaveCount(0)
+      await expect(off.first()).toBeVisible()
+      // the MiCA panel keeps its button in both states and explains the gap
+      // itself, so its absence is not what marks an unwired page
+      await expect(page.getByText(/no relay to ask for the records/i).first()).toBeVisible()
     }
   })
 
@@ -38,7 +44,11 @@ test.describe('the custody page', () => {
     await seedWallet(page)
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
-    const off = page.getByText(/VITE_LOBSTER_API_URL is not set/)
+    // the panels decide their own state once the relay answers, so anchor on a
+    // title before counting: reading the marker too early made the two tests
+    // disagree about the same page.
+    await expect(page.getByText('DFNS wallets')).toBeVisible()
+    const off = page.getByText(/Connect a DFNS organization to see this/)
     if ((await off.count()) > 0) {
       // no relay to stream from, and the feed says exactly that
       await expect(page.getByRole('heading', { name: /Signing activity/ })).toBeVisible()

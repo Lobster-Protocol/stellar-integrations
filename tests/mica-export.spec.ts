@@ -13,22 +13,19 @@ test.describe('the MiCA export control', () => {
     // it to unconditionally
     await expect(page.getByText('MiCA audit export')).toBeVisible()
 
-    // vite inlines the relay url at build time and this process cannot read the
-    // bundle's copy, so decide from what rendered. reading the node-side env
-    // instead let an absent panel pass as "correctly absent" even when the
-    // component had been deleted or had thrown on mount.
-    const download = page.getByRole('button', { name: /Download JSON/i })
-    const wired = (await download.count()) > 0
+    // the export control renders in both states now: the panel keeps its button
+    // and explains underneath when it has no relay to ask. so the button is no
+    // longer the discriminator, the panel's own sentence is.
+    await expect(page.getByRole('button', { name: /Download JSON/i })).toBeVisible()
 
-    if (wired) {
-      await expect(download).toBeVisible()
-      // and no panel is claiming the relay url is missing while the export works
-      await expect(page.getByText(/VITE_LOBSTER_API_URL is not set/)).toHaveCount(0)
+    const noProfile = page.getByText(/no relay to ask for the records/i)
+    if ((await noProfile.count()) > 0) {
+      await expect(noProfile.first()).toBeVisible()
       return
     }
 
-    // no export control only counts when the panel owns the gap and names the
-    // setting it is missing
-    await expect(page.getByText(/VITE_LOBSTER_API_URL is not set/).first()).toBeVisible()
+    // wired: the sibling panels are reading the same relay, so none of them is
+    // still asking to be connected
+    await expect(page.getByText(/Connect a DFNS organization to see this/)).toHaveCount(0)
   })
 })

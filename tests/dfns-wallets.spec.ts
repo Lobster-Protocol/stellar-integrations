@@ -20,10 +20,10 @@ test.describe('the custody wallet list', () => {
 
     if (wired) {
       await expect(count).toBeVisible()
-      await expect(page.getByText(/VITE_LOBSTER_API_URL is not set/)).toHaveCount(0)
+      await expect(page.getByText(/Connect a DFNS organization to see this/)).toHaveCount(0)
       return
     }
 
-    await expect(page.getByText(/VITE_LOBSTER_API_URL is not set/).first()).toBeVisible()
+    await expect(page.getByText(/Connect a DFNS organization to see this/).first()).toBeVisible()
   })
 })

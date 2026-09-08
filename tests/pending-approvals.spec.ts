@@ -14,7 +14,7 @@ test.describe('the approval queue', () => {
     // decided from the render, not from a node-side env var: the relay url is
     // baked into the bundle, and the old check passed whether the panel had
     // opted out or blown up on mount.
-    const off = page.getByText(/VITE_LOBSTER_API_URL is not set/)
+    const off = page.getByText(/Connect a DFNS organization to see this/)
     if ((await off.count()) > 0) {
       await expect(off.first()).toBeVisible()
       return
