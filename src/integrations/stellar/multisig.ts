@@ -210,7 +210,9 @@ export async function buildSetOptionsTx(
       builder.addOperation(Operation.setOptions(opts))
     })
   }
-  return builder.setTimeout(300).build().toXDR()
+  // one hour, not five minutes: turning shared control off gathers a second
+  // signature across a person (and DFNS), so a tight window kept expiring mid-revert.
+  return builder.setTimeout(3600).build().toXDR()
 }
 
 // classic (non-soroban) submit for the set_options tx. the vault co-sign path
