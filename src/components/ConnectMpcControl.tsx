@@ -9,7 +9,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useActiveProfile } from '../integrations/dfns/use-profiles'
 import { useDfnsWallets } from '../integrations/dfns/hooks'
-import { setSelectedWallet, removeClientProfile, type DfnsNetwork } from '../integrations/dfns/profiles'
+import { setSelectedWallet, removeClientProfile, clearActiveProfile, type DfnsNetwork } from '../integrations/dfns/profiles'
 import { shortenAddress, stellarExplorer, cn } from '../utils/format'
 import CopyButton from './CopyButton'
 import ConnectRelayForm from './ConnectRelayForm'
@@ -178,6 +178,17 @@ export default function ConnectMpcControl() {
                 className="w-full rounded-full bg-primary text-white text-xs font-semibold py-1.5"
               >
                 Connect your own DFNS
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearActiveProfile()
+                  setMode('wallet-kit')
+                  setOpen(false)
+                }}
+                className="w-full text-[11px] text-text-muted hover:text-coral py-1"
+              >
+                Disconnect the demo
               </button>
             </div>
           ) : (

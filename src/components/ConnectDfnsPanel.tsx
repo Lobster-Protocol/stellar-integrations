@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { removeClientProfile, setActiveProfile, relayHost, DEMO_PROFILE_ID } from '../integrations/dfns/profiles'
+import { removeClientProfile, setActiveProfile, clearActiveProfile, relayHost, DEMO_PROFILE_ID } from '../integrations/dfns/profiles'
 import { useProfiles, useActiveProfile } from '../integrations/dfns/use-profiles'
 import { cn } from '../utils/format'
 import ConnectRelayForm from './ConnectRelayForm'
@@ -39,8 +39,19 @@ export default function ConnectDfnsPanel() {
                 </span>
               </button>
               {p.kind === 'demo' ? (
-                <span className="shrink-0 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-semibold px-2 py-0.5">
-                  Testnet sandbox
+                <span className="shrink-0 flex items-center gap-2">
+                  <span className="rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-semibold px-2 py-0.5">
+                    Testnet sandbox
+                  </span>
+                  {isActive && (
+                    <button
+                      type="button"
+                      onClick={() => clearActiveProfile()}
+                      className="text-[11px] text-text-muted hover:text-coral"
+                    >
+                      Disconnect
+                    </button>
+                  )}
                 </span>
               ) : (
                 <button

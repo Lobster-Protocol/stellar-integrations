@@ -201,6 +201,17 @@ export function setActiveProfile(id: string): void {
   emit()
 }
 
+// Deselect whatever is active, back to "no DFNS org". The demo has no stored row to
+// forget, so this is the only way off it once it is picked.
+export function clearActiveProfile(): void {
+  try {
+    localStorage.removeItem(ACTIVE_KEY)
+  } catch {
+    // storage off
+  }
+  emit()
+}
+
 export function addClientProfile(input: Omit<DfnsProfile, 'id' | 'kind'>): DfnsProfile {
   assertRelayUrl(input.relayBaseUrl, 'client')
   const id = `client-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
