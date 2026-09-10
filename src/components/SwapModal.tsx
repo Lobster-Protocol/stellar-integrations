@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { X, ArrowUpDown } from 'lucide-react'
 
@@ -6,7 +6,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { getWalletNetworkPassphrase } from '../integrations/signer/wallet-network'
-import { useSoroswapConfirm, buildSoroswapConfirmTx } from '../integrations/broker/hooks'
+import { useSoroswapConfirm, buildSoroswapConfirmTx, SOROSWAP_SLIPPAGE } from '../integrations/broker/hooks'
 import { useSwapRoute } from '../integrations/routing/hooks'
 import { swapTokensFor } from '../config/contracts'
 import { networkPassphrase } from '../integrations/lobster/client'
@@ -99,6 +99,35 @@ export default function SwapModal({ open, onClose }: Props) {
   const networkMismatch =
     !!address && !!walletNetwork.data && walletNetwork.data !== networkPassphrase(network)
 
+  const titleId = useId()
+  // building the envelope or awaiting the wallet signature is the one moment a
+  // stray close would strand an in-progress sign, so gate every dismissal on it.
+  const busy = confirmFallback.isPending || multiBuilding
+
+  // the parent keeps this modal mounted when closed, so nothing resets on its own.
+  // clear the amount, the mutation and any co-sign progress on close, or a reopen
+  // shows a stale "Swap confirmed" and the last amount. fire only on the open
+  // toggle: the mutation object identity is unstable, so listing it as a dep would
+  // re-run this on every render.
+  useEffect(() => {
+    if (open) return
+    setAmount('')
+    setCoSign(null)
+    setMultiHash(null)
+    setMultiErr(null)
+    setMultiBuilding(false)
+    confirmFallback.reset()
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, busy, onClose])
+
   if (!open) return null
 
   const source = route.data?.source
@@ -175,17 +204,17 @@ export default function SwapModal({ open, onClose }: Props) {
   const fallbackHash = confirmFallback.data ?? null
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div role="dialog" aria-modal="true" aria-label="Swap tokens" className="bg-bg-card rounded-3xl p-6 w-full max-w-md card">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => { if (!busy) onClose() }}>
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="bg-bg-card rounded-3xl p-6 w-full max-w-md card" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-text flex items-center gap-1.5">
+          <h2 id={titleId} className="text-lg font-semibold text-text flex items-center gap-1.5">
             Best-execution swap
             <InfoTip label="best execution">
               Compares several exchanges and routes your swap through whichever gives you the most,
               automatically.
             </InfoTip>
           </h2>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-bg">
+          <button onClick={onClose} disabled={busy} className="p-1 rounded-full hover:bg-bg disabled:opacity-40 disabled:cursor-not-allowed">
             <X size={18} />
           </button>
         </div>
@@ -260,7 +289,7 @@ export default function SwapModal({ open, onClose }: Props) {
 
           {amount && !sameToken && (
             <p className="text-[11px] text-text-muted flex items-center gap-1">
-              Max slippage 2% <InfoTip term="slippage" label="max slippage" />
+              Max slippage {SOROSWAP_SLIPPAGE * 100}% <InfoTip term="slippage" label="max slippage" />
             </p>
           )}
 

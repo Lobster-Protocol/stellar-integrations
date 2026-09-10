@@ -9,8 +9,9 @@ import type { Signer } from '../signer/types'
 import type { BrokerQuoteParams } from './types'
 
 // 1% slippage on the soroswap leg. broker default is 2% but the direct
-// router gives a tighter quote so we ask for less.
-const SOROSWAP_SLIPPAGE = 0.01
+// router gives a tighter quote so we ask for less. exported so the swap panel
+// shows the number it actually enforces, not the broker's looser quote figure.
+export const SOROSWAP_SLIPPAGE = 0.01
 // 3 minute swap deadline. avoids stale auth in slow signing flows.
 const SOROSWAP_DEADLINE_SEC = 180
 

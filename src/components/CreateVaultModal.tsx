@@ -122,7 +122,7 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
       <div className="bg-bg-card rounded-3xl p-6 w-full max-w-md card" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-lg font-semibold text-text">Create a vault</h2>
-          <button onClick={onClose} aria-label="Close" className="p-1 rounded-full hover:bg-bg text-text-muted">
+          <button onClick={onClose} disabled={busy} aria-label="Close" className="p-1 rounded-full hover:bg-bg text-text-muted disabled:opacity-40 disabled:cursor-not-allowed">
             <X size={18} />
           </button>
         </div>

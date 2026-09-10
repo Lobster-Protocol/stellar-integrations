@@ -9,6 +9,7 @@ interface Toast {
   id: number
   kind: ToastKind
   message: string
+  ms: number
 }
 
 interface ToastApi {
@@ -25,19 +26,34 @@ const Ctx = createContext<ToastApi | null>(null)
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const idRef = useRef(1)
+  const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
 
   const dismiss = useCallback((id: number) => {
-    setToasts((t) => t.filter((x) => x.id !== id))
+    const t = timers.current.get(id)
+    if (t) {
+      clearTimeout(t)
+      timers.current.delete(id)
+    }
+    setToasts((prev) => prev.filter((x) => x.id !== id))
   }, [])
+
+  const arm = useCallback(
+    (id: number, ms: number) => {
+      timers.current.set(id, setTimeout(() => dismiss(id), ms))
+    },
+    [dismiss],
+  )
 
   const push = useCallback(
     (kind: ToastKind, message: string) => {
       const id = idRef.current++
+      // an error is worth reading, so it lingers longer than a success or an info
+      const ms = kind === 'error' ? 9000 : 4500
       // keep at most a few on screen; the newest is what matters
-      setToasts((t) => [...t.slice(-3), { id, kind, message }])
-      setTimeout(() => dismiss(id), 4500)
+      setToasts((t) => [...t.slice(-3), { id, kind, message, ms }])
+      arm(id, ms)
     },
-    [dismiss],
+    [arm],
   )
 
   const api = useMemo<ToastApi>(
@@ -60,6 +76,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 key={t.id}
                 role="status"
                 aria-live="polite"
+                onMouseEnter={() => timers.current.forEach((tm) => clearTimeout(tm))}
+                onMouseLeave={() => toasts.forEach((x) => arm(x.id, x.ms))}
                 className={cn(
                   'pointer-events-auto flex items-start gap-2 rounded-2xl border bg-bg-card shadow-xl px-3 py-2 text-xs max-w-xs',
                   t.kind === 'success' && 'border-ok/30',

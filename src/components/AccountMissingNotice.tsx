@@ -1,11 +1,14 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountExists } from '../integrations/horizon/account'
 import { friendbotFund } from '../integrations/stellar/friendbot'
+import { shortenAddress } from '../utils/format'
 import { Card } from './ui'
+import CopyButton from './CopyButton'
 
 type Fund = 'idle' | 'pending' | 'done' | { error: string }
 
@@ -18,8 +21,10 @@ export default function AccountMissingNotice() {
   const { network } = useNetwork()
   const qc = useQueryClient()
   const [fund, setFund] = useState<Fund>('idle')
+  const [dismissed, setDismissed] = useState(false)
 
   if (useAccountExists(network, address) !== 'missing') return null
+  if (dismissed) return null
 
   async function fundIt() {
     if (!address) return
@@ -35,7 +40,17 @@ export default function AccountMissingNotice() {
 
   return (
     <Card className="border border-amber-500/30 mb-4">
-      <h3 className="text-sm font-semibold text-text">This wallet isn&apos;t on the ledger yet</h3>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-sm font-semibold text-text">This wallet isn&apos;t on the ledger yet</h3>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss"
+          className="shrink-0 text-text-muted hover:text-text"
+        >
+          <X size={16} />
+        </button>
+      </div>
       <p className="text-xs text-text-secondary mt-1 max-w-2xl">
         A Stellar account only exists once it has received some XLM. Until then there is nothing to
         read for it, which is why the panels below are empty. Fund this address on {network} to get
@@ -56,6 +71,13 @@ export default function AccountMissingNotice() {
           {typeof fund === 'object' && (
             <span className="text-xs text-coral break-words">{fund.error}</span>
           )}
+        </div>
+      )}
+      {network === 'mainnet' && address && (
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-xs text-text-secondary">
+          <span>Send at least 1 XLM to</span>
+          <span className="font-mono text-text">{shortenAddress(address, 6)}</span>
+          <CopyButton value={address} what="your wallet address" />
         </div>
       )}
     </Card>

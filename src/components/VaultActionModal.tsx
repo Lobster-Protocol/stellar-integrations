@@ -128,6 +128,12 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         setPhase({ k: 'failed', msg: `The network reported ${final.status}.` })
       }
     } catch (err) {
+      // a Stop-waiting click aborts the held-approval poll; that comes back as an
+      // abort here, not a real failure, so drop back to the form quietly.
+      if (abortRef.current?.signal.aborted) {
+        setPhase({ k: 'form' })
+        return
+      }
       const msg = err instanceof Error ? err.message.split('\n')[0].slice(0, 180) : 'Something went wrong'
       setPhase({ k: 'failed', msg })
     } finally {
@@ -155,7 +161,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
           <h2 id={titleId} className="text-lg font-semibold text-text">
             {isWithdraw ? 'Withdraw from vault' : 'Deposit into vault'}
           </h2>
-          <button onClick={onClose} aria-label="Close" className="p-1 rounded-full hover:bg-bg text-text-muted">
+          <button onClick={onClose} disabled={busy} aria-label="Close" className="p-1 rounded-full hover:bg-bg text-text-muted disabled:opacity-40 disabled:cursor-not-allowed">
             <X size={18} />
           </button>
         </div>
@@ -269,10 +275,19 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
             </button>
 
             {phase.k === 'pending' && (
-              <p className="text-xs text-primary">
-                Waiting for approval in your DFNS console. Someone else has to approve it, then it
-                settles here.
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs text-primary">
+                  Waiting for approval in your DFNS console. Someone else has to approve it, then it
+                  settles here.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => abortRef.current?.abort()}
+                  className="text-[11px] text-text-muted hover:text-coral"
+                >
+                  Stop waiting
+                </button>
+              </div>
             )}
             {phase.k === 'failed' && (
               <p className="text-xs text-coral break-words">{phase.msg}</p>

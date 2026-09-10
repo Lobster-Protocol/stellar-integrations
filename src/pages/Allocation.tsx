@@ -144,10 +144,11 @@ export default function Allocation() {
         <div className="flex flex-col items-end gap-2">
           <LiveDataMeta
             dataUpdatedAt={balancesQ.dataUpdatedAt}
-            isFetching={balancesQ.isFetching || vaultsQ.isFetching}
+            isFetching={balancesQ.isFetching || vaultsQ.isFetching || priceQ.isFetching}
             onRefresh={() => {
               balancesQ.refetch()
               vaultsQ.refetch()
+              priceQ.refetch()
             }}
           />
           <ExportButton

@@ -206,6 +206,9 @@ export function setActiveProfile(id: string): void {
 export function clearActiveProfile(): void {
   try {
     localStorage.removeItem(ACTIVE_KEY)
+    // the demo's operator token is the one write right that lived on disk; drop it
+    // with the connection so it can't outlive the demo it belonged to.
+    localStorage.removeItem(DEMO_OPERATOR_KEY)
   } catch {
     // storage off
   }

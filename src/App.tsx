@@ -1,5 +1,5 @@
 import { useState, useEffect, useId, useRef, Component, Suspense, lazy, type ReactNode } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
@@ -17,9 +17,14 @@ const Positions = lazy(() => import('./pages/Positions'))
 const SharedControl = lazy(() => import('./pages/SharedControl'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }, { error: Error | null }> {
   state = { error: null as Error | null }
   static getDerivedStateFromError(error: Error) { return { error } }
+  // clear the caught error when the route changes, so a throw on one page doesn't
+  // wedge the whole app until a manual reload - navigating away recovers it.
+  componentDidUpdate(prev: { resetKey?: string }) {
+    if (this.state.error && prev.resetKey !== this.props.resetKey) this.setState({ error: null })
+  }
   render() {
     if (this.state.error) {
       return (
@@ -47,6 +52,7 @@ function RouteFallback() {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const drawerTitleId = useId()
   const drawerCloseBtnRef = useRef<HTMLButtonElement | null>(null)
@@ -115,20 +121,22 @@ export default function App() {
             />
             <main id="main-content" tabIndex={-1} className="flex-1 p-4 sm:p-6 overflow-y-auto">
               <AccountMissingNotice />
-              <Suspense fallback={<RouteFallback />}>
-                <Routes>
-                  <Route path="/" element={<Overview />} />
-                  <Route path="/performance" element={<Performance />} />
-                  <Route path="/activity" element={<Activity />} />
-                  <Route path="/audit" element={<Audit />} />
-                  <Route path="/allocation" element={<Allocation />} />
-                  <Route path="/bridges" element={<Bridges />} />
-                  <Route path="/positions" element={<Positions />} />
-                  <Route path="/shared-control" element={<SharedControl />} />
-                  <Route path="/404" element={<NotFound />} />
-                  <Route path="*" element={<Navigate to="/404" replace />} />
-                </Routes>
-              </Suspense>
+              <ErrorBoundary resetKey={pathname}>
+                <Suspense fallback={<RouteFallback />}>
+                  <Routes>
+                    <Route path="/" element={<Overview />} />
+                    <Route path="/performance" element={<Performance />} />
+                    <Route path="/activity" element={<Activity />} />
+                    <Route path="/audit" element={<Audit />} />
+                    <Route path="/allocation" element={<Allocation />} />
+                    <Route path="/bridges" element={<Bridges />} />
+                    <Route path="/positions" element={<Positions />} />
+                    <Route path="/shared-control" element={<SharedControl />} />
+                    <Route path="/404" element={<NotFound />} />
+                    <Route path="*" element={<Navigate to="/404" replace />} />
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
             </main>
             <Footer />
           </div>

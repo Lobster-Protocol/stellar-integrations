@@ -4,10 +4,25 @@ import type { Signer, SignOpts } from './types'
 export const dfnsSigner: Signer = {
   name: 'dfns',
   async signTransaction(xdr: string, opts: SignOpts) {
-    const res = await relayFetch('/dfns/sign', {
-      method: 'POST',
-      body: JSON.stringify({ xdr, networkPassphrase: opts.networkPassphrase }),
-    })
+    // the relay answers this quickly: a pending id (held for approval, polled
+    // elsewhere) or the signed envelope. it does not wait out the human approval,
+    // so a long silence means the relay itself is stuck. give up after a minute
+    // rather than leave the caller on "Awaiting signature" forever.
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 60_000)
+    let res: Response
+    try {
+      res = await relayFetch('/dfns/sign', {
+        method: 'POST',
+        body: JSON.stringify({ xdr, networkPassphrase: opts.networkPassphrase }),
+        signal: ctrl.signal,
+      })
+    } catch (e) {
+      if (ctrl.signal.aborted) throw new Error('the relay did not answer the signing request in time')
+      throw e
+    } finally {
+      clearTimeout(timer)
+    }
     if (!res.ok) {
       const detail = await res.text().catch(() => '')
       throw new Error(`dfns sign ${res.status}: ${detail}`)
