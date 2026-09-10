@@ -6,9 +6,7 @@ import type { Signer } from '../../signer/types'
 // capture what buildSoroswapConfirmTx hands the envelope builder, so we can assert
 // the minAmountOut it freezes. buildSoroswapSwapTx itself talks to the chain, so it
 // is mocked; asset-mapping is mocked so the confirm path resolves without a network.
-const { buildSpy } = vi.hoisted(() => ({
-  buildSpy: vi.fn((_args: { minAmountOut: bigint }) => Promise.resolve('PREPARED_XDR')),
-}))
+const { buildSpy } = vi.hoisted(() => ({ buildSpy: vi.fn(() => Promise.resolve('PREPARED_XDR')) }))
 vi.mock('../soroswap-fallback', () => ({ buildSoroswapSwapTx: buildSpy }))
 vi.mock('../asset-mapping', () => ({
   brokerAssetToSac: (asset: string) => (asset === 'xlm' ? 'CXLM' : 'CUSDC'),
@@ -47,7 +45,7 @@ describe('buildSoroswapConfirmTx minAmountOut', () => {
   it('freezes minAmountOut at a 1% haircut off the quoted buying amount', async () => {
     const buying = 1_000_000_000n
     await buildSoroswapConfirmTx(args(buying))
-    const passed = buildSpy.mock.calls[0][0]
+    const passed = (buildSpy.mock.calls[0] as unknown as [{ minAmountOut: bigint }])[0]
     // 1% off 100.0000000 XLM = 99.0000000
     expect(passed.minAmountOut).toBe(990_000_000n)
     expect(passed.minAmountOut).toBe((buying * 9900n) / 10000n)
@@ -56,7 +54,7 @@ describe('buildSoroswapConfirmTx minAmountOut', () => {
   it('never asks for more than the quote, whatever the amount', async () => {
     const buying = 987_654_321n
     await buildSoroswapConfirmTx(args(buying))
-    const passed = buildSpy.mock.calls[0][0]
+    const passed = (buildSpy.mock.calls[0] as unknown as [{ minAmountOut: bigint }])[0]
     expect(passed.minAmountOut).toBeLessThan(buying)
     // exactly the constant-derived floor, so the number shown stays the number enforced
     expect(passed.minAmountOut).toBe(
