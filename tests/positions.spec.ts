@@ -10,18 +10,15 @@ test.describe('positions', () => {
     await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
   })
 
-  test('shows the Factory card with a Stellar Expert link on testnet', async ({ page }) => {
+  test('is about this wallet and nothing else', async ({ page }) => {
     await gotoWithWallet(page, '/positions')
-    await expect(page.getByRole('heading', { name: 'Factory contract' })).toBeVisible()
-    // public RPC can rate-limit a headless runner, so we only assert the
-    // static UI elements that show up once the Factory id is configured.
-    await expect(page.getByText(/Stellar Expert/).first()).toBeVisible()
-  })
-
-  test('shows the Sign demo card with the wallet name in the button label', async ({ page }) => {
-    await gotoWithWallet(page, '/positions')
-    await expect(page.getByRole('heading', { name: /Sign a testnet transaction/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Call the Factory with Freighter/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
+    // the custody demo and the protocol cards live on Custody. someone opening
+    // their own positions should never be asked to test the DFNS relay here.
+    await expect(page.getByRole('heading', { name: /Sign a testnet transaction/i })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Factory contract' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: /Contract storage lease/ })).toHaveCount(0)
+    await expect(page.getByText('Routing engine')).toHaveCount(0)
   })
 
   test('without a connected wallet, the page prompts to connect', async ({ page }) => {
@@ -29,5 +26,22 @@ test.describe('positions', () => {
     await expect(
       page.getByText(/Connect a wallet to see the vaults it owns/i),
     ).toBeVisible()
+  })
+})
+
+// the factory card and the sign demo sit under the custody panels on /audit.
+test.describe('custody page', () => {
+  test('shows the Factory card with a Stellar Expert link on testnet', async ({ page }) => {
+    await gotoWithWallet(page, '/audit')
+    await expect(page.getByRole('heading', { name: 'Factory contract' })).toBeVisible()
+    // public RPC can rate-limit a headless runner, so we only assert the
+    // static UI elements that show up once the Factory id is configured.
+    await expect(page.getByText(/Stellar Expert/).first()).toBeVisible()
+  })
+
+  test('shows the Sign demo card with the wallet name in the button label', async ({ page }) => {
+    await gotoWithWallet(page, '/audit')
+    await expect(page.getByRole('heading', { name: /Sign a testnet transaction/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Call the Factory with Freighter/i })).toBeVisible()
   })
 })

@@ -55,6 +55,13 @@ test.describe('Cross-page navigation', () => {
     await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
   })
 
+  test('shared control is reachable from the sidebar', async ({ page }) => {
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: 'Shared control', exact: true }).click()
+    await expect(page).toHaveURL(/\/shared-control$/)
+    await expect(page.getByRole('heading', { level: 2, name: 'Shared control' })).toBeVisible()
+  })
+
   test('junk URL redirects to the custom /404 page', async ({ page }) => {
     await gotoWithWallet(page)
     await page.goto(`${BASE}/this-does-not-exist`, { waitUntil: 'domcontentloaded' })
@@ -101,7 +108,7 @@ test.describe('Mobile responsiveness', () => {
     // whichever icon button happened to come first in the DOM
     const hamburger = page.getByRole('button', { name: /Open menu/i })
     await hamburger.click()
-    for (const label of ['Overview', 'Performance', 'Activity', 'Allocation', 'Bridges', 'Positions']) {
+    for (const label of ['Overview', 'Performance', 'Activity', 'Allocation', 'Bridges', 'Positions', 'Custody', 'Shared control']) {
       await expect(page.getByRole('link', { name: new RegExp(`^${label}$`) }).first()).toBeVisible()
     }
   })

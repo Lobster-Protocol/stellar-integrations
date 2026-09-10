@@ -26,9 +26,10 @@ test.describe('vault lifecycle', () => {
   test('will not offer a vault on a network with no factory', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('lob_network', 'mainnet'))
     await gotoWithWallet(page, '/positions')
-    // the factory card and the vault list both say it, so pin the exact one
+    // the vault list is the one that says it here; the factory card that used
+    // to repeat it sits on Custody now
     await expect(
-      page.getByText('Not deployed on mainnet yet.', { exact: true }),
+      page.getByText('The Lobster factory is not deployed on mainnet yet.', { exact: true }),
     ).toBeVisible({ timeout: 25000 })
     await expect(page.getByRole('button', { name: /^\+ Create vault$/ })).toHaveCount(0)
   })

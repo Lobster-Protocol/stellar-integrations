@@ -15,8 +15,8 @@ import {
   useActivityFilters,
 } from '../integrations/horizon/activity-window'
 import ExportButton, { type ExportFormat } from '../components/ExportButton'
-import RoutingFeedCard from '../components/RoutingFeedCard'
-import { Card, CardHead, ChartFrame, Disclosure, Empty, Stat } from '../components/ui'
+import RoutingEngineCard from '../components/RoutingEngineCard'
+import { Card, CardHead, ChartFrame, Empty, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
 // kinds that represent something the owner did, as opposed to the rent and
@@ -238,11 +238,7 @@ export default function Activity() {
 
       <ActivityFeed />
 
-      <Card>
-        <Disclosure summary="Routing decisions recorded in this browser">
-          <RoutingFeedCard bare />
-        </Disclosure>
-      </Card>
+      <RoutingEngineCard />
     </div>
   )
 }

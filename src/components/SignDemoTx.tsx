@@ -146,12 +146,9 @@ export default function SignDemoTx() {
             recipient, see our own address and let it through: the hash lands in seconds with nobody
             in the loop. The other buttons hand DFNS a signed envelope instead, which it cannot read
             a recipient out of, so those wait for the approver. Every one of them pays the treasury
-            itself, so the balance never moves. The rule is listed on the{' '}
-            <a href="/audit" className="text-coral hover:underline">
-              Custody
-            </a>{' '}
-            page, where the live wallets, policies and audit export already prove the integration
-            with no transaction at all.
+            itself, so the balance never moves. The rule itself is listed above, next to the live
+            wallets, the policies and the audit export, which already prove the integration with no
+            transaction at all.
           </>
         ) : (
           <>

@@ -200,7 +200,9 @@ export default function Overview() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
+        {/* a preview of the Performance curve, not a copy of it: the balance,
+            the shape of how it got there, and the way through */}
+        <Card className="lg:col-span-2 self-start">
           <CardHead
             title="Wallet balance over time"
             note="What the wallet itself held, rebuilt from its on-chain history. Swaps and vault deposits leave this line."
@@ -213,38 +215,54 @@ export default function Overview() {
           {spark.length < 2 ? (
             <Empty>Not enough history on {network} yet.</Empty>
           ) : (
-            <ChartFrame
-              label={`Wallet balance over time, quoted in ${unit}`}
-              columns={['Date', `Value (${unit})`]}
-              rows={sparkChanges.map((r) => [
-                new Date(r.ts).toLocaleDateString('en-GB'),
-                formatValue(r.value, unit),
-              ])}
-            >
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={spark} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="overviewFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={CHART_COLORS[0]} stopOpacity={0.25} />
-                    <stop offset="100%" stopColor={CHART_COLORS[0]} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  labelFormatter={(v) => new Date(Number(v)).toLocaleDateString('en-GB')}
-                  formatter={(v) => [formatValue(Number(v), unit), 'Value']}
-                />
-                <Area
-                  type="stepAfter"
-                  dataKey="value"
-                  stroke={CHART_COLORS[0]}
-                  strokeWidth={2}
-                  fill="url(#overviewFill)"
-                  isAnimationActive={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-            </ChartFrame>
+            <div className="flex items-center gap-5">
+              <div className="shrink-0">
+                {/* the tile above already says "in wallet", so this one names
+                    the end of the curve instead of repeating the words */}
+                <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">
+                  Now
+                </div>
+                {/* the figure the "In wallet" tile shows, so the summary can
+                    never drift from the rest of the page */}
+                <div className="text-2xl font-semibold text-text" style={{ fontFamily: 'Outfit' }}>
+                  {usdTotal != null ? formatValue(usdTotal, unit) : 'n/a'}
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <ChartFrame
+                  label={`Wallet balance over time, quoted in ${unit}`}
+                  columns={['Date', `Value (${unit})`]}
+                  rows={sparkChanges.map((r) => [
+                    new Date(r.ts).toLocaleDateString('en-GB'),
+                    formatValue(r.value, unit),
+                  ])}
+                >
+                  <ResponsiveContainer width="100%" height={56}>
+                    <AreaChart data={spark} margin={{ left: 0, right: 0, top: 2, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="overviewFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={CHART_COLORS[0]} stopOpacity={0.25} />
+                          <stop offset="100%" stopColor={CHART_COLORS[0]} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip
+                        contentStyle={TOOLTIP_STYLE}
+                        labelFormatter={(v) => new Date(Number(v)).toLocaleDateString('en-GB')}
+                        formatter={(v) => [formatValue(Number(v), unit), 'Value']}
+                      />
+                      <Area
+                        type="stepAfter"
+                        dataKey="value"
+                        stroke={CHART_COLORS[0]}
+                        strokeWidth={1.5}
+                        fill="url(#overviewFill)"
+                        isAnimationActive={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </ChartFrame>
+              </div>
+            </div>
           )}
         </Card>
 

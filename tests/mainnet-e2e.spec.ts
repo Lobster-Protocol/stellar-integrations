@@ -34,21 +34,21 @@ async function readAdminAndPoolCount(): Promise<{ admin: string; poolCount: numb
   return { admin: String(admin), poolCount: Number(poolCount) }
 }
 
-// anchor on the Factory card through its heading; the page subtitle also carries
-// the words "Factory contract", so the h3 is the reliable handle
+// anchor on the Factory card through its heading; the stat labels each carry a
+// help tip of their own, so the h3 is the reliable handle
 function factoryCard(page: import('@playwright/test').Page) {
   return page
     .getByRole('heading', { name: /Factory contract/ })
     .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
 }
 
-async function openPositionsOnMainnet(page: import('@playwright/test').Page) {
-  await page.goto(`${BASE}/positions`)
+async function openCustodyOnMainnet(page: import('@playwright/test').Page) {
+  await page.goto(`${BASE}/audit`)
   await page.getByRole('button', { name: 'Mainnet' }).click()
   await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 }
 
-test.describe('Live mainnet Factory reads match the /positions DOM', () => {
+test.describe('Live mainnet Factory reads match the /audit DOM', () => {
   test.skip(!ready, 'set PLAYWRIGHT_MAINNET_FACTORY and _SOURCE once the mainnet deploy lands')
 
   let truth: { admin: string; poolCount: number }
@@ -58,23 +58,23 @@ test.describe('Live mainnet Factory reads match the /positions DOM', () => {
   })
 
   test('Contract ID stat renders the mainnet Factory address', async ({ page }) => {
-    await openPositionsOnMainnet(page)
+    await openCustodyOnMainnet(page)
     await expect(factoryCard(page)).toContainText(shorten(MAINNET_FACTORY, 8))
   })
 
   test('Factory admin from on-chain matches the rendered Admin stat', async ({ page }) => {
-    await openPositionsOnMainnet(page)
+    await openCustodyOnMainnet(page)
     await expect(factoryCard(page)).toContainText(shorten(truth.admin, 8))
   })
 
   test('Factory pool_count from on-chain matches the rendered Pools created', async ({ page }) => {
-    await openPositionsOnMainnet(page)
+    await openCustodyOnMainnet(page)
     const stat = page.getByText(/^Pools created$/i).locator('..')
     await expect(stat).toContainText(String(truth.poolCount))
   })
 
   test('Stellar Expert link points to the Factory on public', async ({ page }) => {
-    await openPositionsOnMainnet(page)
+    await openCustodyOnMainnet(page)
     const link = page.getByRole('link', { name: /Stellar Expert/i }).first()
     await expect(link).toBeVisible({ timeout: 30_000 })
     await expect(link).toHaveAttribute(

@@ -2,7 +2,6 @@ import { useReducer, useState } from 'react'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useFactoryInfo } from '../integrations/lobster/hooks'
 import { isVaultEmpty, lastMoveByVault, useVaultPositions } from '../integrations/lobster/position'
 import { useActivity } from '../integrations/horizon/activity'
 import {
@@ -16,11 +15,8 @@ import { useAccountBalances } from '../integrations/horizon/account'
 import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
 import { buildPortfolio } from '../integrations/pricing/portfolio'
 import { CONTRACTS } from '../config/contracts'
-import { formatValue, shortenAddress, stellarExplorer } from '../utils/format'
-import SignDemoTx from '../components/SignDemoTx'
+import { formatValue, shortenAddress } from '../utils/format'
 import LiveDataMeta from '../components/LiveDataMeta'
-import RoutingEngineCard from '../components/RoutingEngineCard'
-import TtlCountdownCard from '../components/TtlCountdownCard'
 import { Card, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 import VaultActionModal from '../components/VaultActionModal'
@@ -43,7 +39,6 @@ export default function Positions() {
   // a wallet with many vaults gets the biggest few and asks for the rest
   const [showAll, setShowAll] = useState(false)
 
-  const factoryInfo = useFactoryInfo(network, address || undefined)
   const vaultsQ = useVaultPositions(network, address)
   const activityQ = useActivity(network, address)
   const balancesQ = useAccountBalances(network, address)
@@ -57,8 +52,11 @@ export default function Positions() {
   const portfolio = buildPortfolio(lines, vaults, priceOf, network)
 
   const factoryId = CONTRACTS[network].lobster.factory
-  const factoryExplorer = factoryId ? stellarExplorer(network, 'contract', factoryId) : null
   const deployed = vaults.filter((v) => v.venue !== 'idle').length
+  // what share of this wallet's money sits in vaults rather than loose in the
+  // wallet. tokens we cannot price count nowhere, so say so when there are any.
+  const inVaults =
+    portfolio.total > 0 ? Math.round((portfolio.vaultValue / portfolio.total) * 100) : null
 
   const hidden = address ? hiddenVaults(network, address) : []
   // biggest first, and a vault holding nothing sinks below one that does even
@@ -151,13 +149,15 @@ export default function Positions() {
           sub={vaults.length > 0 && deployed === 0 ? 'the rest sit in the vault' : undefined}
         />
         <Stat
-          label={
-            <>
-              Factory pools <InfoTip term="factory" label="the Factory" />
-            </>
+          label="Share in vaults"
+          value={address && inVaults != null ? `${inVaults}%` : '-'}
+          sub={
+            inVaults == null
+              ? undefined
+              : portfolio.unpriced.length > 0
+                ? 'of the part we can price'
+                : 'of everything this wallet holds'
           }
-          value={factoryInfo.data ? String(factoryInfo.data.poolCount) : '-'}
-          sub="created by everyone"
         />
       </div>
 
@@ -283,70 +283,6 @@ export default function Positions() {
           )}
         </div>
       )}
-
-      <Card>
-        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-          <h3 className="text-sm font-semibold text-text">
-            Factory contract <InfoTip term="factory" label="the Factory" />
-          </h3>
-          <div className="flex items-center gap-3">
-            <LiveDataMeta
-              dataUpdatedAt={factoryInfo.dataUpdatedAt}
-              isFetching={factoryInfo.isFetching}
-              onRefresh={() => factoryInfo.refetch()}
-            />
-            {factoryExplorer && (
-              <a
-                href={factoryExplorer}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-primary hover:underline"
-              >
-                Stellar Expert
-              </a>
-            )}
-          </div>
-        </div>
-        {!factoryId ? (
-          <p className="text-xs text-text-secondary">Not deployed on {network} yet.</p>
-        ) : factoryInfo.isLoading ? (
-          <p className="text-xs text-text-muted">Loading...</p>
-        ) : factoryInfo.isError ? (
-          <Failed what="Couldn't read the factory." onRetry={() => factoryInfo.refetch()} />
-        ) : factoryInfo.data ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Stat
-              label={
-                <>
-                  Contract ID <InfoTip term="contractId" label="a contract ID" />
-                </>
-              }
-              value={shortenAddress(factoryId, 8)}
-              mono
-              copy={factoryId}
-              href={factoryExplorer ?? undefined}
-            />
-            <Stat
-              label={
-                <>
-                  Admin <InfoTip term="admin" label="the admin" />
-                </>
-              }
-              value={shortenAddress(factoryInfo.data.admin, 8)}
-              mono
-              copy={factoryInfo.data.admin}
-              href={stellarExplorer(network, 'account', factoryInfo.data.admin)}
-            />
-            <Stat label="Pools created" value={String(factoryInfo.data.poolCount)} />
-          </div>
-        ) : null}
-      </Card>
-
-      <TtlCountdownCard />
-
-      <RoutingEngineCard />
-
-      <SignDemoTx />
     </div>
   )
 }

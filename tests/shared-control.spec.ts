@@ -9,7 +9,7 @@ import { gotoWithWallet, TEST_WALLET } from './fixtures'
 
 test.describe('shared control', () => {
   test('renders the co-sign card at /shared-control', async ({ page }) => {
-    // shared control is an advanced route, off the main nav; reached directly.
+    // straight to the url here; the sidebar entry has its own test in ux-navigation.
     await gotoWithWallet(page, '/shared-control')
     await expect(page).toHaveURL(/\/shared-control$/)
 

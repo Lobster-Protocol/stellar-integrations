@@ -46,7 +46,7 @@ test.describe('DFNS MPC signing path', () => {
     await page.addInitScript(() => localStorage.setItem('lob_custody_mode', 'dfns'))
     // domcontentloaded, not networkidle: the dfns wallet poll and any feed keep
     // the network busy, so idle never fires.
-    await page.goto('/positions', { waitUntil: 'domcontentloaded' })
+    await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     // the raw-xdr payment is the one this spec is about: the dashboard builds
     // the envelope and hands it to /dfns/sign. its neighbour of the same amount

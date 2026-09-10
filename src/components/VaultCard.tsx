@@ -1,15 +1,18 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EyeOff } from 'lucide-react'
 
 import { VENUE_LABEL, type VaultPosition } from '../integrations/lobster/position'
 import { useVaultDetail } from '../integrations/lobster/vault-detail'
+import { useVaultFlows, vaultFlowSeries } from '../integrations/lobster/vault-flows'
 import type { VaultAction } from '../integrations/lobster/vault-tx'
+import { tokenLabel } from '../integrations/stellar/token-registry'
 import type { Network } from '../config/contracts'
 import { formatBalance, formatValue, shortenAddress, stellarExplorer } from '../utils/format'
 import type { PriceUnit } from '../integrations/pricing/price'
 import CopyButton from './CopyButton'
 import TokenRef from './TokenRef'
+import VaultFlowChart from './VaultFlowChart'
 import { Card, Disclosure } from './ui'
 import { InfoTip } from './InfoTip'
 
@@ -68,6 +71,18 @@ export default function VaultCard({
 }) {
   const [open, setOpen] = useState(false)
   const detail = useVaultDetail(network, account, v, open)
+  // every card on the page shares this one read of the wallet's operations
+  const flowsQ = useVaultFlows(network, account)
+  const flows = useMemo(
+    () =>
+      flowsQ.data
+        ? vaultFlowSeries(flowsQ.data.moves, v.address, [
+            tokenLabel(v.token0, network),
+            tokenLabel(v.token1, network),
+          ])
+        : null,
+    [flowsQ.data, v.address, v.token0, v.token1, network],
+  )
 
   // a working vault holds its tokens in the pool, not in itself, so the headline
   // per token is the two added together
@@ -172,6 +187,31 @@ export default function VaultCard({
           This vault reports a deployed position but would not return its pool.
         </p>
       )}
+
+      <div className="mt-4">
+        <div className="flex items-baseline justify-between gap-2 mb-1.5">
+          <span className="text-xs font-medium text-text">What you have moved in and out</span>
+          {flows && (
+            <span className="text-[11px] text-text-muted">
+              {flows.count} move{flows.count === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
+        {flowsQ.isLoading ? (
+          <p className="text-[11px] text-text-muted py-3">Reading this wallet's history...</p>
+        ) : flowsQ.isError ? (
+          <p className="text-[11px] text-text-muted py-3">
+            Couldn't read this wallet's history, so there is nothing to draw.
+          </p>
+        ) : flows ? (
+          <VaultFlowChart series={flows} complete={flowsQ.data?.complete ?? false} />
+        ) : (
+          <p className="text-[11px] text-text-muted py-3">
+            This wallet has moved nothing in or out of the vault in the operations read. A deposit
+            made from another account would not show here.
+          </p>
+        )}
+      </div>
 
       <div className="mt-3">
         <Disclosure summary="What this vault holds and where" onOpenChange={setOpen}>

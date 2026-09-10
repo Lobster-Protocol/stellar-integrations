@@ -48,7 +48,7 @@ async function readGroundTruth(): Promise<GroundTruth> {
   return { admin: String(admin), wasmHash, poolCount: Number(poolCount) }
 }
 
-test.describe('Live Factory reads match the /positions DOM', () => {
+test.describe('Live Factory reads match the /audit DOM', () => {
   let truth: GroundTruth
 
   test.beforeAll(async () => {
@@ -56,12 +56,12 @@ test.describe('Live Factory reads match the /positions DOM', () => {
   })
 
   test('Factory admin from on-chain matches the rendered Admin stat', async ({ page }) => {
-    await page.goto(`${BASE}/positions`)
+    await page.goto(`${BASE}/audit`)
     // The factory card shows "Reading from Soroban RPC..." until the
     // simulation resolves, after which "Pools created" appears.
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
-    // anchor on the card through its h3: the page subtitle also carries the
-    // words "Factory contract", and the stat labels each carry a help tip
+    // anchor on the card through its h3: the stat labels each carry a help tip
+    // of their own, so the heading is the steady handle
     const card = page
       .getByRole('heading', { name: /Factory contract/ })
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
@@ -69,7 +69,7 @@ test.describe('Live Factory reads match the /positions DOM', () => {
   })
 
   test('Factory pool_count from on-chain matches the rendered Pools created', async ({ page }) => {
-    await page.goto(`${BASE}/positions`)
+    await page.goto(`${BASE}/audit`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
     // the label and the value share a Stat block, so read the block rather
     // than the label, and a markup reshuffle does not break the check
@@ -78,7 +78,7 @@ test.describe('Live Factory reads match the /positions DOM', () => {
   })
 
   test('Contract ID stat renders the testnet Factory address', async ({ page }) => {
-    await page.goto(`${BASE}/positions`)
+    await page.goto(`${BASE}/audit`)
     await expect(page.getByText(/Contract ID/i)).toBeVisible({ timeout: 30_000 })
     const card = page
       .getByRole('heading', { name: /Factory contract/ })
@@ -87,7 +87,7 @@ test.describe('Live Factory reads match the /positions DOM', () => {
   })
 
   test('Stellar Expert link points to the Factory on the right network', async ({ page }) => {
-    await page.goto(`${BASE}/positions`)
+    await page.goto(`${BASE}/audit`)
     const link = page.getByRole('link', { name: /Stellar Expert/i }).first()
     await expect(link).toBeVisible({ timeout: 30_000 })
     await expect(link).toHaveAttribute(
@@ -102,7 +102,7 @@ test.describe('Live Factory reads match the /positions DOM', () => {
       if (req.url().includes('soroban-testnet.stellar.org')) sorobanCalls++
     })
 
-    await page.goto(`${BASE}/positions`)
+    await page.goto(`${BASE}/audit`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 
     const callsBefore = sorobanCalls
@@ -119,7 +119,7 @@ test.describe('Live Factory reads match the /positions DOM', () => {
   })
 
   test('the age label keeps counting rather than freezing at "just now"', async ({ page }) => {
-    await page.goto(`${BASE}/positions`)
+    await page.goto(`${BASE}/audit`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 
     // Capture the first age label, wait, capture again. The interval
@@ -137,11 +137,16 @@ test.describe('Live Factory reads match the /positions DOM', () => {
   })
 
   test('switching to mainnet stops showing the testnet factory', async ({ page }) => {
-    await page.goto(`${BASE}/positions`)
-    await expect(page.getByRole('heading', { name: 'Factory contract' })).toBeVisible({ timeout: 30_000 })
+    await page.goto(`${BASE}/audit`)
+    // the storage card says the same thing about mainnet a little further down,
+    // so read the answer inside the factory card itself
+    const card = page
+      .getByRole('heading', { name: 'Factory contract' })
+      .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
+    await expect(card).toBeVisible({ timeout: 30_000 })
 
     await page.getByRole('button', { name: 'Mainnet' }).click()
-    await expect(page.getByText(/not deployed on mainnet/i)).toBeVisible({
+    await expect(card.getByText(/not deployed on mainnet/i)).toBeVisible({
       timeout: 10_000,
     })
     await expect(page.locator(`text=${shorten(SOURCE, 8)}`)).toHaveCount(0)

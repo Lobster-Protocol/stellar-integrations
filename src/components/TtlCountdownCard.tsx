@@ -1,9 +1,11 @@
 import { xdr } from '@stellar/stellar-sdk'
 import { AlertTriangle, Archive, CheckCircle2, OctagonAlert, type LucideIcon } from 'lucide-react'
 
+import { CONTRACTS } from '../config/contracts'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useTtlStatus, type TtlLevel } from '../integrations/ttl/hooks'
 import LiveDataMeta from './LiveDataMeta'
+import { Failed } from './ui'
 import { InfoTip } from './InfoTip'
 
 // Amber and red read as the same hue under deuteranopia whatever lightness we
@@ -48,6 +50,27 @@ export default function TtlCountdownCard() {
   const { network } = useNetwork()
   const ttl = useTtlStatus(network)
 
+  // there is only something to watch where the Factory is deployed. asking the
+  // feed about a network we never deployed to earns a 503, and the reader is
+  // better served by the reason than by the relay's refusal.
+  const deployed = !!CONTRACTS[network].lobster.factory
+  const other = network === 'mainnet' ? 'testnet' : 'mainnet'
+  const otherDeployed = !!CONTRACTS[other].lobster.factory
+
+  // the hook is gated on the same variable, so with no feed address the query
+  // never fires and sits pending. that is a build nobody pointed at the feed,
+  // not a ledger with nothing on it, and the card used to conflate the two.
+  const feedConfigured = !!import.meta.env.VITE_LOBSTER_API_URL
+
+  // fetch rejects with a TypeError when it cannot reach the host at all: wrong
+  // port, service down, origin the relay does not allow. There is no response
+  // to read a reason off, so the browser's own "Failed to fetch" is what came
+  // through to the card. The relay's explanations arrive as plain Errors.
+  const unreachable = ttl.error instanceof TypeError
+
+  const reading = deployed && feedConfigured
+  const live = reading && !ttl.isError && !!ttl.data
+
   return (
     <div className="rounded-3xl p-5 bg-bg-card card">
       <div className="flex items-baseline justify-between mb-1 gap-3 flex-wrap">
@@ -56,26 +79,42 @@ export default function TtlCountdownCard() {
         </h3>
         <div className="flex items-center gap-3">
           {/* a failed read is not a live one, so the badge goes with the data */}
-          {!ttl.isError && (
-            <span className="text-[11px] text-text-muted">live | on-chain | {network}</span>
+          {live && <span className="text-[11px] text-text-muted">live | on-chain | {network}</span>}
+          {reading && (
+            <LiveDataMeta
+              dataUpdatedAt={ttl.dataUpdatedAt}
+              isFetching={ttl.isFetching}
+              onRefresh={() => ttl.refetch()}
+            />
           )}
-          <LiveDataMeta
-            dataUpdatedAt={ttl.dataUpdatedAt}
-            isFetching={ttl.isFetching}
-            onRefresh={() => ttl.refetch()}
-          />
         </div>
       </div>
       <p className="text-xs text-text-secondary mb-3">
         Time left before each of the Factory's on-chain storage entries expires. Once it does, the contract stops responding until the entry is restored.
       </p>
 
-      {ttl.isLoading ? (
-        <p className="text-xs text-text-muted">Loading...</p>
+      {!deployed ? (
+        <p className="text-xs text-text-secondary">
+          The Factory is not deployed on {network}, so there is no storage lease to watch here.
+          {otherDeployed && ` Switch to ${other} for the entries that are live.`}
+        </p>
+      ) : !feedConfigured ? (
+        <p className="text-xs text-text-secondary">
+          This build has no address for the storage feed, so nothing has been read.
+        </p>
+      ) : ttl.isLoading ? (
+        <p className="text-xs text-text-muted">Reading the ledger...</p>
       ) : ttl.isError ? (
-        <p className="text-xs text-text-secondary">{(ttl.error as Error).message}</p>
+        <Failed
+          what={
+            unreachable
+              ? 'The storage feed did not answer, so nothing has been read.'
+              : (ttl.error as Error).message
+          }
+          onRetry={() => ttl.refetch()}
+        />
       ) : !ttl.data || ttl.data.statuses.length === 0 ? (
-        <p className="text-xs text-text-secondary">No storage entries tracked yet.</p>
+        <p className="text-xs text-text-secondary">The feed answered with no entries to watch.</p>
       ) : (
         <ul className="space-y-1.5">
           {ttl.data.statuses.map((s) => {

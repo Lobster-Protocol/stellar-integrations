@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, TrendingUp, Activity, PieChart, ArrowLeftRight, Box, ShieldCheck } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Activity, PieChart, ArrowLeftRight, Box, ShieldCheck, Users } from 'lucide-react'
 import { cn } from '../utils/format'
 import lobsterLogo from '../assets/lobster-logo.png'
 
-// Shared control (on-chain multisig) is an advanced path, kept as a route but off the
-// main nav so the everyday flow stays simple. Reach it at /shared-control directly.
+// The two account settings close the list: Custody is who holds the keys,
+// Shared control is how many signatures a move needs. Everything above them is
+// something you look at, so they stay together at the bottom.
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/performance', label: 'Performance', icon: TrendingUp },
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
   { to: '/bridges', label: 'Bridges', icon: ArrowLeftRight },
   { to: '/positions', label: 'Positions', icon: Box },
   { to: '/audit', label: 'Custody', icon: ShieldCheck },
+  { to: '/shared-control', label: 'Shared control', icon: Users },
 ]
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {

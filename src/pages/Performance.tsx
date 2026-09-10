@@ -4,8 +4,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,11 +20,10 @@ import {
   useBalanceHistory,
   valueAtCurrentPrice,
   assetKey,
-  keyCode,
   densify,
   type BalancePoint,
 } from '../integrations/pricing/history'
-import { useRecordNav, readNavHistory, computeNavStats } from '../integrations/pricing/nav'
+import { useRecordNav } from '../integrations/pricing/nav'
 import { valueHistoryCsv, performanceJson } from '../integrations/pricing/export'
 import { exportName } from '../utils/csv'
 import { CONTRACTS } from '../config/contracts'
@@ -39,12 +36,9 @@ import { InfoTip } from '../components/InfoTip'
 const day = (ts: number) =>
   new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
-// one chart row: the fixed fields plus one column per asset key held
 interface Row {
   ts: number
-  label: string
   value: number
-  [asset: string]: number | string
 }
 
 function FlowRow({
@@ -87,6 +81,8 @@ export default function Performance() {
   // the same total Overview leads with: wallet plus vaults, not wallet alone
   const portfolio = buildPortfolio(lines, vaultsQ.data ?? [], tokenPricer(network, price), network)
   const total = usdTotal != null ? portfolio.total : null
+  // nothing on this page reads the value series any more, but it stays sampled:
+  // a session that only ever lands here would otherwise leave a hole in it
   useRecordNav(network, address, total)
 
   // only assets whose identity we can pin down get a price, so a look-alike
@@ -101,8 +97,7 @@ export default function Performance() {
 
   const history = historyQ.data
 
-  // biggest holding first, so the legend and the line colours line up with what
-  // the reader cares about
+  // biggest holding first, so the download opens on the column the reader came for
   const assetKeys = useMemo(() => {
     if (!history || history.points.length === 0) return []
     const last = history.points.at(-1)!.held
@@ -110,38 +105,22 @@ export default function Performance() {
   }, [history])
 
   const toRows = (pts: BalancePoint[]): Row[] =>
-    pts.map((p) => {
-      const row: Row = {
-        ts: p.ts,
-        label: day(p.ts),
-        value: valueAtCurrentPrice(p, priceByKey),
-      }
-      for (const k of assetKeys) row[k] = p.held[k] ?? 0
-      return row
-    })
+    pts.map((p) => ({ ts: p.ts, value: valueAtCurrentPrice(p, priceByKey) }))
 
   // the chart wants a point everywhere the cursor can land; the table wants only
   // the moments something actually happened
   const series = useMemo(
     () => (history ? toRows(densify(history.points)) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [history, priceByKey, assetKeys],
+    [history, priceByKey],
   )
   const changes = useMemo(
     () => (history ? toRows(history.points) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [history, priceByKey, assetKeys],
+    [history, priceByKey],
   )
 
   const flows = history?.flows
-  const recorded = readNavHistory(network, address)
-  const { change, drawdown, observedHours } = computeNavStats(recorded)
-  const observed =
-    observedHours == null
-      ? null
-      : observedHours < 48
-        ? `over ${Math.round(observedHours)}h watched`
-        : `over ${Math.round(observedHours / 24)}d watched`
 
   if (!address) {
     return (
@@ -201,7 +180,7 @@ export default function Performance() {
         />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Stat
           label="Value now"
           value={total != null ? formatValue(total, unit) : 'n/a'}
@@ -222,18 +201,6 @@ export default function Performance() {
               'transaction fees'
             )
           }
-        />
-        <Stat
-          label="Market move"
-          value={change != null ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : 'n/a'}
-          tone={change == null || change === 0 ? 'plain' : change > 0 ? 'up' : 'down'}
-          sub={observed ?? (missing ? 'not on this network yet' : 'needs a second snapshot')}
-        />
-        <Stat
-          label="Deepest dip"
-          value={drawdown != null ? `${drawdown.toFixed(2)}%` : 'n/a'}
-          tone={drawdown != null && drawdown < 0 ? 'down' : 'plain'}
-          sub={observed ?? (missing ? 'not on this network yet' : 'needs a second snapshot')}
         />
       </div>
 
@@ -367,78 +334,6 @@ export default function Performance() {
           </p>
         </Card>
       )}
-
-      <Card>
-        <CardHead
-          title="Holdings by asset"
-          note="The raw token amounts behind the curve above, with no price applied at all."
-        />
-        {series.length < 2 ? (
-          <Empty>Nothing to plot yet.</Empty>
-        ) : (
-          // one panel per asset rather than one shared axis: 99,000 LOBS and
-          // 6,656 XLM on the same scale flattens the smaller holding into a line
-          // along the bottom
-          <div className="grid sm:grid-cols-2 gap-4">
-            {assetKeys.map((k, i) => (
-              <div key={k}>
-                <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-xs font-medium text-text">{keyCode(k)}</span>
-                  <span className="text-xs text-text-muted tabular-nums">
-                    {formatBalance(String(history?.points.at(-1)?.held[k] ?? 0))}
-                  </span>
-                </div>
-                <ChartFrame
-                  label={`${keyCode(k)} held over time`}
-                  columns={['Date', keyCode(k)]}
-                  rows={changes.map((r) => [
-                    new Date(r.ts).toLocaleDateString('en-GB'),
-                    formatBalance(String(r[k] ?? 0)),
-                  ])}
-                >
-                <ResponsiveContainer width="100%" height={130}>
-                  <LineChart data={series} margin={{ left: 0, right: 6, top: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
-                    <XAxis
-                      dataKey="ts"
-                      type="number"
-                      scale="time"
-                      domain={['dataMin', 'dataMax']}
-                      tick={AXIS_TICK}
-                      axisLine={false}
-                      tickLine={false}
-                      minTickGap={44}
-                      tickFormatter={day}
-                    />
-                    <YAxis
-                      tick={AXIS_TICK}
-                      axisLine={false}
-                      tickLine={false}
-                      width={48}
-                      tickFormatter={(v) => compactNumber(Number(v))}
-                    />
-                    <Tooltip
-                      contentStyle={TOOLTIP_STYLE}
-                      labelFormatter={(v) => new Date(Number(v)).toLocaleString('en-GB')}
-                      formatter={(v) => [formatBalance(String(v)), keyCode(k)]}
-                    />
-                    <Line
-                      type="stepAfter"
-                      dataKey={k}
-                      name={k}
-                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-                </ChartFrame>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
     </div>
   )
 }

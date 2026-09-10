@@ -47,8 +47,8 @@ test.describe('what the deploy serves before anyone logs in', () => {
     await expect(page.locator('#main-content')).toBeVisible()
   })
 
-  test('positions comes back with the factory card and its refresh', async ({ page }) => {
-    await page.goto(`${BASE}/positions`)
+  test('custody comes back with the factory card and its refresh', async ({ page }) => {
+    await page.goto(`${BASE}/audit`)
     await expect(page.getByRole('heading', { name: /Factory contract/i })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(/updated /).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /Refresh/i }).first()).toBeVisible()

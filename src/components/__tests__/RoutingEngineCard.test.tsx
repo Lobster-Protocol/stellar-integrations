@@ -57,10 +57,12 @@ describe('RoutingEngineCard', () => {
     expect(screen.getByText(/mainnet only/i)).toBeInTheDocument()
   })
 
-  it('renders "none yet" when no route entry is in localStorage', () => {
+  it('says where a swap comes from when no route is in localStorage', () => {
     wrap(<RoutingEngineCard />)
-    expect(screen.getByText(/Last route/i)).toBeInTheDocument()
-    expect(screen.getByText(/none yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/Routes taken/i)).toBeInTheDocument()
+    // the empty state has to name something a reader can actually go and press
+    expect(screen.getByText(/No swap routed from this browser yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/Swap button on the Overview page/i)).toBeInTheDocument()
   })
 
   it('renders the most recent route entry when localStorage has one', () => {
