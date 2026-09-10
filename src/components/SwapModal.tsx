@@ -176,7 +176,7 @@ export default function SwapModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-bg-card rounded-3xl p-6 w-full max-w-md card">
+      <div role="dialog" aria-modal="true" aria-label="Swap tokens" className="bg-bg-card rounded-3xl p-6 w-full max-w-md card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-text flex items-center gap-1.5">
             Best-execution swap

@@ -150,7 +150,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => { if (!busy) onClose() }}>
-      <div className="bg-bg-card rounded-3xl p-6 w-full max-w-md card" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="bg-bg-card rounded-3xl p-6 w-full max-w-md card" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h2 id={titleId} className="text-lg font-semibold text-text">
             {isWithdraw ? 'Withdraw from vault' : 'Deposit into vault'}
