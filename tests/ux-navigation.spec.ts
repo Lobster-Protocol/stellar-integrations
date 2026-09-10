@@ -55,11 +55,11 @@ test.describe('Cross-page navigation', () => {
     await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
   })
 
-  test('shared control now lives on the custody page', async ({ page }) => {
+  test('custody is reachable and no longer offers a native multisig setup', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: 'Custody', exact: true }).click()
     await expect(page).toHaveURL(/\/audit$/)
-    await expect(page.getByRole('heading', { level: 2, name: 'Shared control' })).toBeVisible()
+    await expect(page.getByText('Turn on shared control')).toHaveCount(0)
   })
 
   test('junk URL redirects to the custom /404 page', async ({ page }) => {

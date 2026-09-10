@@ -1,54 +1,23 @@
 import { test, expect } from '@playwright/test'
-import { Account, TransactionBuilder, Operation, Asset, Keypair, Networks } from '@stellar/stellar-sdk'
 
-import { gotoWithWallet, TEST_WALLET } from './fixtures'
+import { gotoWithWallet } from './fixtures'
 
-// the co-sign card renders with no network read, so it is the stable anchor for
-// a smoke test. the setup card above it reads the account's signers from Horizon,
-// which is covered by the module's unit tests and the on-chain proof, not here.
+// Native Stellar multisig ("shared control") is no longer something you set up:
+// multisig is DFNS custody only now. The Custody page must not offer to turn a
+// native quorum on, and the old standalone co-sign card is gone. What remains is
+// a revert path that only shows for an account that already carries a quorum,
+// which a single-sig E2E wallet does not, so nothing shared-control renders here.
 
-test.describe('shared control', () => {
-  test('renders the co-sign card on the custody page', async ({ page }) => {
-    // shared control lives inside Custody now; the sidebar entry test is in ux-navigation.
+test.describe('shared control (native multisig removed)', () => {
+  test('the custody page no longer offers to set up a native multisig', async ({ page }) => {
     await gotoWithWallet(page, '/audit')
     await expect(page).toHaveURL(/\/audit$/)
-
-    await expect(page.getByRole('heading', { level: 2, name: 'Shared control' })).toBeVisible()
-    await expect(page.getByText('Finish a shared transaction')).toBeVisible()
-    await expect(page.getByPlaceholder('Paste the transaction here')).toBeVisible()
+    await expect(page.getByText('Turn on shared control')).toHaveCount(0)
+    await expect(page.getByPlaceholder('Paste the transaction here')).toHaveCount(0)
   })
 
-  test('the co-sign card rejects text that is not a transaction', async ({ page }) => {
-    await gotoWithWallet(page, '/audit')
-    await page.getByPlaceholder('Paste the transaction here').fill('not-an-xdr')
-    await page.getByRole('button', { name: /^Load$/ }).click()
-    await expect(page.getByText(/does not read as a transaction/i)).toBeVisible()
-  })
-
-  test('the co-sign card warns when an operation pays from a different account', async ({ page }) => {
-    // the review's multi-source hijack: the tx source is the account under review,
-    // but a hidden operation sends from another account P to the attacker Z. the
-    // decoder must show it so the co-signer is not signing blind.
-    const P = Keypair.fromRawEd25519Seed(Buffer.alloc(32, 7)).publicKey()
-    const Z = Keypair.fromRawEd25519Seed(Buffer.alloc(32, 8)).publicKey()
-    const src = new Account(TEST_WALLET.address, '100')
-    const hijack = new TransactionBuilder(src, { fee: '1000', networkPassphrase: Networks.TESTNET })
-      .addOperation(Operation.payment({ source: P, destination: Z, asset: Asset.native(), amount: '9000' }))
-      .setTimeout(300)
-      .build()
-      .toXDR()
-
-    await gotoWithWallet(page, '/audit')
-    await page.getByPlaceholder('Paste the transaction here').fill(hijack)
-    await page.getByRole('button', { name: /^Load$/ }).click()
-
-    await expect(page.getByText('What you are approving')).toBeVisible()
-    await expect(page.getByText(/not this account/)).toBeVisible()
-
-    // the danger blocks signing until the co-signer acknowledges what they saw
-    const signBtn = page.getByRole('button', { name: /Sign your part/ })
-    await expect(signBtn).toBeDisabled()
-    await page.getByLabel(/I have read what this transaction does/).check()
-    await expect(signBtn).toBeEnabled()
+  test('the old /shared-control link redirects into custody', async ({ page }) => {
+    await gotoWithWallet(page, '/shared-control')
+    await expect(page).toHaveURL(/\/audit$/)
   })
 })
