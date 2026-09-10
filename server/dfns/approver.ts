@@ -8,8 +8,8 @@ import { requireEnv } from '../env'
 // is enabled on the org, and that flag is gated behind a DFNS support ticket. A
 // User approver needs no such flag - only the Policies:Evaluations:Vote permission
 // and membership in the policy's approval group. The User holds a raw Key
-// credential whose private key lives in the relay env, so it signs the approval
-// decision headlessly: no human, no passkey, no support ticket.
+// credential whose private key lives in the relay env, so the relay signs the
+// approval itself, with no passkey prompt and no one clicking approve.
 
 export function approverConfigured(): boolean {
   return Boolean(
