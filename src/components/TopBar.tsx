@@ -17,8 +17,14 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
   const { address, connecting, connect } = useWallet()
   const { network, setNetwork } = useNetwork()
 
+  // The bar sticks to the top of the scroll so the network you are on, the wallet
+  // that signs and the connect controls stay in sight down a long page. z-30 keeps
+  // it under the mobile drawer and the connect popover, which both have to cover it.
   return (
-    <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-bg-card/60 backdrop-blur-sm" style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.06)' }}>
+    <div
+      className="h-14 flex items-center justify-between px-4 sm:px-6 bg-bg-card/60 backdrop-blur-sm sticky top-0 z-30"
+      style={{ borderBottom: '1px solid rgba(13, 45, 76, 0.06)' }}
+    >
       <div className="flex items-center gap-3">
         <button
           ref={menuButtonRef}
