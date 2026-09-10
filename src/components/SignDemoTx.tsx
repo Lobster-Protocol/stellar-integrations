@@ -152,7 +152,8 @@ export default function SignDemoTx() {
             approver. The first payment button asks DFNS to build the payment, so it can read the
             recipient, see our own address and let it through: the hash lands in seconds with nobody
             in the loop. The other buttons hand DFNS a signed envelope instead, which it cannot read
-            a recipient out of, so those wait for the approver. Every one of them pays the treasury
+            a recipient out of, so the policy holds those for approval; on this demo the relay
+            approves them automatically, so they finish here too. Every one of them pays the treasury
             itself, so the balance never moves. The rule itself is listed above, next to the live
             wallets, the policies and the audit export, which already prove the integration with no
             transaction at all.
@@ -215,13 +216,14 @@ export default function SignDemoTx() {
               </button>
               <div>
                 <p className="text-[11px] text-text-muted mb-2">
-                  Approval demo: these hit the other side of the treasury rule on purpose and wait
-                  for a designated approver in the DFNS console, so they do not finish on this screen
-                  by themselves.
+                  Approval demo: these hit the approval side of the treasury rule, so the policy
+                  holds them. On this Lobster demo the relay approves them automatically, so they
+                  finish here; in your own deployment a designated approver releases them in your
+                  DFNS console.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {/* a Soroban view signed by MPC; DFNS can't price a contract call, so it
-                      always waits for an approver. */}
+                  {/* a Soroban view signed by MPC; DFNS can't price a contract call, so the policy
+                      holds it for approval (auto-approved on this demo relay). */}
                   <button
                     onClick={() => handleAction('ping')}
                     disabled={busy}
@@ -234,7 +236,7 @@ export default function SignDemoTx() {
                     disabled={busy}
                     className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Pay 0.01 XLM as raw XDR, needs an approver
+                    Pay 0.01 XLM as raw XDR (held, then approved)
                   </button>
                 </div>
               </div>
@@ -263,9 +265,10 @@ export default function SignDemoTx() {
           {state.phase === 'pending' && (
             <div className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2 space-y-2">
               <p>
-                Held for approval in DFNS. This is the policy engine holding it (four-eyes: whoever
-                starts a transaction cannot approve it). A designated approver releases it, not you.
-                To watch a signature complete instead, use the "no approver needed" action above.
+                Held for approval by the DFNS policy engine (four-eyes: the initiator can't approve
+                their own request). On this demo the relay approves it automatically, so it completes
+                in a moment; in your own deployment your designated approver releases it in your DFNS
+                console.
               </p>
               <button
                 type="button"
