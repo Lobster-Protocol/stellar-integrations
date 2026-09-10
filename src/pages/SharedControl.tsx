@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TransactionBuilder, type Transaction } from '@stellar/stellar-sdk'
 
 import { useWallet } from '../contexts/WalletContext'
@@ -15,6 +15,7 @@ import { submitSignedXdr, waitForTx } from '../integrations/lobster/vault-tx'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { isAccountId } from '../integrations/stellar/strkey-guards'
+import { coSignerProblem, ourAddresses, rememberOurAddress } from '../integrations/stellar/cosigner-guard'
 import { Card, CardHead, Empty } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 import CoSignPanel from '../components/CoSignPanel'
@@ -33,12 +34,18 @@ function short(key: string): string {
 function SharedControlCard() {
   const { address } = useWallet()
   const { network } = useNetwork()
-  const { mode } = useCustody()
+  const { mode, dfnsAddress } = useCustody()
   const signing = useAccountSigning(network, address)
   const [coSigner, setCoSigner] = useState('')
   const [backup, setBackup] = useState('')
   const [phase, setPhase] = useState<SetupPhase>({ k: 'form' })
   const [ackControl, setAckControl] = useState(false)
+
+  // our own custody address must never end up as a co-signer, so keep every one the
+  // relay tells us about, for the sessions where no profile is connected to ask
+  useEffect(() => {
+    rememberOurAddress(dfnsAddress)
+  }, [dfnsAddress])
 
   if (!address) {
     return (
@@ -50,8 +57,13 @@ function SharedControlCard() {
   }
 
   const busy = phase.k === 'busy'
-  const coValid = isAccountId(coSigner) && coSigner !== address
-  const backupValid = backup === '' || (isAccountId(backup) && backup !== address && backup !== coSigner)
+  const ours = ourAddresses([dfnsAddress])
+  const coProblem = coSignerProblem(address, coSigner, ours)
+  const backupProblem =
+    coSignerProblem(address, backup, ours) ??
+    (backup !== '' && backup === coSigner ? 'This is the same address as the co-signer.' : null)
+  const coValid = isAccountId(coSigner) && !coProblem
+  const backupValid = backup === '' || (isAccountId(backup) && !backupProblem)
   const canSubmit = coValid && backupValid && ackControl && !busy
 
   async function turnOn() {
@@ -187,8 +199,8 @@ function SharedControlCard() {
                 coSigner && !coValid ? 'ring-1 ring-coral' : 'focus:ring-primary/30',
               )}
             />
-            {coSigner && !coValid && (
-              <p className="text-[11px] text-coral mt-1">Enter a valid Stellar account that is not this wallet.</p>
+            {coSigner && coProblem && (
+              <p className="text-[11px] text-coral mt-1">{coProblem}</p>
             )}
           </div>
 
@@ -204,6 +216,9 @@ function SharedControlCard() {
                 backup && !backupValid ? 'ring-1 ring-coral' : 'focus:ring-primary/30',
               )}
             />
+            {backup && backupProblem && (
+              <p className="text-[11px] text-coral mt-1">{backupProblem}</p>
+            )}
           </div>
 
           <div className="rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-[11px] space-y-1.5">
