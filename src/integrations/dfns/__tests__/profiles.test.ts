@@ -7,6 +7,7 @@ import {
   activeProfile,
   activeProfileId,
   setActiveProfile,
+  clearActiveProfile,
   addClientProfile,
   removeClientProfile,
   assertRelayUrl,
@@ -82,6 +83,17 @@ describe('dfns profiles', () => {
   it('refuses to add a client profile with an unsafe relay url', () => {
     expect(() => addClientProfile({ ...conn, relayBaseUrl: 'http://relay.acme.test' })).toThrow(/https/)
     expect(clientProfiles()).toHaveLength(0)
+  })
+
+  it('clears the demo operator token and active selection on disconnect (M9)', () => {
+    setActiveProfile(DEMO_PROFILE_ID)
+    localStorage.setItem('lob_operator_token', 'op-secret')
+    expect(activeProfileId()).toBe(DEMO_PROFILE_ID)
+    clearActiveProfile()
+    // nothing stays active, and above all the operator token (the approve/create
+    // bearer) must not linger in storage for a later session to reuse.
+    expect(activeProfileId()).toBeNull()
+    expect(localStorage.getItem('lob_operator_token')).toBeNull()
   })
 })
 

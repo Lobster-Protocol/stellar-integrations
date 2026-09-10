@@ -23,6 +23,8 @@ beforeEach(() => {
 afterEach(() => {
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', ORIG_API)
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_TOKEN', ORIG_TOKEN)
+  // a test that switched on fake timers must not leak them into the next one.
+  vi.useRealTimers()
 })
 
 describe('dfnsSigner.signTransaction', () => {
@@ -91,5 +93,22 @@ describe('dfnsSigner.signTransaction', () => {
     await expect(
       dfnsSigner.signTransaction('XDR', { networkPassphrase: PASSPHRASE, address: ACCOUNT }),
     ).rejects.toThrow(/policy rejected/)
+  })
+
+  it('gives up with a clear error when the relay never answers (H1 timeout)', async () => {
+    vi.useFakeTimers()
+    // a relay that hangs: the fetch stays pending until the signer's own abort
+    // signal fires, exactly as a real fetch rejects when the AbortController aborts
+    // at the 60s cap. the signer keys on ctrl.signal.aborted, not the reject value.
+    fetchSpy.mockImplementationOnce(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+        }),
+    )
+    const p = dfnsSigner.signTransaction('XDR', { networkPassphrase: PASSPHRASE, address: ACCOUNT })
+    const assertion = expect(p).rejects.toThrow(/did not answer the signing request in time/)
+    await vi.advanceTimersByTimeAsync(60_000)
+    await assertion
   })
 })
