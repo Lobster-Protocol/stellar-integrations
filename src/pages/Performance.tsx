@@ -269,8 +269,6 @@ export default function Performance() {
               ? `No history to plot until this wallet is funded on ${network}.`
               : `Not enough history on ${network} yet. One move is enough to start the curve.`}
           </Empty>
-        ) : viewSeries.length < 2 ? (
-          <Empty>No balance change in this window. Pick a wider range.</Empty>
         ) : (
           <>
             <ChartFrame

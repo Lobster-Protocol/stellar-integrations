@@ -47,6 +47,9 @@ export default function SignDemoTx() {
   async function handleAction(kind: 'ping' | 'transfer' | 'payment' | 'trustline') {
     if (!source || inFlight.current) return
     inFlight.current = true
+    // reset any controller from a previous attempt so a stale aborted one can't
+    // make the catch treat a fresh real error as a Stop-waiting abort.
+    abortRef.current = null
     try {
       setState({ phase: 'building' })
       if (kind === 'transfer') {

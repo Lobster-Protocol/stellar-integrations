@@ -96,7 +96,10 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
     address: evm.address,
     token: evmChain ? EVM_USDC[evmChain] : undefined,
     chainId: evmChain ? EVM_CHAIN_ID[evmChain] : undefined,
-    query: { enabled: !!evm.address && !!evmChain },
+    // mainnet only: the testnet path is a labelled simulation and the wagmi config
+    // is mainnet chains, so a testnet read would be a real-mainnet figure that could
+    // wrongly block the sim.
+    query: { enabled: !!evm.address && !!evmChain && network === 'mainnet' },
   })
   const evmMax = usdcBalance.data?.formatted ?? null
   const overEvm = evmMax != null && amount !== '' && Number(amount) > Number(evmMax)

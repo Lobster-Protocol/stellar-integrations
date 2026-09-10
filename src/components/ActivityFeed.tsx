@@ -242,18 +242,18 @@ export default function ActivityFeed() {
         ) : shown.length === 0 ? (
           <Empty
             action={
-              filters.query || filters.windowed ? (
+              filters.query || filters.windowed || filters.vault ? (
                 <button
                   type="button"
-                  onClick={() => filters.update({ q: '', from: '', to: '' })}
+                  onClick={() => filters.update({ q: '', from: '', to: '', vault: '' })}
                   className="text-xs text-primary hover:underline"
                 >
-                  Clear the search
+                  Clear the filters
                 </button>
               ) : undefined
             }
           >
-            {filters.query || filters.windowed
+            {filters.query || filters.windowed || filters.vault
               ? 'Nothing on this account matches what you asked for.'
               : 'Nothing in this category yet.'}
           </Empty>

@@ -132,7 +132,7 @@ export default function Activity() {
         <LiveDataMeta
           dataUpdatedAt={q.dataUpdatedAt}
           isFetching={q.isFetching}
-          onRefresh={() => q.refetch()}
+          onRefresh={() => { if (address) q.refetch() }}
         />
         <ExportButton
           label={filters.windowed ? 'Selected dates' : 'Full history'}

@@ -76,10 +76,22 @@ export default function SwapModal({ open, onClose }: Props) {
   // an over-balance guard. reserve rules still apply to a full-XLM max, and the
   // existing swap error covers that case.
   const balancesQ = useAccountBalances(network, address)
-  const classicSell = useMemo(
-    () => balancesQ.data?.find((b) => b.code === selling.code)?.balance ?? null,
-    [balancesQ.data, selling.code],
-  )
+  const classicSell = useMemo(() => {
+    const lines = balancesQ.data
+    if (!lines) return null
+    // selling.asset is "CODE-ISSUER" for a credit asset, a bare C... SAC on testnet,
+    // or plain XLM. match a credit line on BOTH code and issuer so a same-code line
+    // from another issuer cannot stand in for it.
+    const dash = selling.asset.indexOf('-')
+    if (dash > 0) {
+      const issuer = selling.asset.slice(dash + 1)
+      return lines.find((b) => b.code === selling.code && b.issuer === issuer)?.balance ?? null
+    }
+    if (selling.asset.startsWith('C')) {
+      return lines.find((b) => b.code === selling.code && b.issuer === selling.asset)?.balance ?? null
+    }
+    return lines.find((b) => b.code === selling.code && !b.issuer)?.balance ?? null
+  }, [balancesQ.data, selling.code, selling.asset])
   // testnet swap tokens are bare SAC ids Horizon does not list; read the SAC
   // balance() for those, and only when the classic lookup found nothing.
   const sellSac = isContractId(selling.asset) ? selling.asset : null

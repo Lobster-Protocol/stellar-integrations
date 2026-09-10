@@ -105,6 +105,9 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   async function run() {
     if (inFlight.current || nothing || over0 || over1) return
     inFlight.current = true
+    // clear any controller from a previous attempt: a stale, already-aborted one
+    // would make the catch below read a fresh real error as a Stop-waiting abort.
+    abortRef.current = null
     try {
       setPhase({ k: 'building' })
       const built = await buildVaultActionTx(
