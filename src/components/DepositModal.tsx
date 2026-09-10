@@ -324,9 +324,10 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
             <div className="flex items-center justify-between mb-5">
               <h3 id={titleId} className="text-lg font-semibold text-text">Deposit Funds</h3>
               <button
-                onClick={onClose}
+                onClick={() => { if (!isWorking) onClose() }}
+                disabled={isWorking}
                 aria-label="Close deposit modal"
-                className="text-text-muted hover:text-text text-lg"
+                className="text-text-muted hover:text-text text-lg disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <X size={18} />
               </button>

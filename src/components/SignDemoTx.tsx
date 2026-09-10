@@ -108,6 +108,12 @@ export default function SignDemoTx() {
         setState({ phase: 'failed', errorMsg: `Tx final status: ${status}` })
       }
     } catch (err: unknown) {
+      // a Stop-waiting click aborts the approval poll; treat that as backing out,
+      // not as a failed transaction.
+      if (abortRef.current?.signal.aborted) {
+        setState({ phase: 'idle' })
+        return
+      }
       const errorMsg = err instanceof Error ? err.message : 'Unknown error'
       setState({ phase: 'failed', errorMsg })
     } finally {
@@ -261,10 +267,19 @@ export default function SignDemoTx() {
           )}
 
           {state.phase === 'pending' && (
-            <div className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2">
-              Held for approval in DFNS. This is the policy engine holding it (four-eyes: whoever
-              starts a transaction cannot approve it). A designated approver releases it, not you.
-              To watch a signature complete instead, use the "no approver needed" action above.
+            <div className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2 space-y-2">
+              <p>
+                Held for approval in DFNS. This is the policy engine holding it (four-eyes: whoever
+                starts a transaction cannot approve it). A designated approver releases it, not you.
+                To watch a signature complete instead, use the "no approver needed" action above.
+              </p>
+              <button
+                type="button"
+                onClick={() => abortRef.current?.abort()}
+                className="text-[11px] text-text-muted hover:text-coral"
+              >
+                Stop waiting
+              </button>
             </div>
           )}
 
