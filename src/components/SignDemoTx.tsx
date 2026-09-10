@@ -3,7 +3,7 @@ import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
-import { buildTreasuryPaymentTx, buildTreasuryTrustlineTx } from '../integrations/dfns/demo-tx'
+import { buildTreasuryPaymentTx } from '../integrations/dfns/demo-tx'
 import { pollSignatureStatus, requestTransfer } from '../integrations/dfns/relay'
 import { readableDfnsError } from '../integrations/dfns/errors'
 import { networkPassphrase } from '../integrations/lobster/client'
@@ -44,7 +44,7 @@ export default function SignDemoTx() {
   // not the connected browser wallet; the relay guard rejects any other source.
   const source = isDfns ? dfnsAddress : address
 
-  async function handleAction(kind: 'ping' | 'transfer' | 'payment' | 'trustline') {
+  async function handleAction(kind: 'ping' | 'transfer' | 'payment') {
     if (!source || inFlight.current) return
     inFlight.current = true
     // reset any controller from a previous attempt so a stale aborted one can't
@@ -67,8 +67,6 @@ export default function SignDemoTx() {
       let xdr: string
       if (kind === 'payment') {
         xdr = await buildTreasuryPaymentTx(network, source, '0.0100000')
-      } else if (kind === 'trustline') {
-        xdr = await buildTreasuryTrustlineTx(network, source)
       } else {
         const ping = await buildPing.mutateAsync(source)
         if (ping.restorePreamble) {
@@ -237,13 +235,6 @@ export default function SignDemoTx() {
                     className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Pay 0.01 XLM as raw XDR, needs an approver
-                  </button>
-                  <button
-                    onClick={() => handleAction('trustline')}
-                    disabled={busy}
-                    className="px-4 py-2 rounded-full bg-bg text-text text-sm font-semibold ring-1 ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Turn on a LOBS trustline (DFNS MPC)
                   </button>
                 </div>
               </div>
