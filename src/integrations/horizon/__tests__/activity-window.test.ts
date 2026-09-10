@@ -28,6 +28,7 @@ function filters(over: Partial<ActivityFilterState> = {}): ActivityFilterState {
   return {
     group: 'all',
     query: '',
+    vault: '',
     from,
     to,
     ...bounds,
