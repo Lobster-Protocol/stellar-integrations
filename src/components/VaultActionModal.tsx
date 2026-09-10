@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 
 import { useCustody } from '../contexts/CustodyContext'
@@ -7,6 +8,8 @@ import { networkPassphrase } from '../integrations/lobster/client'
 import { buildVaultActionTx, submitSignedXdr, waitForTx, type VaultAction } from '../integrations/lobster/vault-tx'
 import type { VaultPosition } from '../integrations/lobster/position'
 import type { Network } from '../integrations/lobster/types'
+import { getSorobanTokenBalance } from '../integrations/stellar/token-balance'
+import { stroopsToDecimal } from '../integrations/stellar/amount'
 import { stellarExplorer, formatBalance, cn } from '../utils/format'
 import { useAccountSigning } from '../integrations/stellar/use-account-signing'
 import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
@@ -50,6 +53,29 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   const source = isDfns ? (dfnsAddress as string) : caller
   const signingQ = useAccountSigning(network, source)
   const multi = !isDfns && signingQ.data ? isMultisig(signingQ.data) : false
+
+  // a deposit spends the two tokens out of `source`, so show what that wallet
+  // actually holds of each. reading the SAC balance() covers XLM (its SAC) and
+  // USDC alike, and works for the treasury address under dfns custody too. gated
+  // to the deposit form so a withdraw never pays for two sims it won't use - it
+  // reads the vault's own idle holdings instead, below.
+  const walletHeld = useQuery({
+    queryKey: ['vault-wallet-held', network, source, vault.token0, vault.token1],
+    queryFn: async () => {
+      const [b0, b1] = await Promise.all([
+        getSorobanTokenBalance(network, vault.token0, source),
+        getSorobanTokenBalance(network, vault.token1, source),
+      ])
+      return [
+        b0 === null ? null : stroopsToDecimal(b0),
+        b1 === null ? null : stroopsToDecimal(b1),
+      ] as const
+    },
+    enabled: open && action === 'deposit' && !!source,
+    staleTime: 20_000,
+    retry: 1,
+  })
+
   const abortRef = useRef<AbortController | null>(null)
   useEffect(() => () => abortRef.current?.abort(), [])
 
@@ -64,8 +90,14 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   if (!open) return null
 
   const isWithdraw = action === 'withdraw'
-  const over0 = isWithdraw && amount0 !== '' && Number(amount0) > Number(vault.amount0)
-  const over1 = isWithdraw && amount1 !== '' && Number(amount1) > Number(vault.amount1)
+  // what backs each amount input: the vault's idle holdings when withdrawing, the
+  // funding wallet's balance when depositing. the deposit balance loads async and
+  // getSorobanTokenBalance returns null for a zero balance, so a null cap reads as
+  // "unknown / nothing to spend" and never blocks the form on its own.
+  const held0 = isWithdraw ? vault.amount0 : walletHeld.data?.[0] ?? null
+  const held1 = isWithdraw ? vault.amount1 : walletHeld.data?.[1] ?? null
+  const over0 = held0 != null && amount0 !== '' && Number(amount0) > Number(held0)
+  const over1 = held1 != null && amount1 !== '' && Number(amount1) > Number(held1)
   const nothing =
     (amount0 === '' || Number(amount0) === 0) && (amount1 === '' || Number(amount1) === 0)
   const busy = phase.k === 'building' || phase.k === 'signing' || phase.k === 'submitting' || phase.k === 'pending'
@@ -230,7 +262,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
               const tokenId = i === 0 ? vault.token0 : vault.token1
               const value = i === 0 ? amount0 : amount1
               const set = i === 0 ? setAmount0 : setAmount1
-              const held = i === 0 ? vault.amount0 : vault.amount1
+              const held = i === 0 ? held0 : held1
               const over = i === 0 ? over0 : over1
               return (
                 <div key={i}>
@@ -238,7 +270,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
                     <label className="text-xs text-text-secondary flex items-center gap-1">
                       <TokenRef id={tokenId} />
                     </label>
-                    {isWithdraw && (
+                    {held != null && (
                       <button
                         type="button"
                         onClick={() => set(held)}
@@ -260,7 +292,11 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
                     )}
                   />
                   {over && (
-                    <p className="text-[11px] text-coral mt-1">More than the vault holds ({formatBalance(held)}).</p>
+                    <p className="text-[11px] text-coral mt-1">
+                      {isWithdraw
+                        ? `More than the vault holds (${formatBalance(held!)}).`
+                        : `More than your ${formatBalance(held!)} balance.`}
+                    </p>
                   )}
                 </div>
               )
