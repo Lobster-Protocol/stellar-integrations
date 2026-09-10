@@ -78,6 +78,23 @@ describe('inWindow', () => {
     expect(inWindow(at('2026-06-15T10:00:00Z'), { ...f, query: 'phoenix' })).toBe(false)
   })
 
+  it('narrows to one vault by its contract id, dropping other contracts and plain ops', () => {
+    const f = filters({ vault: 'CVAULT_A' })
+    // a call whose invoked contract is the picked vault stays
+    expect(inWindow({ ...at('2026-06-15T10:00:00Z'), contractId: 'CVAULT_A' }, f)).toBe(true)
+    // a call to a different contract (another vault, a router) is dropped
+    expect(inWindow({ ...at('2026-06-15T10:00:00Z'), contractId: 'CVAULT_B' }, f)).toBe(false)
+    // a plain payment carries no contractId, so a vault filter excludes it
+    expect(inWindow(at('2026-06-15T10:00:00Z'), f)).toBe(false)
+  })
+
+  it('combines the vault filter with the date window', () => {
+    const f = filters({ vault: 'CVAULT_A', from: '2026-06-01', to: '2026-06-30' })
+    expect(inWindow({ ...at('2026-06-15T10:00:00Z'), contractId: 'CVAULT_A' }, f)).toBe(true)
+    // right vault, but outside the date window
+    expect(inWindow({ ...at('2026-05-01T10:00:00Z'), contractId: 'CVAULT_A' }, f)).toBe(false)
+  })
+
   it('flags a window whose end comes before its start', () => {
     expect(filters({ from: '2026-06-30', to: '2026-06-01' }).reversed).toBe(true)
     expect(filters({ from: '2026-06-01', to: '2026-06-30' }).reversed).toBe(false)
