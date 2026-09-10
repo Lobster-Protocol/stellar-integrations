@@ -5,7 +5,6 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { cn } from '../utils/format'
 import WalletChip from './WalletChip'
 import ConnectMpcControl from './ConnectMpcControl'
-import PairMultisigControl from './PairMultisigControl'
 import lobsterIcon from '../assets/lobster-icon.png'
 
 interface Props {
@@ -59,14 +58,10 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           </button>
         </div>
 
-        {/* One connected-wallet chip (address actions + disconnect live in its menu),
-            plus the optional multisig-pairing label. When nothing is connected, the
-            plain Connect Wallet button. */}
+        {/* One connected-wallet chip (address actions + disconnect live in its menu).
+            When nothing is connected, the plain Connect Wallet button. */}
         {address ? (
-          <div className="flex items-center gap-1.5">
-            <WalletChip address={address} network={network} />
-            <PairMultisigControl key={`${network}:${address}`} address={address} network={network} />
-          </div>
+          <WalletChip address={address} network={network} />
         ) : (
           <button
             onClick={connect}
