@@ -16,7 +16,7 @@ import ConnectRelayForm from './ConnectRelayForm'
 
 // The top-right "+ MPC" control for connecting a DFNS MPC wallet. The default is
 // WalletConnect - the DFNS wallet pairs from the client's own DFNS console, and
-// signs there. Running your own relay is the advanced fallback. It never routes to
+// signs there. Running your own relay is the other way in, shown plainly, not hidden. It never routes to
 // Lobster's own org: the demo profile is opt-in from the Audit page and shown, if
 // active, plainly as a testnet demo. Approvals happen in the client's DFNS console.
 export default function ConnectMpcControl() {
@@ -28,6 +28,7 @@ export default function ConnectMpcControl() {
   const target: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [relayOpen, setRelayOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -265,17 +266,28 @@ export default function ConnectMpcControl() {
                 </p>
               )}
 
-              <details open={!walletConnectEnabled}>
-                <summary className="text-[11px] text-text-muted cursor-pointer hover:text-text">
-                  Advanced: run your own relay
-                </summary>
-                <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setRelayOpen((v) => !v)}
+                aria-expanded={relayOpen}
+                className="w-full text-left rounded-xl border border-text-muted/15 px-3 py-2 hover:bg-bg transition-colors"
+              >
+                <span className="block text-xs font-medium text-text">Run your own relay</span>
+                <span className="block text-[11px] text-text-muted">
+                  Point the dashboard at a DFNS relay you host, under your own spend rules (address + read token).
+                </span>
+              </button>
+              {(relayOpen || !walletConnectEnabled) && (
+                <div className="mt-1">
                   <ConnectRelayForm
-                    onSaved={() => setAdding(false)}
-                    onCancel={() => (isClient || isDemo ? setAdding(false) : setOpen(false))}
+                    onSaved={() => {
+                      setRelayOpen(false)
+                      setAdding(false)
+                    }}
+                    onCancel={() => (isClient || isDemo ? setAdding(false) : setRelayOpen(false))}
                   />
                 </div>
-              </details>
+              )}
             </div>
           )}
           </div>,
