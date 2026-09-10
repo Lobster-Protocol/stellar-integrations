@@ -7,9 +7,9 @@ import { WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/walle
 import { useCustody } from '../contexts/CustodyContext'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useActiveProfile } from '../integrations/dfns/use-profiles'
+import { useActiveProfile, useProfiles } from '../integrations/dfns/use-profiles'
 import { useDfnsWallets } from '../integrations/dfns/hooks'
-import { setSelectedWallet, removeClientProfile, clearActiveProfile, type DfnsNetwork } from '../integrations/dfns/profiles'
+import { setSelectedWallet, removeClientProfile, clearActiveProfile, setActiveProfile, type DfnsNetwork } from '../integrations/dfns/profiles'
 import { shortenAddress, stellarExplorer, cn } from '../utils/format'
 import CopyButton from './CopyButton'
 import ConnectRelayForm from './ConnectRelayForm'
@@ -24,6 +24,7 @@ export default function ConnectMpcControl() {
   const { connectWalletConnect, walletConnectEnabled, walletId, connecting } = useWallet()
   const { network } = useNetwork()
   const active = useActiveProfile()
+  const profiles = useProfiles()
   const target: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -78,6 +79,8 @@ export default function ConnectMpcControl() {
   const showClientChip = mode === 'dfns' && isClient && !!dfnsAddress
   const showDemoChip = mode === 'dfns' && isDemo && !!dfnsAddress
   const isWcConnected = walletId === WALLET_CONNECT_ID
+  // saved relays plus the testnet-only demo, offered as one-click picks in the popover.
+  const pickable = profiles.filter((p) => !(p.kind === 'demo' && network === 'mainnet'))
 
   function toggle() {
     setAdding(false)
@@ -85,9 +88,9 @@ export default function ConnectMpcControl() {
   }
 
   // a DFNS wallet connected over WalletConnect already shows in the wallet chip, so a
-  // second "+ MPC" invite beside it only confuses. hide this control then - unless we
-  // are in relay (dfns) custody, which keeps its own chip below.
-  if (isWcConnected && !showClientChip && !showDemoChip) return null
+  // second "+ MPC" invite beside it only confuses. hide this control then - unless there
+  // is a saved relay or the testnet demo to pick, or we are in relay (dfns) custody.
+  if (isWcConnected && !showClientChip && !showDemoChip && pickable.length === 0) return null
 
   return (
     <div ref={triggerRef} className="relative">
@@ -201,6 +204,34 @@ export default function ConnectMpcControl() {
                 >
                   &larr; Back
                 </button>
+              )}
+              {!adding && pickable.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[11px] text-text-muted">Your saved DFNS connections</p>
+                  <ul className="space-y-1">
+                    {pickable.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveProfile(p.id)
+                            setMode('dfns')
+                            setOpen(false)
+                          }}
+                          className="w-full flex items-center justify-between gap-2 rounded-xl border border-text-muted/15 px-2.5 py-1.5 text-left hover:bg-bg"
+                        >
+                          <span className="truncate text-xs text-text">{p.label}</span>
+                          {p.kind === 'demo' && (
+                            <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-600">
+                              testnet demo
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-text-muted">or connect a new one below.</p>
+                </div>
               )}
               <div>
                 <p className="text-xs font-semibold text-text">Connect your DFNS MPC wallet</p>

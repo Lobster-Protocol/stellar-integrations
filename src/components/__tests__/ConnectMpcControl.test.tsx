@@ -3,19 +3,20 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 
 import ConnectMpcControl from '../ConnectMpcControl'
 
-const { mockWallet, mockCustody, mockActiveProfile, mockWallets } = vi.hoisted(() => ({
+const { mockWallet, mockCustody, mockActiveProfile, mockProfiles, mockWallets } = vi.hoisted(() => ({
   mockWallet: vi.fn(),
   mockCustody: vi.fn(),
   mockActiveProfile: vi.fn(),
+  mockProfiles: vi.fn(),
   mockWallets: vi.fn(),
 }))
 
 vi.mock('../../contexts/WalletContext', () => ({ useWallet: () => mockWallet() }))
 vi.mock('../../contexts/CustodyContext', () => ({ useCustody: () => mockCustody() }))
 vi.mock('../../contexts/NetworkContext', () => ({ useNetwork: () => ({ network: 'testnet' }) }))
-vi.mock('../../integrations/dfns/use-profiles', () => ({ useActiveProfile: () => mockActiveProfile() }))
+vi.mock('../../integrations/dfns/use-profiles', () => ({ useActiveProfile: () => mockActiveProfile(), useProfiles: () => mockProfiles() }))
 vi.mock('../../integrations/dfns/hooks', () => ({ useDfnsWallets: () => mockWallets() }))
-vi.mock('../../integrations/dfns/profiles', () => ({ setSelectedWallet: vi.fn(), removeClientProfile: vi.fn() }))
+vi.mock('../../integrations/dfns/profiles', () => ({ setSelectedWallet: vi.fn(), removeClientProfile: vi.fn(), setActiveProfile: vi.fn(), clearActiveProfile: vi.fn() }))
 vi.mock('../ConnectRelayForm', () => ({ default: () => <div data-testid="relay-form" /> }))
 
 const setMode = vi.fn()
@@ -26,6 +27,7 @@ beforeEach(() => {
   connectWalletConnect.mockReset()
   mockCustody.mockReturnValue({ mode: 'wallet-kit', dfnsAddress: null, setMode })
   mockActiveProfile.mockReturnValue(null)
+  mockProfiles.mockReturnValue([])
   mockWallets.mockReturnValue({ data: undefined, isSuccess: false, isLoading: false, isError: false })
   mockWallet.mockReturnValue({ connectWalletConnect, walletConnectEnabled: true })
 })
