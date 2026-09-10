@@ -103,7 +103,7 @@ test.describe('activity search', () => {
     const box = page.getByRole('searchbox', { name: /Search this account/ })
     await box.fill('zznothinghere')
     await expect(page).toHaveURL(/q=zznothinghere/)
-    await expect(page.getByRole('button', { name: 'Clear the search' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Clear the filters' })).toBeVisible()
 
     // a reload rebuilds the same filtered view from the url alone
     await page.reload({ waitUntil: 'domcontentloaded' })
@@ -111,7 +111,7 @@ test.describe('activity search', () => {
       'zznothinghere',
     )
 
-    await page.getByRole('button', { name: 'Clear the search' }).click()
+    await page.getByRole('button', { name: 'Clear the filters' }).click()
     await expect(page).not.toHaveURL(/q=/)
   })
 
