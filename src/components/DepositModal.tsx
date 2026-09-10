@@ -422,7 +422,13 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                     {sampleQuote && <span className="text-amber-500"> (sample)</span>}
                   </span>
                   <span className="text-text">
-                    {quote ? `${quote.amountOutFloat} USDC` : amount ? '...' : '-'}
+                    {quote
+                      ? Number(quote.amountOutFloat) > 0
+                        ? `${quote.amountOutFloat} USDC`
+                        : 'too small to bridge'
+                      : amount
+                        ? '...'
+                        : '-'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -491,6 +497,8 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                 Number(amount) <= 0 ||
                 isWorking ||
                 !stellarAddr ||
+                // a dust amount can round to nothing received; don't let it send
+                (isBridge && quote != null && Number(quote.amountOutFloat) <= 0) ||
                 (isBridge && network === 'mainnet' && (!evm.address || !trustlineOk))
               }
               className="w-full py-3 rounded-full bg-primary text-white font-semibold text-sm transition-all hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
