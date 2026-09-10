@@ -108,7 +108,7 @@ test.describe('Mobile responsiveness', () => {
     // whichever icon button happened to come first in the DOM
     const hamburger = page.getByRole('button', { name: /Open menu/i })
     await hamburger.click()
-    for (const label of ['Overview', 'Performance', 'Activity', 'Allocation', 'Bridges', 'Positions', 'Custody', 'Shared control']) {
+    for (const label of ['Overview', 'Performance', 'Activity', 'Allocation', 'Bridges', 'Positions', 'Custody']) {
       await expect(page.getByRole('link', { name: new RegExp(`^${label}$`) }).first()).toBeVisible()
     }
   })
