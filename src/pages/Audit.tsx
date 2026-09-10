@@ -19,6 +19,7 @@ import PoliciesPanel from '../components/PoliciesPanel'
 import MpcSignatureFeed from '../components/MpcSignatureFeed'
 import MicaExportButton from '../components/MicaExportButton'
 import SignDemoTx from '../components/SignDemoTx'
+import SharedControl from './SharedControl'
 import TtlCountdownCard from '../components/TtlCountdownCard'
 import { Card, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
@@ -133,6 +134,8 @@ export default function Audit() {
       <MicaExportButton />
 
       <MpcSignatureFeed />
+
+      <SharedControl />
 
       <div>
         <h2 className="text-lg font-semibold text-text">The contract behind every vault</h2>

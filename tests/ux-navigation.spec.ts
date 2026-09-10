@@ -55,10 +55,10 @@ test.describe('Cross-page navigation', () => {
     await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
   })
 
-  test('shared control is reachable from the sidebar', async ({ page }) => {
+  test('shared control now lives on the custody page', async ({ page }) => {
     await gotoWithWallet(page)
-    await page.getByRole('link', { name: 'Shared control', exact: true }).click()
-    await expect(page).toHaveURL(/\/shared-control$/)
+    await page.getByRole('link', { name: 'Custody', exact: true }).click()
+    await expect(page).toHaveURL(/\/audit$/)
     await expect(page.getByRole('heading', { level: 2, name: 'Shared control' })).toBeVisible()
   })
 

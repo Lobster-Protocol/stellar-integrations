@@ -8,10 +8,10 @@ import { gotoWithWallet, TEST_WALLET } from './fixtures'
 // which is covered by the module's unit tests and the on-chain proof, not here.
 
 test.describe('shared control', () => {
-  test('renders the co-sign card at /shared-control', async ({ page }) => {
-    // straight to the url here; the sidebar entry has its own test in ux-navigation.
-    await gotoWithWallet(page, '/shared-control')
-    await expect(page).toHaveURL(/\/shared-control$/)
+  test('renders the co-sign card on the custody page', async ({ page }) => {
+    // shared control lives inside Custody now; the sidebar entry test is in ux-navigation.
+    await gotoWithWallet(page, '/audit')
+    await expect(page).toHaveURL(/\/audit$/)
 
     await expect(page.getByRole('heading', { level: 2, name: 'Shared control' })).toBeVisible()
     await expect(page.getByText('Finish a shared transaction')).toBeVisible()
@@ -19,7 +19,7 @@ test.describe('shared control', () => {
   })
 
   test('the co-sign card rejects text that is not a transaction', async ({ page }) => {
-    await gotoWithWallet(page, '/shared-control')
+    await gotoWithWallet(page, '/audit')
     await page.getByPlaceholder('Paste the transaction here').fill('not-an-xdr')
     await page.getByRole('button', { name: /^Load$/ }).click()
     await expect(page.getByText(/does not read as a transaction/i)).toBeVisible()
@@ -38,7 +38,7 @@ test.describe('shared control', () => {
       .build()
       .toXDR()
 
-    await gotoWithWallet(page, '/shared-control')
+    await gotoWithWallet(page, '/audit')
     await page.getByPlaceholder('Paste the transaction here').fill(hijack)
     await page.getByRole('button', { name: /^Load$/ }).click()
 
