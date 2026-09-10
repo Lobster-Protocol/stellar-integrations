@@ -5,6 +5,9 @@ import { X, ArrowUpDown } from 'lucide-react'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances } from '../integrations/horizon/account'
+import { getSorobanTokenBalance } from '../integrations/stellar/token-balance'
+import { stroopsToDecimal } from '../integrations/stellar/amount'
+import { isContractId } from '../integrations/stellar/strkey-guards'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { getWalletNetworkPassphrase } from '../integrations/signer/wallet-network'
 import { useSoroswapConfirm, buildSoroswapConfirmTx, SOROSWAP_SLIPPAGE } from '../integrations/broker/hooks'
@@ -73,10 +76,24 @@ export default function SwapModal({ open, onClose }: Props) {
   // an over-balance guard. reserve rules still apply to a full-XLM max, and the
   // existing swap error covers that case.
   const balancesQ = useAccountBalances(network, address)
-  const sellBalance = useMemo(
+  const classicSell = useMemo(
     () => balancesQ.data?.find((b) => b.code === selling.code)?.balance ?? null,
     [balancesQ.data, selling.code],
   )
+  // testnet swap tokens are bare SAC ids Horizon does not list; read the SAC
+  // balance() for those, and only when the classic lookup found nothing.
+  const sellSac = isContractId(selling.asset) ? selling.asset : null
+  const sacSell = useQuery({
+    queryKey: ['swap-sac-balance', network, address, sellSac],
+    queryFn: async () => {
+      const raw = await getSorobanTokenBalance(network, sellSac!, address!)
+      return raw === null ? null : stroopsToDecimal(raw)
+    },
+    enabled: !!address && !!sellSac && classicSell == null,
+    staleTime: 20_000,
+    retry: 1,
+  })
+  const sellBalance = classicSell ?? sacSell.data ?? null
   const overBalance = sellBalance != null && amount !== '' && Number(amount) > Number(sellBalance)
 
   const params: BrokerQuoteParams | null = useMemo(() => {
