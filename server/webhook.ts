@@ -19,6 +19,7 @@ import { reSequence } from './dfns/resequence'
 import { unresolvedSignature, trackPending, clearPending, peekPending } from './dfns/inflight'
 import { registerAllbridgeRoutes } from './allbridge/routes'
 import { listPendingApprovals, decideApproval, type ApprovalDecision } from './dfns/approvals'
+import { autoApproveArmed, autoApproveHeldForWallet } from './dfns/auto-approve'
 import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
 import { lookupDti } from './dfns/dti-codes'
 import { scanNetwork } from './ttl-monitor/index'
@@ -256,6 +257,32 @@ function serverPassphrase(): string {
   return Networks.TESTNET
 }
 
+// Testnet demo auto-approver: when a signature comes back held for approval, vote
+// it through (as the approver User) and wait for dfns to finish, returning the
+// same shape the instant path does. Armed only on testnet with an approver
+// configured (autoApproveArmed); off by default and never on mainnet. Never
+// throws - a no-op or any failure returns null and the caller falls back to the
+// normal pending/poll flow, so a human can still approve it in the console.
+async function tryAutoApprove(
+  walletId: string,
+  sigId: string,
+  passphrase: string,
+): Promise<{ txHash: string } | { signedTxXdr: string } | null> {
+  if (!autoApproveArmed()) return null
+  try {
+    const n = await autoApproveHeldForWallet(walletId)
+    if (n === 0) return null
+    const final = await waitForSignatureTerminal(walletId, sigId, PENDING_POLL_MS)
+    if (final.txHash) return { txHash: final.txHash }
+    if (final.signedData) {
+      return { signedTxXdr: envelopeFromSignedData(final.signedData, passphrase).toXDR() }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 // A payment DFNS builds itself, rather than an envelope we hand it. That is the
 // only shape its approval rules can actually read, so it is the one request that
 // a rule can wave through. Same bounds as /dfns/sign: the destination has to be
@@ -378,6 +405,12 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     // no hash and no envelope: an approval policy is holding it for a human. hand
     // the id back so the client can show pending and poll for the eventual hash.
     if (!isTerminal(final.status)) {
+      // testnet demo only: clear the hold ourselves and wait out the execution so
+      // the reviewer's single request finishes pending -> approved -> executed.
+      // off by default and never on mainnet; a no-op or failure falls straight
+      // back to the human-approval pending flow below.
+      const auto = await tryAutoApprove(walletId, initial.id, passphrase)
+      if (auto) return c.json(auto)
       trackPending(walletId, initial.id)
       return c.json({ pending: true, id: initial.id })
     }
