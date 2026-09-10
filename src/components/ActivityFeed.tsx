@@ -24,6 +24,7 @@ import {
   type ActivityKind,
 } from '../integrations/horizon/activity'
 import { protocolLabel } from '../integrations/stellar/token-registry'
+import { useVaultPositions } from '../integrations/lobster/position'
 import { formatBalance, shortenAddress, stellarExplorer, cn } from '../utils/format'
 import {
   describeWindow,
@@ -171,6 +172,11 @@ export default function ActivityFeed() {
   const { network } = useNetwork()
   const q = useActivity(network, address)
   const filters = useActivityFilters()
+  const vaultsQ = useVaultPositions(network, address)
+  const vaults = useMemo(
+    () => (vaultsQ.data ?? []).map((v) => ({ address: v.address, label: `Vault ${shortenAddress(v.address, 4)}` })),
+    [vaultsQ.data],
+  )
 
   const events = useMemo(() => (q.data?.pages ?? []).flatMap((p) => p.events), [q.data])
   const { covering, capped } = useCoverRange(filters, events, q)
@@ -179,7 +185,7 @@ export default function ActivityFeed() {
     () => (filters.reversed ? [] : events.filter((e) => inWindow(e, filters))),
     // the filter object is rebuilt each render; its fields are what matter
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, filters.startMs, filters.endMs, filters.query, filters.reversed],
+    [events, filters.startMs, filters.endMs, filters.query, filters.vault, filters.reversed],
   )
 
   // counts follow the window, so a tab never promises rows the window hides
@@ -215,7 +221,7 @@ export default function ActivityFeed() {
   } else {
     body = (
       <>
-        <ActivityFilters filters={filters} counts={counts} />
+        <ActivityFilters filters={filters} counts={counts} vaults={vaults} />
 
         {filters.reversed ? (
           <Empty

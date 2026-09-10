@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Area,
@@ -27,14 +27,18 @@ import { useRecordNav } from '../integrations/pricing/nav'
 import { valueHistoryCsv, performanceJson } from '../integrations/pricing/export'
 import { exportName } from '../utils/csv'
 import { CONTRACTS } from '../config/contracts'
-import { compactNumber, formatBalance, formatValue } from '../utils/format'
+import { cn, compactNumber, formatBalance, formatValue } from '../utils/format'
 import { AXIS_TICK, CHART_COLORS, GRID_STROKE, TOOLTIP_STYLE } from '../utils/recharts'
 import ExportButton from '../components/ExportButton'
+import LiveDataMeta from '../components/LiveDataMeta'
 import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
 const day = (ts: number) =>
   new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+
+type Range = '7d' | '30d' | '90d' | 'all'
+const RANGE_DAYS: Record<Exclude<Range, 'all'>, number> = { '7d': 7, '30d': 30, '90d': 90 }
 
 interface Row {
   ts: number
@@ -74,6 +78,7 @@ export default function Performance() {
   const priceQ = useXlmPrice(network)
   const historyQ = useBalanceHistory(network, address)
   const vaultsQ = useVaultPositions(network, address)
+  const [range, setRange] = useState<Range>('all')
 
   const unit = priceUnit(network)
   const price = priceQ.data ?? null
@@ -122,6 +127,20 @@ export default function Performance() {
 
   const flows = history?.flows
 
+  // narrow the curve to a recent window; carry the running value to the window's
+  // left edge so it starts at the right height instead of mid-air. the table just
+  // lists the real moves inside the window, no synthetic anchor.
+  const cutoffMs = range === 'all' ? null : Date.now() - RANGE_DAYS[range] * 86_400_000
+  const viewSeries: Row[] =
+    cutoffMs == null
+      ? series
+      : (() => {
+          const before = series.filter((r) => r.ts < cutoffMs).at(-1)
+          const inWin = series.filter((r) => r.ts >= cutoffMs)
+          return before ? [{ ts: cutoffMs, value: before.value }, ...inWin] : inWin
+        })()
+  const viewChanges = cutoffMs == null ? changes : changes.filter((r) => r.ts >= cutoffMs)
+
   if (!address) {
     return (
       <div className="space-y-6">
@@ -143,6 +162,12 @@ export default function Performance() {
             matches the live balance exactly.
           </p>
         </div>
+        <div className="flex flex-col items-end gap-2">
+        <LiveDataMeta
+          dataUpdatedAt={historyQ.dataUpdatedAt}
+          isFetching={historyQ.isFetching || balancesQ.isFetching || priceQ.isFetching || vaultsQ.isFetching}
+          onRefresh={() => { historyQ.refetch(); balancesQ.refetch(); priceQ.refetch(); vaultsQ.refetch() }}
+        />
         <ExportButton
           label="Value history"
           name={exportName('value-history', { account: address, network })}
@@ -178,6 +203,7 @@ export default function Performance() {
             },
           ]}
         />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -211,9 +237,26 @@ export default function Performance() {
             unit === 'USDC' ? ' Quoted in testnet USDC.' : ''
           }`}
           meta={
-            <Link to="/activity" className="text-xs text-primary hover:underline">
-              See the moves
-            </Link>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-bg rounded-full p-0.5 text-[11px]">
+                {(['7d', '30d', '90d', 'all'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRange(r)}
+                    className={cn(
+                      'px-2 py-0.5 rounded-full font-medium transition-colors',
+                      range === r ? 'bg-bg-card text-primary shadow-sm' : 'text-text-muted',
+                    )}
+                  >
+                    {r === 'all' ? 'All' : r}
+                  </button>
+                ))}
+              </div>
+              <Link to="/activity" className="text-xs text-primary hover:underline">
+                See the moves
+              </Link>
+            </div>
           }
         />
         {historyQ.isLoading ? (
@@ -226,18 +269,20 @@ export default function Performance() {
               ? `No history to plot until this wallet is funded on ${network}.`
               : `Not enough history on ${network} yet. One move is enough to start the curve.`}
           </Empty>
+        ) : viewSeries.length < 2 ? (
+          <Empty>No balance change in this window. Pick a wider range.</Empty>
         ) : (
           <>
             <ChartFrame
               label={`Wallet balance over time, quoted in ${unit}`}
               columns={['Date', `Value (${unit})`]}
-              rows={changes.map((r) => [
+              rows={viewChanges.map((r) => [
                 new Date(r.ts).toLocaleString('en-GB'),
                 formatValue(r.value, unit),
               ])}
             >
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={series} margin={{ left: 4, right: 8, top: 4 }}>
+              <AreaChart data={viewSeries} margin={{ left: 4, right: 8, top: 4 }}>
                 <defs>
                   <linearGradient id="valueFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={CHART_COLORS[0]} stopOpacity={0.28} />

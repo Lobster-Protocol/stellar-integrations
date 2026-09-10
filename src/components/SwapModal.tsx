@@ -4,6 +4,7 @@ import { X, ArrowUpDown } from 'lucide-react'
 
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
+import { useAccountBalances } from '../integrations/horizon/account'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { getWalletNetworkPassphrase } from '../integrations/signer/wallet-network'
 import { useSoroswapConfirm, buildSoroswapConfirmTx, SOROSWAP_SLIPPAGE } from '../integrations/broker/hooks'
@@ -13,7 +14,7 @@ import { networkPassphrase } from '../integrations/lobster/client'
 import { submitSignedXdr, waitForTx } from '../integrations/lobster/factory'
 import { useAccountSigning } from '../integrations/stellar/use-account-signing'
 import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
-import { cn, stellarExplorer } from '../utils/format'
+import { cn, formatBalance, stellarExplorer } from '../utils/format'
 import { appendRoutingEntry } from '../integrations/broker/routing-log'
 import type { BrokerQuoteParams } from '../integrations/broker/types'
 import { InfoTip } from './InfoTip'
@@ -66,6 +67,17 @@ export default function SwapModal({ open, onClose }: Props) {
     tokens.find((t) => t.code !== selling.code) ??
     tokens[0]
   const sameToken = selling.code === buying.code
+
+  // match the selling token to a wallet balance by code (useAccountBalances already
+  // folds testnet's soroban-only USDC into a code:'USDC' line), for a Max button and
+  // an over-balance guard. reserve rules still apply to a full-XLM max, and the
+  // existing swap error covers that case.
+  const balancesQ = useAccountBalances(network, address)
+  const sellBalance = useMemo(
+    () => balancesQ.data?.find((b) => b.code === selling.code)?.balance ?? null,
+    [balancesQ.data, selling.code],
+  )
+  const overBalance = sellBalance != null && amount !== '' && Number(amount) > Number(sellBalance)
 
   const params: BrokerQuoteParams | null = useMemo(() => {
     if (!amount || sameToken) return null
@@ -141,6 +153,7 @@ export default function SwapModal({ open, onClose }: Props) {
     !confirmFallback.isPending &&
     !!params &&
     !networkMismatch &&
+    !overBalance &&
     // don't send a multisig account down the one-shot path while its signers are
     // still being read, and don't restart once a quorum collection is underway.
     !signingQ.isLoading &&
@@ -265,7 +278,7 @@ export default function SwapModal({ open, onClose }: Props) {
             </select>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <label className="text-xs text-text-secondary w-16 self-center">Amount</label>
             <input
               type="text"
@@ -275,7 +288,23 @@ export default function SwapModal({ open, onClose }: Props) {
               placeholder="0.0"
               className="flex-1 bg-bg rounded-lg px-3 py-2 text-sm font-mono"
             />
+            {sellBalance != null && (
+              <button
+                type="button"
+                onClick={() => setAmount(sellBalance)}
+                className="shrink-0 text-[11px] text-primary hover:underline"
+              >
+                Max
+              </button>
+            )}
           </div>
+          {sellBalance != null && (
+            <p className={cn('text-[11px]', overBalance ? 'text-coral' : 'text-text-muted')}>
+              {overBalance
+                ? `More than your ${selling.code} balance (${formatBalance(sellBalance)}).`
+                : `Balance: ${formatBalance(sellBalance)} ${selling.code}`}
+            </p>
+          )}
 
           {sameToken && (
             <p className="text-xs text-coral">Selling and buying must differ.</p>

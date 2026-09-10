@@ -45,7 +45,9 @@ export interface ActivityFilterState {
   // the end day was picked before the start day, so no row can ever match
   reversed: boolean
   windowed: boolean
-  update: (next: Partial<Record<'show' | 'q' | 'from' | 'to', string>>) => void
+  // a single vault contract to narrow to, by its C-address; '' is all
+  vault: string
+  update: (next: Partial<Record<'show' | 'q' | 'from' | 'to' | 'vault', string>>) => void
 }
 
 export function useActivityFilters(): ActivityFilterState {
@@ -54,6 +56,7 @@ export function useActivityFilters(): ActivityFilterState {
   const rawGroup = params.get('show') ?? ''
   const group: KindGroup | 'all' = rawGroup in KIND_GROUPS ? (rawGroup as KindGroup) : 'all'
   const query = params.get('q') ?? ''
+  const vault = params.get('vault') ?? ''
   const { startMs, endMs } = windowBounds(params.get('from') ?? '', params.get('to') ?? '')
   // a date the url carried but nothing could parse is no date at all, so the
   // control shows it as empty rather than as a window that does not exist
@@ -69,6 +72,7 @@ export function useActivityFilters(): ActivityFilterState {
     endMs,
     reversed: startMs != null && endMs != null && startMs > endMs,
     windowed: startMs != null || endMs != null,
+    vault,
     update(next) {
       const p = new URLSearchParams(params)
       for (const [k, v] of Object.entries(next)) {
@@ -86,6 +90,7 @@ export function inWindow(e: ActivityEvent, f: ActivityFilterState): boolean {
   const at = Date.parse(e.at)
   if (f.startMs != null && at < f.startMs) return false
   if (f.endMs != null && at > f.endMs) return false
+  if (f.vault && e.contractId !== f.vault) return false
   return matchesQuery(e, f.query)
 }
 

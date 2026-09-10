@@ -15,6 +15,7 @@ import {
   useActivityFilters,
 } from '../integrations/horizon/activity-window'
 import ExportButton, { type ExportFormat } from '../components/ExportButton'
+import LiveDataMeta from '../components/LiveDataMeta'
 import RoutingEngineCard from '../components/RoutingEngineCard'
 import { Card, CardHead, ChartFrame, Empty, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
@@ -47,7 +48,7 @@ export default function Activity() {
   const events = useMemo(
     () => (filters.reversed ? [] : loaded.filter((e) => inWindow(e, filters))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loaded, filters.startMs, filters.endMs, filters.query, filters.reversed],
+    [loaded, filters.startMs, filters.endMs, filters.query, filters.vault, filters.reversed],
   )
 
   const byKind = useMemo(() => {
@@ -127,6 +128,12 @@ export default function Activity() {
             transaction did.
           </p>
         </div>
+        <div className="flex flex-col items-end gap-2">
+        <LiveDataMeta
+          dataUpdatedAt={q.dataUpdatedAt}
+          isFetching={q.isFetching}
+          onRefresh={() => q.refetch()}
+        />
         <ExportButton
           label={filters.windowed ? 'Selected dates' : 'Full history'}
           name={exportName(exportBase, { account: address, network })}
@@ -147,6 +154,7 @@ export default function Activity() {
                   : 'Still checking this account on Stellar'
           }
         />
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3">

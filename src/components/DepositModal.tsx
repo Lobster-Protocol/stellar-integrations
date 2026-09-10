@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { X, Check } from 'lucide-react'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useBalance } from 'wagmi'
 import { cn, shortenAddress } from '../utils/format'
 import { InfoTip } from './InfoTip'
 import { useWallet } from '../contexts/WalletContext'
@@ -27,7 +27,7 @@ import {
 } from '../integrations/allbridge/types'
 import { buildTrustlineXdr, submitTrustlineTx } from '../integrations/allbridge/trustline'
 import { networkPassphrase } from '../integrations/lobster/client'
-import { hasWalletConnectProjectId } from '../integrations/evm/config'
+import { EVM_CHAIN_ID, hasWalletConnectProjectId } from '../integrations/evm/config'
 import { simulateBridgeQuote } from '../integrations/allbridge/simulate'
 
 interface Props {
@@ -88,6 +88,18 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
   const selectedChain = CHAINS.find((c) => c.id === chain)!
   const isBridge = selectedChain.bridge
   const evmChain = isBridge ? (chain as EvmSourceChain) : null
+
+  // the connected EVM wallet's USDC on the source chain, for a Max button and an
+  // over-balance guard. USDC decimals differ per chain (BSC is 18), so use the
+  // formatted string wagmi derives rather than the raw value.
+  const usdcBalance = useBalance({
+    address: evm.address,
+    token: evmChain ? EVM_USDC[evmChain] : undefined,
+    chainId: evmChain ? EVM_CHAIN_ID[evmChain] : undefined,
+    query: { enabled: !!evm.address && !!evmChain },
+  })
+  const evmMax = usdcBalance.data?.formatted ?? null
+  const overEvm = evmMax != null && amount !== '' && Number(amount) > Number(evmMax)
 
   const bridgeRequest: BridgeRequest | null = useMemo(() => {
     if (!evmChain || !stellarAddr || !amount || !evm.address) return null
@@ -398,7 +410,18 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
             )}
 
             <div className="mb-4">
-              <label className="text-xs text-text-secondary font-medium mb-2 block">Amount (USDC)</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs text-text-secondary font-medium block">Amount (USDC)</label>
+                {evmMax != null && (
+                  <button
+                    type="button"
+                    onClick={() => setAmount(evmMax)}
+                    className="text-[11px] text-primary hover:underline"
+                  >
+                    Max {Number(evmMax).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </button>
+                )}
+              </div>
               <input
                 type="number"
                 value={amount}
@@ -409,6 +432,11 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                 className="w-full px-4 py-3 rounded-xl bg-bg text-text text-sm outline-none focus:ring-1 focus:ring-primary/30"
                 style={{ border: '1px solid rgba(13, 45, 76, 0.08)' }}
               />
+              {overEvm && evmChain && (
+                <p className="text-[11px] text-coral mt-1">
+                  More than your {EVM_CHAIN_NAME[evmChain]} USDC balance ({evmMax}).
+                </p>
+              )}
             </div>
 
             {isBridge && (
@@ -500,6 +528,7 @@ export default function DepositModal({ open, onClose, initialChain }: Props) {
                 !stellarAddr ||
                 // a dust amount can round to nothing received; don't let it send
                 (isBridge && quote != null && Number(quote.amountOutFloat) <= 0) ||
+                overEvm ||
                 (isBridge && network === 'mainnet' && (!evm.address || !trustlineOk))
               }
               className="w-full py-3 rounded-full bg-primary text-white font-semibold text-sm transition-all hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"

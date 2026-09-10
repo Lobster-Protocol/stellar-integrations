@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Check } from 'lucide-react'
+import { Plus, Check, Trash2 } from 'lucide-react'
 
 import { WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
 
@@ -211,7 +211,7 @@ export default function ConnectMpcControl() {
                   <p className="text-[11px] text-text-muted">Your saved DFNS connections</p>
                   <ul className="space-y-1">
                     {pickable.map((p) => (
-                      <li key={p.id}>
+                      <li key={p.id} className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => {
@@ -219,7 +219,7 @@ export default function ConnectMpcControl() {
                             setMode('dfns')
                             setOpen(false)
                           }}
-                          className="w-full flex items-center justify-between gap-2 rounded-xl border border-text-muted/15 px-2.5 py-1.5 text-left hover:bg-bg"
+                          className="flex-1 min-w-0 flex items-center justify-between gap-2 rounded-xl border border-text-muted/15 px-2.5 py-1.5 text-left hover:bg-bg"
                         >
                           <span className="truncate text-xs text-text">{p.label}</span>
                           {p.kind === 'demo' && (
@@ -228,6 +228,17 @@ export default function ConnectMpcControl() {
                             </span>
                           )}
                         </button>
+                        {p.kind === 'client' && (
+                          <button
+                            type="button"
+                            onClick={() => removeClientProfile(p.id)}
+                            aria-label={`Forget ${p.label}`}
+                            title="Forget this relay"
+                            className="shrink-0 rounded-lg p-1.5 text-text-muted hover:text-coral hover:bg-bg"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>

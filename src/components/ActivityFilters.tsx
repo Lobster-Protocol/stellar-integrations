@@ -27,11 +27,13 @@ function utcDaysAgo(days: number): string {
 export function ActivityFilters({
   filters,
   counts,
+  vaults,
 }: {
   filters: ActivityFilterState
   counts: Record<string, number>
+  vaults: { address: string; label: string }[]
 }) {
-  const { group, query, from, to, update } = filters
+  const { group, query, from, to, vault, update } = filters
   const preset = (days: number) => update({ from: utcDaysAgo(days), to: '' })
 
   return (
@@ -52,20 +54,37 @@ export function ActivityFilters({
           </button>
         ))}
 
-        <div className="relative ml-auto">
-          <Search
-            size={12}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted"
-            aria-hidden
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => update({ q: e.target.value })}
-            placeholder="Search asset, address, hash"
-            aria-label="Search this account's activity"
-            className="w-52 max-w-full pl-7 pr-2.5 py-1 rounded-full bg-bg text-xs text-text placeholder:text-text-muted outline-none focus:ring-1 focus:ring-primary"
-          />
+        <div className="ml-auto flex items-center gap-1.5">
+          {vaults.length > 0 && (
+            <select
+              value={vault}
+              onChange={(e) => update({ vault: e.target.value })}
+              aria-label="Filter by vault"
+              className="max-w-[9rem] py-1 px-2 rounded-full bg-bg text-xs text-text outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All vaults</option>
+              {vaults.map((v) => (
+                <option key={v.address} value={v.address}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="relative">
+            <Search
+              size={12}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted"
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => update({ q: e.target.value })}
+              placeholder="Search asset, address, hash"
+              aria-label="Search this account's activity"
+              className="w-52 max-w-full pl-7 pr-2.5 py-1 rounded-full bg-bg text-xs text-text placeholder:text-text-muted outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
         </div>
       </div>
 
