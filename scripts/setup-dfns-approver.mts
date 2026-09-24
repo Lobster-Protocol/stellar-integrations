@@ -14,7 +14,7 @@
 //
 // Why a User and not the service account: a service account can vote only when
 // serviceAccountsCanApprove is on, which DFNS gates behind a support ticket. A
-// User approver needs no such flag. Full runbook: _docs/TESTNET_AUTO_APPROVER.md.
+// User approver needs no such flag.
 
 import { generateKeyPairSync } from 'node:crypto'
 import { writeFileSync, mkdirSync } from 'node:fs'
@@ -77,7 +77,7 @@ try {
   console.log('')
 }
 
-console.log('then, self-service (no DFNS support ticket), per _docs/TESTNET_AUTO_APPROVER.md:')
+console.log('then, self-service (no DFNS support ticket):')
 console.log('  1. DFNS console: add a credential of kind "Key" to your approver User, pasting')
 console.log('     approver.public.pem above. Note the credential id (cr-...) and the userId (us-...).')
 console.log('  2. Give that User Policies:Evaluations:Vote, add its userId to DFNS_APPROVER_USER_IDS,')
