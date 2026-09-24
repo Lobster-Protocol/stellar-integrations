@@ -3,7 +3,10 @@ import { CONTRACTS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
 import type { Network } from '../../src/config/contracts'
 import { scanTtl, keysNeedingExtend, type KeyStatus, type ScanResult } from './monitor'
 import { buildExtendTtlTx } from './extend'
-import { EXTEND_TARGET_LEDGERS } from './ledger'
+import { EXTEND_TARGET_LEDGERS, readTtl } from './ledger'
+
+// ledgers that can pass between the extend applying and the read-back
+const READBACK_SLACK_LEDGERS = 100
 
 interface MonitorConfig {
   network: Network
@@ -155,7 +158,15 @@ export async function extendKeys(
       }
       const res = await server.pollTransaction(sent.hash)
       if (res.status === 'SUCCESS') {
-        console.warn(`[ttl-monitor:${network}] extended ${s.keyXdr}: tx ${sent.hash}`)
+        // SUCCESS says the tx applied, not that the entry now has the runway we
+        // asked for, so read it back before calling the key done
+        const after = await server.getLedgerEntries(key)
+        const left = readTtl(after.entries[0]?.liveUntilLedgerSeq, after.latestLedger).remainingLedgers
+        if (left >= EXTEND_TARGET_LEDGERS - READBACK_SLACK_LEDGERS) {
+          console.warn(`[ttl-monitor:${network}] extended ${s.keyXdr}: tx ${sent.hash}, ${left} ledgers left`)
+        } else {
+          console.error(`[ttl-monitor:${network}] extend tx ${sent.hash} landed but ${s.keyXdr} only has ${left} ledgers left`)
+        }
       } else {
         // a failed extend means the entry keeps marching to archival; log it
         // loud so a structural cause (underfunded source, fee) gets seen

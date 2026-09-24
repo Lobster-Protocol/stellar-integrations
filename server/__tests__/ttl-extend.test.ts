@@ -42,6 +42,11 @@ function makeServer(over: Record<string, unknown> = {}) {
     simulateTransaction: vi.fn(async () => ({ result: {}, minResourceFee: '500' })),
     sendTransaction: vi.fn(async () => ({ status: 'PENDING', hash: 'HASH' })),
     pollTransaction: vi.fn(async () => ({ status: 'SUCCESS' })),
+    // the read-back after a landed extend: a month of runway, as asked
+    getLedgerEntries: vi.fn(async () => ({
+      entries: [{ liveUntilLedgerSeq: 2_000_000 + 518_400 }],
+      latestLedger: 2_000_000,
+    })),
     ...over,
   }
 }
@@ -102,5 +107,30 @@ describe('extendKeys', () => {
     await extendKeys(server as never, [critStatus], 'testnet', signer, 100n)
     expect(signer.sign).not.toHaveBeenCalled()
     expect(server.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  it('reads the entry back after the extend lands and reports the runway', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const server = makeServer()
+    await extendKeys(server as never, [critStatus], 'testnet', makeSigner())
+    expect(server.getLedgerEntries).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('518400 ledgers left'))
+    expect(error).not.toHaveBeenCalled()
+    warn.mockRestore()
+    error.mockRestore()
+  })
+
+  it('flags an extend that landed without giving the runway back', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const server = makeServer({
+      getLedgerEntries: vi.fn(async () => ({
+        entries: [{ liveUntilLedgerSeq: 2_000_010 }],
+        latestLedger: 2_000_000,
+      })),
+    })
+    await extendKeys(server as never, [critStatus], 'testnet', makeSigner())
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('only has 10 ledgers left'))
+    error.mockRestore()
   })
 })
