@@ -2,14 +2,16 @@ import type { Config } from '@docusaurus/types'
 import type * as Preset from '@docusaurus/preset-classic'
 import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs'
 
-// kept deliberately small: no blog, no i18n, no versioning, no search. noIndex
-// stays on until the site is launched publicly so it never gets crawled early.
+// kept deliberately small: no blog, no i18n, no versioning, no search. url and
+// indexing are env-driven: DOCS_BASE_URL (set in the Vercel project, Production
+// scope) overrides the origin, and only a production build is crawlable, so
+// preview deploys and local builds stay noindex and never get picked up early.
 const config: Config = {
   title: 'Lobster Protocol',
   tagline: 'Institutional liquidity on Stellar',
-  url: 'https://docs.lobster-protocol.com',
+  url: process.env.DOCS_BASE_URL ?? 'https://docs.lobster-protocol.com',
   baseUrl: '/',
-  noIndex: true,
+  noIndex: process.env.VERCEL_ENV !== 'production',
   onBrokenLinks: 'throw',
   markdown: { hooks: { onBrokenMarkdownLinks: 'warn' } },
 

@@ -1,0 +1,2622 @@
+{
+    "item": [
+        {
+            "name": "health",
+            "description": "",
+            "item": [
+                {
+                    "id": "9d5e899f-337a-4c0d-8d94-418a8834b1d0",
+                    "name": "Liveness and version",
+                    "request": {
+                        "name": "Liveness and version",
+                        "description": {},
+                        "url": {
+                            "path": [
+                                "health"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "e59a8805-7a09-4edf-8f9d-30229af440c0",
+                            "name": "ok",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "health"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                }
+            ]
+        },
+        {
+            "name": "monitoring",
+            "description": "",
+            "item": [
+                {
+                    "id": "b400165e-4f6b-4858-8a3d-a6aa94a61527",
+                    "name": "Contract storage TTL per ledger key",
+                    "request": {
+                        "name": "Contract storage TTL per ledger key",
+                        "description": {
+                            "content": "Reads the Soroban storage entries for the deployed contracts and returns each key's remaining runway in ledgers and seconds, plus a band of ok / warn / crit / archived. Public read. Answers 503 when the factory is not deployed on the requested network.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "ttl"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": " (This can only be one of testnet,mainnet)",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "network",
+                                    "value": "testnet"
+                                }
+                            ],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "83e718c2-60f9-4efe-965d-c4dc12536db0",
+                            "name": "ttl report",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "ttl"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": " (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "testnet"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "30b393b2-98c2-4b02-9a81-2206b8a489fb",
+                            "name": "factory not deployed on this network",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "ttl"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": " (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "testnet"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Service Unavailable",
+                            "code": 503,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                }
+            ]
+        },
+        {
+            "name": "dfns",
+            "description": "",
+            "item": [
+                {
+                    "id": "19ec8e93-8269-4b70-8efc-6e02715d8151",
+                    "name": "List custody wallets",
+                    "request": {
+                        "name": "List custody wallets",
+                        "description": {},
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "wallets"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "65bb75d7-f26c-4b27-9a0b-73b1b828cfe9",
+                            "name": "wallet list",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "f94628ab-9a28-4721-8c8d-d971c80436f9",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "f932a258-0246-413d-b0ee-531778ea23b9",
+                            "name": "DFNS read failed or not configured",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "40ea21a6-37c1-4948-914a-0751c6d657a4",
+                    "name": "Create a Stellar custody wallet",
+                    "request": {
+                        "name": "Create a Stellar custody wallet",
+                        "description": {},
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "wallets"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "method": "POST",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "e65362b1-ae3c-4723-9b26-1ede22506123",
+                            "name": "created",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "742c8345-d674-4ec8-ac4d-ba5a8675f4b7",
+                            "name": "name or network missing or invalid",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "2bbc5daa-20aa-458f-ace6-99ed54ca21b8",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "586ff1bc-7cf3-447c-8c2c-12ef8b00b3e2",
+                            "name": "DFNS create failed or not configured",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "2dbc197c-1fa5-43fd-aa7e-be3412fc147d",
+                    "name": "List approval policies",
+                    "request": {
+                        "name": "List approval policies",
+                        "description": {},
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "policies"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "5aff3213-e986-42b5-b1da-a1a36ff98815",
+                            "name": "policy list",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "policies"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "2e7a770c-4c1a-4dce-a5f0-de77bdc334e3",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "policies"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "8fd6108c-de26-41f5-986b-2d0821813b9e",
+                            "name": "DFNS read failed or not configured",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "policies"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "ac16925c-1174-4a20-998d-4124b8b040af",
+                    "name": "List pending approvals",
+                    "request": {
+                        "name": "List pending approvals",
+                        "description": {},
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "approvals"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "4adf359d-713e-4c03-9fb1-558aa0057827",
+                            "name": "pending approvals",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "d6081797-f9bc-45a7-9f71-83f44d1f55b5",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "7043c6ce-81d4-4f4d-b71a-0b3b7c238900",
+                            "name": "DFNS read failed or not configured",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "f7da9900-726f-4e77-9456-1b1ef52644d8",
+                    "name": "Approve or deny a pending signature",
+                    "request": {
+                        "name": "Approve or deny a pending signature",
+                        "description": {
+                            "content": "Fail-closed like /dfns/sign: deciding an approval authorizes a pending treasury signature, so it answers 503 unless the API token is set.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "approvals",
+                                ":id",
+                                "decision"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": [
+                                {
+                                    "type": "any",
+                                    "value": "<string>",
+                                    "key": "id",
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required) ",
+                                        "type": "text/plain"
+                                    }
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "method": "POST",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"value\": \"Denied\",\n  \"reason\": \"<string>\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "d11534c7-cc5c-49f0-b08b-73447644ddb5",
+                            "name": "decision recorded",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals",
+                                        ":id",
+                                        "decision"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"value\": \"Denied\",\n  \"reason\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "d9cc2345-22a1-4532-826a-b734d2a2364e",
+                            "name": "missing id",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals",
+                                        ":id",
+                                        "decision"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"value\": \"Denied\",\n  \"reason\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "5a6855cf-9607-465b-afac-c60038f61abe",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals",
+                                        ":id",
+                                        "decision"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"value\": \"Denied\",\n  \"reason\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "92fd9a8c-40a0-4975-8e17-e087a8a9f1e0",
+                            "name": "DFNS decision call failed",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals",
+                                        ":id",
+                                        "decision"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"value\": \"Denied\",\n  \"reason\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "203c68e2-563e-421e-be83-bf793a8c7f04",
+                            "name": "API token not set",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals",
+                                        ":id",
+                                        "decision"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"value\": \"Denied\",\n  \"reason\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Service Unavailable",
+                            "code": 503,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "3913ed3b-261c-44f4-b3e9-8195456638f4",
+                    "name": "Sign and broadcast a Stellar tx via MPC",
+                    "request": {
+                        "name": "Sign and broadcast a Stellar tx via MPC",
+                        "description": {
+                            "content": "Inspects the XDR against the sign guard (op allowlist, treasury source, destination whitelist, amount cap, fee ceiling), then signs through DFNS. A Soroban invocation passes only as a read-only view on a contract listed in DFNS_SOROBAN_VIEW_CONTRACTS, with no arguments and no authorization entries; an empty list means no Soroban invocation signs at all. Fee-bump and restoreFootprint envelopes are refused.\nSuccess looks different depending on what you sent. DFNS broadcasts a classic tx itself, so that answer is {txHash}. A Soroban tx comes back as {signedTxXdr} for the caller to submit. If an approval policy is holding the request you get {pending: true, id} instead, and you poll /dfns/sign/{id}/status for the hash once it clears. Fail-closed: 503 when the API token, the wallet id, or the guard env is unset.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "sign"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "method": "POST",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"xdr\": \"<string>\",\n  \"networkPassphrase\": \"<string>\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "aae05512-feb8-438b-8a07-08d97c7aee0f",
+                            "name": "signed xdr",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"xdr\": \"<string>\",\n  \"networkPassphrase\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "029b9394-e077-48ec-8c64-02b517c56e84",
+                            "name": "bad json",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"xdr\": \"<string>\",\n  \"networkPassphrase\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "1cdaca1e-aaa9-444a-8ab5-513606e67ecf",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"xdr\": \"<string>\",\n  \"networkPassphrase\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "3614a018-9c72-4ea1-b1c2-8264f7e1ac01",
+                            "name": "a treasury signature is already awaiting approval; body carries pending and id",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"xdr\": \"<string>\",\n  \"networkPassphrase\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Conflict",
+                            "code": 409,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "e73fefde-e756-4d30-8eb6-837f2483bc89",
+                            "name": "DFNS rejected or failed the signature",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"xdr\": \"<string>\",\n  \"networkPassphrase\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "3898bf2a-e426-40ee-bbad-134089d4fce5",
+                            "name": "API token",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"xdr\": \"<string>\",\n  \"networkPassphrase\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Service Unavailable",
+                            "code": 503,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "234714cc-a33f-4411-8082-4bf635eb6b38",
+                    "name": "Poll a signature held for approval",
+                    "request": {
+                        "name": "Poll a signature held for approval",
+                        "description": {
+                            "content": "Reads the current DFNS status of a signature that /dfns/sign returned as pending. The multi-approver flow depends on it: the dashboard shows the pending state, polls here, and gets the transaction hash once a second identity approves. Returns status, txHash and reason.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "sign",
+                                ":id",
+                                "status"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": [
+                                {
+                                    "type": "any",
+                                    "value": "<string>",
+                                    "key": "id",
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required) the signature id /dfns/sign handed back with pending",
+                                        "type": "text/plain"
+                                    }
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "e0ce77b4-b804-4bdd-9606-3e50dcf1270f",
+                            "name": "current status",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign",
+                                        ":id",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the signature id /dfns/sign handed back with pending",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "9469f14b-09f5-4ae7-bed4-0207d5594636",
+                            "name": "missing signature id",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign",
+                                        ":id",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the signature id /dfns/sign handed back with pending",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "f03b229e-d5b0-4a1c-900c-f2e8546d2f40",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign",
+                                        ":id",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the signature id /dfns/sign handed back with pending",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "f3722d57-452d-4929-b87e-ada0a7b3995a",
+                            "name": "DFNS read failed",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign",
+                                        ":id",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the signature id /dfns/sign handed back with pending",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "d912e97b-09f4-471a-a975-80efb8e0f068",
+                            "name": "DFNS_STELLAR_WALLET_ID not set",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign",
+                                        ":id",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the signature id /dfns/sign handed back with pending",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Service Unavailable",
+                            "code": 503,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "da8be7ee-7ef3-4d18-9df9-60dc2839a9b8",
+                    "name": "MiCA audit export, CDR 2025/1140, hash-chained",
+                    "request": {
+                        "name": "MiCA audit export, CDR 2025/1140, hash-chained",
+                        "description": {},
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "audit",
+                                "export"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "ab4805e1-16f4-47fd-97f8-576b4c8cb335",
+                            "name": "audit records",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "audit",
+                                        "export"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "6787fc42-bb09-4663-b6df-3c124495e30a",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "audit",
+                                        "export"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "b6eaf0f6-9eee-442a-8f10-36e89b79d235",
+                            "name": "DFNS read failed or not configured",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "audit",
+                                        "export"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "ffff6dbe-d050-4bd8-b7ec-aad19ec5e86a",
+                    "name": "DFNS inbound webhook, HMAC verified",
+                    "request": {
+                        "name": "DFNS inbound webhook, HMAC verified",
+                        "description": {
+                            "content": "Verifies the HMAC signature in constant time, drops replays outside the time window, and de-duplicates on the event id. Not token-gated; the HMAC is the auth.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "webhooks",
+                                "dfns"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "method": "POST",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "0adec436-7ba5-4c06-88f5-4033b7b21805",
+                            "name": "accepted",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "webhooks",
+                                        "dfns"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "POST",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "4c81189b-747b-43b1-b204-8c5fbef940d2",
+                            "name": "bad payload or signature check failed",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "webhooks",
+                                        "dfns"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "POST",
+                                "body": {}
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "9025ecf4-5f7b-4520-bc38-8abbad56c532",
+                    "name": "Server-sent stream of signature and policy activity",
+                    "request": {
+                        "name": "Server-sent stream of signature and policy activity",
+                        "description": {
+                            "content": "EventSource cannot set headers, so the token may be passed as ?token= in addition to the header forms.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "sse"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "e80d05b7-9898-439f-b5c1-833dea440470",
+                            "name": "event stream",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "sse"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "b8f31d43-2c35-4d82-8beb-ecf44bd13414",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "sse"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                }
+            ]
+        },
+        {
+            "name": "allbridge",
+            "description": "",
+            "item": [
+                {
+                    "id": "747dac06-2627-4cc5-ab40-21c1dfaf89ac",
+                    "name": "Tokens Allbridge Core lists for a source chain",
+                    "request": {
+                        "name": "Tokens Allbridge Core lists for a source chain",
+                        "description": {
+                            "content": "Read-only passthrough to the Allbridge Core API. Allbridge is mainnet only, so these routes always target mainnet. None of them are token-gated: nothing here signs or holds a secret.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "allbridge",
+                                "tokens"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required)  (This can only be one of ETH,ARB)",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "chain",
+                                    "value": "ETH"
+                                }
+                            ],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "5ea19286-7fd0-486d-9bd1-c9c3d56e0178",
+                            "name": "token list",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "tokens"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of ETH,ARB)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "chain",
+                                            "value": "ETH"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "06ee146a-4974-4e89-95ad-bd0aacfe1971",
+                            "name": "chain must be ETH or ARB",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "tokens"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of ETH,ARB)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "chain",
+                                            "value": "ETH"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "07eddf29-791e-482f-bb0d-25ffd5fe7c33",
+                            "name": "Allbridge call failed",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "tokens"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of ETH,ARB)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "chain",
+                                            "value": "ETH"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "162dd270-63a9-4917-a162-24f85c89bd66",
+                    "name": "Quote a USDC transfer into Stellar",
+                    "request": {
+                        "name": "Quote a USDC transfer into Stellar",
+                        "description": {
+                            "content": "Returns amountIn, amountOut, etaSeconds (null when the corridor omits a transfer time) and gasFeeOptions keyed by payment method. The USDC pool on the Stellar side is closed upstream at the moment, so this route answers 502 and names the closed corridor as the reason.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "allbridge",
+                                "quote"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "method": "POST",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "68b171a5-c989-430f-8e0c-9868471e27b5",
+                            "name": "quote",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "quote"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "9a80ed50-3d17-418a-b510-f97746228802",
+                            "name": "body failed validation",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "quote"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "268e09aa-8a6e-4ba2-bed4-fe392da4c75a",
+                            "name": "Allbridge call failed",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "quote"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "937bef90-30ab-4d77-b163-5d9d5e89edd0",
+                    "name": "Delivery status of a transfer",
+                    "request": {
+                        "name": "Delivery status of a transfer",
+                        "description": {
+                            "content": "Delivery on Stellar is automatic; this is how a caller learns the transfer landed. txId is the EVM hash the send returned.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "allbridge",
+                                "status"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required)  (This can only be one of ETH,ARB)",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "chain",
+                                    "value": "ETH"
+                                },
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required) ",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "txId",
+                                    "value": "<string>"
+                                }
+                            ],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "663c92d2-13b1-4ffb-88db-ea5be7e1d590",
+                            "name": "transfer status",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of ETH,ARB)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "chain",
+                                            "value": "ETH"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "txId",
+                                            "value": "<string>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "2f5fb81a-a3cd-446d-8488-1c33b48863a3",
+                            "name": "chain must be ETH or ARB",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of ETH,ARB)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "chain",
+                                            "value": "ETH"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "txId",
+                                            "value": "<string>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "ba04877c-a594-4a8b-9975-e18100558eb5",
+                            "name": "Allbridge call failed",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of ETH,ARB)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "chain",
+                                            "value": "ETH"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "txId",
+                                            "value": "<string>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "77628334-f1fe-4100-b784-01e338c30803",
+                    "name": "Build an unsigned ERC-20 approve for the bridge",
+                    "request": {
+                        "name": "Build an unsigned ERC-20 approve for the bridge",
+                        "description": {
+                            "content": "Build only. The caller's wallet or custodial signer signs and broadcasts; this service never does.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "allbridge",
+                                "raw",
+                                "approve"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "method": "POST",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\",\n  \"owner\": \"<string>\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "40dddb2c-bdff-4489-99da-b3b61cdd8cca",
+                            "name": "rawTx",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "raw",
+                                        "approve"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\",\n  \"owner\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "15ca65ff-b251-4310-a0ff-1034554f9195",
+                            "name": "body failed validation",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "raw",
+                                        "approve"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\",\n  \"owner\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "1801f9a9-33df-4655-bb19-59102747d324",
+                            "name": "Allbridge call failed",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "raw",
+                                        "approve"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\",\n  \"owner\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "9008fa08-33fb-4cf7-91b8-f193c85bc934",
+                    "name": "Build an unsigned bridge send from EVM to Stellar",
+                    "request": {
+                        "name": "Build an unsigned bridge send from EVM to Stellar",
+                        "description": {},
+                        "url": {
+                            "path": [
+                                "allbridge",
+                                "raw",
+                                "send"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "method": "POST",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "87bda8f3-8f3f-4ccc-bac1-08b3cbdb2fe4",
+                            "name": "rawTx",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "raw",
+                                        "send"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "7264aa98-7dcf-4259-929b-bf14d12fed63",
+                            "name": "body failed validation",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "raw",
+                                        "send"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "7a34b504-7fe7-468e-8f8b-ce252ee83006",
+                            "name": "Allbridge call failed",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "allbridge",
+                                        "raw",
+                                        "send"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                }
+            ]
+        }
+    ],
+    "auth": {
+        "type": "apikey",
+        "apikey": [
+            {
+                "type": "any",
+                "value": "x-lobster-token",
+                "key": "key"
+            },
+            {
+                "type": "any",
+                "value": "{{apiKey}}",
+                "key": "value"
+            },
+            {
+                "type": "any",
+                "value": "header",
+                "key": "in"
+            }
+        ]
+    },
+    "event": [],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "https://lobster-bff.onrender.com"
+        }
+    ],
+    "info": {
+        "_postman_id": "b938f0f3-0b10-4126-8fe1-75898ddb6c63",
+        "name": "Lobster BFF",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "description": {
+            "content": "Backend for the Lobster dashboard. It wraps the DFNS custody service and a few reads. The custody routes are gated on an API token (LOBSTER_API_TOKEN); with no token set the gate is open for local dev. The DFNS reads answer 502 when the upstream call fails or the credentials are missing, and the sign path answers 503 until its env is in place.\n",
+            "type": "text/plain"
+        }
+    }
+}
