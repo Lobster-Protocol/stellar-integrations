@@ -12,7 +12,13 @@ vi.mock('../dfns/approver', () => ({
   getApproverClient: () => ({ policies: { createApprovalDecision: decideSpy } }),
 }))
 
-import { autoApproveArmed, activityMentionsWallet, autoApproveHeldForWallet } from '../dfns/auto-approve'
+import { autoApproveArmed, isOwnHeldRequest, autoApproveHeldForWallet } from '../dfns/auto-approve'
+
+// the activity shape DFNS returns for a held sign request
+const held = (walletId: string, txId: string, kind = 'Wallets:Sign') => ({
+  kind,
+  transactionRequest: { id: txId, walletId, requestBody: { kind: 'Transaction' } },
+})
 
 beforeEach(() => {
   listSpy.mockReset().mockResolvedValue({ items: [] })
@@ -52,33 +58,40 @@ describe('autoApproveArmed (fail-closed)', () => {
   })
 })
 
-describe('activityMentionsWallet (scoping, fail-closed)', () => {
-  it('matches when the activity json carries our wallet id', () => {
-    expect(activityMentionsWallet({ transferRequest: { walletId: 'wa-1' } }, 'wa-1')).toBe(true)
+describe('isOwnHeldRequest', () => {
+  it('matches the sign request we just sent, on our wallet', () => {
+    expect(isOwnHeldRequest(held('wa-1', 'tx-1'), 'wa-1', 'tx-1')).toBe(true)
+  })
+  it('does not match another request held on the same wallet', () => {
+    expect(isOwnHeldRequest(held('wa-1', 'tx-console'), 'wa-1', 'tx-1')).toBe(false)
   })
   it('does not match a different wallet', () => {
-    expect(activityMentionsWallet({ transferRequest: { walletId: 'wa-2' } }, 'wa-1')).toBe(false)
+    expect(isOwnHeldRequest(held('wa-2', 'tx-1'), 'wa-1', 'tx-1')).toBe(false)
   })
-  it('does not match empty activity or empty wallet id', () => {
-    expect(activityMentionsWallet(undefined, 'wa-1')).toBe(false)
-    expect(activityMentionsWallet({ transferRequest: { walletId: 'wa-1' } }, '')).toBe(false)
+  it('does not match an activity that is not a sign request', () => {
+    expect(isOwnHeldRequest(held('wa-1', 'tx-1', 'Wallets:TransferAsset'), 'wa-1', 'tx-1')).toBe(false)
+  })
+  it('does not match with no activity, no wallet id or no transaction id', () => {
+    expect(isOwnHeldRequest(undefined, 'wa-1', 'tx-1')).toBe(false)
+    expect(isOwnHeldRequest(held('wa-1', 'tx-1'), '', 'tx-1')).toBe(false)
+    expect(isOwnHeldRequest(held('wa-1', 'tx-1'), 'wa-1', '')).toBe(false)
   })
 })
 
 describe('autoApproveHeldForWallet', () => {
   it('does nothing when not armed: no list, no vote', async () => {
-    const n = await autoApproveHeldForWallet('wa-1')
+    const n = await autoApproveHeldForWallet('wa-1', 'tx-1')
     expect(n).toBe(0)
     expect(listSpy).not.toHaveBeenCalled()
     expect(decideSpy).not.toHaveBeenCalled()
   })
 
-  it('approves a held approval that targets our wallet', async () => {
+  it('approves the hold on the request we just sent', async () => {
     arm()
     listSpy.mockResolvedValueOnce({
-      items: [{ id: 'ap-1', status: 'Pending', activity: { transferRequest: { walletId: 'wa-1' } } }],
+      items: [{ id: 'ap-1', status: 'Pending', activity: held('wa-1', 'tx-1') }],
     })
-    const n = await autoApproveHeldForWallet('wa-1')
+    const n = await autoApproveHeldForWallet('wa-1', 'tx-1')
     expect(n).toBe(1)
     expect(decideSpy).toHaveBeenCalledWith({
       approvalId: 'ap-1',
@@ -86,13 +99,18 @@ describe('autoApproveHeldForWallet', () => {
     })
   })
 
-  it('skips an approval that does not target our wallet (fail-closed)', async () => {
+  it('leaves every other hold on the wallet for a human', async () => {
     arm()
     listSpy.mockResolvedValueOnce({
-      items: [{ id: 'ap-2', status: 'Pending', activity: { transferRequest: { walletId: 'wa-OTHER' } } }],
+      items: [
+        { id: 'ap-1', status: 'Pending', activity: held('wa-1', 'tx-1') },
+        { id: 'ap-2', status: 'Pending', activity: held('wa-1', 'tx-console') },
+        { id: 'ap-3', status: 'Pending', activity: held('wa-OTHER', 'tx-9') },
+      ],
     })
-    const n = await autoApproveHeldForWallet('wa-1')
-    expect(n).toBe(0)
-    expect(decideSpy).not.toHaveBeenCalled()
+    const n = await autoApproveHeldForWallet('wa-1', 'tx-1')
+    expect(n).toBe(1)
+    expect(decideSpy).toHaveBeenCalledTimes(1)
+    expect(decideSpy).toHaveBeenCalledWith(expect.objectContaining({ approvalId: 'ap-1' }))
   })
 })

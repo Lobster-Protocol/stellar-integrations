@@ -16,26 +16,28 @@ export function autoApproveArmed(): boolean {
   return approverConfigured()
 }
 
-// Our walletId is a unique wa-... handle, so testing the approval's activity json
-// for it attributes the hold to our treasury without parsing DFNS's deep activity
-// union. An approval we cannot attribute to our wallet is skipped, never approved.
-export function activityMentionsWallet(activity: unknown, walletId: string): boolean {
-  if (!walletId) return false
-  try {
-    return JSON.stringify(activity ?? {}).includes(walletId)
-  } catch {
-    return false
-  }
+type SignActivity = { kind?: string; transactionRequest?: { id?: string; walletId?: string } }
+
+// The only hold this may clear is the one on the request the relay just sent: a
+// Wallets:Sign on our wallet carrying the transaction id DFNS handed back. That
+// request already went through the sign guard. Anything else pending on the
+// wallet, a transfer someone started from the console for instance, never did,
+// so it waits for a human.
+export function isOwnHeldRequest(activity: unknown, walletId: string, transactionId: string): boolean {
+  if (!walletId || !transactionId) return false
+  const a = activity as SignActivity | null | undefined
+  const tr = a?.transactionRequest
+  return a?.kind === 'Wallets:Sign' && tr?.walletId === walletId && tr?.id === transactionId
 }
 
 type PendingApproval = { id: string; status?: string; activity?: unknown }
 
-// Approve every approval held for our treasury wallet, voting as the approver User.
-// Lists with the service account (reading approvals is allowed) but decides with
-// the approver User, the only identity permitted to vote without the staff flag.
-// Returns how many it approved. The caller keeps this off the throwing path so a
-// failed vote leaves the tx pending for a human rather than breaking the sign.
-export async function autoApproveHeldForWallet(walletId: string): Promise<number> {
+// Approve the hold on that one request, voting as the approver User. Lists with
+// the service account (reading approvals is allowed) but decides with the approver
+// User, the only identity permitted to vote without the staff flag. Returns how
+// many it approved. The caller keeps this off the throwing path so a failed vote
+// leaves the tx pending for a human rather than breaking the sign.
+export async function autoApproveHeldForWallet(walletId: string, transactionId: string): Promise<number> {
   if (!autoApproveArmed()) return 0
   const res = await listPendingApprovals()
   const items = (res.items ?? []) as PendingApproval[]
@@ -43,7 +45,7 @@ export async function autoApproveHeldForWallet(walletId: string): Promise<number
   let approved = 0
   for (const ap of items) {
     if (ap.status && ap.status !== 'Pending') continue
-    if (!activityMentionsWallet(ap.activity, walletId)) continue
+    if (!isOwnHeldRequest(ap.activity, walletId, transactionId)) continue
     await dfns.policies.createApprovalDecision({
       approvalId: ap.id,
       body: { value: 'Approved', reason: 'auto-approved by the Lobster testnet demo relay' },

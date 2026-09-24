@@ -272,7 +272,7 @@ async function tryAutoApprove(
 ): Promise<{ txHash: string } | { signedTxXdr: string } | null> {
   if (!autoApproveArmed()) return null
   try {
-    const n = await autoApproveHeldForWallet(walletId)
+    const n = await autoApproveHeldForWallet(walletId, sigId)
     if (n === 0) return null
     const final = await waitForSignatureTerminal(walletId, sigId, PENDING_POLL_MS)
     if (final.txHash) return { txHash: final.txHash }
