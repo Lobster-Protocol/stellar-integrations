@@ -19,27 +19,31 @@ fresh account on mainnet that 404s on lookup is read as "no trustline yet", not
 as an error.
 
 Any team bridging a non-native asset to Stellar needs this guard. It's the
-difference between funds arriving and funds stuck at the bridge.
+difference between funds arriving and funds stuck halfway.
 
 ## Getting the capital across
 
-Capital on Ethereum or Arbitrum can't reach Stellar directly. Allbridge Core
-moves USDC across, and Lobster embeds its SDK in the execution path.
+Capital on Ethereum, Base or Arbitrum can't reach Stellar directly. Lobster
+moves USDC across with Circle's Cross-Chain Transfer Protocol (CCTP), live on
+Stellar since May 2026. There's no pool and no wrapped token in between: USDC is
+burned on the source chain, Circle signs the burn, and the same amount is minted
+as native USDC on Stellar.
 
-The shape is quote, then approve on the source chain, then send. The quote tells
-you what lands net of the bridge fee and the source-chain gas. Below about a
-dollar the stablecoin fee eats the transfer, so there's a floor worth enforcing.
-The messenger is Allbridge's own; CCTP isn't a Stellar path. Decimals differ by
-chain, six on Ethereum and Arbitrum against seven on Stellar, and the SDK
-converts when it builds the transfer.
+The shape is approve, then burn on the source chain, then wait for Circle's
+signature, then one call on Stellar that delivers. That last call needs no
+signature from the account being paid, so a desk whose treasury never signs from
+a browser can still receive: whoever pays the network fee can submit it. A fast
+transfer costs a few basis points and lands in about a minute. A standard one is
+free and waits for the source chain to finalise.
 
-The Allbridge USDC pool into Stellar is closed at the moment, so the quote step
-stops with a clear message rather than building a transfer that cannot land. The
-integration page has the detail.
+This leg was first built on Allbridge Core. Allbridge has since removed its
+pools, the Stellar one included, and lists no route into Stellar, so that
+integration stays in the code but out of the path. The
+[bridge page](integrations/bridge.md) has the detail.
 
-The part of this worth copying is the fee arithmetic. Work out the size below
-which a transfer doesn't pay for itself, and enforce it, before you wire up any
-of the SDK calls.
+The part of this worth copying is the bookkeeping. Between the burn and the
+delivery the money is in neither account, and nothing on either chain will
+remind anyone. Keep a note of every burn until its delivery lands.
 
 ## MPC custody for regulated capital
 
@@ -65,7 +69,6 @@ browser wallet or against DFNS, so changing custody doesn't change the strategy.
 
 ## A full allocation
 
-Chained together that's one flow: custody wallet open, trustline in place, USDC
-across the bridge, then the engine routes the swap and opens an LP position,
-signed through the custody layer. The dashboard shows the position once the
-ledger settles.
+The last step is the allocation itself: the engine routes a swap and opens an
+LP position, signed through the custody layer. The dashboard shows the position
+once the ledger settles.

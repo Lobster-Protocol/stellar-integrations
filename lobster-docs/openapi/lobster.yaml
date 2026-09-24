@@ -18,6 +18,7 @@ tags:
   - name: monitoring
   - name: dfns
   - name: allbridge
+  - name: cctp
 security:
   - lobsterToken: []
   - bearerAuth: []
@@ -248,9 +249,9 @@ paths:
       summary: Quote a USDC transfer into Stellar
       description: >
         Returns amountIn, amountOut, etaSeconds (null when the corridor omits a
-        transfer time) and gasFeeOptions keyed by payment method. The USDC pool
-        on the Stellar side is closed upstream at the moment, so this route
-        answers 502 and names the closed corridor as the reason.
+        transfer time) and gasFeeOptions keyed by payment method. Allbridge has
+        removed its pools and lists no route into Stellar, so this route answers
+        502 and says so. The bridge runs on the cctp routes.
       security: []
       requestBody:
         required: true
@@ -316,6 +317,9 @@ paths:
     post:
       tags: [allbridge]
       summary: Build an unsigned bridge send from EVM to Stellar
+      description: >
+        Refused with a 502 while Allbridge lists no route into Stellar, rather
+        than building a send that would leave the funds on the source chain.
       security: []
       requestBody:
         required: true
@@ -333,6 +337,105 @@ paths:
         '200': { description: rawTx }
         '400': { description: body failed validation }
         '502': { description: Allbridge call failed }
+  /cctp/chains:
+    get:
+      tags: [cctp]
+      summary: Source chains the bridge burns USDC on
+      description: >
+        The EVM chains Circle CCTP can bring USDC from, with the contracts a
+        burn goes through. Stellar is CCTP domain 27.
+      security: []
+      parameters:
+        - name: network
+          in: query
+          required: true
+          schema: { type: string, enum: [testnet, mainnet] }
+      responses:
+        '200': { description: "destinationDomain, and items with key, name, domain, chainId, usdc, tokenMessenger" }
+        '400': { description: network must be testnet or mainnet }
+  /cctp/fees:
+    get:
+      tags: [cctp]
+      summary: Circle's fees from a source chain to Stellar
+      description: >
+        Basis points for a fast transfer and for a standard one, read live from
+        Circle. A null fastBps means Circle offers no fast route from there.
+      security: []
+      parameters:
+        - name: network
+          in: query
+          required: true
+          schema: { type: string, enum: [testnet, mainnet] }
+        - name: domain
+          in: query
+          required: true
+          schema: { type: integer }
+          description: CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base
+      responses:
+        '200': { description: "fastBps and standardBps" }
+        '400': { description: not a source chain we burn from }
+        '502': { description: Circle did not answer }
+  /cctp/message:
+    get:
+      tags: [cctp]
+      summary: Where a burn stands, and who it pays
+      description: >
+        Asks Circle for the message behind a burn and decodes it. Pending until
+        Circle has signed. Once signed it gives the Stellar account the transfer
+        pays, the amount burned and the amount that lands after Circle's fee, in
+        6-decimal units.
+      security: []
+      parameters:
+        - name: network
+          in: query
+          required: true
+          schema: { type: string, enum: [testnet, mainnet] }
+        - name: domain
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: txHash
+          in: query
+          required: true
+          schema: { type: string }
+          description: the EVM burn transaction hash
+      responses:
+        '200': { description: "state pending with delayReason, or state attested with recipient, amount, amountToLand, feeExecuted, expirationLedger" }
+        '400': { description: "bad network, domain or hash" }
+        '502': { description: Circle did not answer }
+  /cctp/deliver:
+    post:
+      tags: [cctp]
+      summary: Deliver a signed transfer on Stellar and pay the fee
+      description: >
+        Runs the last step for an account that does not sign from a browser. The
+        message is never taken from the caller: the service asks Circle for it
+        by burn hash and only submits once it pays the recipient named here,
+        through the forwarder of the network named here. Shut unless a relay key
+        is configured, testnet only unless mainnet is switched on separately,
+        and capped per day.
+      security:
+        - operatorToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [network, sourceDomain, txHash, recipient]
+              properties:
+                network: { type: string, enum: [testnet, mainnet] }
+                sourceDomain: { type: integer }
+                txHash: { type: string, description: "EVM burn hash, 0x plus 64 hex" }
+                recipient: { type: string, description: "Stellar account id, G plus 55 base32" }
+      responses:
+        '200': { description: "delivered with the Stellar hash and the amount, or already-delivered" }
+        '400': { description: "body failed validation, or the transfer does not pay that recipient" }
+        '401': { description: operator token missing or wrong }
+        '404': { description: Circle has not signed the burn yet }
+        '409': { description: the recipient has no USDC trustline }
+        '502': { description: Stellar or Circle refused }
+        '503': { description: "relay not configured, network not enabled, daily cap reached, or Circle has paused deliveries" }
 components:
   securitySchemes:
     lobsterToken:
@@ -345,6 +448,13 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+    operatorToken:
+      type: apiKey
+      in: header
+      name: x-lobster-operator-token
+      description: >
+        Operator token (LOBSTER_OPERATOR_TOKEN), for routes that spend or write.
+        It never reaches the browser. Unset means those routes stay shut.
     metricsToken:
       type: apiKey
       in: header

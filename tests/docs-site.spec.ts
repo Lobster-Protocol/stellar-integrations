@@ -9,6 +9,7 @@ const DOCS_BASE = process.env.DOCS_BASE_URL ?? ''
 const PAGES = [
   '/',
   '/onboarding-institutional',
+  '/integrations/bridge',
   '/integrations/allbridge',
   '/integrations/wallets-kit',
   '/integrations/stellar-broker',

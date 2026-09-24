@@ -11,6 +11,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Integrations',
       items: [
+        'integrations/bridge',
         'integrations/allbridge',
         'integrations/wallets-kit',
         'integrations/stellar-broker',

@@ -13,17 +13,17 @@ Live: https://stellar-instit.lobster-protocol.com
 The Soroban contracts come from [Lobster-Protocol/Stellar](https://github.com/Lobster-Protocol/Stellar)
 (our 2025 Build Award). They're deployed and callable on testnet.
 
-Soroswap, Aquarius and Allbridge are mainnet-only, so testnet ships the
-lobster Factory alone. Their addresses live under `mainnet` in
-`src/config/contracts.ts`.
+Aquarius has no testnet deployment, so its router only has a `mainnet` entry in
+`src/config/contracts.ts`. Soroswap and Circle's CCTP contracts run on both
+networks, and so does the USDC bridge.
 
 | what | link |
 | --- | --- |
 | Factory | [`CACIPDGS...2LXO`](https://stellar.expert/explorer/testnet/contract/CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO) |
 | deploy | [`f30b3152`](https://stellar.expert/explorer/testnet/tx/f30b315298668c4cc4d9e38856014b0cfcafe6d8179118637684afd0e51e78b1) |
 | create_pool | [`a200fdd2`](https://stellar.expert/explorer/testnet/tx/a200fdd22fb95283ca5f13733fdb3cad8aff1a2bcc1993ad31413c35afab39da) |
-| signed via Freighter (Ping from /positions) | [`28f03cbb`](https://stellar.expert/explorer/testnet/tx/28f03cbbbb4d8d5b109ef9f944cda71039f4bee7f43db36df23098de24947b10) |
-| signed via xBull (Ping from /positions) | [`0593e786`](https://stellar.expert/explorer/testnet/tx/0593e786078f1f71a476c2705fcf1fbf122ce2e479e7ebff144503560ebe3af2) |
+| signed via Freighter (Ping from the dashboard) | [`28f03cbb`](https://stellar.expert/explorer/testnet/tx/28f03cbbbb4d8d5b109ef9f944cda71039f4bee7f43db36df23098de24947b10) |
+| signed via xBull (Ping from the dashboard) | [`0593e786`](https://stellar.expert/explorer/testnet/tx/0593e786078f1f71a476c2705fcf1fbf122ce2e479e7ebff144503560ebe3af2) |
 
 Read the state back yourself:
 
@@ -62,7 +62,7 @@ The testnet treasury runs one rule: a payment to an address on its list clears o
 its own, a payment anywhere else waits for a named approver. The approval group
 names the approver and excludes whoever asked, so the dashboard cannot release
 its own request. `dcd63f56` went to the treasury itself and settled with no
-approval recorded against it, straight off the button on the Positions page.
+approval recorded against it, straight off the dashboard button.
 `67d46c3f` went through a second person.
 
 Worth knowing if you try to reproduce this. DFNS reads a policy against a
@@ -112,10 +112,10 @@ npm run dev              # http://localhost:5173
 
 ```
 src/
-  components/   UI: Sidebar, TopBar, DepositModal, charts
+  components/   UI: Sidebar, TopBar, BridgeModal, charts
   config/       contracts.ts (addresses by network)
-  contexts/     Wallet + Network
-  integrations/ allbridge, broker, dfns, evm, horizon, lobster, pricing, routing, signer, stellar, ttl
+  contexts/     Wallet, Network, Custody, Toast
+  integrations/ allbridge, broker, cctp, dfns, evm, horizon, lobster, pricing, routing, signer, stellar, ttl
   pages/        Overview, Performance, Activity, Allocation, Bridges, Positions, Audit
 server/         Hono service: DFNS signing, webhook, MiCA export, policies
 tests/          Playwright suites
