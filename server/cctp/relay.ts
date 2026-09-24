@@ -1,15 +1,16 @@
 import {
   Account,
-  Asset,
   Contract,
   Horizon,
   Keypair,
   Networks,
+  NotFoundError,
   StrKey,
   TransactionBuilder,
   nativeToScVal,
   rpc,
   scValToNative,
+  xdr,
 } from '@stellar/stellar-sdk'
 
 import {
@@ -28,10 +29,6 @@ import {
   hexToBytes,
   type CctpMessage,
 } from '../../src/integrations/cctp/message'
-
-// Delivers a transfer on Stellar and pays the fee, for an account that doesn't
-// sign from a browser. The message is never taken from the caller: we ask
-// Circle for it by burn hash and check it pays who the caller named.
 
 export class RelayRefused extends Error {
   readonly status: 400 | 404 | 409 | 503
@@ -90,7 +87,7 @@ export function resetDailySlotsForTest(): void {
   spent.count = 0
 }
 
-async function readOnly(network: Network, contractId: string, fn: string, args: ReturnType<typeof nativeToScVal>[]) {
+async function readOnly(network: Network, contractId: string, fn: string, args: xdr.ScVal[] = []) {
   const server = new rpc.Server(sorobanUrl(network))
   const tx = new TransactionBuilder(new Account(READ_SOURCE, '0'), {
     fee: INCLUSION_FEE_STROOPS,
@@ -108,16 +105,13 @@ async function hasUsdcTrustline(network: Network, account: string): Promise<bool
   const { usdcIssuer } = CONTRACTS[network].cctp
   try {
     const acct = await new Horizon.Server(horizonUrl(network)).loadAccount(account)
-    const usdc = new Asset('USDC', usdcIssuer)
     return acct.balances.some(
-      (b) =>
-        'asset_code' in b &&
-        b.asset_code === usdc.getCode() &&
-        'asset_issuer' in b &&
-        b.asset_issuer === usdc.getIssuer(),
+      (b) => 'asset_code' in b && b.asset_code === 'USDC' && b.asset_issuer === usdcIssuer,
     )
-  } catch {
-    return false
+  } catch (err) {
+    // an outage must not read as a missing trustline
+    if (err instanceof NotFoundError) return false
+    throw err
   }
 }
 
@@ -142,6 +136,9 @@ function usdc(units: bigint): string {
   return frac ? `${whole}.${frac}` : whole.toString()
 }
 
+// Delivers a transfer on Stellar and pays the fee, for an account that doesn't
+// sign from a browser. The message is never taken from the caller: we ask
+// Circle for it by burn hash and check it pays who the caller named.
 export async function deliver(req: ClaimRequest): Promise<ClaimOutcome> {
   const { network } = req
   if (!StrKey.isValidEd25519PublicKey(req.recipient)) throw new RelayRefused('recipient is not a Stellar account')
@@ -167,7 +164,7 @@ export async function deliver(req: ClaimRequest): Promise<ClaimOutcome> {
   if ((await readOnly(network, CONTRACTS[network].cctp.messageTransmitter, 'is_nonce_used', [nonce])) === true) {
     return { status: 'already-delivered' }
   }
-  if ((await readOnly(network, CONTRACTS[network].cctp.forwarder, 'paused', [])) === true) {
+  if ((await readOnly(network, CONTRACTS[network].cctp.forwarder, 'paused')) === true) {
     throw new RelayRefused('Circle has paused deliveries on Stellar', 503)
   }
   if (!(await hasUsdcTrustline(network, req.recipient))) {

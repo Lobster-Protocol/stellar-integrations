@@ -23,7 +23,7 @@ describe('explainClaimFailure', () => {
   })
 })
 
-describe('checkClaim refuses a foreign message before any network call', () => {
+describe('checkClaim', () => {
   // the head of a real Base to Stellar message, with a body too short to be a burn
   it('throws on a message too short to be a transfer', async () => {
     await expect(

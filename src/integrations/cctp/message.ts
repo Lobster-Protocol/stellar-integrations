@@ -1,8 +1,4 @@
-import { decodeForwardHook, bytes32ToContract, type ForwardHook } from './hook'
-
-// The bytes we submit come back from Circle, so they get decoded and checked
-// against the transfer we meant before anything goes out. Header is 148 bytes,
-// the burn body 228 more before the hook.
+import { decodeForwardHook, bytes32ToContract, readU32, toHex, type ForwardHook } from './forward-hook'
 
 const HEADER_LEN = 148
 const BODY_MIN_LEN = 228
@@ -42,12 +38,6 @@ export interface CctpBurnBody {
   hookData: Uint8Array
 }
 
-function hex(raw: Uint8Array): `0x${string}` {
-  let out = ''
-  for (const b of raw) out += b.toString(16).padStart(2, '0')
-  return `0x${out}`
-}
-
 export function hexToBytes(value: string): Uint8Array {
   const clean = value.startsWith('0x') || value.startsWith('0X') ? value.slice(2) : value
   if (clean.length === 0 || clean.length % 2 !== 0 || /[^0-9a-fA-F]/.test(clean)) {
@@ -58,16 +48,15 @@ export function hexToBytes(value: string): Uint8Array {
   return out
 }
 
-function u32(raw: Uint8Array, o: number): number {
-  return ((raw[o] << 24) | (raw[o + 1] << 16) | (raw[o + 2] << 8) | raw[o + 3]) >>> 0
-}
-
 function u256(raw: Uint8Array, o: number): bigint {
   let v = 0n
   for (let i = 0; i < 32; i++) v = (v << 8n) | BigInt(raw[o + i])
   return v
 }
 
+// The bytes we submit come back from Circle, so they get decoded and checked
+// against the transfer we meant before anything goes out. Header is 148 bytes,
+// the burn body 228 more before the hook.
 export function decodeCctpMessage(raw: Uint8Array): CctpMessage {
   if (raw.length < HEADER_LEN + BODY_MIN_LEN) {
     throw new CctpMessageError(
@@ -76,21 +65,21 @@ export function decodeCctpMessage(raw: Uint8Array): CctpMessage {
   }
   const b = raw.subarray(HEADER_LEN)
   return {
-    version: u32(raw, 0),
-    sourceDomain: u32(raw, 4),
-    destinationDomain: u32(raw, 8),
-    nonce: hex(raw.subarray(12, 44)),
-    sender: hex(raw.subarray(44, 76)),
-    recipient: hex(raw.subarray(76, 108)),
-    destinationCaller: hex(raw.subarray(108, 140)),
-    minFinalityThreshold: u32(raw, 140),
-    finalityThresholdExecuted: u32(raw, 144),
+    version: readU32(raw, 0),
+    sourceDomain: readU32(raw, 4),
+    destinationDomain: readU32(raw, 8),
+    nonce: toHex(raw.subarray(12, 44)),
+    sender: toHex(raw.subarray(44, 76)),
+    recipient: toHex(raw.subarray(76, 108)),
+    destinationCaller: toHex(raw.subarray(108, 140)),
+    minFinalityThreshold: readU32(raw, 140),
+    finalityThresholdExecuted: readU32(raw, 144),
     body: {
-      version: u32(b, 0),
-      burnToken: hex(b.subarray(4, 36)),
-      mintRecipient: hex(b.subarray(36, 68)),
+      version: readU32(b, 0),
+      burnToken: toHex(b.subarray(4, 36)),
+      mintRecipient: toHex(b.subarray(36, 68)),
       amount: u256(b, 68),
-      messageSender: hex(b.subarray(100, 132)),
+      messageSender: toHex(b.subarray(100, 132)),
       maxFee: u256(b, 132),
       feeExecuted: u256(b, 164),
       expirationBlock: u256(b, 196),
@@ -129,12 +118,7 @@ export function assertMessageMatches(msg: CctpMessage, expect: MessageExpectatio
       `message came from domain ${msg.sourceDomain}, not the ${expect.sourceDomain} that was claimed`,
     )
   }
-  let mintRecipient: string
-  try {
-    mintRecipient = bytes32ToContract(hexToBytes(msg.body.mintRecipient))
-  } catch {
-    throw new CctpMessageError('mint recipient in the message is not a readable contract id')
-  }
+  const mintRecipient = bytes32ToContract(hexToBytes(msg.body.mintRecipient))
   if (mintRecipient !== expect.forwarder) {
     throw new CctpMessageError(
       `message mints to ${mintRecipient}, which is not the forwarder ${expect.forwarder}`,

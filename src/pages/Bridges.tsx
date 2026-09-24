@@ -238,7 +238,7 @@ export default function Bridges() {
       <Card>
         <CardHead
           title="The route"
-          note="USDC is burned on the source chain, Circle signs that burn, and the same amount is minted as native USDC on Stellar. No wrapped token, no pool in between."
+          note="USDC is burned on the source chain, Circle signs that burn, and the burned amount, less Circle's fee on a fast transfer, is minted as native USDC on Stellar. No wrapped token, no pool in between."
         />
         <Corridor chains={chains.map((c) => c.name)} />
         {network === 'testnet' && (

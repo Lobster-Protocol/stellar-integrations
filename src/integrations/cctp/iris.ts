@@ -1,10 +1,6 @@
 import { z } from 'zod'
 
-import { IRIS_BASE, STELLAR_CCTP_DOMAIN, type Network } from '../../config/contracts'
-
-// Circle's attestation service. The message we submit has to be the one it
-// returns: on a fast transfer the attester fills in the fee, so the EVM log is
-// not the final message. It answers CORS *, so the browser calls it directly.
+import { CCTP_FINALITY, IRIS_BASE, STELLAR_CCTP_DOMAIN, type Network } from '../../config/contracts'
 
 const HEX = /^0x[0-9a-fA-F]+$/
 
@@ -61,7 +57,10 @@ async function getJson(url: string, timeoutMs: number): Promise<{ status: number
   }
 }
 
-// one look, no loop: the caller polls, so an unmounted component stops asking
+// The message we submit has to be the one Circle returns: on a fast transfer the
+// attester fills in the fee, so the EVM log is not the final message. Circle
+// answers CORS *, so the browser asks directly. One look, no loop: the caller
+// polls, so an unmounted component stops asking.
 export async function fetchAttestation(
   network: Network,
   sourceDomain: number,
@@ -82,7 +81,8 @@ export async function fetchAttestation(
   const parsed = IrisMessagesSchema.safeParse(body)
   if (!parsed.success) throw new IrisError('Circle sent an answer we do not recognise')
 
-  // a tx with several burns isn't ours, so take the one bound for Stellar
+  // we burn once per tx; if Circle lists several, take the Stellar one. A pending
+  // entry is still 0x, hence the fallback
   const ours = parsed.data.messages.find((m) => messageDestination(m.message) === STELLAR_CCTP_DOMAIN)
   const m = ours ?? parsed.data.messages[0]
   if (!m) return { state: 'pending', delayReason: null }
@@ -122,7 +122,7 @@ export async function fetchFees(
   const parsed = FeesSchema.safeParse(body)
   if (!parsed.success) throw new IrisError('Circle fee answer has an unexpected shape')
   const at = (t: number) => parsed.data.find((f) => f.finalityThreshold === t)?.minimumFee ?? null
-  return { fastBps: at(1000), standardBps: at(2000) }
+  return { fastBps: at(CCTP_FINALITY.fast), standardBps: at(CCTP_FINALITY.standard) }
 }
 
 // Circle won't attest a fast burn whose maxFee is under its current minimum, and

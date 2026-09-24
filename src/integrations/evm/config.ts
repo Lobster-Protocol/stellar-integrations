@@ -4,12 +4,8 @@ import { injected } from 'wagmi/connectors'
 
 import { cctpChain } from '../../config/contracts'
 
-// The EVM bridge connects with injected wallets only (MetaMask, Rabby). We deliberately
-// do NOT add wagmi's walletConnect connector: it starts a second WalletConnect Core next
-// to the Stellar Wallets Kit's WC module (same project id), and two cores clobber each
-// other's session state - which broke DFNS-over-WalletConnect signing (the sign request
-// could not find its session, so a swap hung on "Awaiting signature"). One WC core, on the
-// Stellar side, where DFNS custody lives.
+// injected wallets only: a wagmi walletConnect connector would start a second WC core next
+// to the Stellar kit's (same project id), and the two overwrite each other's sessions
 const connectors = [injected({ shimDisconnect: true })]
 
 // wagmi only switches to chains listed here, so every CCTP source chain is,

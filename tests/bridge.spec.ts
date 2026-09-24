@@ -28,10 +28,14 @@ async function seedPendingTransfer(page: Page) {
   }, TEST_WALLET.address)
 }
 
+async function openBridge(page: Page) {
+  await gotoWithWallet(page)
+  await page.getByRole('button', { name: '+ Deposit' }).click()
+}
+
 test.describe('the bridge form', () => {
   test('on testnet it offers the Sepolia chains Circle attests', async ({ page }) => {
-    await gotoWithWallet(page)
-    await page.getByRole('button', { name: '+ Deposit' }).click()
+    await openBridge(page)
 
     await expect(page.getByRole('heading', { name: 'Bridge USDC to Stellar' })).toBeVisible()
     for (const name of ['Base Sepolia', 'Arbitrum Sepolia', 'Ethereum Sepolia']) {
@@ -42,8 +46,7 @@ test.describe('the bridge form', () => {
 
   test('on mainnet it offers the mainnet chains and no testnet one', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('lob_network', 'mainnet'))
-    await gotoWithWallet(page)
-    await page.getByRole('button', { name: '+ Deposit' }).click()
+    await openBridge(page)
 
     for (const name of ['Base', 'Arbitrum', 'Ethereum']) {
       await expect(page.getByRole('button', { name, exact: true })).toBeVisible()
@@ -52,8 +55,7 @@ test.describe('the bridge form', () => {
   })
 
   test('names Circle CCTP as the carrier and checks the trustline', async ({ page }) => {
-    await gotoWithWallet(page)
-    await page.getByRole('button', { name: '+ Deposit' }).click()
+    await openBridge(page)
 
     await expect(page.getByText('Carried by')).toBeVisible()
     await expect(page.getByText('Circle CCTP').first()).toBeVisible()
@@ -61,24 +63,21 @@ test.describe('the bridge form', () => {
   })
 
   test('stays locked without an EVM wallet, even with an amount', async ({ page }) => {
-    await gotoWithWallet(page)
-    await page.getByRole('button', { name: '+ Deposit' }).click()
+    await openBridge(page)
 
     await page.getByPlaceholder('0.00').fill('5')
     await expect(page.getByRole('button', { name: /^Bridge 5 USDC$/ })).toBeDisabled()
   })
 
   test('refuses a seventh decimal instead of rounding it away', async ({ page }) => {
-    await gotoWithWallet(page)
-    await page.getByRole('button', { name: '+ Deposit' }).click()
+    await openBridge(page)
 
     await page.getByPlaceholder('0.00').fill('1.0000001')
     await expect(page.getByText(/at most 6 decimals/)).toBeVisible()
   })
 
   test('the close button says what it closes', async ({ page }) => {
-    await gotoWithWallet(page)
-    await page.getByRole('button', { name: '+ Deposit' }).click()
+    await openBridge(page)
     await page.getByRole('button', { name: 'Close bridge' }).click()
     await expect(page.getByRole('heading', { name: 'Bridge USDC to Stellar' })).toHaveCount(0)
   })

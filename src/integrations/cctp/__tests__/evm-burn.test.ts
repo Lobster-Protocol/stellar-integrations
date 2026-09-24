@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import { burnArgs, toEvmUsdcUnits, EvmBurnError } from '../evm-burn'
-import { decodeForwardHook, bytes32ToContract } from '../hook'
+import { decodeForwardHook, bytes32ToContract } from '../forward-hook'
 import { hexToBytes } from '../message'
 import { CONTRACTS, cctpChain, STELLAR_CCTP_DOMAIN, CCTP_FINALITY } from '../../../config/contracts'
 
@@ -14,7 +14,7 @@ describe('toEvmUsdcUnits', () => {
     expect(toEvmUsdcUnits('0.000001')).toBe(1n)
   })
 
-  it('refuses a seventh decimal rather than quietly sending less', () => {
+  it('refuses a seventh decimal', () => {
     expect(() => toEvmUsdcUnits('1.0000001')).toThrow(/6 decimals/)
   })
 
@@ -78,7 +78,7 @@ describe('the source chain registry', () => {
     for (const id of t) expect(m.has(id)).toBe(false)
   })
 
-  it('fails loudly on an unknown chain instead of falling back to another one', () => {
+  it('throws on an unknown chain', () => {
     expect(() => cctpChain('testnet', 'BSC')).toThrow(/no CCTP source chain/)
   })
 })

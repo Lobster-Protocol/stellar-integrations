@@ -25,6 +25,20 @@ const REAL_RECIPIENT = 'GAMNA2Q6NTZSUBLMEXLTIXYORE7OXJJBMEGIX7T2OXDAKIA7CCKN4RJV
 const SOMEONE_ELSE = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 const BURN = `0x${'ab'.repeat(32)}`
 
+// what Circle answers once it has signed that transfer
+const ATTESTED = {
+  messages: [
+    {
+      message: REAL_MESSAGE,
+      attestation: `0x${'47'.repeat(130)}`,
+      eventNonce: '0xe70e',
+      cctpVersion: 2,
+      status: 'complete',
+      delayReason: null,
+    },
+  ],
+}
+
 function irisAnswers(status: number, body: unknown) {
   const fn = vi.fn(async () => ({ status, json: async () => body }) as unknown as Response)
   vi.stubGlobal('fetch', fn)
@@ -96,18 +110,7 @@ describe('deliver', () => {
   })
 
   it('refuses to deliver a transfer that pays someone other than the caller named', async () => {
-    const fn = irisAnswers(200, {
-      messages: [
-        {
-          message: REAL_MESSAGE,
-          attestation: `0x${'47'.repeat(130)}`,
-          eventNonce: '0xe70e',
-          cctpVersion: 2,
-          status: 'complete',
-          delayReason: null,
-        },
-      ],
-    })
+    const fn = irisAnswers(200, ATTESTED)
     const attempt = deliver({ network: 'mainnet', sourceDomain: 6, burnTxHash: BURN, recipient: SOMEONE_ELSE })
     await expect(attempt).rejects.toThrow(/pays GAMNA2Q6/)
     // the only call out was Circle; nothing reached Stellar
@@ -116,34 +119,14 @@ describe('deliver', () => {
   })
 
   it('refuses the same transfer when the caller claims another source chain', async () => {
-    irisAnswers(200, {
-      messages: [
-        {
-          message: REAL_MESSAGE,
-          attestation: `0x${'47'.repeat(130)}`,
-          eventNonce: '0xe70e',
-          cctpVersion: 2,
-          status: 'complete',
-        },
-      ],
-    })
+    irisAnswers(200, ATTESTED)
     await expect(
       deliver({ network: 'mainnet', sourceDomain: 3, burnTxHash: BURN, recipient: REAL_RECIPIENT }),
     ).rejects.toThrow(/came from domain 6/)
   })
 
   it('refuses a testnet delivery of a message minting to the mainnet forwarder', async () => {
-    irisAnswers(200, {
-      messages: [
-        {
-          message: REAL_MESSAGE,
-          attestation: `0x${'47'.repeat(130)}`,
-          eventNonce: '0xe70e',
-          cctpVersion: 2,
-          status: 'complete',
-        },
-      ],
-    })
+    irisAnswers(200, ATTESTED)
     await expect(
       deliver({ network: 'testnet', sourceDomain: 6, burnTxHash: BURN, recipient: REAL_RECIPIENT }),
     ).rejects.toThrow(/not the forwarder/)
@@ -157,6 +140,12 @@ describe('cctp routes', () => {
     registerCctpRoutes(app, { rateLimit: pass, tokenGuard: pass, operatorGuard: operatorGuard as never })
     return app
   }
+  const deliverTo = (app: Hono, recipient: string) =>
+    app.request('/cctp/deliver', {
+      method: 'POST',
+      body: JSON.stringify({ network: 'testnet', sourceDomain: 6, txHash: BURN, recipient }),
+      headers: { 'content-type': 'application/json' },
+    })
 
   it('lists the testnet source chains with Stellar as the destination', async () => {
     const res = await appWith().request('/cctp/chains?network=testnet')
@@ -180,31 +169,16 @@ describe('cctp routes', () => {
 
   it('keeps delivery behind the operator gate', async () => {
     const shut = async () => new Response('unauthorized', { status: 401 })
-    const res = await appWith(shut as never).request('/cctp/deliver', {
-      method: 'POST',
-      body: JSON.stringify({ network: 'testnet', sourceDomain: 6, txHash: BURN, recipient: SOMEONE_ELSE }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(res.status).toBe(401)
+    expect((await deliverTo(appWith(shut as never), SOMEONE_ELSE)).status).toBe(401)
   })
 
   it('validates the delivery body before doing anything', async () => {
-    const res = await appWith().request('/cctp/deliver', {
-      method: 'POST',
-      body: JSON.stringify({ network: 'testnet', sourceDomain: 6, txHash: BURN, recipient: 'nope' }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(res.status).toBe(400)
+    expect((await deliverTo(appWith(), 'nope')).status).toBe(400)
   })
 
   it('answers 404 while Circle has not signed the burn', async () => {
     process.env.CCTP_RELAY_SECRET = Keypair.random().secret()
     irisAnswers(404, {})
-    const res = await appWith().request('/cctp/deliver', {
-      method: 'POST',
-      body: JSON.stringify({ network: 'testnet', sourceDomain: 6, txHash: BURN, recipient: SOMEONE_ELSE }),
-      headers: { 'content-type': 'application/json' },
-    })
-    expect(res.status).toBe(404)
+    expect((await deliverTo(appWith(), SOMEONE_ELSE)).status).toBe(404)
   })
 })

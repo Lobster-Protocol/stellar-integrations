@@ -6,10 +6,6 @@ import { fetchAttestation, fetchFees, IrisError } from '../../src/integrations/c
 import { amountToLand, decodeCctpMessage, hexToBytes, recipientOf } from '../../src/integrations/cctp/message'
 import { deliver, RelayRefused } from './relay'
 
-// The browser runs the bridge without us. These are for following a transfer
-// over plain HTTP, and for paying the delivery of an account that doesn't sign
-// from a browser.
-
 const NetworkSchema = z.enum(['testnet', 'mainnet'])
 const TxHash = z.string().regex(/^0x[0-9a-fA-F]{64}$/, 'txHash must be an EVM transaction hash')
 
@@ -24,6 +20,9 @@ interface Guards {
   operatorGuard: MiddlewareHandler
 }
 
+// The browser runs the bridge without us. These are for following a transfer
+// over plain HTTP, and for paying the delivery of an account that doesn't sign
+// from a browser.
 export function registerCctpRoutes(app: Hono, guards: Guards): void {
   app.get('/cctp/chains', (c) => {
     const network = NetworkSchema.safeParse(c.req.query('network'))

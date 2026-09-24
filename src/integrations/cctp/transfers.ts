@@ -2,11 +2,10 @@ import { useSyncExternalStore } from 'react'
 
 import type { CctpFinality, Network } from '../../config/contracts'
 
-// Between the burn and the delivery nothing on either chain remembers the
-// transfer, so we do. Hashes and addresses only.
-
 export type TransferStage = 'burned' | 'delivered'
 
+// Between the burn and the delivery nothing on either chain remembers the
+// transfer, so we do. Hashes and addresses only.
 export interface TrackedTransfer {
   // the EVM burn hash, unique per transfer
   id: `0x${string}`
@@ -29,7 +28,11 @@ function key(network: Network): string {
   return `lob_cctp_transfers_${network}`
 }
 
-function read(network: Network): TrackedTransfer[] {
+// useSyncExternalStore needs the same array back until something changes, or
+// it re-renders forever
+const cache = new Map<Network, TrackedTransfer[]>()
+
+export function listTransfers(network: Network): TrackedTransfer[] {
   try {
     const raw = localStorage.getItem(key(network))
     if (!raw) return []
@@ -56,36 +59,25 @@ function write(network: Network, list: TrackedTransfer[]): void {
 }
 
 export function trackTransfer(t: TrackedTransfer): void {
-  const list = read(t.network).filter((x) => x.id !== t.id)
+  const list = listTransfers(t.network).filter((x) => x.id !== t.id)
   write(t.network, [t, ...list].slice(0, 50))
 }
 
 export function markDelivered(network: Network, id: string, deliveredHash: string): void {
   write(
     network,
-    read(network).map((t) => (t.id === id ? { ...t, stage: 'delivered', deliveredHash } : t)),
+    listTransfers(network).map((t) => (t.id === id ? { ...t, stage: 'delivered', deliveredHash } : t)),
   )
 }
 
 export function forgetTransfer(network: Network, id: string): void {
-  write(
-    network,
-    read(network).filter((t) => t.id !== id),
-  )
+  write(network, listTransfers(network).filter((t) => t.id !== id))
 }
-
-export function listTransfers(network: Network): TrackedTransfer[] {
-  return read(network)
-}
-
-// useSyncExternalStore needs the same array back until something changes, or
-// it re-renders forever
-const cache = new Map<Network, TrackedTransfer[]>()
 
 function snapshot(network: Network): TrackedTransfer[] {
   const hit = cache.get(network)
   if (hit) return hit
-  const fresh = read(network)
+  const fresh = listTransfers(network)
   cache.set(network, fresh)
   return fresh
 }

@@ -16,7 +16,7 @@ import {
   type CctpFinality,
   type CctpSourceChain,
 } from '../../config/contracts'
-import { contractToBytes32Hex, encodeForwardHook, hookToHex } from './hook'
+import { contractToBytes32, encodeForwardHook, toHex } from './forward-hook'
 
 // Circle's TokenMessengerV2, just the call we make
 
@@ -81,10 +81,6 @@ export function toEvmUsdcUnits(human: string): bigint {
   return units
 }
 
-export function connectedEvmAddress(): Address | null {
-  return getAccount(wagmiConfig).address ?? null
-}
-
 async function ensureChain(chain: CctpSourceChain): Promise<WagmiChainIdAny> {
   const target = chainIdOf(chain)
   const account = getAccount(wagmiConfig)
@@ -127,30 +123,36 @@ export async function readAllowance(chain: CctpSourceChain, owner: Address): Pro
   })
 }
 
-async function confirm(chainId: WagmiChainIdAny, hash: `0x${string}`, what: string): Promise<void> {
-  const receipt = await waitForTransactionReceipt(wagmiConfig, { chainId, hash })
-  // a receipt comes back for a reverted transaction too
-  if (receipt.status !== 'success') throw new EvmBurnError(`The ${what} was reverted on chain (${hash})`)
-}
-
-// exact amount, never unlimited: an open approval outlives the transfer
-export async function approveUsdc(chain: CctpSourceChain, units: bigint): Promise<`0x${string}`> {
+async function send(
+  chain: CctpSourceChain,
+  what: string,
+  write: (chainId: WagmiChainIdAny) => Promise<`0x${string}`>,
+): Promise<`0x${string}`> {
   const chainId = await ensureChain(chain)
   let hash: `0x${string}`
   try {
-    hash = await writeContract(wagmiConfig, {
+    hash = await write(chainId)
+  } catch (err) {
+    if (isUserRejection(err)) throw new UserRejectedError()
+    throw new EvmBurnError(`The ${what} failed on ${chain.name}: ${(err as Error).message}`, { cause: err })
+  }
+  const receipt = await waitForTransactionReceipt(wagmiConfig, { chainId, hash })
+  // a receipt comes back for a reverted transaction too
+  if (receipt.status !== 'success') throw new EvmBurnError(`The ${what} was reverted on chain (${hash})`)
+  return hash
+}
+
+// exact amount, never unlimited: an open approval outlives the transfer
+export function approveUsdc(chain: CctpSourceChain, units: bigint): Promise<`0x${string}`> {
+  return send(chain, 'approval', (chainId) =>
+    writeContract(wagmiConfig, {
       chainId,
       address: chain.usdc,
       abi: erc20Abi,
       functionName: 'approve',
       args: [chain.tokenMessenger, units],
-    })
-  } catch (err) {
-    if (isUserRejection(err)) throw new UserRejectedError()
-    throw new EvmBurnError(`Approval failed on ${chain.name}: ${(err as Error).message}`, { cause: err })
-  }
-  await confirm(chainId, hash, 'approval')
-  return hash
+    }),
+  )
 }
 
 export interface BurnRequest {
@@ -166,7 +168,7 @@ export interface BurnRequest {
 
 // split out so where the money goes can be tested without a wallet
 export function burnArgs(req: BurnRequest) {
-  const forwarder32 = contractToBytes32Hex(req.forwarder)
+  const forwarder32 = toHex(contractToBytes32(req.forwarder))
   return [
     req.units,
     STELLAR_CCTP_DOMAIN,
@@ -175,27 +177,20 @@ export function burnArgs(req: BurnRequest) {
     forwarder32, // destinationCaller: only the forwarder may consume this
     req.maxFee,
     CCTP_FINALITY[req.finality],
-    hookToHex(encodeForwardHook(req.recipient)),
+    toHex(encodeForwardHook(req.recipient)),
   ] as const
 }
 
 export async function burnToStellar(req: BurnRequest): Promise<`0x${string}`> {
   if (req.maxFee >= req.units) throw new EvmBurnError('The fee would swallow the whole amount')
   const args = burnArgs(req)
-  const chainId = await ensureChain(req.chain)
-  let hash: `0x${string}`
-  try {
-    hash = await writeContract(wagmiConfig, {
+  return send(req.chain, 'burn', (chainId) =>
+    writeContract(wagmiConfig, {
       chainId,
       address: req.chain.tokenMessenger,
       abi: TOKEN_MESSENGER_V2_ABI,
       functionName: 'depositForBurnWithHook',
       args,
-    })
-  } catch (err) {
-    if (isUserRejection(err)) throw new UserRejectedError()
-    throw new EvmBurnError(`The burn failed on ${req.chain.name}: ${(err as Error).message}`, { cause: err })
-  }
-  await confirm(chainId, hash, 'burn')
-  return hash
+    }),
+  )
 }

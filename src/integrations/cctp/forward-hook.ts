@@ -1,15 +1,5 @@
 import { StrKey } from '@stellar/stellar-sdk'
 
-// A burn names its mint recipient as a contract id, so paying a G account goes
-// through Circle's CctpForwarder: it mints to itself, then pays whoever this
-// hook names. Layout, from Circle's cctp-forwarder source:
-//   bytes 0..23   magic "cctp-forward", or zeros
-//   bytes 24..27  hook version, u32 big-endian, 0
-//   bytes 28..31  recipient length, u32 big-endian
-//   bytes 32..    the recipient strkey, unpadded
-// The magic asks Circle's relayer to finish the transfer. We leave it zero and
-// finish it ourselves, so the delivery hash is ours.
-
 const MAGIC_LEN = 24
 const VERSION_OFFSET = 24
 const LENGTH_OFFSET = 28
@@ -39,18 +29,32 @@ function writeU32(view: Uint8Array, offset: number, value: number): void {
   view[offset + 3] = value & 0xff
 }
 
-function readU32(view: Uint8Array, offset: number): number {
+export function readU32(view: Uint8Array, offset: number): number {
   return (
     ((view[offset] << 24) | (view[offset + 1] << 16) | (view[offset + 2] << 8) | view[offset + 3]) >>>
     0
   )
 }
 
+export function toHex(raw: Uint8Array): `0x${string}` {
+  let out = ''
+  for (const b of raw) out += b.toString(16).padStart(2, '0')
+  return `0x${out}`
+}
+
+// A burn names its mint recipient as a contract id, so paying a G account goes
+// through Circle's CctpForwarder: it mints to itself, then pays whoever this
+// hook names. Layout, from Circle's cctp-forwarder source:
+//   bytes 0..23   magic "cctp-forward", or zeros
+//   bytes 24..27  hook version, u32 big-endian, 0
+//   bytes 28..31  recipient length, u32 big-endian
+//   bytes 32..    the recipient strkey, unpadded
+// The magic asks Circle's relayer to finish the transfer. We leave it zero and
+// finish it ourselves, so the delivery hash is ours.
 export function encodeForwardHook(stellarAddress: string): Uint8Array {
   assertDeliverable(stellarAddress)
   const recipient = new TextEncoder().encode(stellarAddress)
   const out = new Uint8Array(RECIPIENT_OFFSET + recipient.length)
-  // bytes 0..23 stay zero
   writeU32(out, VERSION_OFFSET, HOOK_VERSION)
   writeU32(out, LENGTH_OFFSET, recipient.length)
   out.set(recipient, RECIPIENT_OFFSET)
@@ -78,20 +82,7 @@ export function decodeForwardHook(hook: Uint8Array): ForwardHook {
   }
   const recipient = new TextDecoder().decode(hook.subarray(RECIPIENT_OFFSET, end))
   assertDeliverable(recipient)
-  let circleWillForward = false
-  for (let i = 0; i < MAGIC_LEN; i++) {
-    if (hook[i] !== 0) {
-      circleWillForward = true
-      break
-    }
-  }
-  return { recipient, circleWillForward }
-}
-
-export function hookToHex(hook: Uint8Array): `0x${string}` {
-  let out = ''
-  for (const b of hook) out += b.toString(16).padStart(2, '0')
-  return `0x${out}`
+  return { recipient, circleWillForward: hook.subarray(0, MAGIC_LEN).some((b) => b !== 0) }
 }
 
 // mintRecipient and destinationCaller both take the forwarder as 32 raw bytes
@@ -105,8 +96,4 @@ export function contractToBytes32(contractId: string): Uint8Array {
 export function bytes32ToContract(raw: Uint8Array): string {
   if (raw.length !== 32) throw new ForwardHookError(`expected 32 bytes, got ${raw.length}`)
   return StrKey.encodeContract(Buffer.from(raw))
-}
-
-export function contractToBytes32Hex(contractId: string): `0x${string}` {
-  return hookToHex(contractToBytes32(contractId))
 }

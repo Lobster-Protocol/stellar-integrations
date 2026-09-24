@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { X, Check, ExternalLink } from 'lucide-react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { formatUnits, type Address } from 'viem'
@@ -132,13 +132,12 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, busy, onClose])
 
-  const units = useMemo(() => {
-    try {
-      return amount ? toEvmUsdcUnits(amount) : null
-    } catch {
-      return null
-    }
-  }, [amount])
+  let units: bigint | null = null
+  try {
+    units = amount ? toEvmUsdcUnits(amount) : null
+  } catch {
+    // still being typed, or not a number; the field says which below
+  }
 
   const bps = finality === 'fast' ? (fees.data?.fastBps ?? null) : (fees.data?.standardBps ?? 0)
   // no fast tier offered: block it and ask for standard rather than guess a fee
@@ -635,8 +634,8 @@ function InFlight({
         </p>
       ) : (
         <p className="text-xs text-text-secondary mb-4">
-          Circle has signed it. One signature on Stellar delivers the USDC. It only pays the network fee, about
-          0.05 XLM, and moves none of your funds.
+          Circle has signed it. One signature on Stellar delivers the USDC. It only pays the network fee, a few
+          hundredths of an XLM, and moves none of your funds.
         </p>
       )}
 

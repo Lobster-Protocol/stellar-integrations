@@ -20,7 +20,7 @@ moves.
 
 Step 5 carries no authorization entry. Whoever pays its fee can submit it, and
 the account being paid never signs. The dashboard has the connected wallet do
-it, which costs around 0.05 XLM and moves none of its funds.
+it, which costs a few hundredths of an XLM and moves none of its funds.
 
 ## Why the forwarder
 

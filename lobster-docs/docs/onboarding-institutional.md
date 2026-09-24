@@ -26,8 +26,8 @@ difference between funds arriving and funds stuck halfway.
 Capital on Ethereum, Base or Arbitrum can't reach Stellar directly. Lobster
 moves USDC across with Circle's Cross-Chain Transfer Protocol (CCTP), live on
 Stellar since May 2026. There's no pool and no wrapped token in between: USDC is
-burned on the source chain, Circle signs the burn, and the same amount is minted
-as native USDC on Stellar.
+burned on the source chain, Circle signs the burn, and the burned amount, less
+Circle's fee on a fast transfer, is minted as native USDC on Stellar.
 
 The shape is approve, then burn on the source chain, then wait for Circle's
 signature, then one call on Stellar that delivers. That last call needs no

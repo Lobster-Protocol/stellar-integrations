@@ -5,9 +5,9 @@ import {
   decodeForwardHook,
   contractToBytes32,
   bytes32ToContract,
-  hookToHex,
+  toHex,
   ForwardHookError,
-} from '../hook'
+} from '../forward-hook'
 import {
   decodeCctpMessage,
   hexToBytes,
@@ -45,7 +45,7 @@ describe('forward hook encoding', () => {
   it('reproduces the hook bytes of a real mainnet transfer', () => {
     const encoded = encodeForwardHook(REAL_RECIPIENT)
     const real = decodeCctpMessage(hexToBytes(REAL_MESSAGE)).body.hookData
-    expect(hookToHex(encoded)).toBe(hookToHex(real))
+    expect(toHex(encoded)).toBe(toHex(real))
   })
 
   it('is 88 bytes for a G address: 32 of header plus 56 of strkey', () => {
@@ -76,7 +76,7 @@ describe('forward hook encoding', () => {
     expect(() => encodeForwardHook(MAINNET_FORWARDER)).toThrow(ForwardHookError)
   })
 
-  it('refuses a truncated address rather than encoding a dead one', () => {
+  it('refuses a truncated address', () => {
     expect(() => encodeForwardHook(REAL_RECIPIENT.slice(0, 40))).toThrow(ForwardHookError)
   })
 
@@ -138,7 +138,7 @@ describe('decoding a CCTP V2 message', () => {
     expect(amountToLand(msg)).toBe(79_773_653n)
   })
 
-  it('carries an expiration, so a stale message cannot be replayed forever', () => {
+  it('reads the expiration ledger', () => {
     expect(msg.body.expirationBlock).toBe(64_594_603n)
   })
 

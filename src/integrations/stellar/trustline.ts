@@ -21,16 +21,13 @@ export async function hasTrustline(
       return ab.asset_code === assetCode && ab.asset_issuer === assetIssuer
     })
   } catch (err) {
-    // 404 = account not yet on chain. Treat as no trustline so the UI
-    // shows "Required" rather than an error toast. Anything else
-    // (network outage, malformed account id) we rethrow so the caller
-    // can render the failure state instead of silently saying "no".
+    // an unfunded account has no trustlines; any other error is a real failure the caller shows
     if (err instanceof NotFoundError) return false
     throw err
   }
 }
 
-// without this trustline any bridged USDC bounces back to the source chain.
+// CCTP can't deliver to an account without this trustline; the burn waits until it exists
 export async function buildTrustlineXdr(
   accountId: string,
   assetCode: string,

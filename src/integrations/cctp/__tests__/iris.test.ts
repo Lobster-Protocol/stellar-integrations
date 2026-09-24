@@ -85,7 +85,7 @@ describe('fetchAttestation', () => {
     expect(fn).not.toHaveBeenCalled()
   })
 
-  it('refuses a body it does not recognise instead of guessing', async () => {
+  it('refuses a body it does not recognise', async () => {
     mockFetch(200, { unexpected: true })
     await expect(fetchAttestation('testnet', 6, TX)).rejects.toThrow(/recognise/)
   })
@@ -105,7 +105,7 @@ describe('fetchFees', () => {
     await expect(fetchFees('testnet', 6)).resolves.toEqual({ fastBps: 1.3, standardBps: 0 })
   })
 
-  it('reports no fast tier rather than inventing one', async () => {
+  it('reports no fast tier when Circle lists none', async () => {
     mockFetch(200, [{ finalityThreshold: 2000, minimumFee: 0 }])
     await expect(fetchFees('testnet', 6)).resolves.toEqual({ fastBps: null, standardBps: 0 })
   })
@@ -117,7 +117,7 @@ describe('maxFeeFor', () => {
     expect(maxFeeFor(79_784_024n, 1.3)).toBeGreaterThanOrEqual(10_371n)
   })
 
-  it('keeps a fractional basis point instead of rounding it away', () => {
+  it('keeps a fractional basis point', () => {
     expect(maxFeeFor(1_000_000_000n, 1.3, 1)).toBe(130_000n)
   })
 
