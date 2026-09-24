@@ -76,7 +76,7 @@ describe('useDfnsSignatureStream', () => {
     expect(es!.url).toContain('?token=token-32-chars')
   })
 
-  it('subscribes to every D4-relevant event kind', () => {
+  it('subscribes to every signature, transaction and approval event', () => {
     renderHook(() => useDfnsSignatureStream())
     const es = MockEventSource.lastInstance!
     for (const kind of [

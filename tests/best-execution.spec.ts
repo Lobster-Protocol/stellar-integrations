@@ -2,9 +2,9 @@ import { test, expect, type Page } from '@playwright/test'
 
 import { BROKER_ENDPOINT, MAINNET_USDC_ISSUER, seedWallet } from './fixtures'
 
-// D3 is sold on best execution across venues, so the acceptance test is: the
-// dashboard shows what the broker actually answered, next to the direct route,
-// and the two figures match a quote this spec fetched for itself.
+// best execution across venues is the whole point of the broker, so the check
+// is that the dashboard shows what the broker actually answered, next to the
+// direct route, and the two figures match a quote this spec fetched for itself.
 const PROBE_XLM = 100
 
 interface Quote {

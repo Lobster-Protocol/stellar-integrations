@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test'
 import { BASE } from './fixtures'
 
 // this file doubles as the screenshot pass for the phone layout, which is why
-// it walks ground ux-navigation already covers. the images it writes go in the
-// submission, so the walk stays even where the assertions live elsewhere too.
+// it walks ground ux-navigation already covers. the screenshots are the point,
+// so the walk stays even where the assertions live elsewhere too.
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
 
 test('trades the sidebar for a menu button at phone width', async ({ page }) => {
