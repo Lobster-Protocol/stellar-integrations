@@ -3,12 +3,7 @@ import type { DfnsApiClient } from '@dfns/sdk'
 import { dfnsClientFor } from '../tenants/client'
 import { requireDemoTenant } from '../tenants/demo'
 
-// the demo tenant's dfns client. kept so the routes that still read process.env
-// keep working while they are threaded through the tenant registry. new code
-// resolves a tenant (getTenantStore().get(id)) and calls
-// dfnsClientFor(tenant). the singleton that used to live here is gone; the
-// per-tenant factory owns client construction and caching now, and this delegates
-// to it with the env-sourced demo tenant so behavior is unchanged.
+// the demo tenant's dfns client, built and cached by the per-tenant factory.
 export function getDfnsClient(): DfnsApiClient {
   return dfnsClientFor(requireDemoTenant())
 }

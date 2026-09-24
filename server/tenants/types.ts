@@ -3,10 +3,9 @@ import type { SignGuardConfig } from '../dfns/sign-guard'
 
 export type TenantKind = 'demo' | 'client'
 
-// the credentials the relay uses to act on ONE dfns org. for the demo tenant
-// these come from process.env; a client tenant's come from the store (kms-wrapped
-// once that lands). privateKey is a PEM held in memory only, never logged, never
-// written back to disk.
+// the credentials the relay uses to act on ONE dfns org, read from process.env
+// for the demo tenant. privateKey is a PEM held in memory only, never logged,
+// never written back to disk.
 export interface TenantDfnsCreds {
   baseUrl: string
   authToken: string
@@ -31,23 +30,4 @@ export interface Tenant {
   // gap the routes already answer with a 503.
   treasury: TenantTreasury | null
   guard: SignGuardConfig | null
-}
-
-// what a read endpoint may return: identity and placement, never a secret.
-export interface TenantSummary {
-  id: string
-  kind: TenantKind
-  label: string
-  network: DfnsStellarNetwork | null
-  treasuryWalletId: string | null
-}
-
-export function redactTenant(t: Tenant): TenantSummary {
-  return {
-    id: t.id,
-    kind: t.kind,
-    label: t.label,
-    network: t.treasury?.network ?? null,
-    treasuryWalletId: t.treasury?.walletId ?? null,
-  }
 }

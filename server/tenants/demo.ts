@@ -6,8 +6,7 @@ import { DfnsStellarNetworkSchema, type DfnsStellarNetwork } from '../dfns/types
 import type { Tenant } from './types'
 
 // the reserved id our own env-sourced org loads under. it is the ONLY tenant
-// allowed to read its credentials from process.env; client tenants come from the
-// store. holding it as a constant lets the separation guard compare against it.
+// allowed to read its credentials from process.env.
 export const DEMO_TENANT_ID = '__lobster_demo__'
 
 // dfns spells the networks StellarTestnet / Stellar, the same mapping the front

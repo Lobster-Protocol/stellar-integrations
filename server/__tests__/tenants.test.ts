@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 import { DEMO_TENANT_ID, requireDemoTenant, demoDfnsConfigured } from '../tenants/demo'
 import { dfnsClientFor, dropDfnsClient } from '../tenants/client'
-import { MemoryTenantStore } from '../tenants/store'
-import { assertResolvedTenant, assertDistinctFromDemo } from '../tenants/guard'
 import type { Tenant } from '../tenants/types'
 
 const DFNS_ENV = [
@@ -122,65 +120,5 @@ describe('per-tenant dfns client factory', () => {
     const first = dfnsClientFor(fakeTenant())
     dropDfnsClient('client-a')
     expect(dfnsClientFor(fakeTenant())).not.toBe(first)
-  })
-})
-
-describe('memory tenant store', () => {
-  it('answers the demo tenant only when configured', async () => {
-    const store = new MemoryTenantStore()
-    expect(await store.get(DEMO_TENANT_ID)).toBeNull()
-    seedDemoEnv()
-    expect((await store.get(DEMO_TENANT_ID))?.id).toBe(DEMO_TENANT_ID)
-  })
-
-  it('never answers an unknown tenant id from env', async () => {
-    seedDemoEnv()
-    expect(await new MemoryTenantStore().get('client-x')).toBeNull()
-  })
-
-  it('lists a redacted summary that carries no secret', async () => {
-    seedDemoEnv()
-    const [summary] = await new MemoryTenantStore().list()
-    expect(summary).toEqual({
-      id: DEMO_TENANT_ID,
-      kind: 'demo',
-      label: 'Lobster demo custody',
-      network: 'StellarTestnet',
-      treasuryWalletId: 'wa-demo',
-    })
-    expect(JSON.stringify(summary)).not.toContain('stub-pem')
-    expect(JSON.stringify(summary)).not.toContain('tok-demo')
-  })
-})
-
-describe('demo / client separation guard', () => {
-  const demo = fakeTenant({ id: DEMO_TENANT_ID, kind: 'demo', dfns: { baseUrl: 'u', authToken: 'tok-demo', credId: 'cred-demo', privateKey: 'k' }, treasury: { walletId: 'wa-demo', network: 'StellarTestnet' } })
-
-  it('accepts a tenant that resolves to itself', () => {
-    expect(() => assertResolvedTenant(DEMO_TENANT_ID, demo)).not.toThrow()
-    expect(() => assertResolvedTenant('client-a', fakeTenant())).not.toThrow()
-  })
-
-  it('refuses a mismatched resolution', () => {
-    expect(() => assertResolvedTenant('client-a', demo)).toThrow(/resolved to/)
-  })
-
-  it('refuses the demo tenant standing in for a client', () => {
-    const demoUnderClientId = fakeTenant({ id: 'client-a', kind: 'demo' })
-    expect(() => assertResolvedTenant('client-a', demoUnderClientId)).toThrow(/cannot act as a client/)
-  })
-
-  it('refuses a client that reuses the demo credentials or treasury', () => {
-    expect(() => assertDistinctFromDemo(fakeTenant({ dfns: { ...fakeTenant().dfns, credId: 'cred-demo' } }), demo)).toThrow(/reuse/)
-    expect(() => assertDistinctFromDemo(fakeTenant({ dfns: { ...fakeTenant().dfns, authToken: 'tok-demo' } }), demo)).toThrow(/reuse/)
-    expect(() => assertDistinctFromDemo(fakeTenant({ treasury: { walletId: 'wa-demo', network: 'StellarTestnet' } }), demo)).toThrow(/reuse/)
-  })
-
-  it('refuses a client claiming the reserved demo id', () => {
-    expect(() => assertDistinctFromDemo(fakeTenant({ id: DEMO_TENANT_ID }), demo)).toThrow(/reserved demo id/)
-  })
-
-  it('accepts a genuinely distinct client', () => {
-    expect(() => assertDistinctFromDemo(fakeTenant(), demo)).not.toThrow()
   })
 })
