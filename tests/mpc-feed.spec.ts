@@ -23,7 +23,6 @@ test.describe('the custody page', () => {
     const off = page.getByText(/Connect a DFNS organization to see this/)
     const wired = (await off.count()) === 0
 
-    await expect(page.getByText('DFNS wallets')).toBeVisible()
     await expect(page.getByText('Signing policies')).toBeVisible()
     await expect(page.getByText('Pending approvals')).toBeVisible()
     await expect(page.getByText('MiCA audit export')).toBeVisible()

@@ -1,8 +1,6 @@
 // Lead for the custody page: what the DFNS integration is and how it works, so a reader knows
-// what the panels below are showing before they connect anything. It describes the custody model.
-// The panels themselves report what is actually wired on this session.
-// Split into three beats because the single paragraph it replaced was seven lines of prose that
-// nobody read to the end, and the three ideas in it are independent.
+// what the panels below are showing before they connect anything. The panels themselves report
+// what is actually wired on this session.
 const BEATS = [
   {
     head: 'No one holds the whole key',

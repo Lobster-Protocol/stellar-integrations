@@ -173,10 +173,10 @@ export default function ActivityFeed() {
   const q = useActivity(network, address)
   const filters = useActivityFilters()
   const vaultsQ = useVaultPositions(network, address)
-  const vaults = useMemo(
-    () => (vaultsQ.data ?? []).map((v) => ({ address: v.address, label: `Vault ${shortenAddress(v.address, 4)}` })),
-    [vaultsQ.data],
-  )
+  const vaults = (vaultsQ.data ?? []).map((v) => ({
+    address: v.address,
+    label: `Vault ${shortenAddress(v.address, 4)}`,
+  }))
 
   const events = useMemo(() => (q.data?.pages ?? []).flatMap((p) => p.events), [q.data])
   const { covering, capped } = useCoverRange(filters, events, q)
