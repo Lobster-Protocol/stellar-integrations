@@ -5,7 +5,7 @@
             "description": "",
             "item": [
                 {
-                    "id": "9d5e899f-337a-4c0d-8d94-418a8834b1d0",
+                    "id": "1048a2e4-c177-458b-b0e0-eace83f66a84",
                     "name": "Liveness and version",
                     "request": {
                         "name": "Liveness and version",
@@ -26,7 +26,7 @@
                     },
                     "response": [
                         {
-                            "id": "e59a8805-7a09-4edf-8f9d-30229af440c0",
+                            "id": "1b5b28c6-2f06-499a-84eb-a3d8906dbe2f",
                             "name": "ok",
                             "originalRequest": {
                                 "url": {
@@ -61,12 +61,12 @@
             "description": "",
             "item": [
                 {
-                    "id": "b400165e-4f6b-4858-8a3d-a6aa94a61527",
+                    "id": "95021bca-b4d6-4674-830a-786ebff9bd02",
                     "name": "Contract storage TTL per ledger key",
                     "request": {
                         "name": "Contract storage TTL per ledger key",
                         "description": {
-                            "content": "Reads the Soroban storage entries for the deployed contracts and returns each key's remaining runway in ledgers and seconds, plus a band of ok / warn / crit / archived. Public read. Answers 503 when the factory is not deployed on the requested network.\n",
+                            "content": "Reads the Soroban storage entries for the deployed contracts and returns each key's remaining runway in ledgers and seconds, with a band of ok / warn / crit / archived. Public read. Answers 503 when the factory is not deployed on the requested network.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -84,7 +84,7 @@
                                         "type": "text/plain"
                                     },
                                     "key": "network",
-                                    "value": "testnet"
+                                    "value": "mainnet"
                                 }
                             ],
                             "variable": []
@@ -95,7 +95,7 @@
                     },
                     "response": [
                         {
-                            "id": "83e718c2-60f9-4efe-965d-c4dc12536db0",
+                            "id": "634475cd-ed75-4430-a3bc-00ca5a30c9a0",
                             "name": "ttl report",
                             "originalRequest": {
                                 "url": {
@@ -113,7 +113,7 @@
                                                 "type": "text/plain"
                                             },
                                             "key": "network",
-                                            "value": "testnet"
+                                            "value": "mainnet"
                                         }
                                     ],
                                     "variable": []
@@ -128,7 +128,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "30b393b2-98c2-4b02-9a81-2206b8a489fb",
+                            "id": "4fab9627-8ade-4773-8225-9692de3521ff",
                             "name": "factory not deployed on this network",
                             "originalRequest": {
                                 "url": {
@@ -146,7 +146,7 @@
                                                 "type": "text/plain"
                                             },
                                             "key": "network",
-                                            "value": "testnet"
+                                            "value": "mainnet"
                                         }
                                     ],
                                     "variable": []
@@ -165,6 +165,121 @@
                     "protocolProfileBehavior": {
                         "disableBodyPruning": true
                     }
+                },
+                {
+                    "id": "d11efb8c-5ca9-430e-8852-5cd30228ba4a",
+                    "name": "Prometheus metrics for the relay",
+                    "request": {
+                        "name": "Prometheus metrics for the relay",
+                        "description": {
+                            "content": "Request durations (http_request_duration_seconds) and DFNS approvals by status (lobster_dfns_approvals), in the Prometheus text format, for a scraper. The route stays off, and answers 404, until METRICS_TOKEN is set on the relay. After that it wants that token.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "metrics"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "key",
+                                    "value": "x-metrics-token"
+                                },
+                                {
+                                    "key": "value",
+                                    "value": "{{apiKey}}"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [
+                        {
+                            "id": "1f4d3df8-68a0-4725-b5ad-33f65b3ac05c",
+                            "name": "metrics in the Prometheus text format",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "metrics"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "32844742-6f18-409a-b11b-2bfbad1a612a",
+                            "name": "token missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "metrics"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "cdb33ca0-5f31-44ae-a22e-96c1e581df80",
+                            "name": "METRICS_TOKEN not set, so the route is off",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "metrics"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Not Found",
+                            "code": 404,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
                 }
             ]
         },
@@ -173,7 +288,7 @@
             "description": "",
             "item": [
                 {
-                    "id": "19ec8e93-8269-4b70-8efc-6e02715d8151",
+                    "id": "2f4c73f2-dbbb-4460-988b-149b2928ddc8",
                     "name": "List custody wallets",
                     "request": {
                         "name": "List custody wallets",
@@ -195,7 +310,7 @@
                     },
                     "response": [
                         {
-                            "id": "65bb75d7-f26c-4b27-9a0b-73b1b828cfe9",
+                            "id": "e6adf02a-7b90-4e56-9f73-1166a78522e7",
                             "name": "wallet list",
                             "originalRequest": {
                                 "url": {
@@ -219,7 +334,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "f94628ab-9a28-4721-8c8d-d971c80436f9",
+                            "id": "09f8e4ed-76cb-4690-88e2-3519db9026dd",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -243,7 +358,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "f932a258-0246-413d-b0ee-531778ea23b9",
+                            "id": "6d109cb9-ff8c-42bc-b30d-10522779b7bc",
                             "name": "DFNS read failed or not configured",
                             "originalRequest": {
                                 "url": {
@@ -273,7 +388,7 @@
                     }
                 },
                 {
-                    "id": "40ea21a6-37c1-4948-914a-0751c6d657a4",
+                    "id": "785c7d97-dcf4-44af-b728-317e096a18c5",
                     "name": "Create a Stellar custody wallet",
                     "request": {
                         "name": "Create a Stellar custody wallet",
@@ -298,7 +413,7 @@
                         "method": "POST",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                            "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"StellarTestnet\"\n}",
                             "options": {
                                 "raw": {
                                     "headerFamily": "json",
@@ -310,7 +425,7 @@
                     },
                     "response": [
                         {
-                            "id": "e65362b1-ae3c-4723-9b26-1ede22506123",
+                            "id": "e3ba90fd-98ed-4b06-9b65-a0d45a014b23",
                             "name": "created",
                             "originalRequest": {
                                 "url": {
@@ -333,7 +448,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"StellarTestnet\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -349,7 +464,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "742c8345-d674-4ec8-ac4d-ba5a8675f4b7",
+                            "id": "44670217-6501-4d1c-abd3-550da1b1eef3",
                             "name": "name or network missing or invalid",
                             "originalRequest": {
                                 "url": {
@@ -372,7 +487,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"StellarTestnet\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -388,7 +503,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "2bbc5daa-20aa-458f-ace6-99ed54ca21b8",
+                            "id": "6b368c5a-598d-4108-afee-219c607e0336",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -411,7 +526,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"StellarTestnet\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -427,7 +542,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "586ff1bc-7cf3-447c-8c2c-12ef8b00b3e2",
+                            "id": "250e2b3a-3888-4bd4-9361-8b97b8e98128",
                             "name": "DFNS create failed or not configured",
                             "originalRequest": {
                                 "url": {
@@ -450,7 +565,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"Stellar\"\n}",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"StellarTestnet\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -472,7 +587,7 @@
                     }
                 },
                 {
-                    "id": "2dbc197c-1fa5-43fd-aa7e-be3412fc147d",
+                    "id": "27379259-7333-4fc3-a07a-c41bcdc319a5",
                     "name": "List approval policies",
                     "request": {
                         "name": "List approval policies",
@@ -494,7 +609,7 @@
                     },
                     "response": [
                         {
-                            "id": "5aff3213-e986-42b5-b1da-a1a36ff98815",
+                            "id": "fa3f7df4-048e-4c3c-8352-0c31d0bbf0b4",
                             "name": "policy list",
                             "originalRequest": {
                                 "url": {
@@ -518,7 +633,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "2e7a770c-4c1a-4dce-a5f0-de77bdc334e3",
+                            "id": "5e6b3b22-da3c-49cb-9417-b829cdfd76d2",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -542,7 +657,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "8fd6108c-de26-41f5-986b-2d0821813b9e",
+                            "id": "0b3d5c79-7b5f-4c71-ae9e-5bf7333081c4",
                             "name": "DFNS read failed or not configured",
                             "originalRequest": {
                                 "url": {
@@ -572,7 +687,7 @@
                     }
                 },
                 {
-                    "id": "ac16925c-1174-4a20-998d-4124b8b040af",
+                    "id": "ef4a6c25-e5f9-48fe-889a-64b8ba42db68",
                     "name": "List pending approvals",
                     "request": {
                         "name": "List pending approvals",
@@ -594,7 +709,7 @@
                     },
                     "response": [
                         {
-                            "id": "4adf359d-713e-4c03-9fb1-558aa0057827",
+                            "id": "81856b0e-8f73-41e9-8c4f-27cc50d86910",
                             "name": "pending approvals",
                             "originalRequest": {
                                 "url": {
@@ -618,7 +733,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "d6081797-f9bc-45a7-9f71-83f44d1f55b5",
+                            "id": "9286a4b7-6a2e-478b-bab7-a0546d085e09",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -642,7 +757,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "7043c6ce-81d4-4f4d-b71a-0b3b7c238900",
+                            "id": "5e5b2500-a7e7-49e2-8cd1-841ea0910bec",
                             "name": "DFNS read failed or not configured",
                             "originalRequest": {
                                 "url": {
@@ -672,7 +787,7 @@
                     }
                 },
                 {
-                    "id": "f7da9900-726f-4e77-9456-1b1ef52644d8",
+                    "id": "dff9686a-94f8-4905-ac8a-020beb1f2598",
                     "name": "Approve or deny a pending signature",
                     "request": {
                         "name": "Approve or deny a pending signature",
@@ -725,7 +840,7 @@
                     },
                     "response": [
                         {
-                            "id": "d11534c7-cc5c-49f0-b08b-73447644ddb5",
+                            "id": "49ec0cf3-1d19-476b-8880-91eabb7b245a",
                             "name": "decision recorded",
                             "originalRequest": {
                                 "url": {
@@ -777,8 +892,8 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "d9cc2345-22a1-4532-826a-b734d2a2364e",
-                            "name": "missing id",
+                            "id": "4e88ec66-1a39-450f-99a9-46a6149d073a",
+                            "name": "missing id, bad json, or value not Approved/Denied",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -829,7 +944,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "5a6855cf-9607-465b-afac-c60038f61abe",
+                            "id": "02a125e8-aacf-4111-9f9f-4c89c3b70fb6",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -881,7 +996,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "92fd9a8c-40a0-4975-8e17-e087a8a9f1e0",
+                            "id": "bc8fe6b3-64b8-42aa-8ca0-f78e282f456a",
                             "name": "DFNS decision call failed",
                             "originalRequest": {
                                 "url": {
@@ -933,8 +1048,8 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "203c68e2-563e-421e-be83-bf793a8c7f04",
-                            "name": "API token not set",
+                            "id": "c520d1f9-7cfa-4db6-84b7-29f2afb826ad",
+                            "name": "API token not set, so approvals are disabled",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -991,12 +1106,12 @@
                     }
                 },
                 {
-                    "id": "3913ed3b-261c-44f4-b3e9-8195456638f4",
+                    "id": "68e68cfe-3967-4c6f-b23f-d313d908b136",
                     "name": "Sign and broadcast a Stellar tx via MPC",
                     "request": {
                         "name": "Sign and broadcast a Stellar tx via MPC",
                         "description": {
-                            "content": "Inspects the XDR against the sign guard (op allowlist, treasury source, destination whitelist, amount cap, fee ceiling), then signs through DFNS. A Soroban invocation passes only as a read-only view on a contract listed in DFNS_SOROBAN_VIEW_CONTRACTS, with no arguments and no authorization entries; an empty list means no Soroban invocation signs at all. Fee-bump and restoreFootprint envelopes are refused.\nSuccess looks different depending on what you sent. DFNS broadcasts a classic tx itself, so that answer is {txHash}. A Soroban tx comes back as {signedTxXdr} for the caller to submit. If an approval policy is holding the request you get {pending: true, id} instead, and you poll /dfns/sign/{id}/status for the hash once it clears. Fail-closed: 503 when the API token, the wallet id, or the guard env is unset.\n",
+                            "content": "Inspects the XDR against the sign guard (op allowlist, treasury source, destination whitelist, amount cap, fee ceiling), then signs through DFNS. A Soroban invocation passes in two cases only. One is a read-only view with no arguments and no authorization entries, on a contract listed in DFNS_SOROBAN_VIEW_CONTRACTS (our own factory when that is unset). The other is a vault deposit or withdraw_contract on a contract listed in DFNS_SOROBAN_TREASURY_CONTRACTS, and its first argument has to be the treasury, since that is the account the vault pulls from or pays back to. Anything else is refused. Fee-bump and restoreFootprint envelopes are refused too.\nSuccess looks different depending on what you sent. DFNS broadcasts a classic tx itself, so that answer is {txHash}. A Soroban tx comes back as {signedTxXdr} for the caller to submit. If an approval policy is holding the request you get {pending: true, id} instead, and you poll /dfns/sign/{id}/status for the hash once it clears. Fail-closed: 503 when the API token, the wallet id, or the guard env is unset.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -1031,8 +1146,8 @@
                     },
                     "response": [
                         {
-                            "id": "aae05512-feb8-438b-8a07-08d97c7aee0f",
-                            "name": "signed xdr",
+                            "id": "9abe4d3d-5cb2-4972-84f0-e7a4a5bc6432",
+                            "name": "signed xdr, broadcast hash, or a pending approval id",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1070,8 +1185,8 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "029b9394-e077-48ec-8c64-02b517c56e84",
-                            "name": "bad json",
+                            "id": "cffddbc5-5024-468c-b1da-bca33243341b",
+                            "name": "bad json, missing xdr, network mismatch, fee-bump or restoreFootprint envelope, or blocked by the sign guard",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1109,7 +1224,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "1cdaca1e-aaa9-444a-8ab5-513606e67ecf",
+                            "id": "2620ff22-9905-4ceb-81b1-f6b134bfa6c6",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -1148,7 +1263,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "3614a018-9c72-4ea1-b1c2-8264f7e1ac01",
+                            "id": "2eae245d-c16d-4360-8ee3-33b2316cfa77",
                             "name": "a treasury signature is already awaiting approval; body carries pending and id",
                             "originalRequest": {
                                 "url": {
@@ -1187,7 +1302,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "e73fefde-e756-4d30-8eb6-837f2483bc89",
+                            "id": "f59d8c48-c9f0-42af-aa78-4d9be57e866a",
                             "name": "DFNS rejected or failed the signature",
                             "originalRequest": {
                                 "url": {
@@ -1226,8 +1341,8 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "3898bf2a-e426-40ee-bbad-134089d4fce5",
-                            "name": "API token",
+                            "id": "b0cb3568-c6b6-42ad-91c5-7f68885729fa",
+                            "name": "API token, wallet id, or sign guard not configured",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1271,7 +1386,7 @@
                     }
                 },
                 {
-                    "id": "234714cc-a33f-4411-8082-4bf635eb6b38",
+                    "id": "d178ad7c-4a33-4285-b6a4-d82fd2fded33",
                     "name": "Poll a signature held for approval",
                     "request": {
                         "name": "Poll a signature held for approval",
@@ -1309,8 +1424,8 @@
                     },
                     "response": [
                         {
-                            "id": "e0ce77b4-b804-4bdd-9606-3e50dcf1270f",
-                            "name": "current status",
+                            "id": "e007959f-ff16-44cc-864e-320c6dfe9fe1",
+                            "name": "current status, with txHash once it has broadcast",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1346,7 +1461,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "9469f14b-09f5-4ae7-bed4-0207d5594636",
+                            "id": "2d0e503d-208f-4b8b-bc1f-67d515b7f8d9",
                             "name": "missing signature id",
                             "originalRequest": {
                                 "url": {
@@ -1383,7 +1498,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "f03b229e-d5b0-4a1c-900c-f2e8546d2f40",
+                            "id": "c3972cc0-de73-4e0c-a347-318af094e8f2",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -1420,7 +1535,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "f3722d57-452d-4929-b87e-ada0a7b3995a",
+                            "id": "221b6dce-f7d0-4c9b-b2cd-22765fecf35a",
                             "name": "DFNS read failed",
                             "originalRequest": {
                                 "url": {
@@ -1457,7 +1572,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "d912e97b-09f4-471a-a975-80efb8e0f068",
+                            "id": "0aa6fe28-3112-47b9-b8d1-4aba2ec39b44",
                             "name": "DFNS_STELLAR_WALLET_ID not set",
                             "originalRequest": {
                                 "url": {
@@ -1500,7 +1615,7 @@
                     }
                 },
                 {
-                    "id": "da8be7ee-7ef3-4d18-9df9-60dc2839a9b8",
+                    "id": "721190f6-df68-4a14-8bb4-5813563aeb7c",
                     "name": "MiCA audit export, CDR 2025/1140, hash-chained",
                     "request": {
                         "name": "MiCA audit export, CDR 2025/1140, hash-chained",
@@ -1523,7 +1638,7 @@
                     },
                     "response": [
                         {
-                            "id": "ab4805e1-16f4-47fd-97f8-576b4c8cb335",
+                            "id": "2c8eaf9a-be9f-45c4-b721-c6cb497e62e7",
                             "name": "audit records",
                             "originalRequest": {
                                 "url": {
@@ -1548,7 +1663,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "6787fc42-bb09-4663-b6df-3c124495e30a",
+                            "id": "6f6ada2b-8827-48d3-a393-d96c16040858",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -1573,7 +1688,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "b6eaf0f6-9eee-442a-8f10-36e89b79d235",
+                            "id": "dc0df262-aab3-47d8-8e32-4422a4a4e8ca",
                             "name": "DFNS read failed or not configured",
                             "originalRequest": {
                                 "url": {
@@ -1604,7 +1719,7 @@
                     }
                 },
                 {
-                    "id": "ffff6dbe-d050-4bd8-b7ec-aad19ec5e86a",
+                    "id": "21c9b604-4826-4616-ae61-197a9516af72",
                     "name": "DFNS inbound webhook, HMAC verified",
                     "request": {
                         "name": "DFNS inbound webhook, HMAC verified",
@@ -1629,7 +1744,7 @@
                     },
                     "response": [
                         {
-                            "id": "0adec436-7ba5-4c06-88f5-4033b7b21805",
+                            "id": "77fcd9ab-dfdb-4fd5-af7d-c89bf3882f97",
                             "name": "accepted",
                             "originalRequest": {
                                 "url": {
@@ -1653,7 +1768,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "4c81189b-747b-43b1-b204-8c5fbef940d2",
+                            "id": "0b78df3e-5aea-491a-8572-fd8f4d1a769d",
                             "name": "bad payload or signature check failed",
                             "originalRequest": {
                                 "url": {
@@ -1683,7 +1798,7 @@
                     }
                 },
                 {
-                    "id": "9025ecf4-5f7b-4520-bc38-8abbad56c532",
+                    "id": "f78a9997-bf1f-4b14-867b-6cfc0bce19bb",
                     "name": "Server-sent stream of signature and policy activity",
                     "request": {
                         "name": "Server-sent stream of signature and policy activity",
@@ -1707,7 +1822,7 @@
                     },
                     "response": [
                         {
-                            "id": "e80d05b7-9898-439f-b5c1-833dea440470",
+                            "id": "121ef6c5-9a89-4e76-96c4-9a4780a80ec4",
                             "name": "event stream",
                             "originalRequest": {
                                 "url": {
@@ -1730,7 +1845,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "b8f31d43-2c35-4d82-8beb-ecf44bd13414",
+                            "id": "44122db1-fdc3-4e38-805e-1930c806877e",
                             "name": "token required and missing or wrong",
                             "originalRequest": {
                                 "url": {
@@ -1765,7 +1880,7 @@
             "description": "",
             "item": [
                 {
-                    "id": "747dac06-2627-4cc5-ab40-21c1dfaf89ac",
+                    "id": "e3b39573-364f-4083-8bec-8e3b65e90381",
                     "name": "Tokens Allbridge Core lists for a source chain",
                     "request": {
                         "name": "Tokens Allbridge Core lists for a source chain",
@@ -1800,8 +1915,8 @@
                     },
                     "response": [
                         {
-                            "id": "5ea19286-7fd0-486d-9bd1-c9c3d56e0178",
-                            "name": "token list",
+                            "id": "f20a8e5e-0652-4e84-b257-621912ac7ade",
+                            "name": "token list, each with symbol, decimals, tokenAddress, bridgeAddress, chainSymbol",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1834,7 +1949,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "06ee146a-4974-4e89-95ad-bd0aacfe1971",
+                            "id": "a0dd645b-2a89-44a9-9499-d970943b9916",
                             "name": "chain must be ETH or ARB",
                             "originalRequest": {
                                 "url": {
@@ -1868,7 +1983,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "07eddf29-791e-482f-bb0d-25ffd5fe7c33",
+                            "id": "10cc2c44-3e53-4675-b12b-ba85ececa9b4",
                             "name": "Allbridge call failed",
                             "originalRequest": {
                                 "url": {
@@ -1908,7 +2023,7 @@
                     }
                 },
                 {
-                    "id": "162dd270-63a9-4917-a162-24f85c89bd66",
+                    "id": "dafddc6f-403f-4071-967e-54997cd372af",
                     "name": "Quote a USDC transfer into Stellar",
                     "request": {
                         "name": "Quote a USDC transfer into Stellar",
@@ -1936,7 +2051,7 @@
                         "method": "POST",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\"\n}",
+                            "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\"\n}",
                             "options": {
                                 "raw": {
                                     "headerFamily": "json",
@@ -1948,7 +2063,7 @@
                     },
                     "response": [
                         {
-                            "id": "68b171a5-c989-430f-8e0c-9868471e27b5",
+                            "id": "2767c214-9565-4031-8c55-c5ff1bf73df8",
                             "name": "quote",
                             "originalRequest": {
                                 "url": {
@@ -1971,7 +2086,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\"\n}",
+                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -1987,7 +2102,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "9a80ed50-3d17-418a-b510-f97746228802",
+                            "id": "d95a9cb8-db0c-4201-8cda-369856b968b3",
                             "name": "body failed validation",
                             "originalRequest": {
                                 "url": {
@@ -2010,7 +2125,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\"\n}",
+                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -2026,7 +2141,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "268e09aa-8a6e-4ba2-bed4-fe392da4c75a",
+                            "id": "e022e105-ca32-49a1-a402-fb9344078ce9",
                             "name": "Allbridge call failed",
                             "originalRequest": {
                                 "url": {
@@ -2049,7 +2164,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\"\n}",
+                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -2071,7 +2186,7 @@
                     }
                 },
                 {
-                    "id": "937bef90-30ab-4d77-b163-5d9d5e89edd0",
+                    "id": "4e7cab22-ce7b-4329-a901-4d2f6d3f777a",
                     "name": "Delivery status of a transfer",
                     "request": {
                         "name": "Delivery status of a transfer",
@@ -2115,7 +2230,7 @@
                     },
                     "response": [
                         {
-                            "id": "663c92d2-13b1-4ffb-88db-ea5be7e1d590",
+                            "id": "88ff616a-8882-4b64-8f31-f769b2f683b5",
                             "name": "transfer status",
                             "originalRequest": {
                                 "url": {
@@ -2158,8 +2273,8 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "2f5fb81a-a3cd-446d-8488-1c33b48863a3",
-                            "name": "chain must be ETH or ARB",
+                            "id": "565a9972-493d-492e-b3ac-afbefdaa85db",
+                            "name": "chain must be ETH or ARB, or txId missing",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -2201,7 +2316,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "ba04877c-a594-4a8b-9975-e18100558eb5",
+                            "id": "f441671a-9a1c-4308-bb46-a21a8b5c347d",
                             "name": "Allbridge call failed",
                             "originalRequest": {
                                 "url": {
@@ -2250,7 +2365,7 @@
                     }
                 },
                 {
-                    "id": "77628334-f1fe-4100-b784-01e338c30803",
+                    "id": "b3b6b50e-d2bc-4d6f-9836-a1d39936c67d",
                     "name": "Build an unsigned ERC-20 approve for the bridge",
                     "request": {
                         "name": "Build an unsigned ERC-20 approve for the bridge",
@@ -2291,7 +2406,7 @@
                     },
                     "response": [
                         {
-                            "id": "40dddb2c-bdff-4489-99da-b3b61cdd8cca",
+                            "id": "36c27231-c01f-409e-8548-1490d25ff836",
                             "name": "rawTx",
                             "originalRequest": {
                                 "url": {
@@ -2331,7 +2446,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "15ca65ff-b251-4310-a0ff-1034554f9195",
+                            "id": "9e57dd87-f89a-4774-89d5-32a27a6041a4",
                             "name": "body failed validation",
                             "originalRequest": {
                                 "url": {
@@ -2371,7 +2486,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "1801f9a9-33df-4655-bb19-59102747d324",
+                            "id": "291550a2-79d4-4409-b42a-24ce3db960de",
                             "name": "Allbridge call failed",
                             "originalRequest": {
                                 "url": {
@@ -2417,7 +2532,7 @@
                     }
                 },
                 {
-                    "id": "9008fa08-33fb-4cf7-91b8-f193c85bc934",
+                    "id": "7c806969-468a-4638-b555-dee2011aef30",
                     "name": "Build an unsigned bridge send from EVM to Stellar",
                     "request": {
                         "name": "Build an unsigned bridge send from EVM to Stellar",
@@ -2443,7 +2558,7 @@
                         "method": "POST",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
+                            "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
                             "options": {
                                 "raw": {
                                     "headerFamily": "json",
@@ -2455,7 +2570,7 @@
                     },
                     "response": [
                         {
-                            "id": "87bda8f3-8f3f-4ccc-bac1-08b3cbdb2fe4",
+                            "id": "31d3918d-d8bb-4748-86be-01a649cedc52",
                             "name": "rawTx",
                             "originalRequest": {
                                 "url": {
@@ -2479,7 +2594,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -2495,7 +2610,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "7264aa98-7dcf-4259-929b-bf14d12fed63",
+                            "id": "724ce8ca-356b-4176-81d6-174722daf280",
                             "name": "body failed validation",
                             "originalRequest": {
                                 "url": {
@@ -2519,7 +2634,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -2535,7 +2650,7 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "7a34b504-7fe7-468e-8f8b-ce252ee83006",
+                            "id": "0c56ae6c-b403-4983-b5c6-c722df85d843",
                             "name": "Allbridge call failed",
                             "originalRequest": {
                                 "url": {
@@ -2559,7 +2674,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"sourceChain\": \"ARB\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
+                                    "raw": "{\n  \"sourceChain\": \"ETH\",\n  \"amount\": \"<string>\",\n  \"fromAddress\": \"<string>\",\n  \"toAddress\": \"<string>\"\n}",
                                     "options": {
                                         "raw": {
                                             "headerFamily": "json",
@@ -2611,7 +2726,7 @@
         }
     ],
     "info": {
-        "_postman_id": "b938f0f3-0b10-4126-8fe1-75898ddb6c63",
+        "_postman_id": "b353ff83-ff87-44e9-a1c5-299a7f914f37",
         "name": "Lobster BFF",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         "description": {
