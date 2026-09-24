@@ -37,6 +37,19 @@ export async function resolveUsdc(
   return usdc
 }
 
+// the stellar usdc token comes back with no pool address and a feeShare of "0",
+// and without a pool the sdk dies on a division by zero. a parked pool shows as
+// a feeShare near 1, so that is refused too.
+export function assertStellarRoute(stellarUsdc: TokenWithChainDetails): void {
+  const pool = (stellarUsdc as { poolAddress?: string | null }).poolAddress
+  const fee = Number((stellarUsdc as { feeShare?: number | string }).feeShare)
+  if (!pool || !Number.isFinite(fee) || fee >= 0.5) {
+    throw new Error(
+      'Allbridge no longer carries USDC into Stellar. Its Stellar pool was removed and it lists no other route there, so bridging runs through Circle CCTP instead.',
+    )
+  }
+}
+
 export async function quoteBridge(
   sdk: AllbridgeCoreSdk,
   req: BridgeRequest,
@@ -48,16 +61,7 @@ export async function quoteBridge(
   const sourceUsdc = await resolveUsdc(sdk, sourceChain)
   const stellarUsdc = await resolveUsdc(sdk, ChainSymbol.SRB)
 
-  // allbridge parks a pool by cranking its feeShare toward 1 (a live pool sits
-  // near 0.003). the stellar usdc pool is closed like this today, which makes the
-  // fee math underflow the received amount to zero. show a clear corridor-down
-  // message instead of the sdk's "amount must be greater than zero".
-  const destFee = Number((stellarUsdc as { feeShare?: number | string }).feeShare)
-  if (!Number.isFinite(destFee) || destFee >= 0.5) {
-    throw new Error(
-      'The Allbridge USDC pool into Stellar is closed right now. Bridging will work again once the pool reopens.',
-    )
-  }
+  assertStellarRoute(stellarUsdc)
 
   // no cctp on stellar yet; allbridge messenger still delivers native usdc
   const messenger = Messenger.ALLBRIDGE
@@ -107,6 +111,8 @@ export async function buildBridgeTx(
   const sourceChain = toChainSymbol(req.sourceChain)
   const sourceUsdc = await resolveUsdc(sdk, sourceChain)
   const stellarUsdc = await resolveUsdc(sdk, ChainSymbol.SRB)
+  // never hand a wallet a send toward a route that cannot deliver
+  assertStellarRoute(stellarUsdc)
 
   const params: SendParams = {
     amount: req.amount,

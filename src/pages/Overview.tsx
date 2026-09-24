@@ -16,7 +16,7 @@ import {
 import { useRecordNav } from '../integrations/pricing/nav'
 import { useVaultPositions, VENUE_LABEL } from '../integrations/lobster/position'
 import { useActivity, KIND_LABEL } from '../integrations/horizon/activity'
-import { CONTRACTS, EVM_USDC, EVM_BRIDGEABLE, type EvmChain } from '../config/contracts'
+import { CONTRACTS } from '../config/contracts'
 import { formatBalance, formatValue, shortenAddress, stellarExplorer } from '../utils/format'
 import { CHART_COLORS, TOOLTIP_STYLE } from '../utils/recharts'
 import lobsterIcon from '../assets/lobster-icon.png'
@@ -25,8 +25,8 @@ import TokenRef from '../components/TokenRef'
 import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
-// lazy: the Allbridge SDK in DepositModal drags in viem/walletconnect/solana
-const DepositModal = lazy(() => import('../components/DepositModal'))
+// lazy: the bridge pulls in viem and the CCTP code, which the first paint never needs
+const BridgeModal = lazy(() => import('../components/BridgeModal'))
 const SwapModal = lazy(() => import('../components/SwapModal'))
 
 export default function Overview() {
@@ -83,10 +83,6 @@ export default function Overview() {
   // same computation Allocation renders, so the two pages can never disagree
   const portfolio = buildPortfolio(lines, vaults, priceOf, network)
   const alloc = portfolio.byAsset
-  // land the deposit modal on a working bridge tab; the stellar-direct path
-  // isn't wired, so opening on it would dead-end
-  const bridgeChains = (Object.keys(EVM_USDC) as EvmChain[]).filter((c) => EVM_BRIDGEABLE[c])
-
   // the same reconstruction Performance draws, thinned to a sparkline
   const priceByKey: Record<string, number> = {}
   if (price != null) priceByKey.XLM = price
@@ -116,7 +112,7 @@ export default function Overview() {
   return (
     <div className="space-y-6">
       <Suspense fallback={null}>
-        <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} initialChain={bridgeChains[0]} />
+        <BridgeModal open={depositOpen} onClose={() => setDepositOpen(false)} />
         <SwapModal open={swapOpen} onClose={() => setSwapOpen(false)} />
       </Suspense>
 

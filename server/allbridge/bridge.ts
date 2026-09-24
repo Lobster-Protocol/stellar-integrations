@@ -25,6 +25,17 @@ async function resolveUsdc(chain: ChainSymbol): Promise<TokenWithChainDetails> {
   return usdc
 }
 
+// no pool address means no route. a parked pool shows as a feeShare near 1.
+export function assertStellarRoute(dst: TokenWithChainDetails): void {
+  const pool = (dst as { poolAddress?: string | null }).poolAddress
+  const fee = Number((dst as { feeShare?: number | string }).feeShare)
+  if (!pool || !Number.isFinite(fee) || fee >= 0.5) {
+    throw new Error(
+      'Allbridge no longer carries USDC into Stellar. Its Stellar pool was removed and it lists no other route there, so bridging runs through Circle CCTP instead.',
+    )
+  }
+}
+
 export interface BridgeQuote {
   amountIn: string
   amountOut: string
@@ -38,17 +49,9 @@ export async function quote(chain: EvmChain, amount: string): Promise<BridgeQuot
   const dst = await resolveUsdc(ChainSymbol.SRB)
   const messenger = Messenger.ALLBRIDGE
 
-  // allbridge parks a pool by cranking its feeShare toward 1 (a live pool sits
-  // near 0.003). the stellar usdc pool is closed like this today, which makes the
-  // fee math underflow the received amount to zero. the browser path already says
-  // so plainly; this one used to hand back the sdk's "amount must be greater than
-  // zero" as a 502, which reads like our own service is down.
-  const destFee = Number((dst as { feeShare?: number | string }).feeShare)
-  if (!Number.isFinite(destFee) || destFee >= 0.5) {
-    throw new Error(
-      'The Allbridge USDC pool into Stellar is closed right now. Bridging will work again once the pool reopens.',
-    )
-  }
+  // otherwise the caller gets the sdk's division by zero, which reads like our
+  // own service is down
+  assertStellarRoute(dst)
 
   // the token list ships an empty poolInfo, so the plain getAmountToBeReceived
   // underflows to zero. read the live pool state from chain.
@@ -84,6 +87,8 @@ export async function buildSend(
 ): Promise<RawTx> {
   const src = await resolveUsdc(toChain(chain))
   const dst = await resolveUsdc(ChainSymbol.SRB)
+  // a raw send toward a route with no pool would lock the funds on the source side
+  assertStellarRoute(dst)
   const params: SendParams = {
     amount,
     fromAccountAddress: fromAddress,

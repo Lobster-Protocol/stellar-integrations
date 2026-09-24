@@ -39,10 +39,10 @@ test('allocation says why it has nothing to spread yet', async ({ page }) => {
   await expect(page.getByText(/Connect a wallet to see how its value is spread/i)).toBeVisible()
 })
 
-test('bridges names Allbridge as the provider', async ({ page }) => {
+test('bridges names Circle CCTP as the carrier', async ({ page }) => {
   await page.goto(BASE + '/bridges', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Bridges', exact: true })).toBeVisible()
-  await expect(page.getByText('Allbridge Core').first()).toBeVisible()
+  await expect(page.getByText('Circle CCTP').first()).toBeVisible()
 })
 
 test('walks the sidebar end to end and every page answers', async ({ page }) => {
@@ -52,7 +52,7 @@ test('walks the sidebar end to end and every page answers', async ({ page }) => 
     ['Performance', 'Performance'],
     ['Activity', 'Activity'],
     ['Allocation', 'Allocation'],
-    ['Bridges', 'Allbridge Core'],
+    ['Bridges', 'Circle CCTP'],
     ['Overview', 'Connect your wallet'],
   ] as const) {
     await page.getByRole('link', { name: link, exact: true }).click()

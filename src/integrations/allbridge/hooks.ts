@@ -1,8 +1,7 @@
 import type { Address } from 'viem'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
-import { hasTrustline } from './trustline'
-import { useAccountExists, isAccountMissing } from '../horizon/account'
+import { isAccountMissing } from '../horizon/account'
 import { getHorizonServer } from '../horizon/client'
 import {
   quoteBridge,
@@ -12,7 +11,6 @@ import {
 } from './bridge'
 import { getAllbridgeSdk } from './client'
 import type { BridgeRequest, BridgeQuote, EvmSourceChain } from './types'
-import type { Network } from '../../config/contracts'
 import {
   readAllowance,
   sendAllbridgeEvmTx,
@@ -21,26 +19,6 @@ import {
 
 const NS = 'allbridge'
 const STALE_QUOTE = 30_000
-const STALE_TRUSTLINE = 60_000
-
-// gated on a non-empty issuer so testnet does not fire an http call
-export function useTrustline(
-  accountId: string | null,
-  assetCode: string,
-  assetIssuer: string,
-  network: Network,
-) {
-  // gate on the account existing so a brand-new mainnet wallet does not fire a
-  // loadAccount that only 404s; balances is the shared existence probe.
-  const exists = useAccountExists(network, accountId) === 'live'
-  return useQuery<boolean>({
-    queryKey: [NS, 'trustline', accountId, assetCode, assetIssuer, network],
-    queryFn: () => hasTrustline(accountId!, assetCode, assetIssuer, network),
-    enabled: !!accountId && !!assetIssuer && exists,
-    staleTime: STALE_TRUSTLINE,
-    retry: 1,
-  })
-}
 
 export function useBridgeQuote(req: BridgeRequest | null, trustlineRequired: boolean) {
   return useQuery<BridgeQuote>({

@@ -43,9 +43,9 @@ test.describe('Cross-page navigation', () => {
     // the test is called after. anchored on the tile so a stray mention of the
     // name elsewhere on the page cannot stand in for it.
     const provider = page
-      .getByText('Provider', { exact: true })
+      .getByText('Carried by', { exact: true })
       .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]')
-    await expect(provider).toContainText('Allbridge Core')
+    await expect(provider).toContainText('Circle CCTP')
   })
 
   test('positions is reachable from the sidebar', async ({ page }) => {
@@ -160,10 +160,10 @@ test.describe('Network toggle', () => {
 })
 
 test.describe('controls that are icons still have names', () => {
-  test('the deposit modal close button says what it closes', async ({ page }) => {
+  test('the bridge close button says what it closes', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: '+ Deposit' }).click()
-    await expect(page.getByRole('button', { name: /Close deposit modal/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Close bridge' })).toBeVisible()
   })
 
   test('the disconnect control names itself', async ({ page }) => {

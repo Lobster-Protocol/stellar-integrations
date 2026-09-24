@@ -10,10 +10,10 @@ const TRANSFER_TIME = { [ChainSymbol.SRB]: { [Messenger.ALLBRIDGE]: 180_000 } }
 // every entry carries the field so overriding one in a test still produces the
 // same shape, which is what the sdk hands back.
 const TOKENS = {
-  ETH: { symbol: 'USDC', chainSymbol: 'ETH', bridgeAddress: '0xBRIDGE-ETH', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003 },
-  ARB: { symbol: 'USDC', chainSymbol: 'ARB', bridgeAddress: '0xBRIDGE-ARB', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003 },
-  BSC: { symbol: 'USDC', chainSymbol: 'BSC', bridgeAddress: '0xBRIDGE-BSC', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003 },
-  SRB: { symbol: 'USDC', chainSymbol: 'SRB', bridgeAddress: 'CBRIDGE-SRB', decimals: 7, transferTime: {}, feeShare: 0.003 },
+  ETH: { symbol: 'USDC', chainSymbol: 'ETH', bridgeAddress: '0xBRIDGE-ETH', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003, poolAddress: '0xPOOL-ETH' },
+  ARB: { symbol: 'USDC', chainSymbol: 'ARB', bridgeAddress: '0xBRIDGE-ARB', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003, poolAddress: '0xPOOL-ARB' },
+  BSC: { symbol: 'USDC', chainSymbol: 'BSC', bridgeAddress: '0xBRIDGE-BSC', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003, poolAddress: '0xPOOL-BSC' },
+  SRB: { symbol: 'USDC', chainSymbol: 'SRB', bridgeAddress: 'CBRIDGE-SRB', decimals: 7, transferTime: {}, feeShare: 0.003, poolAddress: 'CPOOL-SRB' },
 }
 
 type SendArgs = {
@@ -89,7 +89,26 @@ describe('quoteBridge', () => {
     sdk.tokensByChain.mockImplementation(async (chain: string) => [
       chain === 'SRB' ? { ...TOKENS.SRB, feeShare: 0.9999 } : TOKENS[chain as keyof typeof TOKENS],
     ])
-    await expect(quoteBridge(sdk as never, VALID_REQ, false)).rejects.toThrow(/pool into Stellar is closed/i)
+    await expect(quoteBridge(sdk as never, VALID_REQ, false)).rejects.toThrow(/no longer carries USDC into Stellar/i)
+  })
+
+  // what the live api returns for the stellar token since allbridge pulled its
+  // pools: no pool at all and a feeShare of "0", which the old feeShare-only
+  // check read as healthy
+  it('refuses the route when allbridge lists no stellar pool, even at a zero fee', async () => {
+    sdk.tokensByChain.mockImplementation(async (chain: string) => [
+      chain === 'SRB' ? ({ ...TOKENS.SRB, poolAddress: null, feeShare: '0' } as never) : TOKENS[chain as keyof typeof TOKENS],
+    ])
+    await expect(quoteBridge(sdk as never, VALID_REQ, false)).rejects.toThrow(/no longer carries USDC into Stellar/i)
+    expect(sdk.getAmountToBeReceivedFromChain).not.toHaveBeenCalled()
+  })
+
+  it('refuses to build a send toward a route with no stellar pool', async () => {
+    sdk.tokensByChain.mockImplementation(async (chain: string) => [
+      chain === 'SRB' ? ({ ...TOKENS.SRB, poolAddress: null, feeShare: '0' } as never) : TOKENS[chain as keyof typeof TOKENS],
+    ])
+    await expect(buildBridgeTx(sdk as never, VALID_REQ)).rejects.toThrow(/no longer carries USDC into Stellar/i)
+    expect(sdk.bridge.rawTxBuilder.send).not.toHaveBeenCalled()
   })
 
   it('flattens gas fee objects to their float string', async () => {

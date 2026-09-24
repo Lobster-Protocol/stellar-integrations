@@ -1,6 +1,8 @@
 import { http, createConfig } from 'wagmi'
-import { mainnet, arbitrum, bsc } from 'wagmi/chains'
+import { mainnet, arbitrum, bsc, base, sepolia, baseSepolia, arbitrumSepolia } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
+
+import { cctpChain } from '../../config/contracts'
 
 // The EVM bridge connects with injected wallets only (MetaMask, Rabby). We deliberately
 // do NOT add wagmi's walletConnect connector: it starts a second WalletConnect Core next
@@ -10,19 +12,33 @@ import { injected } from 'wagmi/connectors'
 // Stellar side, where DFNS custody lives.
 const connectors = [injected({ shimDisconnect: true })]
 
+// wagmi only switches to chains listed here, so every CCTP source chain is,
+// Sepolia testnets included
 export const wagmiConfig = createConfig({
-  chains: [mainnet, arbitrum, bsc],
+  chains: [mainnet, arbitrum, bsc, base, sepolia, baseSepolia, arbitrumSepolia],
   connectors,
   transports: {
     [mainnet.id]: http(import.meta.env.VITE_ETH_RPC || undefined),
     [arbitrum.id]: http(import.meta.env.VITE_ARB_RPC || undefined),
     [bsc.id]: http(import.meta.env.VITE_BSC_RPC || undefined),
+    [base.id]: http(import.meta.env.VITE_BASE_RPC || cctpChain('mainnet', 'BASE').rpcFallback),
+    [sepolia.id]: http(import.meta.env.VITE_SEPOLIA_RPC || cctpChain('testnet', 'ETH').rpcFallback),
+    [baseSepolia.id]: http(
+      import.meta.env.VITE_BASE_SEPOLIA_RPC || cctpChain('testnet', 'BASE').rpcFallback,
+    ),
+    [arbitrumSepolia.id]: http(
+      import.meta.env.VITE_ARB_SEPOLIA_RPC || cctpChain('testnet', 'ARB').rpcFallback,
+    ),
   },
 })
 
-// EVM WalletConnect is intentionally not offered (see above); the bridge is injected-only.
-// The DepositModal reads this to point a user with no extension at a browser wallet.
-export const hasWalletConnectProjectId = false
+// narrows a registry chain id to what switchChain and writeContract accept
+export type WagmiChainIdAny = (typeof wagmiConfig)['chains'][number]['id']
+
+export function isConfiguredChainId(id: number): id is WagmiChainIdAny {
+  return wagmiConfig.chains.some((c) => c.id === id)
+}
+
 
 export const EVM_CHAIN_ID = {
   ETH: mainnet.id,

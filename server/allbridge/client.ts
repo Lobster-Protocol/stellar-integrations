@@ -1,6 +1,6 @@
-import { AllbridgeCoreSdk, ChainSymbol, type NodeRpcUrls } from '@allbridge/bridge-core-sdk'
+import { AllbridgeCoreSdk, ChainSymbol, mainnet, type NodeRpcUrls } from '@allbridge/bridge-core-sdk'
 
-import { EVM_RPC_FALLBACK, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
+import { ALLBRIDGE_CORE_API, EVM_RPC_FALLBACK, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
 
 let sdk: AllbridgeCoreSdk | null = null
 
@@ -22,6 +22,11 @@ function nodeUrls(): NodeRpcUrls {
 }
 
 export function getAllbridgeSdk(): AllbridgeCoreSdk {
-  if (!sdk) sdk = new AllbridgeCoreSdk(nodeUrls())
+  if (!sdk) {
+    sdk = new AllbridgeCoreSdk(nodeUrls(), {
+      ...mainnet,
+      coreApiUrl: process.env.ALLBRIDGE_CORE_API || ALLBRIDGE_CORE_API,
+    })
+  }
   return sdk
 }

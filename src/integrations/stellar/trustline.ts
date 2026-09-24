@@ -1,5 +1,7 @@
 import { Asset, Operation, TransactionBuilder, NotFoundError } from '@stellar/stellar-sdk'
+import { useQuery } from '@tanstack/react-query'
 import { getHorizonServer } from '../horizon/client'
+import { useAccountExists } from '../horizon/account'
 import { networkPassphrase } from '../lobster/client'
 import type { Network } from '../lobster/types'
 import { INCLUSION_FEE_STROOPS } from '../../config/contracts'
@@ -62,4 +64,21 @@ export async function submitTrustlineTx(signedXdr: string, network: Network): Pr
   const tx = TransactionBuilder.fromXDR(signedXdr, networkPassphrase(network))
   const res = await server.submitTransaction(tx)
   return res.hash
+}
+
+// waits for the account to exist, a brand-new wallet would only 404 here
+export function useTrustline(
+  accountId: string | null,
+  assetCode: string,
+  assetIssuer: string,
+  network: Network,
+) {
+  const exists = useAccountExists(network, accountId) === 'live'
+  return useQuery<boolean>({
+    queryKey: ['trustline', accountId, assetCode, assetIssuer, network],
+    queryFn: () => hasTrustline(accountId!, assetCode, assetIssuer, network),
+    enabled: !!accountId && !!assetIssuer && exists,
+    staleTime: 60_000,
+    retry: 1,
+  })
 }
