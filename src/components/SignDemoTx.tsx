@@ -205,8 +205,7 @@ export default function SignDemoTx() {
           {isDfns ? (
             <div className="space-y-3">
               {/* the one path that clears with no human: DFNS builds the payment to the
-                  treasury itself, reads its own address off the list, and lets it through.
-                  this is the "see MPC sign now" button a reviewer should reach first. */}
+                  treasury itself, reads its own address off the list, and lets it through. */}
               <button
                 onClick={() => handleAction('transfer')}
                 disabled={busy}

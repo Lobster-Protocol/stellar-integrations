@@ -1,11 +1,10 @@
 import { listPendingApprovals } from './approvals'
 import { approverConfigured, getApproverClient } from './approver'
 
-// The testnet demo relay clears its own treasury signatures held for approval, so
-// a grant reviewer can drive the whole DFNS custody flow - pending, approved,
-// executed - with no human in the DFNS console. The vote is cast as a dedicated
-// approver User (see approver.ts), which is why this needs no serviceAccountsCanApprove
-// and no DFNS support ticket.
+// On testnet the relay approves its own treasury signatures when a policy holds
+// them, so the custody flow runs pending -> approved -> executed with nobody in
+// the DFNS console. It votes as a separate approver user (approver.ts), because a
+// service account can't vote by default.
 
 // Armed only when explicitly turned on AND on testnet AND an approver identity is
 // present. Mainnet is DFNS_STELLAR_NETWORK === 'Stellar'; anything else is testnet.

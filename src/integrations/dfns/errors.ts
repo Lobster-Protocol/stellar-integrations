@@ -1,6 +1,6 @@
-// Turn a raw DFNS / relay / Stellar error into one actionable sentence. The relay
-// and the signer surface codes like "txMalformed" or a JSON blob; a reviewer needs a
-// next step, not the trace. Mirrors readableSwapError in SwapModal.
+// Turn a raw DFNS / relay / Stellar error into one sentence the user can act on.
+// The relay and the signer hand back codes like "txMalformed" or a JSON blob,
+// which tell the user nothing. Same idea as readableSwapError in SwapModal.
 export function readableDfnsError(message: string): string {
   const m = message.toLowerCase()
   if (m.includes('malformed')) {

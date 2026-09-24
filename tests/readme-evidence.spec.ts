@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 // The README is the only committed file that publishes transaction hashes, so it
-// is what a reviewer checks. These specs read it and hold every link to the
+// is the one people will check. These specs read it and hold every link to the
 // ledger: the transaction has to exist, have succeeded, and come from a wallet
 // we control unless the line says in as many words that it does not.
 

@@ -28,9 +28,9 @@ const SOROBAN_VIEW_METHODS = new Set([
 ])
 
 // the operator can name the contracts explicitly. with none named we fall back
-// to our own factory ids instead of to nothing, because a zero-argument view on
-// a contract we deployed gives a caller nothing, while an unset variable meant
-// the one button a reviewer is asked to press failed with a config message.
+// to our own factory ids rather than refusing every view: a zero-argument view on
+// a contract we deployed gives a caller nothing, and an empty list would make the
+// view path fail on config alone.
 function viewContracts(): string[] {
   const named = (process.env.DFNS_SOROBAN_VIEW_CONTRACTS ?? '')
     .split(',')
@@ -266,11 +266,10 @@ export function readSignGuardConfig(): SignGuardConfig | null {
   // the operator opts in via DFNS_GUARD_PERMISSIVE=1 (testing path only).
   const permissive = process.env.DFNS_GUARD_PERMISSIVE === '1'
   if (!permissive && (list.length === 0 || cap <= 0n)) return null
-  // permissive used to mean unbounded, and the browser token that reaches this
-  // route rides in the public bundle, so anyone could queue a payment from the
-  // treasury to any address for any amount. a probe on 2026-09-03 got one
-  // accepted. permissive now only means the operator may leave the two
-  // variables unset: the treasury falls back to paying itself, under a low cap.
+  // the browser token that reaches this route rides in the public bundle, so
+  // permissive can't mean unbounded. it only lets the operator leave the two
+  // variables unset, and then the treasury can pay nobody but itself, under a
+  // low cap.
   const selfOnly = list.length === 0
   // the treasury-callable value contracts. named only, no fallback: a value call
   // moves tokens, so an unset variable means the treasury signs no contract call.

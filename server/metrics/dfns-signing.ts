@@ -4,8 +4,8 @@ import { getDfnsClient } from '../dfns/client'
 const STATUSES = ['Pending', 'Approved', 'Denied', 'Expired'] as const
 
 // read-only: counts approvals per status with the same listApprovals call the
-// approval routes use. one page of 100 covers the demo org; past that the count is
-// a floor and it logs.
+// approval routes use. one page of 100 is plenty here; past that the count is a
+// floor and it logs.
 export async function refreshDfnsApprovalMetrics(
   client: Pick<ReturnType<typeof getDfnsClient>, 'policies'> = getDfnsClient(),
 ): Promise<void> {

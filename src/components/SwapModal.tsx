@@ -435,9 +435,9 @@ export default function SwapModal({ open, onClose }: Props) {
             <p className="text-xs text-text-muted">Connect a Stellar wallet to confirm.</p>
           ) : source === 'broker' ? (
             <>
-              {/* the broker leg is priced here but not signed here, so a
-                  reviewer gets a disabled control and the reason instead of
-                  a quote with nothing under it */}
+              {/* the broker leg is priced here but not signed here, so the
+                  user gets a disabled control and the reason instead of a
+                  quote with nothing under it */}
               <button
                 type="button"
                 disabled

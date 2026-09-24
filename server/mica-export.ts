@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 
 // extended mica record per cdr 2025/1140 table 3 with the dfns / decision /
-// execution blocks added, plus recordHash + prevHash chaining so a reviewer
+// execution blocks added, plus recordHash + prevHash chaining so an auditor
 // can detect tampered or reordered records by recomputing the chain. when the
 // official esma message specs zip is out, swap this schema for the
 // json-schema-to-typescript output and keep the same chain logic.
