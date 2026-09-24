@@ -513,7 +513,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                 >
                   Circle's faucet
                 </a>{' '}
-                hands out 10 a day.
+                hands it out for free.
               </Hint>
             )}
             {!stellarAddr && <Hint>Connect a Stellar wallet first. The USDC lands in that account.</Hint>}

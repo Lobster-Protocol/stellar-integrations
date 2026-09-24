@@ -65,7 +65,7 @@ const OTHER_ROUTES: Array<{ href: string; label: string; note: string; testnetOn
   {
     href: BRIDGE_FALLBACK_LINKS.circleFaucet,
     label: 'Circle faucet',
-    note: 'Test USDC on Base Sepolia, Arbitrum Sepolia or Sepolia, 10 a day.',
+    note: 'Free test USDC on Base Sepolia, Arbitrum Sepolia or Sepolia.',
     testnetOnly: true,
   },
   {
