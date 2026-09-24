@@ -17,7 +17,7 @@ describe('normalizeRoute', () => {
     expect(normalizeRoute('/dfns/approvals/ap-9/decision')).toBe('/dfns/approvals/:id/decision')
   })
 
-  it('maps anything unrecognized to other, so a label cannot explode', () => {
+  it('maps anything unrecognized to other', () => {
     expect(normalizeRoute('/wp-admin')).toBe('other')
     expect(normalizeRoute('/dfns/sign/anything/else/here')).toBe('other')
   })
@@ -38,7 +38,7 @@ describe('metrics endpoint', () => {
     return root
   }
 
-  it('404s when no token is configured (off by default)', async () => {
+  it('404s when no token is set', async () => {
     delete process.env.METRICS_TOKEN
     const res = await appWith().request('/metrics')
     expect(res.status).toBe(404)
@@ -74,9 +74,8 @@ describe('metrics endpoint', () => {
     )
   })
 
-  it('times a route on a mounted sub-app, the composition index.ts uses', async () => {
-    // the relay wraps the real app with root.use(timing) then root.route('/', app);
-    // this pins that middleware registered before the mount still wraps sub-app routes
+  it('times a route on a mounted sub-app', async () => {
+    // same shape as index.ts: timing on the root, the app mounted after it
     process.env.METRICS_TOKEN = 'secret-metrics-token'
     const sub = new Hono()
     sub.get('/ttl', (c) => c.text('ttl'))

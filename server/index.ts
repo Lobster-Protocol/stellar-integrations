@@ -23,18 +23,13 @@ if (process.env.DFNS_PRIVATE_KEY_PATH || process.env.DFNS_PRIVATE_KEY) {
 }
 
 
-// a root app wraps the route module so request timing and a token-gated /metrics
-// sit in front without editing webhook.ts. the timing middleware is registered
-// before the mount so it wraps every mounted route, and it only ever observes, so a
-// metrics failure can never change a response.
+// timing has to go on the root before the routes are mounted, or hono won't wrap them.
 const root = new Hono()
 root.use('*', metricsTiming())
 mountMetrics(root)
 root.route('/', app)
 
-// the dfns approval gauge polls the custody org read-only. off unless a scrape token
-// is set (so /metrics is reachable at all) and dfns creds are present; without both
-// there is nothing to read or no one to read it.
+// only poll dfns when something can scrape the result.
 if (process.env.METRICS_TOKEN && (process.env.DFNS_PRIVATE_KEY_PATH || process.env.DFNS_PRIVATE_KEY)) {
   startDfnsMetricsLoop()
 }

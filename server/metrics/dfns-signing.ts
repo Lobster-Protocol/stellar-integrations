@@ -3,12 +3,9 @@ import { getDfnsClient } from '../dfns/client'
 
 const STATUSES = ['Pending', 'Approved', 'Denied', 'Expired'] as const
 
-// Read-only. Lists approvals per status and sets the gauge, using the same
-// policies.listApprovals call the approval routes already run against the live org,
-// so it inherits their proven shape. The 100 page cap matches that call; if a status
-// ever exceeds it the count is a floor and logs, rather than paginating an unbounded
-// set. A dedicated read-only DFNS credential is the production hardening (this only
-// ever calls a GET).
+// read-only: counts approvals per status with the same listApprovals call the
+// approval routes use. one page of 100 covers the demo org; past that the count is
+// a floor and it logs.
 export async function refreshDfnsApprovalMetrics(
   client: Pick<ReturnType<typeof getDfnsClient>, 'policies'> = getDfnsClient(),
 ): Promise<void> {
@@ -22,10 +19,8 @@ export async function refreshDfnsApprovalMetrics(
   }
 }
 
-// Refreshes on a slow loop. Off unless the caller starts it (index.ts gates it on
-// METRICS_TOKEN + DFNS creds). Each tick swallows its own error so a transient DFNS
-// read can never crash the relay, and the timer is unref'd so it does not hold the
-// process open.
+// refresh every minute. a failed read only logs, and the timer is unref'd so it
+// never holds the process open.
 export function startDfnsMetricsLoop(intervalMs = 60_000): NodeJS.Timeout {
   const tick = () =>
     refreshDfnsApprovalMetrics().catch((err) =>

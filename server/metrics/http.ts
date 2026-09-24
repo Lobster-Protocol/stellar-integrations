@@ -4,9 +4,8 @@ import type { Context, Hono, MiddlewareHandler } from 'hono'
 
 import { registry, httpDuration, normalizeRoute } from './registry'
 
-// Times every request into the histogram. The observe runs in a finally and is
-// wrapped so a metrics failure can never change or break a response, and the scrape
-// endpoint itself is not observed (a scraper must not inflate the counts).
+// times every request into the histogram. observing can't throw into the response,
+// and /metrics itself isn't counted so scrapes don't skew it.
 export function metricsTiming(): MiddlewareHandler {
   return async (c, next) => {
     const start = performance.now()
@@ -22,7 +21,7 @@ export function metricsTiming(): MiddlewareHandler {
           )
         }
       } catch {
-        // metrics never affect the response
+        // never let metrics break a request
       }
     }
   }
@@ -41,9 +40,8 @@ function tokenOk(provided: string | undefined, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
-// GET /metrics is off unless METRICS_TOKEN is set, so a public relay never leaks
-// operational metrics by default; when set, it serves only to a caller presenting
-// that token, compared in constant time like the webhook HMAC.
+// off unless METRICS_TOKEN is set, then only for a caller holding it. constant-time
+// compare, same as the webhook hmac.
 export function mountMetrics(app: Hono): void {
   app.get('/metrics', async (c: Context) => {
     const expected = process.env.METRICS_TOKEN

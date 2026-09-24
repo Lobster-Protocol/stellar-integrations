@@ -439,9 +439,8 @@ describe('soroban value calls', () => {
     expect(() => inspectSignXdr(tx, valueCfg)).toThrow(/over the/i)
   })
 
-  // a value call carries its beneficiary in the first arg. the method + contract
-  // allowlist never looks at the args, so these pin the recipient check that keeps
-  // a listed vault from paying, or pulling on behalf of, a third party.
+  // the allowlist never reads the args, so these cover the first-arg check that
+  // stops a listed vault paying a third party.
   function buildRawValueCall(fn: string, args: xdr.ScVal[]) {
     const hostFn = xdr.HostFunction.hostFunctionTypeInvokeContract(
       new xdr.InvokeContractArgs({

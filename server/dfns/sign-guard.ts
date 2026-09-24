@@ -96,15 +96,9 @@ export function isTreasuryValueCall(op: unknown, allowed: string[], treasury: st
   return SOROBAN_VALUE_METHODS.has(call.functionName().toString())
 }
 
-// deposit pulls tokens from, and withdraw_contract pays them back to, the account
-// named in the invocation's first argument. That account has to be the treasury
-// itself: a deposit naming someone else would have the treasury authorize a pull it
-// does not own, and a withdraw naming someone else would send the vault's tokens to
-// a third party. The method + contract allowlist cannot see this, because it never
-// looks at the args, so the beneficiary is read straight out of the ScVal here and
-// compared. Fail closed on a missing arg, an arg that is not an address, or an
-// address that is not the treasury. require_auth on chain proves the spender
-// consented; it says nothing about who receives, so that check is ours to make.
+// deposit pulls from, and withdraw_contract pays back to, the account in the first
+// arg. the allowlist only checks method and contract, so read that arg and require
+// the treasury, or a listed vault could be told to pay out to anyone.
 export function checkValueCallRecipient(op: unknown, treasury: string): void {
   const { func } = op as { func?: xdr.HostFunction }
   if (!func || func.switch().name !== 'hostFunctionTypeInvokeContract') {
@@ -224,10 +218,9 @@ export function inspectSignXdr(
   }
   for (const op of inner.operations) {
     if (op.type === 'invokeHostFunction') {
-      // a listed value call is admitted, but only once its beneficiary is read out
-      // of the invocation and confirmed to be the treasury; anything else falls to
-      // the view path, which rejects auth entries, unlisted contracts and non-view
-      // methods.
+      // a listed value call is admitted once its first arg checks out as the
+      // treasury; anything else falls to the view path, which rejects auth entries,
+      // unlisted contracts and non-view methods.
       if (isTreasuryValueCall(op, cfg.sorobanValueContracts ?? [], cfg.treasuryAddress)) {
         checkValueCallRecipient(op, cfg.treasuryAddress)
         continue
