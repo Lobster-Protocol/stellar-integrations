@@ -406,7 +406,7 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     // the id back so the client can show pending and poll for the eventual hash.
     if (!isTerminal(final.status)) {
       // testnet demo only: clear the hold ourselves and wait out the execution so
-      // the reviewer's single request finishes pending -> approved -> executed.
+      // the caller's one request finishes pending -> approved -> executed.
       // off by default and never on mainnet; a no-op or failure falls straight
       // back to the human-approval pending flow below.
       const auto = await tryAutoApprove(walletId, initial.id, passphrase)
