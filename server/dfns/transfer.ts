@@ -19,17 +19,12 @@ export function checkTransfer(req: TransferRequest, cfg: SignGuardConfig): bigin
   if (!cfg.destinationWhitelist.includes(req.to)) {
     throw new SignGuardRejected(`transfer destination ${req.to} not in whitelist`)
   }
-  let amount: bigint
   // an empty string turns into 0n here instead of throwing, so it would fall to
   // the positive check and get told the amount was zero. check the shape first.
   if (!/^-?\d+$/.test(req.stroops)) {
     throw new SignGuardRejected('transfer amount must be a whole number of stroops')
   }
-  try {
-    amount = BigInt(req.stroops)
-  } catch {
-    throw new SignGuardRejected('transfer amount must be a whole number of stroops')
-  }
+  const amount = BigInt(req.stroops)
   if (amount <= 0n) {
     throw new SignGuardRejected('transfer amount must be positive')
   }

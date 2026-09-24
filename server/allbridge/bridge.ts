@@ -100,11 +100,6 @@ export async function buildApprove(chain: EvmChain, owner: string, amount: strin
   return (await getAllbridgeSdk().bridge.rawTxBuilder.approve({ token: src, owner, amount })) as RawTx
 }
 
-// the bridge contract address on `chain`, needed to read the erc-20 allowance.
-export async function spender(chain: EvmChain): Promise<string> {
-  return (await resolveUsdc(toChain(chain))).bridgeAddress
-}
-
 // delivery on stellar is relayer-automatic (no claim tx), but the transfer takes
 // minutes; this is how a caller learns whether it landed. the source txId is the
 // evm hash returned by the send.

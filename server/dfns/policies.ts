@@ -77,46 +77,6 @@ export async function createAutoApproveAmountPolicy(walletIds: string[], limitUs
   })
 }
 
-// The amount rules cannot be made to work on Stellar testnet: DFNS answers
-// "Could not get USD market price for the asset" for testXLM, and separately
-// refuses to read an amount off a raw XDR request at all ("only supported on a
-// transfer request"). Both make an amount rule fail closed, so it holds every
-// signature and there is no branch left that clears on its own. A recipient rule
-// reads the destination address, which DFNS always has. Paying an address we
-// listed clears; paying anywhere else waits for an approver.
-export async function createRecipientApprovalPolicy(p: {
-  walletIds: string[]
-  allowed: string[]
-  approverUserIds: string[]
-  quorum: number
-  autoRejectTimeoutMin: number
-  name?: string
-}) {
-  const dfns = getDfnsClient()
-  return dfns.policies.createPolicy({
-    body: {
-      name: p.name ?? 'payments off our own addresses need an approver',
-      activityKind: 'Wallets:Sign',
-      rule: {
-        kind: 'TransactionRecipientWhitelist',
-        configuration: { addresses: p.allowed },
-      },
-      action: {
-        kind: 'RequestApproval',
-        autoRejectTimeout: p.autoRejectTimeoutMin,
-        approvalGroups: [
-          {
-            name: 'compliance',
-            quorum: p.quorum,
-            approvers: { userId: { in: p.approverUserIds } },
-          },
-        ],
-      },
-      filters: onWallets(p.walletIds),
-    },
-  })
-}
-
 export async function createRecipientWhitelistPolicy(walletIds: string[], allowed: string[]) {
   const dfns = getDfnsClient()
   return dfns.policies.createPolicy({
