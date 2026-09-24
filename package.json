@@ -31,7 +31,7 @@
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.100.9",
     "buffer": "^6.0.3",
-    "hono": "^4.12.25",
+    "hono": "^4.13.8",
     "lucide-react": "^0.577.0",
     "prom-client": "^15.1.3",
     "react": "^19.2.4",
