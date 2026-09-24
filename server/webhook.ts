@@ -18,6 +18,7 @@ import { transferNative } from './dfns/transfer'
 import { reSequence } from './dfns/resequence'
 import { unresolvedSignature, trackPending, clearPending, peekPending } from './dfns/inflight'
 import { registerAllbridgeRoutes } from './allbridge/routes'
+import { registerCctpRoutes } from './cctp/routes'
 import { listPendingApprovals, decideApproval, type ApprovalDecision } from './dfns/approvals'
 import { autoApproveArmed, autoApproveHeldForWallet } from './dfns/auto-approve'
 import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
@@ -133,6 +134,7 @@ app.use('*', cors({
 }))
 
 registerAllbridgeRoutes(app)
+registerCctpRoutes(app, { rateLimit, tokenGuard, operatorGuard })
 
 // storage ttl read for the dashboard countdown. public, since it only reads
 // public ledger state, and 503 when the factory isn't deployed on the asked
