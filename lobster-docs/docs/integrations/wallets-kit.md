@@ -20,16 +20,16 @@ Only the address and the wallet name are stored, never a key or a signed payload
 
 `signTransaction` takes the XDR and an options object with the network passphrase
 and address, and returns the signed XDR. The dashboard submits that to Soroban
-RPC and polls for inclusion. The "Sign a testnet transaction" panel on
-`/positions` is the reference round trip, and its button reads "Call the Factory
-with" followed by the connected wallet's name.
+RPC and polls for inclusion. The "Sign a testnet transaction" panel on `/audit`
+is the reference round trip, and its button reads "Call the Factory with"
+followed by the connected wallet's name.
 
 ## One signer interface
 
 Execution code calls `signTransaction` and never asks what is behind it. The kit
-and DFNS implement the same `Signer` interface, and the custody toggle decides
-which one answers. A desk on a browser extension and a desk on an MPC treasury
-end up running the same path.
+and DFNS implement the same `Signer` interface, and the custody mode decides
+which one answers; the wallet / DFNS switch on the sign panel sets it. A desk on
+a browser extension and a desk on an MPC treasury end up running the same path.
 
 The wallet context and the kit wiring live in `src/contexts`, the signing demo in
 `src/components/SignDemoTx.tsx`, and the shared signer interface in

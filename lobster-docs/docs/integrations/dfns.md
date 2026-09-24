@@ -32,7 +32,8 @@ is rejected, so a caller can't trick the signer onto the wrong network.
 The sign route is fail-closed. With no shared token set it refuses to sign; with
 no guard configured it refuses too. Every envelope has to source from the treasury
 account, and the fee on the envelope is capped at 1 XLM, since an inflated fee is
-an outflow the amount cap never sees.
+an outflow the amount cap never sees. A transaction carrying one of the vault calls
+below gets 5 XLM instead, because a Soroban op pays a resource fee on top.
 
 Classic operations are held to an allowlist: payment, path payment strict send,
 path payment strict receive, bump sequence, and change trust. Payments have their
@@ -41,7 +42,7 @@ from the field that actually carries the spend. Change trust is in the list
 because it moves no value. DEX offers are out: a dictated price is an outflow
 that neither the destination check nor the amount cap can see.
 
-A Soroban invocation is admitted on one narrow path, as a read-only view. Five
+A Soroban invocation gets in two ways. The first is a read-only view. Five
 method names pass: `get_admin`, `get_pool_count`, `get_wasm_hash`, `get_owner`
 and `get_multisig`. The name alone isn't enough. The contract has to be on an
 allowlist and the call has to carry no arguments. It also has to carry no
@@ -49,29 +50,43 @@ authorization entries, since a token transfer needs the treasury's own
 authorization attached while a view returns a value and signs nothing away. An
 upload or a deploy is refused before any of that.
 
-The allowlist comes from `DFNS_SOROBAN_VIEW_CONTRACTS`, a comma-separated list of
-contract ids. Name nothing there and it falls back to the Lobster factory ids in
-the app config, so the one button a reviewer is asked to press works without extra
-setup, and a zero-argument view on a contract we deployed hands the caller nothing
-either way. If the list resolves to empty, no Soroban invocation signs at all.
+The view allowlist comes from `DFNS_SOROBAN_VIEW_CONTRACTS`, a comma-separated
+list of contract ids. Name nothing there and it falls back to the Lobster factory
+ids in the app config, so the dashboard's test call works without extra setup,
+and a zero-argument view on a contract we deployed hands the caller nothing
+either way.
+
+The second way is a vault call: `deposit` or `withdraw_contract` on a contract
+listed in `DFNS_SOROBAN_TREASURY_CONTRACTS`, sourced by the treasury. These move
+tokens, so there is no fallback, and an empty list means the treasury signs no
+value call at all. The method and contract checks never look at the arguments,
+so the guard also reads the first one, the account the vault pulls from or pays
+back to, and refuses anything but the treasury. Otherwise a listed vault could be
+told to pay somebody else.
 
 The guard reads the invocation out of the envelope rather than trusting what the
-caller says about it. The dashboard drives that path from one button: "Call the
-Factory (DFNS MPC)" on `/positions` signs a `get_admin` view from the treasury
-through MPC, and DFNS hands the signed envelope back for the service to submit.
+caller says about it. On `/audit`, "Call the Factory (DFNS MPC)" signs a
+`get_admin` view from the treasury through MPC. DFNS can't price a contract call,
+so the policy holds it for an approver first, and on the testnet demo the relay
+approves it itself. DFNS then hands the signed envelope back for the service to
+submit.
 
 ## Policies and approval
 
-A policy is a transaction amount limit with an action attached. Below the limit
-a signature clears on its own; at or above it the request waits for an approver
-before anything broadcasts. The identity that starts a request is excluded from
-approving it, so the initiating leg and the approving leg are always two separate
-DFNS users, whatever the limit is set to.
+A policy is a rule with an action attached. The setup script writes amount
+limits: below the limit a signature clears on its own, and at or above it the
+request waits for an approver before anything broadcasts. The identity that
+starts a request is excluded from approving it, so the initiating leg and the
+approving leg are always two separate DFNS users, whatever the limit is set to.
 
 The limits themselves are configuration, not code. They live in the env that
 `scripts/setup-dfns-policies.mts` reads, so this page does not quote a number
 that would rot. Ours are set so the approval path is the normal one rather than
 the exception.
+
+Testnet can't run an amount rule, because DFNS has no market price for testXLM
+and would hold everything. The testnet treasury runs a recipient rule instead: a
+payment to an address on its list clears, anything else waits for an approver.
 
 Each policy is scoped to a list of wallet ids. DFNS also allows scoping by wallet
 tag, which is worth knowing because it fails quietly: no wallet in our org carries
@@ -85,7 +100,9 @@ recipient. It cannot evaluate one against a raw signing request.
 The approval state streams to the dashboard. Deciding a held request is an
 operator control rather than something a visitor does: the pending approvals
 panel has Approve and Deny for whoever holds the operator credential, and the
-same decision can be taken in the DFNS console.
+same decision can be taken in the DFNS console. On the testnet demo the relay also
+clears its own held requests through a separate approver identity; that is off by
+default and never runs on mainnet.
 
 ## Webhooks and audit
 

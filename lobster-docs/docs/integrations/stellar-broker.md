@@ -28,8 +28,7 @@ aliases the import to the esm source. That alias is in both `vite.config.ts` and
 Confirming through the broker is not wired in the dashboard. `confirmQuote`
 needs a quote set over the broker trading socket, and a keyless quote never sets
 one, so the confirm always failed and the leg was taken out. The broker answer is
-a live price reference; the signable route is the direct Soroswap one below. Our
-evidence runner still drives `confirmQuote` with a partner key, outside the app.
+a live price reference; the signable route is the direct Soroswap one below.
 
 ## Single ledger, multiple DEXs
 
@@ -41,8 +40,7 @@ is a classic operation and can't ride inside the Soroban invocation; those go ou
 as parallel transactions aimed at the same ledger.
 
 Not every quote is multi-DEX. A small amount often routes through a single pool,
-so a demo run estimates a few sizes first and only confirms one whose path
-crosses two venues.
+and it takes a larger size before the path crosses two venues.
 
 ## Fallback
 
