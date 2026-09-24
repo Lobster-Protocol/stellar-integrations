@@ -96,6 +96,37 @@ export function isTreasuryValueCall(op: unknown, allowed: string[], treasury: st
   return SOROBAN_VALUE_METHODS.has(call.functionName().toString())
 }
 
+// deposit pulls tokens from, and withdraw_contract pays them back to, the account
+// named in the invocation's first argument. That account has to be the treasury
+// itself: a deposit naming someone else would have the treasury authorize a pull it
+// does not own, and a withdraw naming someone else would send the vault's tokens to
+// a third party. The method + contract allowlist cannot see this, because it never
+// looks at the args, so the beneficiary is read straight out of the ScVal here and
+// compared. Fail closed on a missing arg, an arg that is not an address, or an
+// address that is not the treasury. require_auth on chain proves the spender
+// consented; it says nothing about who receives, so that check is ours to make.
+export function checkValueCallRecipient(op: unknown, treasury: string): void {
+  const { func } = op as { func?: xdr.HostFunction }
+  if (!func || func.switch().name !== 'hostFunctionTypeInvokeContract') {
+    throw new SignGuardRejected('value call is not a contract invocation')
+  }
+  const call = func.invokeContract()
+  const fn = call.functionName().toString()
+  const first = call.args()[0]
+  if (!first) {
+    throw new SignGuardRejected(`${fn} carries no beneficiary argument`)
+  }
+  let beneficiary: string
+  try {
+    beneficiary = Address.fromScVal(first).toString()
+  } catch {
+    throw new SignGuardRejected(`${fn} beneficiary argument is not an address`)
+  }
+  if (beneficiary !== treasury) {
+    throw new SignGuardRejected(`${fn} beneficiary ${beneficiary} is not the treasury`)
+  }
+}
+
 // 1 XLM. no classic treasury op needs a fee this large; bounding it stops a drain
 // through an inflated fee the amount cap can't see, same as the broker guard.
 const MAX_FEE_STROOPS = 10_000_000n
@@ -193,9 +224,14 @@ export function inspectSignXdr(
   }
   for (const op of inner.operations) {
     if (op.type === 'invokeHostFunction') {
-      // a listed value call is admitted; anything else falls to the view path,
-      // which rejects auth entries, unlisted contracts and non-view methods.
-      if (isTreasuryValueCall(op, cfg.sorobanValueContracts ?? [], cfg.treasuryAddress)) continue
+      // a listed value call is admitted, but only once its beneficiary is read out
+      // of the invocation and confirmed to be the treasury; anything else falls to
+      // the view path, which rejects auth entries, unlisted contracts and non-view
+      // methods.
+      if (isTreasuryValueCall(op, cfg.sorobanValueContracts ?? [], cfg.treasuryAddress)) {
+        checkValueCallRecipient(op, cfg.treasuryAddress)
+        continue
+      }
       checkSorobanView(op, cfg.sorobanViewContracts ?? [])
       continue
     }

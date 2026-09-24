@@ -367,9 +367,9 @@ describe('soroban value calls', () => {
   const noValue = { treasuryAddress: TREASURY, destinationWhitelist: [], maxAmountStroops: 0n }
   const valueCfg = { ...noValue, sorobanValueContracts: [VAULT] }
 
-  function buildValueCall(contractId: string, fn: string, opts: { auth?: boolean; opSource?: string; fee?: string } = {}) {
+  function buildValueCall(contractId: string, fn: string, opts: { auth?: boolean; opSource?: string; fee?: string; beneficiary?: string } = {}) {
     const args = [
-      Address.fromString(TREASURY).toScVal(),
+      Address.fromString(opts.beneficiary ?? TREASURY).toScVal(),
       xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: xdr.Int64.fromString('0'), lo: xdr.Uint64.fromString('100') })),
       xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: xdr.Int64.fromString('0'), lo: xdr.Uint64.fromString('100') })),
     ]
@@ -437,6 +437,52 @@ describe('soroban value calls', () => {
     // 6 XLM: over the 5 XLM soroban ceiling
     const tx = buildValueCall(VAULT, 'deposit', { auth: true, fee: '60000000' })
     expect(() => inspectSignXdr(tx, valueCfg)).toThrow(/over the/i)
+  })
+
+  // a value call carries its beneficiary in the first arg. the method + contract
+  // allowlist never looks at the args, so these pin the recipient check that keeps
+  // a listed vault from paying, or pulling on behalf of, a third party.
+  function buildRawValueCall(fn: string, args: xdr.ScVal[]) {
+    const hostFn = xdr.HostFunction.hostFunctionTypeInvokeContract(
+      new xdr.InvokeContractArgs({
+        contractAddress: Address.fromString(VAULT).toScAddress(),
+        functionName: fn,
+        args,
+      }),
+    )
+    const tx = new TransactionBuilder(new Account(TREASURY, '1'), {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(Operation.invokeHostFunction({ func: hostFn, auth: [] }))
+      .setTimeout(60)
+      .build()
+    const op = tx.operations[0] as unknown as { auth: unknown[] }
+    op.auth = [{}]
+    return tx
+  }
+
+  it('refuses a deposit whose beneficiary is not the treasury', () => {
+    const tx = buildValueCall(VAULT, 'deposit', { auth: true, beneficiary: OTHER })
+    expect(() => inspectSignXdr(tx, valueCfg)).toThrow(/beneficiary.*not the treasury/i)
+  })
+
+  it('refuses a withdraw_contract that pays a third party', () => {
+    const tx = buildValueCall(VAULT, 'withdraw_contract', { auth: true, beneficiary: OTHER })
+    expect(() => inspectSignXdr(tx, valueCfg)).toThrow(/beneficiary.*not the treasury/i)
+  })
+
+  it('refuses a value call with no beneficiary argument', () => {
+    const tx = buildRawValueCall('deposit', [])
+    expect(() => inspectSignXdr(tx, valueCfg)).toThrow(/no beneficiary argument/i)
+  })
+
+  it('refuses a value call whose first argument is not an address', () => {
+    const notAddr = xdr.ScVal.scvI128(
+      new xdr.Int128Parts({ hi: xdr.Int64.fromString('0'), lo: xdr.Uint64.fromString('1') }),
+    )
+    const tx = buildRawValueCall('deposit', [notAddr])
+    expect(() => inspectSignXdr(tx, valueCfg)).toThrow(/not an address/i)
   })
 
   it('reads the treasury value contracts from env, trimmed', () => {
