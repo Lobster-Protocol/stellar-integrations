@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { addClientProfile, setProfileOperatorToken, relayHost } from '../integrations/dfns/profiles'
 import { verifyRelay } from '../integrations/dfns/verify-relay'
@@ -13,6 +13,23 @@ interface Props {
   // called with the new profile id once it is saved and made active.
   onSaved?: (profileId: string) => void
   onCancel?: () => void
+}
+
+function Code({ children }: { children: string }) {
+  return (
+    <code className="font-mono text-[10px] bg-bg-card rounded px-1 py-0.5">{children}</code>
+  )
+}
+
+function Step({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <li className="flex gap-2 text-text-secondary">
+      <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+        {n}
+      </span>
+      <span>{children}</span>
+    </li>
+  )
 }
 
 // the connect-a-relay form, shared by the Audit custody panel and the top-bar
@@ -51,11 +68,32 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
   }
 
   return (
-    <div className="rounded-2xl bg-bg px-3 py-3 space-y-2 text-xs">
+    <div className="rounded-2xl bg-bg px-3 py-3 space-y-3 text-xs">
+      <div className="space-y-2">
+        <p className="text-text-secondary">
+          A relay is a small backend you host that talks to your own DFNS. The dashboard only ever
+          sees its address and a read token, never your DFNS key: there is no key to paste here.
+        </p>
+        <ol className="space-y-1.5">
+          <Step n={1}>
+            <span className="font-medium text-text">Deploy the relay.</span> It is the open-source
+            service in this project, <Code>npm run server</Code>, pointed at your own DFNS org.
+          </Step>
+          <Step n={2}>
+            <span className="font-medium text-text">Fill the two fields below.</span> The address is
+            your relay&apos;s public https url; the read token is the <Code>LOBSTER_API_TOKEN</Code>{' '}
+            you set on it (blank if you set none).
+          </Step>
+          <Step n={3}>
+            <span className="font-medium text-text">Check, then save.</span> The dashboard reads your
+            wallet list to confirm it answers. Approvals still happen in your own DFNS console.
+          </Step>
+        </ol>
+      </div>
+
       <div className="rounded-xl bg-amber-500/10 text-amber-600 px-3 py-2 text-[11px]">
-        Enter only a relay you run yourself. The dashboard sends this address your tokens and the
-        transactions you ask it to sign, so treat it like your own backend. Your DFNS key stays
-        inside your own DFNS, reached through your relay. There is no key to paste here.
+        Enter only a relay you run yourself. It receives your tokens and the transactions you ask it
+        to sign, so treat it like your own backend.
       </div>
 
       <label className="block text-text-secondary">
@@ -73,7 +111,7 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
           type="password"
           value={readToken}
           onChange={(e) => setReadToken(e.target.value)}
-          placeholder="the token your relay expects, if any"
+          placeholder="your LOBSTER_API_TOKEN, or blank if none"
           className="mt-1 w-full bg-bg-card rounded-lg px-3 py-2 font-mono outline-none focus:ring-1 focus:ring-primary/30"
         />
       </label>
@@ -106,8 +144,8 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
               className="mt-1 w-full bg-bg-card rounded-lg px-3 py-2 font-mono outline-none focus:ring-1 focus:ring-primary/30"
             />
             <span className="block text-[10px] text-text-muted mt-0.5">
-              Kept in this tab only, never written to disk. Your approvals happen in your own DFNS
-              console, so you usually do not need this.
+              Your relay&apos;s LOBSTER_OPERATOR_TOKEN, kept in this tab only, never written to disk.
+              Approvals happen in your own DFNS console, so you usually do not need it.
             </span>
           </label>
         </>
