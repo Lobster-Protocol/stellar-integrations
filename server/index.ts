@@ -1,7 +1,10 @@
 import { serve } from '@hono/node-server'
+import { Hono } from 'hono'
 
 import { app } from './webhook'
 import { pingDfns } from './dfns/client'
+import { metricsTiming, mountMetrics } from './metrics/http'
+import { startDfnsMetricsLoop } from './metrics/dfns-signing'
 
 const PORT = Number(process.env.PORT || 8787)
 
@@ -20,5 +23,21 @@ if (process.env.DFNS_PRIVATE_KEY_PATH || process.env.DFNS_PRIVATE_KEY) {
 }
 
 
-serve({ fetch: app.fetch, port: PORT })
+// a root app wraps the route module so request timing and a token-gated /metrics
+// sit in front without editing webhook.ts. the timing middleware is registered
+// before the mount so it wraps every mounted route, and it only ever observes, so a
+// metrics failure can never change a response.
+const root = new Hono()
+root.use('*', metricsTiming())
+mountMetrics(root)
+root.route('/', app)
+
+// the dfns approval gauge polls the custody org read-only. off unless a scrape token
+// is set (so /metrics is reachable at all) and dfns creds are present; without both
+// there is nothing to read or no one to read it.
+if (process.env.METRICS_TOKEN && (process.env.DFNS_PRIVATE_KEY_PATH || process.env.DFNS_PRIVATE_KEY)) {
+  startDfnsMetricsLoop()
+}
+
+serve({ fetch: root.fetch, port: PORT })
 console.log(`webhook listening on :${PORT}`)
