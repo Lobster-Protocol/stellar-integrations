@@ -8,11 +8,9 @@ function num(name: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback
 }
 
-// DFNS scopes a policy either by wallet id or by wallet tag. This used to filter
-// on the tag 'treasury', and not one wallet in the org carries a tag, so every
-// policy written here matched nothing at all. Ids are the handle that cannot go
-// quiet like that: the scope is enumerated, and the console shows exactly which
-// wallets a rule covers.
+// DFNS scopes a policy either by wallet id or by wallet tag. We scope by id: not
+// one wallet in the org carries a tag, so a tag filter would match nothing, while
+// an id list is explicit and the console shows exactly which wallets a rule covers.
 function onWallets(walletIds: string[]) {
   if (walletIds.length === 0) {
     throw new Error('a policy needs at least one wallet id, or it covers nothing')

@@ -59,7 +59,7 @@ export default function TtlCountdownCard() {
 
   // the hook is gated on the same variable, so with no feed address the query
   // never fires and sits pending. that is a build nobody pointed at the feed,
-  // not a ledger with nothing on it, and the card used to conflate the two.
+  // not a ledger with nothing on it, and the card has to tell the two apart.
   const feedConfigured = !!import.meta.env.VITE_LOBSTER_API_URL
 
   // fetch rejects with a TypeError when it cannot reach the host at all: wrong

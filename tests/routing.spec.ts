@@ -4,9 +4,8 @@ import { BASE } from './fixtures'
 
 // no wallet needed: the card reads the network config and the local routing log.
 //
-// The routing story used to be two cards on two pages, the policy on Positions
-// and the recorded routes on Activity. It is one card on Activity now, so these
-// all go to the same place.
+// The routing policy and the recorded routes share one card on Activity, so
+// these all go to the same place.
 test.describe('Routing engine card', () => {
   test('renders the broker-first routing policy on Activity', async ({ page }) => {
     await page.goto(BASE + '/activity', { waitUntil: 'domcontentloaded' })

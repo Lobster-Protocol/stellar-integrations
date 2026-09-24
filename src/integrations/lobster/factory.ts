@@ -15,9 +15,9 @@ import { assertAccountId } from '../stellar/strkey-guards'
 import type { FactoryInfo, LobsterPool, Network } from './types'
 
 const POLL_INTERVAL_MS = 3_000
-// the envelopes we build stay valid for 180s, so stopping at 60s used to report
-// a timeout on a transaction that was still perfectly able to land. someone who
-// retried on that message could pay twice. wait out the whole window instead.
+// the envelopes we build stay valid for 180s. stopping at 60s would report a
+// timeout on a transaction that can still land, and someone who retried on that
+// message could pay twice, so wait out the whole window.
 const POLL_TIMEOUT_MS = 190_000
 
 function getFactoryId(network: Network): string {

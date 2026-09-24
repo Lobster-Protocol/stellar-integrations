@@ -8,9 +8,9 @@ import { Card, CardHead } from '../components/ui'
 import CoSignPanel from '../components/CoSignPanel'
 import { stellarExplorer } from '../utils/format'
 
-// Native Stellar multisig ("shared control") is no longer something you set up
-// here: the multisig we support is DFNS custody. This section only appears when
-// an account already carries a quorum, and its one job is to turn it back off,
+// Native Stellar multisig ("shared control") is not something you set up here:
+// the multisig we support is DFNS custody. This section only appears when an
+// account already carries a quorum, and its one job is to turn it back off,
 // dropping the extra signers and the threshold so a swap or a vault move stops
 // needing a co-signature. Turning it off is itself a governance change on the
 // account, so it needs the current quorum, gathered through the co-sign panel.

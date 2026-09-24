@@ -212,8 +212,8 @@ describe('readSignGuardConfig', () => {
       const cfg = readSignGuardConfig()
       expect(cfg).not.toBeNull()
       // the treasury paying itself is the only destination left, and the cap is
-      // real. a permissive deploy used to hand back [] and 0n, which turned both
-      // checks off on a route the public bundle token can reach.
+      // real. [] and 0n would turn both checks off on a route the public bundle
+      // token can reach.
       expect(cfg!.destinationWhitelist).toEqual([TREASURY])
       expect(cfg!.maxAmountStroops).toBeGreaterThan(0n)
     } finally {

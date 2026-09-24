@@ -14,9 +14,9 @@ export interface NavPoint {
 
 const MIN_GAP_MS = 60 * 60 * 1000
 const MAX_POINTS = 1000
-// v2: the series used to record the wallet alone while the pages led with
-// wallet plus vaults. Reusing the old key would splice two different measures
-// into one line and draw a jump that never happened.
+// the series tracks wallet plus vaults, the same measure the pages lead with. The
+// 2 in the key keeps a wallet-only series left in browser storage out of it:
+// splicing the two measures would draw a jump that never happened.
 const key = (network: Network, address: string) => `lob_nav2_${network}_${address}`
 
 export function readNavHistory(network: Network, address: string | null): NavPoint[] {

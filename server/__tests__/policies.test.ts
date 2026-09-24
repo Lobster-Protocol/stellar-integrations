@@ -135,9 +135,9 @@ describe('policy scoping', () => {
   })
 
   it('refuses a policy that would cover no wallet', async () => {
-    // a tag filter used to sit here and matched nothing, because our wallets
-    // carry no tags and the api cannot add one. an empty scope is the same
-    // silent no-op, so it throws instead.
+    // our wallets carry no tags and the api cannot add one, so a tag filter
+    // would match nothing. an empty scope is the same silent no-op, so it
+    // throws instead.
     await expect(
       createTreasuryAmountPolicy({
         walletIds: [],

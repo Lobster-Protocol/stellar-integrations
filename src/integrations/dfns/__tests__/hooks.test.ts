@@ -23,7 +23,7 @@ beforeEach(() => {
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_TOKEN', '')
   localStorage.clear()
-  // the demo is no longer the default active profile, so these reads opt into it.
+  // the demo isn't the default active profile, so these reads opt into it.
   setActiveProfile(DEMO_PROFILE_ID)
 })
 

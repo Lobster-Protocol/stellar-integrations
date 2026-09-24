@@ -363,9 +363,9 @@ export default function SwapModal({ open, onClose }: Props) {
           )}
 
           {/* The broker answers even when nothing here can be signed, and its answer
-              next to the direct route is the whole point of routing through it. It
-              used to be hidden whenever the executable leg fell through, which is
-              exactly when the comparison is worth reading. */}
+              next to the direct route is the whole point of routing through it. So it
+              stays up when the executable leg falls through, which is exactly when the
+              comparison is worth reading. */}
           {broker && (
             <div className="bg-bg rounded-lg p-3 text-xs space-y-1">
               <div className="flex justify-between">
