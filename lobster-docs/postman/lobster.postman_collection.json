@@ -2028,7 +2028,7 @@
                     "request": {
                         "name": "Quote a USDC transfer into Stellar",
                         "description": {
-                            "content": "Returns amountIn, amountOut, etaSeconds (null when the corridor omits a transfer time) and gasFeeOptions keyed by payment method. The USDC pool on the Stellar side is closed upstream at the moment, so this route answers 502 and names the closed corridor as the reason.\n",
+                            "content": "Returns amountIn, amountOut, etaSeconds (null when the corridor omits a transfer time) and gasFeeOptions keyed by payment method. Allbridge has removed its pools and lists no route into Stellar, so this route answers 502 and says so. The bridge runs on the cctp routes.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -2536,7 +2536,10 @@
                     "name": "Build an unsigned bridge send from EVM to Stellar",
                     "request": {
                         "name": "Build an unsigned bridge send from EVM to Stellar",
-                        "description": {},
+                        "description": {
+                            "content": "Refused with a 502 while Allbridge lists no route into Stellar, rather than building a send that would leave the funds on the source chain.\n",
+                            "type": "text/plain"
+                        },
                         "url": {
                             "path": [
                                 "allbridge",
@@ -2685,6 +2688,850 @@
                             },
                             "status": "Bad Gateway",
                             "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                }
+            ]
+        },
+        {
+            "name": "cctp",
+            "description": "",
+            "item": [
+                {
+                    "id": "70efcd27-0d3f-4d53-b9e1-e8790979fa4a",
+                    "name": "Source chains the bridge burns USDC on",
+                    "request": {
+                        "name": "Source chains the bridge burns USDC on",
+                        "description": {
+                            "content": "The EVM chains Circle CCTP can bring USDC from, with the contracts a burn goes through. Stellar is CCTP domain 27.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "cctp",
+                                "chains"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "network",
+                                    "value": "mainnet"
+                                }
+                            ],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "ef15d823-779e-4fc6-912d-b30cc9437a28",
+                            "name": "destinationDomain, and items with key, name, domain, chainId, usdc, tokenMessenger",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "chains"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "mainnet"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "d78b5a44-33df-4be2-8600-2844dcf5b832",
+                            "name": "network must be testnet or mainnet",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "chains"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "mainnet"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "d7dc739e-c59f-4b2c-bbd1-496c1b84aef9",
+                    "name": "Circle's fees from a source chain to Stellar",
+                    "request": {
+                        "name": "Circle's fees from a source chain to Stellar",
+                        "description": {
+                            "content": "Basis points for a fast transfer and for a standard one, read live from Circle. A null fastBps means Circle offers no fast route from there.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "cctp",
+                                "fees"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "network",
+                                    "value": "mainnet"
+                                },
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required) CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "domain",
+                                    "value": "<integer>"
+                                }
+                            ],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "a3c1ab9d-8703-4cb9-9a6f-47ad3daf4428",
+                            "name": "fastBps and standardBps",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "fees"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "mainnet"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "domain",
+                                            "value": "<integer>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "4e0802d0-d893-4cd7-b4be-12b7643d361a",
+                            "name": "not a source chain we burn from",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "fees"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "mainnet"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "domain",
+                                            "value": "<integer>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "33367f3c-c162-4d2a-9789-6308df6062da",
+                            "name": "Circle did not answer",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "fees"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "mainnet"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "domain",
+                                            "value": "<integer>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "25e11073-bb06-4f61-ad36-e9b1bbc72734",
+                    "name": "Where a burn stands, and who it pays",
+                    "request": {
+                        "name": "Where a burn stands, and who it pays",
+                        "description": {
+                            "content": "Asks Circle for the message behind a burn and decodes it. Pending until Circle has signed. Once signed it gives the Stellar account the transfer pays, the amount burned and the amount that lands after Circle's fee, in 6-decimal units.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "cctp",
+                                "message"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "network",
+                                    "value": "mainnet"
+                                },
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required) ",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "domain",
+                                    "value": "<integer>"
+                                },
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "(Required) the EVM burn transaction hash",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "txHash",
+                                    "value": "<string>"
+                                }
+                            ],
+                            "variable": []
+                        },
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "62de9f64-eb31-464d-9a8a-2eaf1c531d26",
+                            "name": "state pending with delayReason, or state attested with recipient, amount, amountToLand, feeExecuted, expirationLedger",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "message"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "mainnet"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "domain",
+                                            "value": "<integer>"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the EVM burn transaction hash",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "txHash",
+                                            "value": "<string>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "72e1464a-a4ad-4382-a92b-8c437c3ca9a0",
+                            "name": "bad network, domain or hash",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "message"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "mainnet"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "domain",
+                                            "value": "<integer>"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the EVM burn transaction hash",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "txHash",
+                                            "value": "<string>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "09c7c8fd-22a2-4342-bec0-b4ec9285b538",
+                            "name": "Circle did not answer",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "message"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required)  (This can only be one of testnet,mainnet)",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "network",
+                                            "value": "mainnet"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "domain",
+                                            "value": "<integer>"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the EVM burn transaction hash",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "txHash",
+                                            "value": "<string>"
+                                        }
+                                    ],
+                                    "variable": []
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "f2d1fa47-134d-45ef-b8e6-e761647d6bd0",
+                    "name": "Deliver a signed transfer on Stellar and pay the fee",
+                    "request": {
+                        "name": "Deliver a signed transfer on Stellar and pay the fee",
+                        "description": {
+                            "content": "Runs the last step for an account that does not sign from a browser. The message is never taken from the caller: the service asks Circle for it by burn hash and only submits once it pays the recipient named here, through the forwarder of the network named here. Shut unless a relay key is configured, testnet only unless mainnet is switched on separately, and capped per day.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "cctp",
+                                "deliver"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "method": "POST",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "key",
+                                    "value": "x-lobster-operator-token"
+                                },
+                                {
+                                    "key": "value",
+                                    "value": "{{apiKey}}"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header"
+                                }
+                            ]
+                        }
+                    },
+                    "response": [
+                        {
+                            "id": "abe8eab0-9ffc-4746-b29e-a49501d7a71c",
+                            "name": "delivered with the Stellar hash and the amount, or already-delivered",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "deliver"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "0850902c-cfe0-4a3a-8c29-e54070de0714",
+                            "name": "body failed validation, or the transfer does not pay that recipient",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "deliver"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "fdea198b-6f4d-4d16-a3df-dca477860c71",
+                            "name": "operator token missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "deliver"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "5fa6ecfe-753b-4509-9589-c9bdedee4edb",
+                            "name": "Circle has not signed the burn yet",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "deliver"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Not Found",
+                            "code": 404,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "a2f77f42-b12d-4aea-b60c-d73cf76d75cb",
+                            "name": "the recipient has no USDC trustline",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "deliver"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Conflict",
+                            "code": 409,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "65f38d62-e8f7-4f14-a9f6-0abbe6f4e866",
+                            "name": "Stellar or Circle refused",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "deliver"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "876cda05-1e48-49ec-b3aa-4ddc6a03df75",
+                            "name": "relay not configured, network not enabled, daily cap reached, or Circle has paused deliveries",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "deliver"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Service Unavailable",
+                            "code": 503,
                             "header": [],
                             "cookie": [],
                             "_postman_previewlanguage": "text"
