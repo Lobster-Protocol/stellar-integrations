@@ -15,6 +15,7 @@ import {
   BRIDGE_FALLBACK_LINKS,
   CCTP_EVM_USDC_DECIMALS,
   CONTRACTS,
+  INCLUSION_FEE_STROOPS,
   cctpChainsFor,
   type CctpFinality,
   type CctpSourceChain,
@@ -48,6 +49,8 @@ type Phase =
   | { kind: 'failed'; msg: string; transfer?: TrackedTransfer }
 
 const USDC = 'USDC'
+// what a wallet displays as the fee is our ceiling bid, not what the ledger charges
+const INCLUSION_FEE_XLM = Number(INCLUSION_FEE_STROOPS) / 10_000_000
 
 // wagmi's raw "Connector not found." reads like a bug in the page rather than a
 // missing wallet extension
@@ -767,8 +770,9 @@ function InFlight({
         </p>
       ) : (
         <p className="text-xs text-text-secondary mb-4">
-          Circle has signed it. One signature on Stellar delivers the USDC. It only pays the network fee, a few
-          hundredths of an XLM, and moves none of your funds.
+          Circle has signed it. One signature on Stellar delivers the USDC and moves none of your funds. Your
+          wallet shows the most the network fee could reach, a little over {INCLUSION_FEE_XLM} XLM; it usually
+          comes to a few hundredths.
         </p>
       )}
 
