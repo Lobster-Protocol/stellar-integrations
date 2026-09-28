@@ -8,6 +8,8 @@ import { cn, shortenAddress, stellarExplorer } from '../utils/format'
 import { InfoTip } from './InfoTip'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
+import { useCustody } from '../contexts/CustodyContext'
+import { awaitDfnsSignature } from '../integrations/dfns/await-signature'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { buildTrustlineXdr, submitTrustlineTx, useTrustline } from '../integrations/stellar/trustline'
@@ -79,6 +81,11 @@ function fmtUsdc(units: bigint): string {
 export default function BridgeModal({ open, onClose, resume }: Props) {
   const { network } = useNetwork()
   const { address: stellarAddr } = useWallet()
+  const { mode: custodyMode, dfnsAddress, signer: custodySigner } = useCustody()
+  // under DFNS custody the USDC lands in the treasury. The delivery needs no
+  // signature from it, so a connected browser wallet pays that fee instead
+  const treasury = custodyMode === 'dfns' ? dfnsAddress : null
+  const receiving = treasury ?? stellarAddr
   const qc = useQueryClient()
   const chains = cctpChainsFor(network)
 
@@ -108,7 +115,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   const fees = useCctpFees(network, chain)
 
   const { usdcIssuer } = CONTRACTS[network].cctp
-  const trustline = useTrustline(stellarAddr, USDC, usdcIssuer, network)
+  const trustline = useTrustline(receiving, USDC, usdcIssuer, network)
   // fail closed: only a check that came back true unlocks the burn
   const trustlineOk = trustline.isSuccess && trustline.data === true
 
@@ -203,19 +210,24 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   if (!open) return null
 
   const handleTrustline = async () => {
-    if (!stellarAddr || !usdcIssuer || tlInFlight.current) return
+    if (!receiving || !usdcIssuer || tlInFlight.current) return
     tlInFlight.current = true
     setTl({ busy: true, error: null })
     try {
-      const xdr = await buildTrustlineXdr(stellarAddr, USDC, usdcIssuer, network)
-      const { signedTxXdr } = await walletKitSigner.signTransaction(xdr, {
+      const xdr = await buildTrustlineXdr(receiving, USDC, usdcIssuer, network)
+      const signed = await (treasury ? custodySigner : walletKitSigner).signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
-        address: stellarAddr,
+        address: receiving,
       })
-      if (!signedTxXdr) throw new Error('The wallet did not return a signed transaction')
-      await submitTrustlineTx(signedTxXdr, network)
+      // DFNS broadcasts a classic tx itself, after an approval when a policy holds it
+      if (signed.pendingId) await awaitDfnsSignature(signed.pendingId, network)
+      else if (signed.signedTxXdr) await submitTrustlineTx(signed.signedTxXdr, network)
+      else if (!signed.broadcastHash) throw new Error('The wallet did not return a signed transaction')
       // wait for the ledger to show it, not just for the submit to return
-      await trustline.refetch()
+      for (let i = 0; i < 10; i++) {
+        if ((await trustline.refetch()).data === true) break
+        await new Promise((r) => setTimeout(r, 2_000))
+      }
       setTl({ busy: false, error: null })
     } catch (err) {
       setTl({ busy: false, error: errorText(err) })
@@ -225,7 +237,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   }
 
   const handleBridge = async () => {
-    if (!chain || !stellarAddr || !evmAddr || units === null || maxFee === null || feeSwallows) return
+    if (!chain || !receiving || !evmAddr || units === null || maxFee === null || feeSwallows) return
     if (bridgeInFlight.current) return
     bridgeInFlight.current = true
     try {
@@ -240,7 +252,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
 
       if (network === 'mainnet') {
         const ok = window.confirm(
-          `Bridge ${amount} USDC from ${chain.name} to ${shortenAddress(stellarAddr, 6, 4)} on mainnet.\n\nThis moves real funds. Continue?`,
+          `Bridge ${amount} USDC from ${chain.name} to ${shortenAddress(receiving, 6, 4)} on mainnet.\n\nThis moves real funds. Continue?`,
         )
         if (!ok) return
       }
@@ -257,7 +269,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
         const hash = await burnToStellar({
           chain,
           units,
-          recipient: stellarAddr,
+          recipient: receiving,
           forwarder: CONTRACTS[network].cctp.forwarder,
           maxFee,
           finality,
@@ -269,7 +281,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
           chainName: chain.name,
           sourceDomain: chain.domain,
           amount,
-          recipient: stellarAddr,
+          recipient: receiving,
           finality,
           createdAt: Date.now(),
           stage: 'burned',
@@ -348,7 +360,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
 
   const canBridge =
     !!chain &&
-    !!stellarAddr &&
+    !!receiving &&
     !!evmAddr &&
     units !== null &&
     maxFee !== null &&
@@ -412,6 +424,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
             delayReason={attestation.data?.state === 'pending' ? attestation.data.delayReason : null}
             attestationError={attestation.isError ? errorText(attestation.error) : null}
             canSign={!!stellarAddr}
+            toTreasury={!!treasury}
             onDeliver={() => handleDeliver(phase.transfer)}
           />
         ) : (
@@ -480,7 +493,13 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
               <div className="flex justify-between items-center gap-2">
                 <span className="text-text-secondary">Receiving account</span>
                 <span className="text-text font-mono">
-                  {stellarAddr ? shortenAddress(stellarAddr, 6, 4) : 'connect a Stellar wallet'}
+                  {receiving ? shortenAddress(receiving, 6, 4) : 'connect a Stellar wallet'}
+                  {treasury && (
+                    <>
+                      {' '}
+                      <span className="font-sans text-[10px] text-text-muted">DFNS treasury</span>
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -575,7 +594,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                 <span className="flex items-center gap-1">
                   Trustline <InfoTip term="trustline" label="a trustline" />
                 </span>
-                {!stellarAddr ? (
+                {!receiving ? (
                   <span className="text-text-muted">connect first</span>
                 ) : trustline.isLoading ? (
                   <span className="text-text-muted">checking...</span>
@@ -614,7 +633,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                 hands it out for free.
               </Hint>
             )}
-            {!stellarAddr && <Hint>Connect a Stellar wallet first. The USDC lands in that account.</Hint>}
+            {!receiving && <Hint>Connect a Stellar wallet first. The USDC lands in that account.</Hint>}
 
             <button
               onClick={handleBridge}
@@ -688,6 +707,7 @@ function InFlight({
   delayReason,
   attestationError,
   canSign,
+  toTreasury,
   onDeliver,
 }: {
   transfer: TrackedTransfer
@@ -697,6 +717,8 @@ function InFlight({
   delayReason: string | null
   attestationError: string | null
   canSign: boolean
+  // the USDC goes to a DFNS treasury, and a browser wallet only pays the delivery
+  toTreasury: boolean
   onDeliver: () => void
 }) {
   const chain = cctpChainsFor(network).find((c) => c.key === transfer.chainKey)
@@ -786,7 +808,13 @@ function InFlight({
       >
         {delivering ? 'Delivering...' : ready ? 'Deliver on Stellar' : 'Waiting for Circle...'}
       </button>
-      {!canSign && <p className="text-[11px] text-coral mt-2">Connect a Stellar wallet to deliver.</p>}
+      {!canSign && (
+        <p className="text-[11px] text-coral mt-2">
+          {toTreasury
+            ? 'Connect any Stellar wallet to pay the delivery. It only pays the network fee; the USDC goes to the treasury.'
+            : 'Connect a Stellar wallet to deliver.'}
+        </p>
+      )}
       <p className="text-[10px] text-text-muted mt-2">
         {network === 'testnet' ? 'Testnet. Test USDC, no real value.' : 'Mainnet. Real USDC.'}
       </p>

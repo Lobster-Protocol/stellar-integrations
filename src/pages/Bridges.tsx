@@ -5,6 +5,7 @@ import { ExternalLink } from 'lucide-react'
 import { cn, formatBalance, shortenAddress } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
+import { useCustody } from '../contexts/CustodyContext'
 import { useTrustline } from '../integrations/stellar/trustline'
 import { useActivity } from '../integrations/horizon/activity'
 import { forgetTransfer, useTrackedTransfers, type TrackedTransfer } from '../integrations/cctp/transfers'
@@ -96,7 +97,10 @@ const OTHER_ROUTES: Array<{ href: string; label: string; note: string; testnetOn
 ]
 
 export default function Bridges() {
-  const { address } = useWallet()
+  const { address: walletAddress } = useWallet()
+  const { mode: custodyMode, dfnsAddress } = useCustody()
+  // under DFNS custody the USDC arrives in the treasury, whoever delivers it
+  const address = (custodyMode === 'dfns' ? dfnsAddress : null) ?? walletAddress
   const { network } = useNetwork()
   const { usdcIssuer, forwarder } = CONTRACTS[network].cctp
   const trustlineQuery = useTrustline(address, 'USDC', usdcIssuer, network)
@@ -107,7 +111,10 @@ export default function Bridges() {
   const [open, setOpen] = useState(false)
   const [resume, setResume] = useState<TrackedTransfer | null>(null)
 
-  const pending = tracked.filter((t) => t.stage === 'burned' && (!address || t.recipient === address))
+  // either account can finish a delivery: mint_and_forward needs no signature from the one paid
+  const pending = tracked.filter(
+    (t) => t.stage === 'burned' && (!address || t.recipient === address || t.recipient === walletAddress),
+  )
 
   let trustlineLabel: string
   let trustlineClass: string

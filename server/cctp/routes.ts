@@ -1,7 +1,7 @@
 import type { Hono, MiddlewareHandler } from 'hono'
 import { z } from 'zod'
 
-import { cctpChainsFor, STELLAR_CCTP_DOMAIN, type Network } from '../../src/config/contracts'
+import { CONTRACTS, cctpChainsFor, STELLAR_CCTP_DOMAIN, type Network } from '../../src/config/contracts'
 import { fetchAttestation, fetchFees, IrisError } from '../../src/integrations/cctp/iris'
 import { amountToLand, decodeCctpMessage, hexToBytes, recipientOf } from '../../src/integrations/cctp/message'
 import { deliver, RelayRefused } from './relay'
@@ -29,8 +29,12 @@ export function registerCctpRoutes(app: Hono, guards: Guards): void {
   app.get('/cctp/chains', (c) => {
     const network = NetworkSchema.safeParse(c.req.query('network'))
     if (!network.success) return c.json({ error: 'network must be testnet or mainnet' }, 400)
+    const { forwarder, usdcIssuer, usdcSac } = CONTRACTS[network.data].cctp
     return c.json({
       destinationDomain: STELLAR_CCTP_DOMAIN,
+      // a burn names the forwarder as mintRecipient and destinationCaller, so an
+      // integrator reads it here rather than copying it from the docs
+      stellar: { forwarder, usdcIssuer, usdcSac },
       items: cctpChainsFor(network.data).map((ch) => ({
         key: ch.key,
         name: ch.name,

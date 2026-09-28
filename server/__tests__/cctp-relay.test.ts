@@ -5,6 +5,7 @@ import { Keypair } from '@stellar/stellar-sdk'
 
 import { deliver, relayKeypair, takeDailySlot, resetDailySlotsForTest, RelayRefused } from '../cctp/relay'
 import { registerCctpRoutes } from '../cctp/routes'
+import { CONTRACTS } from '../../src/config/contracts'
 
 // a real Base to Stellar transfer on mainnet, paying GAMNA2Q6...
 const REAL_MESSAGE =
@@ -153,6 +154,16 @@ describe('cctp routes', () => {
     expect(res.status).toBe(200)
     expect(body.destinationDomain).toBe(27)
     expect(body.items.map((i) => i.name)).toEqual(['Base Sepolia', 'Arbitrum Sepolia', 'Ethereum Sepolia'])
+  })
+
+  it('names the Stellar side a burn has to pay', async () => {
+    const res = await appWith().request('/cctp/chains?network=testnet')
+    const body = (await res.json()) as { stellar: { forwarder: string; usdcIssuer: string; usdcSac: string } }
+    expect(body.stellar).toEqual({
+      forwarder: CONTRACTS.testnet.cctp.forwarder,
+      usdcIssuer: CONTRACTS.testnet.cctp.usdcIssuer,
+      usdcSac: CONTRACTS.testnet.cctp.usdcSac,
+    })
   })
 
   it('refuses an unknown network', async () => {

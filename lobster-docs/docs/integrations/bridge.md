@@ -71,6 +71,16 @@ still sign it.
 A fast transfer's message expires after roughly a day of Stellar ledgers. Past
 that it needs a fresh signature from Circle before it can be delivered.
 
+## Into a DFNS treasury
+
+With DFNS custody on, the dashboard bridges into the treasury, not into the
+browser wallet. The treasury signs once, for its USDC trustline, through the
+relay; a trustline moves no value, so no approval policy holds it. It never signs
+the delivery: any connected Stellar wallet pays that fee and the USDC still lands
+in the treasury. The relay's signing guard does not let the treasury call
+`mint_and_forward` itself, so with no browser wallet connected the transfer waits
+on `/bridges` until one is, or until the relay below delivers it.
+
 ## From a server
 
 The same service that runs the DFNS routes exposes the bridge for anyone who
@@ -78,7 +88,7 @@ wants plain HTTP:
 
 | Route | What it does |
 | --- | --- |
-| `GET /cctp/chains?network=` | the source chains and their contracts |
+| `GET /cctp/chains?network=` | the source chains and their contracts, and the Stellar forwarder a burn names |
 | `GET /cctp/fees?network=&domain=` | Circle's fast and standard fees toward Stellar |
 | `GET /cctp/message?network=&domain=&txHash=` | where a burn stands, and who it pays |
 | `POST /cctp/deliver` | runs step 5 and pays the fee from our account |

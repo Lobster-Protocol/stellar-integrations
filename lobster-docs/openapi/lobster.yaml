@@ -351,7 +351,7 @@ paths:
           required: true
           schema: { type: string, enum: [testnet, mainnet] }
       responses:
-        '200': { description: "destinationDomain, and items with key, name, domain, chainId, usdc, tokenMessenger" }
+        '200': { description: "destinationDomain; stellar with the forwarder a burn names as mintRecipient and destinationCaller, and Circle's USDC issuer and SAC; items with key, name, domain, chainId, usdc, tokenMessenger" }
         '400': { description: network must be testnet or mainnet }
   /cctp/fees:
     get:
