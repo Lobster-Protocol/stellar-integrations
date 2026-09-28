@@ -4,12 +4,17 @@ import {
 } from '@stellar/stellar-sdk'
 import { CONTRACTS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
 import { httpTargets, accountTargets, type HttpTarget, type AccountTarget } from './targets'
+import { vendorStatus, type VendorReading } from './vendors'
 
 export interface ProbeResult {
   name: string
   area: string
   up: boolean
   latencySeconds: number
+  // rpc and horizon only: how long ago the latest ledger they report closed
+  ledgerAgeSeconds?: number
+  // horizon only
+  protocolVersion?: number
 }
 
 export interface AccountReading {
@@ -23,6 +28,7 @@ export interface AccountReading {
 export interface ScanResult {
   probes: ProbeResult[]
   accounts: AccountReading[]
+  vendors?: VendorReading[]
 }
 
 const TIMEOUT_MS = 10_000
@@ -37,8 +43,26 @@ async function timed<T>(fn: () => Promise<T>): Promise<{ ok: boolean; value?: T;
   }
 }
 
+// close time of the latest ledger, in unix seconds. rpc getHealth hands it over
+// as seconds (a string on some versions), the horizon root as an iso timestamp.
+export function rpcLedgerClose(body: { result?: { latestLedgerCloseTime?: string | number } }): number | undefined {
+  const t = Number(body.result?.latestLedgerCloseTime)
+  return Number.isFinite(t) && t > 0 ? t : undefined
+}
+
+export function horizonLedgerClose(body: { history_latest_ledger_closed_at?: string }): number | undefined {
+  const t = Date.parse(body.history_latest_ledger_closed_at ?? '')
+  return Number.isFinite(t) ? t / 1000 : undefined
+}
+
+interface Reading {
+  up: boolean
+  closedAt?: number
+  protocol?: number
+}
+
 async function probeOne(t: HttpTarget): Promise<ProbeResult> {
-  const r = await timed(async () => {
+  const r = await timed(async (): Promise<Reading> => {
     if (t.probe === 'rpc') {
       const res = await fetch(t.url, {
         method: 'POST',
@@ -46,15 +70,33 @@ async function probeOne(t: HttpTarget): Promise<ProbeResult> {
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getHealth' }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       })
-      const body = (await res.json()) as { result?: { status?: string } }
-      return res.ok && body.result?.status === 'healthy'
+      const body = (await res.json()) as { result?: { status?: string; latestLedgerCloseTime?: string | number } }
+      return { up: res.ok && body.result?.status === 'healthy', closedAt: rpcLedgerClose(body) }
     }
     const res = await fetch(t.url, { method: 'GET', signal: AbortSignal.timeout(TIMEOUT_MS) })
+    if (t.probe === 'cctp') {
+      // the bridge can't size a burn without the fee table, so an answer
+      // without one counts as down
+      const body: unknown = await res.json()
+      return { up: res.ok && Array.isArray(body) && body.length > 0 }
+    }
     // a 404 at a root or a 401 from an api still proves the host answered;
     // only a network error or a 5xx is down
-    return res.status > 0 && res.status < 500
+    const up = res.status > 0 && res.status < 500
+    if (t.probe === 'horizon' && res.ok) {
+      const body = (await res.json()) as { history_latest_ledger_closed_at?: string; current_protocol_version?: number }
+      return { up, closedAt: horizonLedgerClose(body), protocol: body.current_protocol_version }
+    }
+    return { up }
   })
-  return { name: t.name, area: t.area, up: r.ok && r.value === true, latencySeconds: r.seconds }
+  const v = r.ok ? r.value : undefined
+  const result: ProbeResult = { name: t.name, area: t.area, up: v?.up === true, latencySeconds: r.seconds }
+  // a clock a little ahead of the network's would read negative
+  if (v?.closedAt !== undefined) {
+    result.ledgerAgeSeconds = Math.max(0, Math.round(Date.now() - v.closedAt * 1000) / 1000)
+  }
+  if (typeof v?.protocol === 'number') result.protocolVersion = v.protocol
+  return result
 }
 
 // synthetic fallback check: the Soroswap router still quoting a mainnet
@@ -125,15 +167,18 @@ async function readAccount(a: AccountTarget): Promise<AccountReading> {
 }
 
 export async function scan(): Promise<ScanResult> {
-  const [probes, accounts, soroswap] = await Promise.all([
+  const [probes, accounts, soroswap, vendors] = await Promise.all([
     Promise.all(httpTargets().map(probeOne)),
     Promise.all(accountTargets().map(readAccount)),
     probeSoroswap(),
+    vendorStatus(),
   ])
-  return { probes: soroswap ? [...probes, soroswap] : probes, accounts }
+  return { probes: soroswap ? [...probes, soroswap] : probes, accounts, vendors }
 }
 
 export function formatMetrics(s: ScanResult): string {
+  const aged = s.probes.filter((p) => p.ledgerAgeSeconds !== undefined)
+  const versioned = s.probes.filter((p) => p.protocolVersion !== undefined)
   const lines = [
     '# HELP lobster_probe_up dependency reachable (1) or down (0)',
     '# TYPE lobster_probe_up gauge',
@@ -141,6 +186,12 @@ export function formatMetrics(s: ScanResult): string {
     '# HELP lobster_probe_latency_seconds round trip to the dependency',
     '# TYPE lobster_probe_latency_seconds gauge',
     ...s.probes.map((p) => `lobster_probe_latency_seconds{target="${p.name}",area="${p.area}"} ${p.latencySeconds}`),
+    '# HELP lobster_probe_ledger_age_seconds seconds since the latest ledger the endpoint reports closed',
+    '# TYPE lobster_probe_ledger_age_seconds gauge',
+    ...aged.map((p) => `lobster_probe_ledger_age_seconds{target="${p.name}",area="${p.area}"} ${p.ledgerAgeSeconds}`),
+    '# HELP lobster_probe_protocol_version protocol version the endpoint reports',
+    '# TYPE lobster_probe_protocol_version gauge',
+    ...versioned.map((p) => `lobster_probe_protocol_version{target="${p.name}",area="${p.area}"} ${p.protocolVersion}`),
     '# HELP lobster_account_exists tracked account funded/exists on chain',
     '# TYPE lobster_account_exists gauge',
     ...s.accounts.map((a) => `lobster_account_exists{role="${a.role}",network="${a.network}"} ${a.exists ? 1 : 0}`),
@@ -150,6 +201,9 @@ export function formatMetrics(s: ScanResult): string {
     ...s.accounts
       .filter((a) => a.usdc !== undefined)
       .map((a) => `lobster_account_balance{role="${a.role}",network="${a.network}",asset="USDC"} ${a.usdc}`),
+    '# HELP lobster_vendor_status status page state: 0 operational, 1 maintenance, 2 degraded, 3 partial outage, 4 major outage',
+    '# TYPE lobster_vendor_status gauge',
+    ...(s.vendors ?? []).map((v) => `lobster_vendor_status{vendor="${v.vendor}",component="${v.component}"} ${v.level}`),
   ]
   return lines.join('\n') + '\n'
 }
