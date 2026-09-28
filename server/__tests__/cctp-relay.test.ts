@@ -163,6 +163,11 @@ describe('cctp routes', () => {
     expect((await appWith().request('/cctp/fees?network=testnet&domain=25')).status).toBe(400)
   })
 
+  it.each(['', ' 6', '0x6', '6e0', '-0', '6.0'])('does not read domain=%j as a chain', async (domain) => {
+    const res = await appWith().request(`/cctp/fees?network=testnet&domain=${encodeURIComponent(domain)}`)
+    expect(res.status).toBe(400)
+  })
+
   it('refuses a malformed burn hash on the message lookup', async () => {
     expect((await appWith().request('/cctp/message?network=testnet&domain=6&txHash=0x12')).status).toBe(400)
   })

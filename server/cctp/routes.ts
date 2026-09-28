@@ -9,8 +9,10 @@ import { deliver, RelayRefused } from './relay'
 const NetworkSchema = z.enum(['testnet', 'mainnet'])
 const TxHash = z.string().regex(/^0x[0-9a-fA-F]{64}$/, 'txHash must be an EVM transaction hash')
 
+// Number('') is 0, Ethereum's domain, so an empty or padded ?domain= would pick
+// a chain the caller never named; only plain digits count
 function domainFor(network: Network, raw: unknown): number | null {
-  const n = Number(raw)
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : NaN
   return cctpChainsFor(network).some((c) => c.domain === n) ? n : null
 }
 

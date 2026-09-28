@@ -13,7 +13,7 @@ import {
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances, useAccountExists } from '../integrations/horizon/account'
-import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
+import { useXlmPrice, valueBalances, priceUnit, tokenPricer, usdcAtPar } from '../integrations/pricing/price'
 import { buildPortfolio } from '../integrations/pricing/portfolio'
 import { useVaultPositions } from '../integrations/lobster/position'
 import {
@@ -26,7 +26,6 @@ import {
 import { useRecordNav } from '../integrations/pricing/nav'
 import { valueHistoryCsv, performanceJson } from '../integrations/pricing/export'
 import { exportName } from '../utils/csv'
-import { CONTRACTS } from '../config/contracts'
 import { cn, compactNumber, formatBalance, formatValue } from '../utils/format'
 import { AXIS_TICK, CHART_COLORS, GRID_STROKE, TOOLTIP_STYLE } from '../utils/recharts'
 import ExportButton from '../components/ExportButton'
@@ -95,8 +94,7 @@ export default function Performance() {
   const priceByKey = useMemo(() => {
     const m: Record<string, number> = {}
     if (price != null) m.XLM = price
-    const issuer = CONTRACTS[network].tokens.usdcIssuer
-    if (issuer) m[assetKey('USDC', issuer)] = 1
+    for (const id of usdcAtPar(network)) m[assetKey('USDC', id)] = 1
     return m
   }, [price, network])
 

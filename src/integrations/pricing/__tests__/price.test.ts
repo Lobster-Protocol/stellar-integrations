@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { fetchXlmPrice } from '../price'
+import { fetchXlmPrice, usdcAtPar, valueBalances } from '../price'
+import { CONTRACTS } from '../../../config/contracts'
+import type { AccountBalance } from '../../horizon/account'
 import { quoteBroker } from '../../broker/quote'
 import { quoteSoroswapDirect } from '../../broker/soroswap-fallback'
 
@@ -71,5 +73,32 @@ describe('fetchXlmPrice on testnet', () => {
     expect(await fetchXlmPrice('testnet')).toBe(null)
     vi.mocked(quoteSoroswapDirect).mockResolvedValue(0n)
     expect(await fetchXlmPrice('testnet')).toBe(null)
+  })
+})
+
+describe('valueBalances', () => {
+  const circle = CONTRACTS.testnet.cctp.usdcIssuer
+  const line = (over: Partial<AccountBalance>): AccountBalance =>
+    ({ code: 'USDC', issuer: circle, balance: '312.5', isNative: false, ...over }) as AccountBalance
+
+  it('counts the USDC the bridge mints at par on testnet', () => {
+    const { usdTotal, lines } = valueBalances([line({})], null, 'testnet')
+    expect(lines[0].usd).toBe(312.5)
+    expect(usdTotal).toBe(312.5)
+  })
+
+  it('still counts Soroswap test USDC at par on testnet', () => {
+    const { lines } = valueBalances([line({ issuer: CONTRACTS.testnet.tokens.usdcSac })], null, 'testnet')
+    expect(lines[0].usd).toBe(312.5)
+  })
+
+  it('gives a look-alike USDC under another issuer no price', () => {
+    const { lines, usdTotal } = valueBalances([line({ issuer: 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU' })], null, 'testnet')
+    expect(lines[0].usd).toBeNull()
+    expect(usdTotal).toBeNull()
+  })
+
+  it('has one USDC id on mainnet, Circle being the network issuer there', () => {
+    expect([...usdcAtPar('mainnet')]).toEqual([CONTRACTS.mainnet.tokens.usdcIssuer])
   })
 })

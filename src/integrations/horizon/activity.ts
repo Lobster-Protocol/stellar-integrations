@@ -185,8 +185,10 @@ export function toActivityEvent(op: OpRecord, account: string): ActivityEvent {
         .map((c) => moveFrom(c, account))
         .filter((m): m is AssetMove => m !== null)
       // a call that moved nothing and only read state is housekeeping, whatever
-      // its name suggests
-      const kind = kindOfSorobanFn(fn)
+      // its name suggests. Circle's forwarder paying this account a bridged
+      // transfer is money in, not upkeep
+      const kind =
+        fn === 'mint_and_forward' && moves.some((m) => m.direction === 'in') ? 'received' : kindOfSorobanFn(fn)
       return { ...base, kind, moves, contractId, fn, swapPath }
     }
 

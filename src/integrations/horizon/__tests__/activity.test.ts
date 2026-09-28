@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import { Address, xdr } from '@stellar/stellar-sdk'
 
-import { matchesQuery, groupOf, type ActivityEvent } from '../activity'
+import { matchesQuery, groupOf, toActivityEvent, type ActivityEvent } from '../activity'
+import { CONTRACTS } from '../../../config/contracts'
 
 function event(over: Partial<ActivityEvent> = {}): ActivityEvent {
   return {
@@ -54,5 +56,40 @@ describe('groupOf', () => {
     expect(groupOf('sent')).toBe('moves')
     expect(groupOf('liquidity-add')).toBe('liquidity')
     expect(groupOf('storage-rent')).toBe('housekeeping')
+  })
+})
+
+describe('toActivityEvent, bridge deliveries', () => {
+  const ACCOUNT = 'GCC5G4MUAFQIGKJSMGBVVXM63KK4PGBCXD4CR4VPYQKBYGPXLDR4HA74'
+  const OTHER = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
+  const { forwarder: FORWARDER, usdcIssuer: ISSUER } = CONTRACTS.testnet.cctp
+
+  function delivery(to: string) {
+    return {
+      id: '1',
+      type: 'invoke_host_function',
+      created_at: '2026-09-28T09:08:00Z',
+      transaction_hash: '6bfd4667',
+      transaction_successful: true,
+      parameters: [
+        { type: 'Address', value: new Address(FORWARDER).toScVal().toXDR('base64') },
+        { type: 'Sym', value: xdr.ScVal.scvSymbol('mint_and_forward').toXDR('base64') },
+      ],
+      asset_balance_changes: [
+        { asset_type: 'credit_alphanum4', asset_code: 'USDC', asset_issuer: ISSUER, type: 'transfer', from: FORWARDER, to, amount: '0.9998700' },
+      ],
+    } as never
+  }
+
+  it('reads USDC paid out to this account as received', () => {
+    const e = toActivityEvent(delivery(ACCOUNT), ACCOUNT)
+    expect(e.kind).toBe('received')
+    expect(e.moves).toEqual([
+      { code: 'USDC', issuer: ISSUER, amount: '0.9998700', direction: 'in', counterparty: FORWARDER },
+    ])
+  })
+
+  it('stays a contract call when this account only paid to deliver someone else', () => {
+    expect(toActivityEvent(delivery(OTHER), ACCOUNT).kind).toBe('contract-call')
   })
 })

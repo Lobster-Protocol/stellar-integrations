@@ -328,9 +328,9 @@ export const BRIDGE_FALLBACK_LINKS = {
   allbridgeCore: 'https://core.allbridge.io',
   allbridgeClassic: 'https://app.allbridge.io',
   stellarx: 'https://www.stellarx.com',
-  aquarius: 'https://app.aqua.network',
+  aquarius: 'https://aqua.network',
   circleFaucet: 'https://faucet.circle.com',
-  stellarAnchors: 'https://www.stellar.org/ecosystem/anchors',
+  stellarAnchors: 'https://anchors.stellar.org',
 } as const
 
 // What we bid to get into a ledger, before any soroban resource fee. Stellar

@@ -5,7 +5,7 @@ import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip } fr
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useAccountBalances, useAccountExists } from '../integrations/horizon/account'
-import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
+import { useXlmPrice, valueBalances, priceUnit, tokenPricer, usdcAtPar } from '../integrations/pricing/price'
 import { buildPortfolio, share } from '../integrations/pricing/portfolio'
 import {
   useBalanceHistory,
@@ -16,7 +16,6 @@ import {
 import { useRecordNav } from '../integrations/pricing/nav'
 import { useVaultPositions, VENUE_LABEL } from '../integrations/lobster/position'
 import { useActivity, KIND_LABEL } from '../integrations/horizon/activity'
-import { CONTRACTS } from '../config/contracts'
 import { formatBalance, formatValue, shortenAddress, stellarExplorer } from '../utils/format'
 import { CHART_COLORS, TOOLTIP_STYLE } from '../utils/recharts'
 import lobsterIcon from '../assets/lobster-icon.png'
@@ -86,8 +85,7 @@ export default function Overview() {
   // the same reconstruction Performance draws, thinned to a sparkline
   const priceByKey: Record<string, number> = {}
   if (price != null) priceByKey.XLM = price
-  const usdcIssuer = CONTRACTS[network].tokens.usdcIssuer
-  if (usdcIssuer) priceByKey[assetKey('USDC', usdcIssuer)] = 1
+  for (const id of usdcAtPar(network)) priceByKey[assetKey('USDC', id)] = 1
   // dense enough that the cursor finds a value on any day, not just on the days
   // something moved
   const spark = densify(historyQ.data?.points ?? []).map((p) => ({

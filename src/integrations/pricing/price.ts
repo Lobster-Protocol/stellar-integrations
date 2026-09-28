@@ -9,25 +9,30 @@ export interface ValuedBalance extends AccountBalance {
   usd: number | null
 }
 
+// The ids that count as USDC at par, so a look-alike token sharing the code
+// can't inflate a total: the network's own (the classic issuer on mainnet,
+// Soroswap's SAC on testnet) and Circle's, which the bridge mints. On mainnet
+// the two are the same issuer; on testnet they are two different tokens.
+export function usdcAtPar(network: Network): Set<string> {
+  const { usdcIssuer, usdcSac } = CONTRACTS[network].tokens
+  return new Set([usdcIssuer || usdcSac, CONTRACTS[network].cctp.usdcIssuer].filter(Boolean))
+}
+
 // Value held balances: XLM at the live quote, USDC at par, anything else stays
-// unpriced. USDC counts at par only against the network's canonical id, so a
-// look-alike token sharing the code can't inflate the total. That id is the
-// classic issuer on mainnet and the SAC on testnet, where USDC only exists as a
-// soroban token. usdTotal is null when nothing could be priced, which tells the
+// unpriced. usdTotal is null when nothing could be priced, which tells the
 // caller to show native units instead of a total.
 export function valueBalances(
   balances: AccountBalance[],
   xlmPrice: number | null,
   network: Network,
 ): { lines: ValuedBalance[]; usdTotal: number | null } {
-  const { usdcIssuer, usdcSac } = CONTRACTS[network].tokens
-  const canonicalUsdc = usdcIssuer || usdcSac
+  const atPar = usdcAtPar(network)
   let total = 0
   let anyPriced = false
   const lines = balances.map((b) => {
     let usd: number | null = null
     if (b.isNative && xlmPrice != null) usd = Number(b.balance) * xlmPrice
-    else if (b.code === 'USDC' && !!canonicalUsdc && b.issuer === canonicalUsdc) {
+    else if (b.code === 'USDC' && !!b.issuer && atPar.has(b.issuer)) {
       usd = Number(b.balance)
     }
     if (usd != null && Number.isFinite(usd)) {
@@ -109,9 +114,10 @@ const PRICE_STALE_MS = 30_000
 // canonical ids has no price we can stand behind and returns null.
 export function tokenPricer(network: Network, xlmPrice: number | null) {
   const { xlmSac, usdcSac } = CONTRACTS[network].tokens
+  const circleUsdcSac = CONTRACTS[network].cctp.usdcSac
   return (tokenId: string): number | null => {
     if (tokenId && tokenId === xlmSac) return xlmPrice
-    if (tokenId && tokenId === usdcSac) return 1
+    if (tokenId && (tokenId === usdcSac || tokenId === circleUsdcSac)) return 1
     return null
   }
 }
