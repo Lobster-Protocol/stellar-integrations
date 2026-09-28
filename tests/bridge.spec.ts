@@ -161,6 +161,31 @@ test.describe('the Bridges page', () => {
     await expect(page.getByRole('button', { name: /Waiting for Circle/ })).toBeDisabled()
   })
 
+  test('says so when a fast transfer overruns', async ({ page }) => {
+    await page.route('**/iris-api-sandbox.circle.com/**', (route) =>
+      route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"Message not found"}' }),
+    )
+    await seedPendingTransfer(page)
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: /^Bridges$/ }).click()
+    await page.getByRole('button', { name: 'Finish' }).click()
+
+    await expect(page.getByText(/taking longer than a fast transfer should/)).toBeVisible()
+  })
+
+  test("puts Circle's reason for holding a transfer in plain words", async ({ page }) => {
+    const held = { message: '0x', attestation: 'PENDING', eventNonce: '1', cctpVersion: 2, status: 'pending_confirmations', delayReason: 'insufficient_fee' }
+    await page.route('**/iris-api-sandbox.circle.com/v2/messages/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ messages: [held] }) }),
+    )
+    await seedPendingTransfer(page)
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: /^Bridges$/ }).click()
+    await page.getByRole('button', { name: 'Finish' }).click()
+
+    await expect(page.getByText(/the fast fee rose above what the burn allowed/)).toBeVisible()
+  })
+
   test('keeps a testnet transfer off the mainnet page', async ({ page }) => {
     await seedPendingTransfer(page)
     await page.addInitScript(() => localStorage.setItem('lob_network', 'mainnet'))

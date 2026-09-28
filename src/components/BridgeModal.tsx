@@ -95,6 +95,9 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
 
   const evm = useAccount()
   const { connectors, connect, isPending: isConnecting, error: connectError } = useConnect()
+  // a wallet that announces itself (EIP-6963) is listed under its own name, and the
+  // generic entry would offer the same wallet again as "Injected"
+  const walletOptions = connectors.length > 1 ? connectors.filter((c) => c.id !== 'injected') : connectors
   const { disconnect } = useDisconnect()
   const evmAddr = evm.address as Address | undefined
 
@@ -440,14 +443,14 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                   </span>
                 ) : (
                   <div className="flex gap-1 flex-wrap justify-end">
-                    {connectors.map((c) => (
+                    {walletOptions.map((c) => (
                       <button
                         key={c.uid}
                         onClick={() => connect({ connector: c })}
                         disabled={isConnecting}
                         className="px-2 py-1 rounded-md bg-primary text-white text-[11px] font-medium disabled:opacity-50"
                       >
-                        {c.name}
+                        {c.id === 'injected' ? 'Browser wallet' : c.name}
                       </button>
                     ))}
                   </div>
@@ -660,6 +663,17 @@ function Hint({ children }: { children: ReactNode }) {
   return <p className="mb-3 text-xs text-text-secondary">{children}</p>
 }
 
+// Circle's reasons for holding a fast transfer. Each ends the same way: Circle
+// signs it as a standard transfer once the source chain finalises
+const DELAY_REASONS: Record<string, string> = {
+  insufficient_fee: 'the fast fee rose above what the burn allowed',
+  amount_above_max: 'the amount is above what Circle carries fast',
+  insufficient_allowance_available: "Circle's fast allowance is used up for now",
+}
+
+// past this, a fast transfer is no longer behaving like one
+const FAST_SLOW_AFTER_MS = 3 * 60_000
+
 function InFlight({
   transfer,
   network,
@@ -680,6 +694,18 @@ function InFlight({
   onDeliver: () => void
 }) {
   const chain = cctpChainsFor(network).find((c) => c.key === transfer.chainKey)
+  // which transfer has overrun its fast window; keyed by burn time so a resumed
+  // transfer never inherits the note of the one before it
+  const [slowFor, setSlowFor] = useState<number | null>(null)
+  useEffect(() => {
+    if (transfer.finality !== 'fast' || ready) return
+    const timer = setTimeout(
+      () => setSlowFor(transfer.createdAt),
+      Math.max(0, transfer.createdAt + FAST_SLOW_AFTER_MS - Date.now()),
+    )
+    return () => clearTimeout(timer)
+  }, [transfer.createdAt, transfer.finality, ready])
+  const slow = slowFor === transfer.createdAt
   const steps = [
     { label: `Burned on ${transfer.chainName}`, done: true },
     { label: 'Signed by Circle', done: ready },
@@ -724,7 +750,19 @@ function InFlight({
             ? 'A fast transfer usually takes under a minute.'
             : 'A standard transfer waits for the source chain to finalise, usually 15 to 30 minutes.'}{' '}
           You can close this, the Bridges page keeps track of it.
-          {delayReason && <span className="block mt-1 text-coral">Circle says: {delayReason.replace(/_/g, ' ')}</span>}
+          {delayReason ? (
+            <span className="block mt-1 text-coral">
+              Circle is holding it: {DELAY_REASONS[delayReason] ?? delayReason.replace(/_/g, ' ')}. It will sign it as
+              a standard transfer once {transfer.chainName} finalises, usually 15 to 30 minutes. Nothing is lost.
+            </span>
+          ) : (
+            slow && (
+              <span className="block mt-1">
+                This is taking longer than a fast transfer should. When Circle cannot carry one fast, it signs it
+                as a standard transfer once {transfer.chainName} finalises, usually 15 to 30 minutes. Nothing is lost.
+              </span>
+            )
+          )}
           {attestationError && <span className="block mt-1 text-coral">{attestationError}</span>}
         </p>
       ) : (
