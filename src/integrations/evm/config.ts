@@ -13,9 +13,12 @@ const connectors = [injected({ shimDisconnect: true })]
 export const wagmiConfig = createConfig({
   chains: [mainnet, arbitrum, bsc, base, sepolia, baseSepolia, arbitrumSepolia],
   connectors,
+  // viem's own default for Ethereum, eth.merkle.io, sends no CORS header, so a
+  // browser could not read a balance or wait for a receipt there. Every CCTP
+  // source chain falls back to the endpoint in the registry instead
   transports: {
-    [mainnet.id]: http(import.meta.env.VITE_ETH_RPC || undefined),
-    [arbitrum.id]: http(import.meta.env.VITE_ARB_RPC || undefined),
+    [mainnet.id]: http(import.meta.env.VITE_ETH_RPC || cctpChain('mainnet', 'ETH').rpcFallback),
+    [arbitrum.id]: http(import.meta.env.VITE_ARB_RPC || cctpChain('mainnet', 'ARB').rpcFallback),
     [bsc.id]: http(import.meta.env.VITE_BSC_RPC || undefined),
     [base.id]: http(import.meta.env.VITE_BASE_RPC || cctpChain('mainnet', 'BASE').rpcFallback),
     [sepolia.id]: http(import.meta.env.VITE_SEPOLIA_RPC || cctpChain('testnet', 'ETH').rpcFallback),
