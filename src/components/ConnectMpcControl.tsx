@@ -103,9 +103,9 @@ export default function ConnectMpcControl() {
           aria-expanded={open}
           className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 hover:bg-primary/10 transition-colors"
         >
-          <span className="text-[10px] text-text-muted leading-none">Your DFNS</span>
+          <span className="hidden sm:block text-[10px] text-text-muted leading-none">Your DFNS</span>
           <span className="text-xs text-text font-mono">{shortenAddress(dfnsAddress, 4)}</span>
-          <span className="rounded-full bg-ok/10 text-ok text-[9px] font-semibold px-1.5 py-0.5">Signs</span>
+          <span className="hidden sm:inline rounded-full bg-ok/10 text-ok text-[9px] font-semibold px-1.5 py-0.5">Signs</span>
           <NetTag network={network} />
         </button>
       ) : showDemoChip ? (
@@ -116,9 +116,9 @@ export default function ConnectMpcControl() {
           aria-expanded={open}
           className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/5 px-2.5 py-1 hover:bg-amber-500/10 transition-colors"
         >
-          <span className="text-[10px] text-amber-600 leading-none">DFNS demo</span>
+          <span className="hidden sm:block text-[10px] text-amber-600 leading-none">DFNS demo</span>
           <span className="text-xs text-text font-mono">{shortenAddress(dfnsAddress, 4)}</span>
-          <span className="rounded-full bg-amber-500/10 text-amber-600 text-[9px] font-semibold px-1.5 py-0.5">
+          <span className="hidden sm:inline rounded-full bg-amber-500/10 text-amber-600 text-[9px] font-semibold px-1.5 py-0.5">
             testnet
           </span>
         </button>

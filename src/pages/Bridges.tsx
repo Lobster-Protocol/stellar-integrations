@@ -2,7 +2,7 @@ import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 
-import { cn, shortenAddress } from '../utils/format'
+import { cn, formatBalance, shortenAddress } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useTrustline } from '../integrations/stellar/trustline'
@@ -303,7 +303,7 @@ export default function Bridges() {
           <ul className="divide-y divide-border">
             {arrivals.slice(0, 8).map(({ e, move }) => (
               <li key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
-                <span className="text-text">+{move!.amount} USDC</span>
+                <span className="text-text">+{formatBalance(move!.amount)} USDC</span>
                 <span className="text-text-muted">{new Date(e.at).toLocaleDateString('en-GB')}</span>
               </li>
             ))}

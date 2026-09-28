@@ -36,14 +36,26 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
         >
           <Menu size={20} />
         </button>
-        <div className="lg:hidden flex items-center gap-1.5">
+        {/* on a phone the drawer carries the logo; here it would push the controls off a 375px screen */}
+        <div className="hidden sm:flex lg:hidden items-center gap-1.5">
           <img src={lobsterIcon} alt="Lobster" className="h-6 w-6" />
           <span className="text-sm font-semibold text-text">Lobster</span>
         </div>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <div className="flex items-center bg-bg rounded-full p-0.5 text-xs">
+        {/* one pill on phones: it names the network you are on and flips it */}
+        <button
+          onClick={() => setNetwork(network === 'testnet' ? 'mainnet' : 'testnet')}
+          aria-label={`Network: ${network}. Switch to ${network === 'testnet' ? 'mainnet' : 'testnet'}`}
+          className={cn(
+            'sm:hidden px-2.5 py-1 rounded-full bg-bg text-xs font-medium',
+            network === 'testnet' ? 'text-primary' : 'text-green'
+          )}
+        >
+          {network === 'testnet' ? 'Testnet' : 'Mainnet'}
+        </button>
+        <div className="hidden sm:flex items-center bg-bg rounded-full p-0.5 text-xs">
           <button
             onClick={() => setNetwork('testnet')}
             className={cn(

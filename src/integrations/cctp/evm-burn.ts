@@ -1,4 +1,4 @@
-import { erc20Abi, parseUnits, type Address } from 'viem'
+import { BaseError, ContractFunctionRevertedError, erc20Abi, parseUnits, type Address } from 'viem'
 import {
   getAccount,
   getBalance,
@@ -59,6 +59,19 @@ function chainIdOf(chain: CctpSourceChain): WagmiChainIdAny {
     throw new EvmBurnError(`${chain.name} is not configured in the wallet layer`)
   }
   return chain.chainId
+}
+
+// viem puts a revert reason on the line after "reverted with the following
+// reason:", and the modal shows a single line
+function reasonOf(err: unknown): string {
+  if (err instanceof BaseError) {
+    const reverted = err.walk((e) => e instanceof ContractFunctionRevertedError)
+    if (reverted instanceof ContractFunctionRevertedError) {
+      return reverted.reason ?? reverted.data?.errorName ?? 'the contract refused it'
+    }
+    return err.shortMessage.split('\n')[0]
+  }
+  return err instanceof Error ? err.message.split('\n')[0] : 'unknown error'
 }
 
 function isUserRejection(err: unknown): boolean {
@@ -134,7 +147,7 @@ async function send(
     hash = await write(chainId)
   } catch (err) {
     if (isUserRejection(err)) throw new UserRejectedError()
-    throw new EvmBurnError(`The ${what} failed on ${chain.name}: ${(err as Error).message}`, { cause: err })
+    throw new EvmBurnError(`The ${what} failed on ${chain.name}: ${reasonOf(err)}`, { cause: err })
   }
   const receipt = await waitForTransactionReceipt(wagmiConfig, { chainId, hash })
   // a receipt comes back for a reverted transaction too
@@ -142,9 +155,23 @@ async function send(
   return hash
 }
 
+// Base hands out a receipt from a preconfirmed block before `latest` includes
+// it, and the wallet estimates the burn against `latest`: sent right away, that
+// estimate fails for want of an allowance. Past the deadline the wallet decides.
+async function untilAllowanceVisible(chain: CctpSourceChain, units: bigint, timeoutMs = 60_000): Promise<void> {
+  const owner = getAccount(wagmiConfig).address
+  if (!owner) return
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const allowance = await readAllowance(chain, owner).catch(() => 0n)
+    if (allowance >= units) return
+    await new Promise((r) => setTimeout(r, 1_500))
+  }
+}
+
 // exact amount, never unlimited: an open approval outlives the transfer
-export function approveUsdc(chain: CctpSourceChain, units: bigint): Promise<`0x${string}`> {
-  return send(chain, 'approval', (chainId) =>
+export async function approveUsdc(chain: CctpSourceChain, units: bigint): Promise<`0x${string}`> {
+  const hash = await send(chain, 'approval', (chainId) =>
     writeContract(wagmiConfig, {
       chainId,
       address: chain.usdc,
@@ -153,6 +180,8 @@ export function approveUsdc(chain: CctpSourceChain, units: bigint): Promise<`0x$
       args: [chain.tokenMessenger, units],
     }),
   )
+  await untilAllowanceVisible(chain, units)
+  return hash
 }
 
 export interface BurnRequest {

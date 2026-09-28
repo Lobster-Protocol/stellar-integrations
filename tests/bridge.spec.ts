@@ -73,7 +73,14 @@ test.describe('the bridge form', () => {
     await openBridge(page)
 
     await page.getByPlaceholder('0.00').fill('1.0000001')
-    await expect(page.getByText(/at most 6 decimals/)).toBeVisible()
+    await expect(page.getByText('USDC has 6 decimals on this chain, not 7.')).toBeVisible()
+  })
+
+  test('says why zero is not an amount', async ({ page }) => {
+    await openBridge(page)
+
+    await page.getByPlaceholder('0.00').fill('0')
+    await expect(page.getByText('The amount has to be more than zero.')).toBeVisible()
   })
 
   test('the close button says what it closes', async ({ page }) => {

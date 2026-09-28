@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { X, Check, ExternalLink } from 'lucide-react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { formatUnits, type Address } from 'viem'
@@ -21,6 +22,7 @@ import {
 import {
   approveUsdc,
   burnToStellar,
+  readAllowance,
   toEvmUsdcUnits,
   UserRejectedError,
 } from '../integrations/cctp/evm-burn'
@@ -64,14 +66,17 @@ function errorText(err: unknown): string {
   return 'Something went wrong'
 }
 
+// en-US like the rest of the app: the amount field only takes a dot, and "0,5"
+// from a French browser next to it would read as another number format
 function fmtUsdc(units: bigint): string {
   const n = Number(formatUnits(units, CCTP_EVM_USDC_DECIMALS))
-  return n.toLocaleString(undefined, { maximumFractionDigits: 6 })
+  return n.toLocaleString('en-US', { maximumFractionDigits: 6 })
 }
 
 export default function BridgeModal({ open, onClose, resume }: Props) {
   const { network } = useNetwork()
   const { address: stellarAddr } = useWallet()
+  const qc = useQueryClient()
   const chains = cctpChainsFor(network)
 
   const [chainKey, setChainKey] = useState(chains[0]?.key ?? '')
@@ -79,7 +84,12 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   const [finality, setFinality] = useState<CctpFinality>('fast')
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
   const [tl, setTl] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null })
+  // a declined signature is not an error, but landing back on the form without a word reads like nothing happened
+  const [declined, setDeclined] = useState(false)
   const tlInFlight = useRef(false)
+  // a double click lands twice before the phase change disables the button, and would ask the wallet for two burns
+  const bridgeInFlight = useRef(false)
+  const deliverInFlight = useRef(false)
 
   const chain: CctpSourceChain | null = chains.find((c) => c.key === chainKey) ?? chains[0] ?? null
 
@@ -108,6 +118,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
       setPhase({ kind: 'form' })
       setAmount('')
       setTl({ busy: false, error: null })
+      setDeclined(false)
       return
     }
     if (resume) setPhase({ kind: 'waiting', transfer: resume })
@@ -132,11 +143,22 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, busy, onClose])
 
+  // keyboard and screen reader users otherwise stay on the button behind the overlay
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    dialogRef.current?.focus()
+    return () => before?.focus()
+  }, [open])
+
   let units: bigint | null = null
+  let amountError: string | null = null
   try {
     units = amount ? toEvmUsdcUnits(amount) : null
-  } catch {
-    // still being typed, or not a number; the field says which below
+  } catch (err) {
+    // "0" and a 7th decimal each get their own reason, not a generic hint
+    amountError = errorText(err)
   }
 
   const bps = finality === 'fast' ? (fees.data?.fastBps ?? null) : (fees.data?.standardBps ?? 0)
@@ -144,6 +166,8 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   const fastUnavailable = finality === 'fast' && fees.isSuccess && fees.data.fastBps === null
   const maxFee = units !== null && bps !== null ? maxFeeFor(units, bps) : null
   const expectedFee = units !== null && bps !== null ? (units * BigInt(Math.ceil(bps * 100))) / 1_000_000n : null
+  // the burn refuses a max fee that is not below the amount; caught here, before an approval is paid for
+  const feeSwallows = units !== null && maxFee !== null && maxFee >= units
 
   const usdcBal = balances.data?.usdc ?? null
   const gasBal = balances.data?.gas ?? null
@@ -175,93 +199,124 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   }
 
   const handleBridge = async () => {
-    if (!chain || !stellarAddr || !evmAddr || units === null || maxFee === null) return
-
-    // again at the last moment, the trustline could have gone while the form sat open
-    const fresh = await trustline.refetch()
-    if (fresh.data !== true) {
-      setPhase({ kind: 'failed', msg: 'Your Stellar account has no USDC trustline yet. Turn it on first.' })
-      return
-    }
-
-    if (network === 'mainnet') {
-      const ok = window.confirm(
-        `Bridge ${amount} USDC from ${chain.name} to ${shortenAddress(stellarAddr, 6, 4)} on mainnet.\n\nThis moves real funds. Continue?`,
-      )
-      if (!ok) return
-    }
-
+    if (!chain || !stellarAddr || !evmAddr || units === null || maxFee === null || feeSwallows) return
+    if (bridgeInFlight.current) return
+    bridgeInFlight.current = true
     try {
-      const allowance = balances.data?.allowance ?? 0n
-      if (allowance < units) {
-        setPhase({ kind: 'approving' })
-        await approveUsdc(chain, units)
-      }
-      setPhase({ kind: 'burning' })
-      const hash = await burnToStellar({
-        chain,
-        units,
-        recipient: stellarAddr,
-        forwarder: CONTRACTS[network].cctp.forwarder,
-        maxFee,
-        finality,
-      })
-      const tracked: TrackedTransfer = {
-        id: hash,
-        network,
-        chainKey: chain.key,
-        chainName: chain.name,
-        sourceDomain: chain.domain,
-        amount,
-        recipient: stellarAddr,
-        finality,
-        createdAt: Date.now(),
-        stage: 'burned',
-      }
-      trackTransfer(tracked)
-      setPhase({ kind: 'waiting', transfer: tracked })
-      void balances.refetch()
-    } catch (err) {
-      if (err instanceof UserRejectedError) {
-        setPhase({ kind: 'form' })
+      setDeclined(false)
+
+      // again at the last moment, the trustline could have gone while the form sat open
+      const fresh = await trustline.refetch()
+      if (fresh.data !== true) {
+        setPhase({ kind: 'failed', msg: 'Your Stellar account has no USDC trustline yet. Turn it on first.' })
         return
       }
-      setPhase({ kind: 'failed', msg: errorText(err) })
+
+      if (network === 'mainnet') {
+        const ok = window.confirm(
+          `Bridge ${amount} USDC from ${chain.name} to ${shortenAddress(stellarAddr, 6, 4)} on mainnet.\n\nThis moves real funds. Continue?`,
+        )
+        if (!ok) return
+      }
+
+      try {
+        // read now, not from the cache: after a declined burn the cached value predates the approval
+        // just made, and a stale zero would ask for a second one
+        const allowance = await readAllowance(chain, evmAddr).catch(() => balances.data?.allowance ?? 0n)
+        if (allowance < units) {
+          setPhase({ kind: 'approving' })
+          await approveUsdc(chain, units)
+        }
+        setPhase({ kind: 'burning' })
+        const hash = await burnToStellar({
+          chain,
+          units,
+          recipient: stellarAddr,
+          forwarder: CONTRACTS[network].cctp.forwarder,
+          maxFee,
+          finality,
+        })
+        const tracked: TrackedTransfer = {
+          id: hash,
+          network,
+          chainKey: chain.key,
+          chainName: chain.name,
+          sourceDomain: chain.domain,
+          amount,
+          recipient: stellarAddr,
+          finality,
+          createdAt: Date.now(),
+          stage: 'burned',
+        }
+        trackTransfer(tracked)
+        setPhase({ kind: 'waiting', transfer: tracked })
+        void balances.refetch()
+      } catch (err) {
+        if (err instanceof UserRejectedError) {
+          setPhase({ kind: 'form' })
+          setDeclined(true)
+          return
+        }
+        setPhase({ kind: 'failed', msg: errorText(err) })
+      }
+    } finally {
+      bridgeInFlight.current = false
     }
   }
 
+  // the arrivals list and the balances behind the modal were read before the USDC landed
+  const refreshRecipient = (recipient: string) => {
+    void qc.invalidateQueries({ queryKey: ['activity', network, recipient] })
+    void qc.invalidateQueries({ queryKey: ['horizon', 'balances', network, recipient] })
+  }
+
   const handleDeliver = async (t: TrackedTransfer) => {
-    const att = attestation.data
-    if (!stellarAddr || !att || att.state !== 'complete') return
-    setPhase({ kind: 'delivering', transfer: t })
+    if (deliverInFlight.current) return
+    deliverInFlight.current = true
     try {
-      const check = await checkClaim(network, att.message, att.attestation, t.recipient, t.sourceDomain)
-      if (!check.ok) {
-        if (check.reason === 'already-claimed') {
-          markDelivered(network, t.id, '')
-          setPhase({ kind: 'done', transfer: t, deliveredHash: null })
+      const att = attestation.data
+      if (!stellarAddr || !att || att.state !== 'complete') return
+      setPhase({ kind: 'delivering', transfer: t })
+      try {
+        const check = await checkClaim(network, att.message, att.attestation, t.recipient, t.sourceDomain)
+        if (!check.ok) {
+          if (check.reason === 'already-claimed') {
+            markDelivered(network, t.id, '')
+            refreshRecipient(t.recipient)
+            setPhase({ kind: 'done', transfer: t, deliveredHash: null })
+            return
+          }
+          const why = {
+            expired:
+              "Circle's signature on this transfer has expired. Nothing is lost, the burn is on chain, but it needs a fresh attestation from Circle before it can be delivered.",
+            'no-trustline': 'The receiving account has no USDC trustline. Turn it on, then deliver again.',
+            paused: 'Circle has paused deliveries on Stellar for now. Your transfer is saved, finish it later from the Bridges page.',
+          }[check.reason]
+          setPhase({ kind: 'failed', msg: why, transfer: t })
           return
         }
-        const why = {
-          expired:
-            "Circle's signature on this transfer has expired. Nothing is lost, the burn is on chain, but it needs a fresh attestation from Circle before it can be delivered.",
-          'no-trustline': 'The receiving account has no USDC trustline. Turn it on, then deliver again.',
-          paused: 'Circle has paused deliveries on Stellar for now. Your transfer is saved, finish it later from the Bridges page.',
-        }[check.reason]
-        setPhase({ kind: 'failed', msg: why, transfer: t })
-        return
+        const res = await claimOnStellar({
+          network,
+          payer: stellarAddr,
+          signer: walletKitSigner,
+          messageHex: att.message,
+          attestationHex: att.attestation,
+        })
+        markDelivered(network, t.id, res.hash)
+        refreshRecipient(t.recipient)
+        setPhase({ kind: 'done', transfer: t, deliveredHash: res.hash })
+      } catch (err) {
+        const msg = errorText(err)
+        setPhase({
+          kind: 'failed',
+          msg: /declin|reject|denied|cancel/i.test(msg)
+            ? 'You declined the signature in your wallet. The transfer is saved, deliver it whenever you are ready.'
+            : msg,
+          transfer: t,
+        })
       }
-      const res = await claimOnStellar({
-        network,
-        payer: stellarAddr,
-        signer: walletKitSigner,
-        messageHex: att.message,
-        attestationHex: att.attestation,
-      })
-      markDelivered(network, t.id, res.hash)
-      setPhase({ kind: 'done', transfer: t, deliveredHash: res.hash })
-    } catch (err) {
-      setPhase({ kind: 'failed', msg: errorText(err), transfer: t })
+    } finally {
+      deliverInFlight.current = false
     }
   }
 
@@ -272,6 +327,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
     units !== null &&
     maxFee !== null &&
     !fastUnavailable &&
+    !feeSwallows &&
     !overBalance &&
     !noGas &&
     trustlineOk &&
@@ -281,10 +337,12 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => !busy && onClose()}>
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative bg-bg-card rounded-3xl p-6 w-full max-w-md mx-4 max-h-[92vh] overflow-y-auto"
+        className="relative bg-bg-card rounded-3xl p-6 w-full max-w-md mx-4 max-h-[92vh] overflow-y-auto outline-none"
         style={{ border: '1px solid rgba(13, 45, 76, 0.1)', boxShadow: '0 25px 60px rgba(8, 10, 12, 0.15)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -419,8 +477,11 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                 className="w-full px-4 py-3 rounded-xl bg-bg text-text text-sm outline-none focus:ring-1 focus:ring-primary/30"
                 style={{ border: '1px solid rgba(13, 45, 76, 0.08)' }}
               />
-              {amount && units === null && (
-                <p className="text-[11px] text-coral mt-1">Enter an amount like 12.5, with at most 6 decimals.</p>
+              {amount && amountError && <p className="text-[11px] text-coral mt-1">{amountError}.</p>}
+              {feeSwallows && (
+                <p className="text-[11px] text-coral mt-1">
+                  Too small to cover Circle's fast fee. Send a little more, or pick standard.
+                </p>
               )}
               {overBalance && chain && (
                 <p className="text-[11px] text-coral mt-1">More than the USDC this wallet holds on {chain.name}.</p>
@@ -451,6 +512,11 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
               </div>
               {fastUnavailable && (
                 <p className="text-[11px] text-coral mt-1">Circle offers no fast route from here right now. Pick standard.</p>
+              )}
+              {finality === 'fast' && fees.isError && (
+                <p className="text-[11px] text-coral mt-1">
+                  Could not read Circle's fast fee just now, so fast is off. Standard needs no fee.
+                </p>
               )}
             </Section>
 
@@ -530,6 +596,11 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                     ? `Bridge ${amount} USDC`
                     : 'Bridge'}
             </button>
+            {declined && (
+              <p className="text-[11px] text-text-secondary mt-2 text-center">
+                You declined in your wallet, so the USDC did not move.
+              </p>
+            )}
             <p className="text-[10px] text-text-muted mt-2 text-center">
               Two wallets sign: the EVM one sends the USDC, the Stellar one collects it.
             </p>
