@@ -83,6 +83,20 @@ test.describe('the bridge form', () => {
     await expect(page.getByText('The amount has to be more than zero.')).toBeVisible()
   })
 
+  test('keeps the keyboard inside the dialog', async ({ page }) => {
+    await openBridge(page)
+
+    for (let i = 0; i < 20; i++) await page.keyboard.press('Tab')
+    const inside = await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))
+    expect(inside).toBe(true)
+  })
+
+  test('names the amount field for a screen reader', async ({ page }) => {
+    await openBridge(page)
+
+    await expect(page.getByRole('textbox', { name: 'Amount in USDC' })).toBeVisible()
+  })
+
   test('the close button says what it closes', async ({ page }) => {
     await openBridge(page)
     await page.getByRole('button', { name: 'Close bridge' }).click()

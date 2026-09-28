@@ -43,8 +43,9 @@ pays muxed M addresses, which is handy for a sub-account.
 
 A fast transfer asks Circle to sign before the source chain finalises. It costs
 a few basis points, read live from `/v2/burn/USDC/fees/{src}/27`, and lands in
-about a minute. A standard transfer is free and waits for finality, which can
-take a quarter of an hour on Ethereum. The burn declares a `maxFee` with some
+about a minute. A standard transfer is free and waits for finality, usually 15
+to 30 minutes, the long end on an L2 whose batch has to finalise on Ethereum
+first. The burn declares a `maxFee` with some
 headroom; Circle charges what it actually takes, not the ceiling.
 
 ## Chains

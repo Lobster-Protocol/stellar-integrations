@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { X, Check, ExternalLink } from 'lucide-react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
@@ -151,6 +151,26 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
     dialogRef.current?.focus()
     return () => before?.focus()
   }, [open])
+
+  // aria-modal tells a screen reader the page behind is out of reach, so Tab wraps
+  // around the dialog instead of wandering onto that page
+  const keepTabInside = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab' || !dialogRef.current) return
+    const items = dialogRef.current.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    if (items.length === 0) return
+    const first = items[0]
+    const last = items[items.length - 1]
+    const at = document.activeElement
+    if (e.shiftKey && (at === first || at === dialogRef.current)) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && at === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
 
   let units: bigint | null = null
   let amountError: string | null = null
@@ -345,6 +365,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
         className="relative bg-bg-card rounded-3xl p-6 w-full max-w-md mx-4 max-h-[92vh] overflow-y-auto outline-none"
         style={{ border: '1px solid rgba(13, 45, 76, 0.1)', boxShadow: '0 25px 60px rgba(8, 10, 12, 0.15)' }}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={keepTabInside}
       >
         <div className="flex items-center justify-between mb-5">
           <h3 id={titleId} className="text-lg font-semibold text-text">
@@ -392,6 +413,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                   <button
                     key={c.key}
                     onClick={() => setChainKey(c.key)}
+                    aria-pressed={chain?.key === c.key}
                     disabled={busy}
                     className={cn(
                       'px-2 py-2.5 rounded-xl text-xs font-medium transition-all',
@@ -471,6 +493,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
               <input
                 type="text"
                 inputMode="decimal"
+                aria-label="Amount in USDC"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value.replace(',', '.'))}
                 placeholder="0.00"
@@ -494,6 +517,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                   <button
                     key={f}
                     onClick={() => setFinality(f)}
+                    aria-pressed={finality === f}
                     className={cn(
                       'px-3 py-2 rounded-xl text-xs text-left transition-all',
                       finality === f ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'bg-bg text-text-secondary',
@@ -698,7 +722,7 @@ function InFlight({
           Waiting for Circle to sign the burn.{' '}
           {transfer.finality === 'fast'
             ? 'A fast transfer usually takes under a minute.'
-            : 'A standard transfer waits for the source chain to finalise, up to 15 minutes on Ethereum.'}{' '}
+            : 'A standard transfer waits for the source chain to finalise, usually 15 to 30 minutes.'}{' '}
           You can close this, the Bridges page keeps track of it.
           {delayReason && <span className="block mt-1 text-coral">Circle says: {delayReason.replace(/_/g, ' ')}</span>}
           {attestationError && <span className="block mt-1 text-coral">{attestationError}</span>}
