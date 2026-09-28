@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-// the production board carries the four signals and the alert rules are
+// the operations board carries the four signals and the alert rules are
 // provisioned. hits the Grafana HTTP API with a service account token.
 // skips unless GRAFANA_URL and the token are set, so it's green off a live
 // instance. the token is read from the env, never committed.
@@ -16,8 +16,8 @@ test.describe('Grafana production signals', () => {
 
   const auth = () => ({ Authorization: `Bearer ${GRAFANA_TOKEN}` })
 
-  test('the production dashboard has at least the four signal panels', async ({ request }) => {
-    const res = await request.get(`${GRAFANA_URL}/api/dashboards/uid/lobster-prod`, { headers: auth() })
+  test('the operations board has at least the four signal panels', async ({ request }) => {
+    const res = await request.get(`${GRAFANA_URL}/api/dashboards/uid/lobster-platform`, { headers: auth() })
     expect(res.status()).toBe(200)
     const body = await res.json()
     const panels = body.dashboard?.panels ?? []
