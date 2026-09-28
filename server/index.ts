@@ -5,6 +5,10 @@ import { app } from './webhook'
 import { pingDfns } from './dfns/client'
 import { metricsTiming, mountMetrics } from './metrics/http'
 import { startDfnsMetricsLoop } from './metrics/dfns-signing'
+import { registry } from './metrics/registry'
+import { otlpEnabled, pushExposition } from './metrics/otlp'
+import { startLoop as startTtlLoop } from './ttl-monitor/index'
+import { scan as scanHealth, formatMetrics as formatHealth } from './probe/index'
 
 const PORT = Number(process.env.PORT || 8787)
 
@@ -29,9 +33,37 @@ root.use('*', metricsTiming())
 mountMetrics(root)
 root.route('/', app)
 
-// only poll dfns when something can scrape the result.
-if (process.env.METRICS_TOKEN && (process.env.DFNS_PRIVATE_KEY_PATH || process.env.DFNS_PRIVATE_KEY)) {
+// only poll dfns when something reads the result, a scrape or the push below.
+if ((process.env.METRICS_TOKEN || otlpEnabled()) && (process.env.DFNS_PRIVATE_KEY_PATH || process.env.DFNS_PRIVATE_KEY)) {
   startDfnsMetricsLoop()
+}
+
+// the relay never sleeps, so it runs the ttl and health scans itself. with
+// GRAFANA_OTLP_URL set they go to grafana, and so do the relay's own request
+// metrics, once a minute.
+if (process.env.TTL_MONITOR_EMBEDDED === '1') {
+  startTtlLoop().catch((err) => console.error('[ttl-monitor] loop crashed', err))
+}
+if (process.env.PROBE_EMBEDDED === '1') {
+  const pass = async () => {
+    try {
+      const result = await scanHealth()
+      for (const p of result.probes) if (!p.up) console.warn(`[probe] DOWN ${p.name} (${p.area})`)
+      if (otlpEnabled()) await pushExposition(formatHealth(result), 'lobster-probe')
+    } catch (err) {
+      console.error('[probe] pass failed', err)
+    }
+  }
+  void pass()
+  setInterval(pass, Number(process.env.PROBE_INTERVAL_MS) || 60_000)
+}
+if (otlpEnabled()) {
+  setInterval(() => {
+    registry
+      .metrics()
+      .then((text) => pushExposition(text, 'lobster-relay'))
+      .catch((err) => console.error('[metrics] push failed', err))
+  }, 60_000)
 }
 
 serve({ fetch: root.fetch, port: PORT })

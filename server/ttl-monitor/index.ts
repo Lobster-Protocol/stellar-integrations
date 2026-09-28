@@ -4,6 +4,7 @@ import type { Network } from '../../src/config/contracts'
 import { scanTtl, keysNeedingExtend, type KeyStatus, type ScanResult } from './monitor'
 import { buildExtendTtlTx } from './extend'
 import { EXTEND_TARGET_LEDGERS, readTtl } from './ledger'
+import { otlpEnabled, pushExposition } from '../metrics/otlp'
 
 // ledgers that can pass between the extend applying and the read-back
 const READBACK_SLACK_LEDGERS = 100
@@ -74,10 +75,10 @@ export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network))
   return scan
 }
 
-// prometheus exposition pushed to the gateway: a runway gauge per key in
-// ledgers and seconds, plus the latest ledger the scan read against so a stale
-// push shows up rather than being silently trusted.
-async function pushMetrics(url: string, scan: ScanResult, network: Network): Promise<void> {
+// prometheus exposition: a runway gauge per key in ledgers and seconds, plus the
+// latest ledger the scan read against so a stale push shows up rather than being
+// silently trusted.
+export function formatMetrics(scan: ScanResult, network: Network): string {
   const labels = (s: KeyStatus) =>
     `{network="${network}",kind="${s.kind ?? 'unknown'}",key="${s.keyXdr}"}`
   const lines = [
@@ -91,10 +92,14 @@ async function pushMetrics(url: string, scan: ScanResult, network: Network): Pro
     '# TYPE lobster_ttl_latest_ledger gauge',
     `lobster_ttl_latest_ledger{network="${network}"} ${scan.latestLedger}`,
   ]
+  return lines.join('\n') + '\n'
+}
+
+async function pushMetrics(url: string, scan: ScanResult, network: Network): Promise<void> {
   const res = await fetch(`${url.replace(/\/$/, '')}/metrics/job/lobster-ttl-monitor`, {
     method: 'POST',
     headers: { 'content-type': 'text/plain' },
-    body: lines.join('\n') + '\n',
+    body: formatMetrics(scan, network),
     // a stuck pushgateway must not hang the scan loop
     signal: AbortSignal.timeout(10_000),
   })
@@ -197,6 +202,9 @@ async function runOnce(config: MonitorConfig, signer?: ExtendSigner): Promise<vo
 
   if (config.pushgatewayUrl) {
     await pushMetrics(config.pushgatewayUrl, scan, config.network)
+  }
+  if (otlpEnabled()) {
+    await pushExposition(formatMetrics(scan, config.network), 'lobster-ttl-monitor')
   }
 }
 

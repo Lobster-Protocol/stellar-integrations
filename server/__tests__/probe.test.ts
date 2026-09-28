@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { parseBalances, formatMetrics, type ScanResult } from '../probe/index'
+import { accountTargets } from '../probe/targets'
 
 describe('parseBalances', () => {
   const issuer = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
@@ -54,5 +55,29 @@ describe('formatMetrics', () => {
   it('omits a USDC line when the account has no usdc reading', () => {
     const out = formatMetrics(sample)
     expect(out).not.toContain('role="dfns-wallet",network="testnet",asset="USDC"')
+  })
+})
+
+describe('accountTargets', () => {
+  const OLD_GUARD = process.env.DFNS_TREASURY_ADDRESS
+  const OLD_MONITOR = process.env.MONITOR_TREASURY_ADDRESS
+  afterEach(() => {
+    if (OLD_GUARD === undefined) delete process.env.DFNS_TREASURY_ADDRESS
+    else process.env.DFNS_TREASURY_ADDRESS = OLD_GUARD
+    if (OLD_MONITOR === undefined) delete process.env.MONITOR_TREASURY_ADDRESS
+    else process.env.MONITOR_TREASURY_ADDRESS = OLD_MONITOR
+  })
+
+  it('watches the mainnet treasury named for monitoring over the one the guard signs for', () => {
+    process.env.DFNS_TREASURY_ADDRESS = 'GTESTNETTREASURY'
+    process.env.MONITOR_TREASURY_ADDRESS = 'GMAINNETTREASURY'
+    const t = accountTargets().find((a) => a.role === 'dfns-treasury')
+    expect(t).toMatchObject({ network: 'mainnet', address: 'GMAINNETTREASURY' })
+  })
+
+  it('falls back to the guard treasury when nothing else is named', () => {
+    process.env.DFNS_TREASURY_ADDRESS = 'GTREASURY'
+    delete process.env.MONITOR_TREASURY_ADDRESS
+    expect(accountTargets().find((a) => a.role === 'dfns-treasury')?.address).toBe('GTREASURY')
   })
 })

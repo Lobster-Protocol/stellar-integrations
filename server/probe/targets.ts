@@ -43,13 +43,15 @@ export function httpTargets(): HttpTarget[] {
 
 export function accountTargets(): AccountTarget[] {
   const list: AccountTarget[] = []
-  // same env var the sign guard reads, so the monitored treasury can't drift
-  // from the one the guard enforces against
-  if (env.DFNS_TREASURY_ADDRESS) {
+  // the treasury the sign guard enforces, unless MONITOR_TREASURY_ADDRESS names
+  // another: a relay that signs on testnet still has to watch the funded mainnet
+  // treasury, which is what the balance board and the low-xlm alert read
+  const treasury = env.MONITOR_TREASURY_ADDRESS || env.DFNS_TREASURY_ADDRESS
+  if (treasury) {
     list.push({
       role: 'dfns-treasury',
       network: 'mainnet',
-      address: env.DFNS_TREASURY_ADDRESS,
+      address: treasury,
       usdcIssuer: CONTRACTS.mainnet.tokens.usdcIssuer,
     })
   }
