@@ -17,6 +17,8 @@ const OURS = [
   // the browser-wallet test account behind the Freighter and xBull signatures.
   // one key imported into both wallets, which is why both proofs share a source.
   'GC6QPGCOCI2FTQYTLVHNWC6I6MQYZPGCLJOO5X7KV2Z4ZMIY67I6JKDY',
+  // the bridge test account that receives and delivers the USDC bridged in
+  'GCC5G4MUAFQIGKJSMGBVVXM63KK4PGBCXD4CR4VPYQKBYGPXLDR4HA74',
 ]
 
 interface Link {

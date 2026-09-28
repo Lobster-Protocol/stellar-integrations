@@ -36,7 +36,8 @@ stellar contract invoke --id CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRP
 ## Integration proofs
 
 Best-execution routing goes through Stellar Broker, which only runs on mainnet,
-so the two routing proofs are mainnet. The DFNS custody proofs are on testnet.
+so the two routing proofs are mainnet. The DFNS custody proofs are on testnet, and
+so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
 
 | what | link |
 | --- | --- |
@@ -50,9 +51,13 @@ so the two routing proofs are mainnet. The DFNS custody proofs are on testnet.
 | DFNS policy, cleared only after a second approver | [`67d46c3f`](https://stellar.expert/explorer/testnet/tx/67d46c3f1d65fe654d2d0e9b9dd141a28052eb3679841fe831e899cb14ca8958) |
 | DFNS policy, cleared only after a second approver, first run | [`90023887`](https://stellar.expert/explorer/testnet/tx/90023887d0980bba1a48309d1236b28e6884a944de0d65cf561dd94e457d2f74) |
 | an earlier treasury payment, signed before any approval policy existed on the account | [`e379a0d3`](https://stellar.expert/explorer/testnet/tx/e379a0d33452495abefce7277fa17324be1d44b506df36203ea2ba8eaa62fc5a) |
+| USDC bridged in from Base Sepolia with Circle CCTP, started from the dashboard: the burn | [`0xeb55104a`](https://sepolia.basescan.org/tx/0xeb55104ab1c068141de1677f6e96d2ca6fef09956c29be3f0ef9fb31e31b31cd) |
+| the same transfer delivered on Stellar, `mint_and_forward` signed by the receiving wallet | [`d0a761b9`](https://stellar.expert/explorer/testnet/tx/d0a761b9bcf05802c832f5abb7b4b148328c0bfe172149ad04415aee8fa91b4c) |
+| a standard transfer from Ethereum Sepolia, no fee, delivered whole: burn, then delivery | [`0xf92c8225`](https://sepolia.etherscan.io/tx/0xf92c8225e4508f7225cebc7b1898d9cbb886c114a1197c2d8856a005242af534), [`ac28bbce`](https://stellar.expert/explorer/testnet/tx/ac28bbcee0bed070c158207288c854c354eba4086d6a6e39a33c6a1799c1c4da) |
 
 Every hash above except `f5a3533f` is sourced from a wallet we control: the DFNS
-treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, or the deployer.
+treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, the deployer,
+or the bridge test wallets `0xDCD5...1a37` and `GCC5G4...HA74`.
 `f5a3533f` is somebody else's broker route, kept because it is what our decoder
 reads. The row says so instead of counting it as our own execution.
 

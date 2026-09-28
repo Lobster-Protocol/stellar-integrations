@@ -354,6 +354,9 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
     maxFee !== null &&
     !fastUnavailable &&
     !feeSwallows &&
+    // the balance and gas checks only bite once the balance is in; on a slow line
+    // Circle's fee can arrive first and unlock the button without them
+    !balances.isLoading &&
     !overBalance &&
     !noGas &&
     trustlineOk &&
@@ -808,7 +811,8 @@ function Done({
       </div>
       <p className="text-lg font-semibold text-text mb-1">USDC delivered</p>
       <p className="text-sm text-text-secondary mb-4">
-        {phase.transfer.amount} USDC from {phase.transfer.chainName}, net of Circle's fee
+        {phase.transfer.amount} USDC from {phase.transfer.chainName}
+        {phase.transfer.finality === 'fast' ? ", net of Circle's fee" : ', no fee on a standard transfer'}
       </p>
       <div className="flex flex-col gap-1.5 items-center text-xs mb-5">
         {chain && (
