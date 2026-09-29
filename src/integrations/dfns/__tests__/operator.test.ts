@@ -7,8 +7,7 @@ const KEY = 'lob_operator_token'
 
 beforeEach(() => {
   localStorage.clear()
-  // the operator token is resolved through the active profile; the demo carries the
-  // pre-existing lob_operator_token key, so opt into the demo to exercise it.
+  // the demo profile reads the lob_operator_token key, so opt into it.
   setActiveProfile(DEMO_PROFILE_ID)
 })
 

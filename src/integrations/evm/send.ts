@@ -9,8 +9,6 @@ import {
 } from 'wagmi/actions'
 import { wagmiConfig, EVM_CHAIN_ID, type EvmChainSymbol } from './config'
 
-// shape of EssentialWeb3Transaction from the allbridge sdk, redeclared
-// to avoid importing from a deep path
 export interface RawEvmTx {
   from?: string
   to?: string
@@ -49,27 +47,21 @@ export function toViemTxArgs(raw: RawEvmTx, chainId: WagmiChainId) {
   }
 }
 
-async function requireChain(target: EvmChainSymbol): Promise<WagmiChainId> {
-  const account = getAccount(wagmiConfig)
-  if (!account.address) throw new EvmTxValidationError('connect an evm wallet first')
-  const targetId = EVM_CHAIN_ID[target]
-  if (account.chainId !== targetId) {
-    await switchChain(wagmiConfig, { chainId: targetId })
-  }
-  return targetId
-}
-
 export async function sendAllbridgeEvmTx(
   raw: RawEvmTx,
   chainSymbol: EvmChainSymbol,
 ): Promise<EvmTxResult> {
-  const chainId = await requireChain(chainSymbol)
+  const account = getAccount(wagmiConfig)
+  if (!account.address) throw new EvmTxValidationError('connect an evm wallet first')
+  const chainId = EVM_CHAIN_ID[chainSymbol]
+  if (account.chainId !== chainId) {
+    await switchChain(wagmiConfig, { chainId })
+  }
   const args = toViemTxArgs(raw, chainId)
   try {
     const hash = await sendTransaction(wagmiConfig, args)
     const receipt = await waitForTransactionReceipt(wagmiConfig, { hash })
-    // the receipt resolves for reverted txs too, so a reverted approve/bridge
-    // would otherwise report success on a real-funds path.
+    // the receipt resolves for reverted txs too
     if (receipt.status !== 'success') {
       throw new EvmTxSubmitError(`EVM tx reverted on ${chainSymbol}: ${hash}`)
     }
@@ -81,7 +73,6 @@ export async function sendAllbridgeEvmTx(
   }
 }
 
-// used to skip approve when the existing allowance already covers the deposit
 export async function readAllowance(
   token: Address,
   owner: Address,
@@ -98,7 +89,7 @@ export async function readAllowance(
   })) as bigint
 }
 
-// usdc is 6 decimals on eth/arb (bsc is 18 and gated out)
+// usdc is 6 decimals on eth/arb (bsc is 18)
 export function toUsdcBaseUnits(human: string): bigint {
   return parseUnits(human, 6)
 }

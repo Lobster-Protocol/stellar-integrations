@@ -22,10 +22,8 @@ export async function routeSwap(
 ): Promise<RouteResult> {
   const health = getRoutingHealth(ctx.network)
 
-  // quoting is keyless, so we ask the broker for a price whenever the endpoint
-  // is set. the same quote becomes the executable route when the partner key
-  // is present, or a best-execution reference next to the soroswap leg when it
-  // is not.
+  // quoting is keyless: with the partner key the quote is the route, without it
+  // the quote rides along as a best-execution reference next to the soroswap leg
   let broker: BrokerQuoteResult | undefined
   if (health.brokerQuoteEnabled) {
     try {
@@ -35,10 +33,8 @@ export async function routeSwap(
         if (health.brokerEnabled) return { source: 'broker', broker }
       }
     } catch {
-      // a broker hiccup (pair it doesn't cover, sub-minimum amount, endpoint
-      // down) must not sink the whole route. leave broker unset and fall through
-      // to the soroswap leg, or to a clean 'none' reason below, instead of
-      // throwing up to the swap modal and leaving it blank.
+      // an unsupported pair, a sub-minimum amount or a down endpoint must not sink
+      // the route: fall through to the soroswap leg rather than blank the swap modal
     }
   }
 

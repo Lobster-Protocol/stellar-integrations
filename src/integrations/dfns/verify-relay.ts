@@ -1,9 +1,7 @@
 import { assertRelayUrl } from './profiles'
 
-// verifies a relay the operator has not saved yet: reach its /health, then read
-// its wallets with the read token. a raw fetch to the typed url, since there is no
-// active profile to resolve through relayFetch yet. returns the wallet count so the
-// caller can confirm the read token works before saving.
+// a raw fetch to the typed url, since there is no active profile to resolve
+// through relayFetch yet.
 export async function verifyRelay(url: string, readToken: string): Promise<number> {
   assertRelayUrl(url, 'client')
   let health: Response

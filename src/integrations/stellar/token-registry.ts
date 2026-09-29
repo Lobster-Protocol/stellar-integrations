@@ -3,10 +3,6 @@ import { Asset } from '@stellar/stellar-sdk'
 import { CONTRACTS, type Network } from '../../config/contracts'
 import { networkPassphrase } from '../lobster/client'
 
-// Maps a Soroban token contract id (SAC) back to its human code (XLM, USDC,
-// LOBS...). Built from config plus the SAC derived from each known classic
-// issuer, so nothing is guessed: an id we cannot tie to a real asset returns
-// null and the caller shows the short id instead of a made-up name.
 const cache = new Map<Network, Map<string, string>>()
 
 function derive(code: string, issuer: string, passphrase: string): string | null {
@@ -53,9 +49,6 @@ export function tokenLabel(contractId: string, network: Network): string | null 
   return m.get(contractId) ?? null
 }
 
-// Names the protocol behind a contract a transaction touched, so activity can
-// say "Swap on Soroswap" instead of showing a raw C-address. Every id comes
-// from the registry, so nothing here goes stale on its own.
 export function protocolLabel(contractId: string, network: Network): string | null {
   // several registry slots are empty per network, and '' would match ''
   if (!contractId) return null

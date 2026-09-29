@@ -95,11 +95,10 @@ describe('dfnsSigner.signTransaction', () => {
     ).rejects.toThrow(/policy rejected/)
   })
 
-  it('gives up with a clear error when the relay never answers (H1 timeout)', async () => {
+  it('gives up with a clear error when the relay never answers', async () => {
     vi.useFakeTimers()
-    // a relay that hangs: the fetch stays pending until the signer's own abort
-    // signal fires, exactly as a real fetch rejects when the AbortController aborts
-    // at the 60s cap. the signer keys on ctrl.signal.aborted, not the reject value.
+    // a hung relay: like a real fetch, this only rejects once the signer aborts at
+    // 60s, and the signer keys on signal.aborted rather than the reject value
     fetchSpy.mockImplementationOnce(
       (_url: string, init: RequestInit) =>
         new Promise((_resolve, reject) => {

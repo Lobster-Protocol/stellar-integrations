@@ -7,9 +7,8 @@ import { toCsv } from '../../utils/csv'
 import { getHorizonServer } from './client'
 import { KIND_LABEL, toActivityEvent, type ActivityEvent } from './activity'
 
-// Horizon's own ceiling per page. Walking 100 of them reads 20 000 operations,
-// well past any account somebody exports from a browser, and stopping there
-// beats spinning forever on a cursor that never runs out.
+// 200 is Horizon's per-page ceiling; 100 pages is 20 000 operations, past any
+// account exported from a browser, and a cap beats a cursor that never runs out
 const PAGE = 200
 const MAX_PAGES = 100
 
@@ -26,10 +25,8 @@ export interface HistoryWindow {
   onProgress?: (count: number) => void
 }
 
-// The feed pages lazily because nobody scrolls 2 000 rows, but an export that
-// only held what happened to be on screen would be worse than no export. With a
-// start date the walk stops as soon as it has read past it: Horizon serves
-// newest first, so anything beyond that page predates the window.
+// an export reads its whole window, not just what the feed has loaded. Horizon
+// serves newest first, so the walk stops once a page reaches past the start date
 export async function fetchAllActivity(
   network: Network,
   account: string,
@@ -40,11 +37,13 @@ export async function fetchAllActivity(
   const events: ActivityEvent[] = []
   let cursor = ''
 
-  const inside = (e: ActivityEvent) => {
-    const at = Date.parse(e.at)
-    return (since == null || at >= since) && (until == null || at <= until)
-  }
-  const done = (complete: boolean): FullHistory => ({ events: events.filter(inside), complete })
+  const done = (complete: boolean): FullHistory => ({
+    events: events.filter((e) => {
+      const at = Date.parse(e.at)
+      return (since == null || at >= since) && (until == null || at <= until)
+    }),
+    complete,
+  })
 
   for (let page = 0; page < MAX_PAGES; page++) {
     let call = server.operations().forAccount(account).order('desc').limit(PAGE)
@@ -92,16 +91,9 @@ export const ACTIVITY_COLUMNS = [
   'Explorer',
 ]
 
-function pathLabel(e: ActivityEvent, network: Network): string {
-  if (!e.swapPath) return ''
-  const [from, to] = e.swapPath
-  return `${tokenLabel(from, network) ?? from} to ${tokenLabel(to, network) ?? to}`
-}
-
-// One row per asset that moved, so a spreadsheet can sum the Amount column
-// straight away. Operations that moved nothing still get a row: leaving them out
-// would make the file disagree with the operation count on screen. Amounts are
-// signed, and Direction repeats the sign in words for anyone reading by eye.
+// one row per asset moved, with a signed amount so the Amount column sums
+// straight away; an operation that moved nothing still gets a row to match the
+// count on screen
 export function activityRows(
   events: ActivityEvent[],
   network: Network,
@@ -110,11 +102,16 @@ export function activityRows(
 
   for (const e of events) {
     const venue = e.contractId ? (protocolLabel(e.contractId, network) ?? '') : ''
+    let path = ''
+    if (e.swapPath) {
+      const [from, to] = e.swapPath
+      path = `${tokenLabel(from, network) ?? from} to ${tokenLabel(to, network) ?? to}`
+    }
     const head = [
       e.at,
       e.at.slice(0, 10),
       KIND_LABEL[e.kind],
-      pathLabel(e, network),
+      path,
     ]
     const tail = [
       venue,
@@ -143,8 +140,7 @@ export function activityCsv(events: ActivityEvent[], network: Network): string {
   return toCsv(ACTIVITY_COLUMNS, activityRows(events, network))
 }
 
-// The JSON side is for anyone who wants to re-run their own numbers: same
-// events, nothing flattened, plus enough header to know what they are looking at.
+// unflattened, with enough header for anyone re-running their own numbers
 export function activityJson(
   history: FullHistory,
   network: Network,

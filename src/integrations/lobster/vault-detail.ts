@@ -4,9 +4,7 @@ import { CONTRACTS, type Network } from '../../config/contracts'
 import { simulateRead } from '../stellar/read'
 import type { VaultPosition } from './position'
 
-// What the vault will tell you beyond its balances. None of it is needed to
-// render the card, so it is only read when somebody opens the detail, and a
-// reader that refuses is reported as unknown rather than guessed at.
+// only read once the detail opens. null means the vault would not say
 export interface VaultDetail {
   router: string | null
   shareToken: string | null

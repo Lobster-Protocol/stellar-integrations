@@ -1,7 +1,4 @@
-// Browser polyfills required before any third-party module loads.
-// MUST be the first import in `main.tsx` - otherwise the Stellar SDK
-// (and anything else that reaches for global `Buffer` at module init)
-// runs against an undefined global and crashes.
+// imported first in main.tsx: the Stellar SDK reads the global Buffer at module init
 
 import { Buffer } from 'buffer'
 

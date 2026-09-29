@@ -18,7 +18,7 @@ export function useSwapRoute(
       NS,
       'swap',
       network,
-      account ?? null,
+      account,
       params?.sellingAsset ?? null,
       params?.buyingAsset ?? null,
       params?.sellingAmount ?? null,

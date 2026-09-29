@@ -1,6 +1,6 @@
 import { CONTRACTS } from '../../config/contracts'
 
-// funds a fresh account from the testnet faucet. testnet only; mainnet has none.
+// testnet only: mainnet has no faucet.
 export async function friendbotFund(address: string): Promise<void> {
   const faucet = CONTRACTS.testnet.friendbot
   const res = await fetch(`${faucet}/?addr=${encodeURIComponent(address)}`)

@@ -1,7 +1,4 @@
 // @vitest-environment node
-// buildSetOptionsTx reads the account from Horizon, so stub that one call and
-// build offline, then read back the operations. proves the shipped setup path
-// shapes the signers and thresholds the way the on-chain proof relied on.
 import { describe, it, expect, vi } from 'vitest'
 import { TransactionBuilder, Keypair, Networks } from '@stellar/stellar-sdk'
 

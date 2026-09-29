@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Networks } from '@stellar/stellar-sdk'
-import { networkPassphrase } from '../client'
 
-// handleSendResult is pure; tested directly instead of through submitSignedXdr
+import { networkPassphrase } from '../client'
 import { handleSendResult, TryAgainLaterError, waitForTx, buildPingTx } from '../factory'
 
-// mocked soroban server for buildPingTx + waitForTx
 const simulateTransaction = vi.fn()
 const getTransaction = vi.fn()
 const getAccount = vi.fn()

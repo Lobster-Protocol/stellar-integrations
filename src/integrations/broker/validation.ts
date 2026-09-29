@@ -1,7 +1,5 @@
 import type { BrokerQuoteResult } from './types'
 
-// local sanity checks before a confirm. heuristic stand-in until the analytics api is wired.
-
 const MAX_SLIPPAGE = 0.05
 // implausibly large profit usually means a thin pool or stale quote
 const MAX_ABSOLUTE_PROFIT = 0.5
@@ -32,11 +30,8 @@ export function validateBrokerQuote(q: BrokerQuoteResult): ValidationResult {
   return { ok: true }
 }
 
-// soroswap direct quotes do not carry a directTrade reference. real Stellar
-// tokens span orders of magnitude in unit price - a cheap token pays out
-// hundreds of units per XLM - so a tight amount-ratio ceiling wrongly rejects
-// legitimate quotes. keep only a very high backstop against a garbage/overflow
-// value; the on-chain minAmountOut is what actually caps slippage at execution.
+// token unit prices span orders of magnitude, so this only backstops a garbage
+// or overflowed quote. the on-chain minAmountOut is what caps slippage.
 const SOROSWAP_MAX_RATIO = 1_000_000_000n
 // how far the pool rate may sit from an external reference before the quote
 // reads as stale

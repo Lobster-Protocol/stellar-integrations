@@ -6,13 +6,6 @@ import { assertAccountId } from './strkey-guards'
 import type { Network } from '../lobster/types'
 import { INCLUSION_FEE_STROOPS } from '../../config/contracts'
 
-// Stellar-native multisig on the vault's owner account. every value action
-// (vault deposit/withdraw, swap, create-vault) is a soroban invoke whose source
-// account is also the require_auth address (caller == owner), so the envelope
-// signatures alone authorize it. raising that account's medium threshold above
-// any single signer's weight makes every such action need the client's quorum,
-// with no dfns, no relay, no custodian holding a key.
-
 export interface AccountSigner {
   key: string
   weight: number
@@ -20,14 +13,11 @@ export interface AccountSigner {
 
 export interface AccountSigning {
   accountId: string
-  // weight of the account's own master key
   masterWeight: number
   // every ed25519 signer, the master key included
   signers: AccountSigner[]
   thresholds: { low: number; med: number; high: number }
-  // hashX / preAuthTx signers, which the quorum math cannot weigh. one of these
-  // at a high weight would clear a threshold on its own, so enrollment refuses an
-  // account that carries any.
+  // hashX / preAuthTx signers, which the quorum math cannot weigh
   otherSigners?: number
 }
 
@@ -54,15 +44,12 @@ export async function readAccountSigning(network: Network, accountId: string): P
 }
 
 // a threshold of 0 means one signer of any weight clears the op, so read it as 1.
-// invokeHostFunction and payment are medium-threshold ops, which is why the vault
-// actions gate on med.
+// invokeHostFunction and payment are medium-threshold ops, hence the med default.
 export function requiredWeight(a: AccountSigning, tier: Tier = 'med'): number {
   const t = a.thresholds[tier]
   return t > 0 ? t : 1
 }
 
-// multisig when no single signer can meet the medium threshold on its own, so a
-// value action needs more than one signature.
 export function isMultisig(a: AccountSigning): boolean {
   const need = requiredWeight(a, 'med')
   const strongest = a.signers.reduce((m, s) => Math.max(m, s.weight), 0)
@@ -77,10 +64,8 @@ function asTx(xdr: string, network: Network): Transaction {
   return tx
 }
 
-// which of the account's signers have actually signed this envelope. a decorated
-// signature only carries a 4-byte hint, so match by hint then verify against the
-// tx hash, which is what rules out a forged or stale signature counting toward
-// the quorum.
+// a decorated signature only carries a 4-byte hint, so verify it against the tx
+// hash too, or a forged or stale signature would count toward the quorum.
 export function signedBy(xdr: string, network: Network, a: AccountSigning): string[] {
   const tx = asTx(xdr, network)
   const hash = tx.hash()
@@ -106,17 +91,8 @@ export function accumulatedWeight(xdr: string, network: Network, a: AccountSigni
   return a.signers.filter((s) => keys.has(s.key)).reduce((sum, s) => sum + s.weight, 0)
 }
 
-export function hasEnoughWeight(xdr: string, network: Network, a: AccountSigning, tier: Tier = 'med'): boolean {
-  return accumulatedWeight(xdr, network, a) >= requiredWeight(a, tier)
-}
-
-// merges a co-signer's signature into the canonical envelope. some wallets return
-// a fresh envelope that drops the signatures already on it, so instead of trusting
-// the returned xdr wholesale, take only the new signatures that verify against a
-// known signer for this account and add them to the base. that keeps co-signing
-// wallet-agnostic: base is always the one envelope everyone signs, and a foreign
-// or stale signature can never ride in. base and signed must be the same tx (same
-// hash), or the incoming signatures fail to verify and are skipped.
+// some wallets return a fresh envelope without the signatures already on it, so
+// only copy over new ones that verify against a known signer of this account.
 export function combine(baseXdr: string, signedXdr: string, network: Network, a: AccountSigning): string {
   const base = asTx(baseXdr, network)
   const signed = asTx(signedXdr, network)
@@ -143,23 +119,13 @@ export function combine(baseXdr: string, signedXdr: string, network: Network, a:
 }
 
 export interface MultisigSetup {
-  // co-signers to add, each with its weight. one is a 2-of-2, two is a 2-of-3.
-  // in a 2-of-3 a lost key still leaves a quorum that can move funds (including
-  // sweeping to a fresh account); rotating the signer set in place needs the full
-  // weight, so a lost key cannot be replaced without rebuilding elsewhere.
   addSigners?: Array<{ key: string; weight: number }>
   masterWeight?: number
-  // sets low, med and high to the same quorum weight
   threshold?: number
 }
 
-// builds the classic set_options tx that reshapes the account's signers and
-// thresholds. set_options is a high-threshold op, so this must be signed under
-// the OLD thresholds: run it while the account is still single-sig to lock in the
-// quorum, and the next value action already needs the new threshold. a single op
-// can add only one signer, so add each in its own op and fold the master weight
-// and thresholds into the last one, keeping the whole change in one atomic tx.
-// returns the unsigned xdr for the client to sign.
+// a set_options op adds one signer, so each gets its own op and the weights and
+// thresholds ride on the last one, all in a single atomic tx.
 export async function buildSetOptionsTx(
   network: Network,
   accountId: string,
@@ -175,14 +141,11 @@ export async function buildSetOptionsTx(
     fee: INCLUSION_FEE_STROOPS,
     networkPassphrase: networkPassphrase(network),
   })
-  // the full signing weight after this change. governance ops (set_options,
-  // account_merge are HIGH threshold) must need more than a routine spend, so the
-  // high threshold is the full weight, not the spend threshold. for a 2-of-2
-  // there is only weight 2 to give so high == med is unavoidable there, one more
-  // reason to prefer a 2-of-3.
+  // governance ops (set_options, account_merge) must need more than a spend, so
+  // the high threshold is the full weight, not the spend quorum.
   const totalWeight = (setup.masterWeight ?? 1) + (setup.addSigners ?? []).reduce((n, s) => n + s.weight, 0)
   // a threshold above the total weight can never be met, which locks the account
-  // out of every op at that tier. refuse it rather than build a brick.
+  // out of every op at that tier.
   if (setup.threshold !== undefined && setup.threshold > totalWeight) {
     throw new Error(
       `a quorum of ${setup.threshold} needs more signing weight than the ${totalWeight} this account would have`,
@@ -210,14 +173,11 @@ export async function buildSetOptionsTx(
       builder.addOperation(Operation.setOptions(opts))
     })
   }
-  // one hour, not five minutes: turning shared control off gathers a second
-  // signature across a person (and DFNS), so a tight window kept expiring mid-revert.
+  // an hour: turning shared control off waits on another person's signature, and
+  // a tight window kept expiring mid-revert.
   return builder.setTimeout(3600).build().toXDR()
 }
 
-// classic (non-soroban) submit for the set_options tx. the vault co-sign path
-// submits through the soroban rpc helpers instead, the same ones the one-shot
-// path already uses.
 export async function submitClassic(network: Network, xdr: string): Promise<string> {
   const server = getHorizonServer(network)
   const tx = TransactionBuilder.fromXDR(xdr, networkPassphrase(network))

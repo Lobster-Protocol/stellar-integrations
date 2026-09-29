@@ -7,10 +7,8 @@ import { tokenLabel } from './token-registry'
 import { isContractId } from './strkey-guards'
 import { simulateRead } from './read'
 
-// Every Stellar Asset Contract answers symbol(), so a token we have no config
-// entry for can still name itself. That is what turns CAXJ...32XV into TLOB in
-// the position rows. Anything that fails to answer keeps showing its short id
-// rather than a guessed name.
+// every Stellar Asset Contract answers symbol(), so a token missing from config
+// can still name itself. one that does not answer keeps its short id.
 export async function fetchTokenSymbol(
   network: Network,
   source: string,
@@ -29,8 +27,6 @@ export function useTokenSymbol(id: string): string | null {
   const { network } = useNetwork()
   const { address } = useWallet()
   const fromConfig = tokenLabel(id, network)
-  // the connected wallet, else the public deployer we keep for anonymous
-  // testnet reads. null means there is nothing to simulate from.
   const source = address || CONTRACTS[network].lobster.readSource || null
 
   const q = useQuery({

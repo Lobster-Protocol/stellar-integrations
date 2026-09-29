@@ -3,13 +3,6 @@ import { TransactionBuilder, Address, scValToNative, type Transaction, type xdr 
 import { networkPassphrase } from '../lobster/client'
 import type { Network } from '../lobster/types'
 
-// decodes a transaction into a plain-language summary so a co-signer sees what
-// they are approving instead of an opaque blob. the danger flags are the ones
-// that matter for a shared-control account: an operation that sources from a
-// different account than the one under review (the multi-source hijack that
-// drained a separate account in the review's on-chain proof), and any op that
-// rewrites who controls the account (set_options, account_merge).
-
 export type OpDanger = 'none' | 'off-account' | 'account-control' | 'token-move'
 
 export interface OpSummary {
@@ -47,10 +40,8 @@ interface TokenMove {
   amount: string
 }
 
-// a direct token move (transfer/transfer_from/burn on a SAC) is the exact drain
-// motif shared control protects against, and no legit vault/swap flow builds one
-// at the top level (those go through the vault or router contract), so decode its
-// amount and recipient rather than showing an opaque "call transfer on C...".
+// no vault or swap flow calls transfer, transfer_from or burn on a SAC at the top level
+// (those go through the vault or router contract), so spell out the amount and recipient.
 function decodeInvoke(
   func: xdr.HostFunction | undefined,
 ): { fn: string; contract: string; move?: TokenMove } | null {
@@ -119,9 +110,8 @@ function opDetail(op: AnyOp): string {
   }
 }
 
-// spell out which controls a set_options changes, so a co-signer sees a seizure
-// (master weight to 0, a new signer, a threshold rewrite) instead of a generic
-// "change account settings".
+// spell out which controls a set_options changes, so a seizure (master weight to 0,
+// a new signer, a threshold rewrite) does not pass as a generic settings change.
 function setOptionsDetail(op: AnyOp): string {
   const parts: string[] = []
   const signer = op.signer as { ed25519PublicKey?: string; weight?: number } | undefined

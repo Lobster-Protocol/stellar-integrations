@@ -1,13 +1,3 @@
-// A DFNS custody profile points the app at one relay and carries the read token to
-// reach it. The client self-hosts that relay with their own DFNS env, so the app
-// holds the url and the read token, never the client's signing key. The built-in
-// demo profile comes from the build env; client profiles the operator adds live in
-// this browser only.
-//
-// The operator (write/approval) token is NOT part of the stored profile: it is a
-// bearer right to move or approve money, so it stays in sessionStorage, re-entered
-// per session, never persisted to disk (see profileOperatorToken below).
-
 export const DEMO_PROFILE_ID = '__demo__'
 
 export interface DfnsProfile {
@@ -23,9 +13,8 @@ export interface DfnsProfile {
   trustedHost?: string
 }
 
-// what the relay resolver hands out for the active profile: everything a request
-// needs, captured together so a mid-action profile switch cannot mix one profile's
-// url with another's token.
+// resolved together so a mid-action profile switch cannot mix one profile's url
+// with another's token.
 export interface ActiveRelay {
   profileId: string
   baseUrl: string
@@ -36,8 +25,7 @@ export interface ActiveRelay {
 // the two networks a dfns wallet can be on, named the way dfns names them.
 export type DfnsNetwork = 'Stellar' | 'StellarTestnet'
 
-// the wallet an operator picked, inside a profile, to act as custody. an org can
-// hold several wallets, so the pick is what the client points the dashboard at.
+// an org can hold several wallets; this is the one picked to act as custody.
 export interface SelectedWallet {
   walletId: string
   address: string
@@ -46,8 +34,7 @@ export interface SelectedWallet {
 
 const PROFILES_KEY = 'lob_dfns_profiles'
 const ACTIVE_KEY = 'lob_dfns_active'
-// the single-relay operator token key that predates profiles; kept as the demo
-// profile's operator token so an operator who already set it keeps their writes.
+// do not rename: an operator who already set this key would lose their writes.
 const DEMO_OPERATOR_KEY = 'lob_operator_token'
 
 // a tiny store so components re-render when the profile set or selection changes.
@@ -66,8 +53,6 @@ export function subscribe(listener: () => void): () => void {
   }
 }
 
-// the snapshot for useSyncExternalStore: a primitive that changes on every store
-// change, so the hook re-reads the (cheap) profile functions.
 export function storeVersion(): number {
   return version
 }
@@ -87,9 +72,8 @@ export function relayHost(url: string): string {
   }
 }
 
-// A client relay url is a place the dashboard will send money-authorizing tokens,
-// so validate it hard: https only (the demo may use http on localhost for dev), no
-// credentials in the url, and for a client no private/loopback/link-local host.
+// the relay url receives tokens that can move money, so validate it hard. only the
+// demo may use http, and only on localhost for dev.
 export function assertRelayUrl(raw: string, kind: 'demo' | 'client'): string {
   let u: URL
   try {
@@ -116,8 +100,7 @@ export function assertRelayUrl(raw: string, kind: 'demo' | 'client'): string {
     if (isPrivate) {
       throw new Error('A client relay cannot be a private or loopback address; use its public https host.')
     }
-    // a client relay that is actually Lobster's own demo relay would route their
-    // ops onto our org. refuse it: the whole point is their own DFNS, not ours.
+    // a client profile on our demo relay would route their ops onto our org.
     const demo = import.meta.env.VITE_LOBSTER_API_URL
     if (demo && u.host === relayHost(demo)) {
       throw new Error('That is the Lobster demo relay, not your own. Enter the relay you run for your own DFNS.')
@@ -156,8 +139,8 @@ function demoProfile(): DfnsProfile | null {
   }
 }
 
-// client profiles from localStorage. the demo is never stored here, it is always
-// resolved from env, so it can never be edited into a client profile.
+// the demo is never stored, only resolved from env, so it cannot be edited into a
+// client profile.
 export function clientProfiles(): DfnsProfile[] {
   return read<DfnsProfile[]>(PROFILES_KEY, []).filter(
     (p): p is DfnsProfile => !!p && typeof p.id === 'string' && p.kind === 'client',
@@ -178,11 +161,8 @@ export function activeProfileId(): string | null {
   }
   const all = listProfiles()
   if (stored && all.some((p) => p.id === stored)) return stored
-  // the demo profile is always present (built from env), so falling back to the
-  // first profile made it the default with nothing stored. a client who turned on
-  // dfns custody without connecting their own relay was then routed onto our org,
-  // and their approval landed on our dfns account. nothing is active until a
-  // profile is picked: connecting a client relay selects it, the demo is opt-in.
+  // no fallback to the first profile: that is always the demo, and a client who
+  // never connected a relay would land on our dfns org. the demo is opt-in.
   return null
 }
 
@@ -196,13 +176,13 @@ export function setActiveProfile(id: string): void {
   try {
     localStorage.setItem(ACTIVE_KEY, id)
   } catch {
-    // storage off; the selection lasts only this render
+    // storage off
   }
   emit()
 }
 
-// Deselect whatever is active, back to "no DFNS org". The demo has no stored row to
-// forget, so this is the only way off it once it is picked.
+// back to no dfns org. the demo has no stored row to remove, so this is the only
+// way off it once picked.
 export function clearActiveProfile(): void {
   try {
     localStorage.removeItem(ACTIVE_KEY)
@@ -232,9 +212,8 @@ export function addClientProfile(input: Omit<DfnsProfile, 'id' | 'kind'>): DfnsP
 }
 
 export function removeClientProfile(id: string): void {
-  // read this before the write, since afterwards the id no longer resolves and the
-  // check could never match. removing the active profile deselects to nothing (it
-  // never silently promotes another profile, and never the demo).
+  // read before the write: afterwards the id no longer resolves. removing the active
+  // profile deselects to nothing, never to another profile and never to the demo.
   const wasActive = activeProfileId() === id
   write(
     PROFILES_KEY,
@@ -260,10 +239,8 @@ function operatorKey(id: string): string {
   return `lob_op_token_${id}`
 }
 
-// the operator token is a bearer right to approve or move money. a client's stays
-// in sessionStorage (gone when the tab closes, never on disk); the demo keeps the
-// pre-existing localStorage key so an operator who set it keeps their writes. it is
-// only ever resolved for a profile whose current host matches the trusted one.
+// a bearer right to approve or move money: a client's never touches disk, and none
+// is handed out once the relay host drifts from the trusted one.
 export function profileOperatorToken(profile: DfnsProfile): string | null {
   if (profile.trustedHost && relayHost(profile.relayBaseUrl) !== profile.trustedHost) return null
   try {
@@ -291,9 +268,7 @@ function selectedWalletKey(id: string): string {
   return `lob_dfns_wallet_${id}`
 }
 
-// the wallet the operator chose inside a profile, per network. it is a public
-// address so it can live in localStorage; the operator token is the secret and
-// stays in sessionStorage. a profile with several wallets remembers each pick.
+// a public address, so unlike the operator token it can live in localStorage.
 export function selectedWallet(profileId: string, network: DfnsNetwork): SelectedWallet | null {
   const map = read<Record<string, SelectedWallet>>(selectedWalletKey(profileId), {})
   const w = map[network]
@@ -307,17 +282,7 @@ export function setSelectedWallet(profileId: string, w: SelectedWallet): void {
   emit()
 }
 
-export function clearSelectedWallet(profileId: string, network: DfnsNetwork): void {
-  const map = read<Record<string, SelectedWallet>>(selectedWalletKey(profileId), {})
-  if (!(network in map)) return
-  const next = { ...map }
-  delete next[network]
-  write(selectedWalletKey(profileId), next)
-  emit()
-}
-
-// resolves everything the active profile's requests need in one shot. null when no
-// profile is selected (the app is on browser-wallet custody or nothing is set).
+// null when no profile is selected (browser-wallet custody, or nothing set yet).
 export function activeRelay(): ActiveRelay | null {
   const p = activeProfile()
   if (!p) return null

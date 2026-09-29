@@ -1,9 +1,7 @@
 import type { Network } from '../../config/contracts'
 
-// The Factory has no way to unregister a pool and the vault has no way to close
-// itself, so a vault a wallet owns is on its list for good. Hiding is the only
-// thing a dashboard can honestly offer: it lives in this browser, changes
-// nothing on-chain, and can be undone.
+// the factory cannot unregister a pool and a vault cannot close itself, so a
+// wallet's vaults stay listed for good. hiding one only touches this browser.
 const KEY = 'lob_hidden_vaults_v1'
 
 type Store = Record<string, string[]>
@@ -42,12 +40,7 @@ export function hiddenVaults(network: Network, account: string): string[] {
 }
 
 export function hideVault(network: Network, account: string, vault: string) {
-  const store = read()
-  const key = scope(network, account)
-  const next = new Set(store[key] ?? [])
-  next.add(vault)
-  store[key] = [...next]
-  write(store)
+  hideVaults(network, account, [vault])
 }
 
 export function hideVaults(network: Network, account: string, vaults: string[]) {
@@ -55,15 +48,6 @@ export function hideVaults(network: Network, account: string, vaults: string[]) 
   const store = read()
   const key = scope(network, account)
   store[key] = [...new Set([...(store[key] ?? []), ...vaults])]
-  write(store)
-}
-
-export function showVault(network: Network, account: string, vault: string) {
-  const store = read()
-  const key = scope(network, account)
-  const next = (store[key] ?? []).filter((v) => v !== vault)
-  if (next.length === 0) delete store[key]
-  else store[key] = next
   write(store)
 }
 

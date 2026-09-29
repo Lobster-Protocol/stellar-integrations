@@ -23,7 +23,6 @@ export interface SoroswapQuoteParams {
   amountInStroops: bigint
 }
 
-// [sellingToken, buyingToken] as the router's path arg
 function swapPath(sellingTokenId: string, buyingTokenId: string) {
   return xdr.ScVal.scvVec([
     Address.fromString(sellingTokenId).toScVal(),
@@ -31,10 +30,9 @@ function swapPath(sellingTokenId: string, buyingTokenId: string) {
   ])
 }
 
-// direct soroswap router invoke when the broker has no quote. uses
-// router_get_amounts_out via simulate. last element of the returned
-// Vec<i128> is the expected output. null on any failure (no pair,
-// missing router, account 404, simulation error).
+// direct soroswap quote for when the broker has none. the last element of the
+// returned Vec<i128> is the expected output. without a pair the simulation
+// fails and this returns null.
 export async function quoteSoroswapDirect(
   params: SoroswapQuoteParams,
 ): Promise<bigint | null> {
@@ -85,9 +83,6 @@ export interface SoroswapBuildParams extends SoroswapQuoteParams {
   timeoutSecs?: number
 }
 
-// builds the prepared swap_exact_tokens_for_tokens xdr, ready to sign.
-// the caller submits the signed envelope via the lobster factory helpers
-// (submitSignedXdr + waitForTx) since they already handle the polling.
 export async function buildSoroswapSwapTx(params: SoroswapBuildParams): Promise<string> {
   const routerId = CONTRACTS[params.network].soroswap.router
   if (!routerId) throw new Error('soroswap router not configured for this network')

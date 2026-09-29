@@ -1,5 +1,3 @@
-// per-browser trace of attempted routes, not an authoritative audit
-
 import { tokenLabel } from '../stellar/token-registry'
 import { isContractId } from '../stellar/strkey-guards'
 import { shortenAddress } from '../../utils/format'
@@ -44,10 +42,8 @@ export function appendRoutingEntry(entry: RoutingEntry): RoutingEntry[] {
   return next
 }
 
-// Asset ids arrive in three shapes: 'xlm', 'CODE-ISSUER' on mainnet, and a bare
-// SAC contract id on testnet where the broker is skipped. Splitting on the dash
-// only works for the middle one - on testnet it printed the whole 56-character
-// contract id as if it were a ticker.
+// asset ids come in three shapes: 'xlm', 'CODE-ISSUER' on mainnet, and a bare
+// SAC contract id on testnet where the broker is skipped
 export function assetCode(asset: string, network: RoutingEntry['network']): string {
   if (!asset) return '?'
   if (asset.includes('-')) return asset.split('-')[0].toUpperCase()

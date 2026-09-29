@@ -29,22 +29,6 @@ export class BrokerTxRejected extends Error {
   }
 }
 
-function networkFromPassphrase(p: string): Network | null {
-  if (p === Networks.TESTNET) return 'testnet'
-  if (p === Networks.PUBLIC) return 'mainnet'
-  return null
-}
-
-// contracts a broker swap envelope may legitimately invoke. soroswap
-// router + factory cover the AMM path; the SAC tokens are needed for
-// approve / transfer authorizations the router calls into.
-function sorobanAllowlist(net: Network): Set<string> {
-  const c = CONTRACTS[net]
-  return new Set(
-    [c.soroswap.router, c.soroswap.factory, c.tokens.usdcSac, c.tokens.xlmSac].filter(Boolean),
-  )
-}
-
 function invokedContractId(op: Operation.InvokeHostFunction): string | null {
   const func = op.func
   if (func.switch().name !== 'hostFunctionTypeInvokeContract') return null
@@ -92,8 +76,14 @@ export function inspectBrokerTx(
     throw new BrokerTxRejected(`fee-bump fee ${tx.fee} stroops is over the ${MAX_FEE_STROOPS} ceiling`)
   }
 
-  const net = networkFromPassphrase(networkPassphrase)
-  const allowed = net ? sorobanAllowlist(net) : new Set<string>()
+  // the soroswap router and factory cover the AMM path; the SACs are there for the
+  // approve / transfer authorizations the router calls into.
+  const net: Network | null =
+    networkPassphrase === Networks.TESTNET ? 'testnet' : networkPassphrase === Networks.PUBLIC ? 'mainnet' : null
+  const c = net ? CONTRACTS[net] : null
+  const allowed = new Set<string>(
+    c ? [c.soroswap.router, c.soroswap.factory, c.tokens.usdcSac, c.tokens.xlmSac].filter(Boolean) : [],
+  )
 
   let spent = 0n
   for (const op of inner.operations) {
@@ -105,10 +95,9 @@ export function inspectBrokerTx(
         `op type ${op.type} sources ${op.source}, not the trader ${traderAccount}`,
       )
     }
-    // the bought asset has to land back in the trader's account. without this a
-    // broker xdr could debit the trader within the cap yet credit the proceeds
-    // to its own wallet, draining a capped slice on every confirm. a muxed
-    // destination won't string-match the trader's G address, so it fails closed.
+    // the proceeds must land back with the trader, or a broker xdr could spend
+    // within the cap and credit its own wallet. a muxed destination never
+    // string-matches the trader's G address, so it fails closed.
     if (op.type === 'pathPaymentStrictSend' || op.type === 'pathPaymentStrictReceive') {
       const dest = (op as { destination?: string }).destination
       if (dest !== traderAccount) {
@@ -127,10 +116,8 @@ export function inspectBrokerTx(
           `broker invoked contract ${contractId}, not in the network allowlist`,
         )
       }
-      // a soroban call's spend lives in opaque contract args; the cap below
-      // sums path-payment legs and cannot see it. under a spend cap we refuse
-      // it rather than pass an unbounded amount. the broker can route the same
-      // trade through path payments, which the cap does bound.
+      // a soroban call's spend hides in opaque contract args the cap can't sum, so
+      // refuse it under a cap; the broker can route the same trade via path payments.
       if (maxSpendStroops !== undefined) {
         throw new BrokerTxRejected('a soroban invoke is not bound by the spend cap; route through path payments')
       }

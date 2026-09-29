@@ -11,9 +11,8 @@ import { decimalToStroops, stroopsToDecimal } from '../stellar/amount'
 const PAGE = 200
 const MAX_PAGES = 3
 
-// Assets are keyed by code AND issuer, never by code alone: an account can hold
-// a token that calls itself USDC from any issuer, and pricing that at par would
-// let a worthless look-alike inflate the curve.
+// code and issuer, never code alone: anyone can issue a token called USDC, and
+// pricing a worthless look-alike at par would inflate the curve
 export type AssetKey = string
 
 export function assetKey(code: string, issuer?: string): AssetKey {
@@ -37,18 +36,15 @@ export interface BalanceHistory {
   flows: XlmFlows
 }
 
-// Where every stroop of XLM went. The wallet curve only ever falls, which reads
-// like a loss until you can see that most of what left was swapped or parked in
-// a vault rather than spent. All five lines are exact, and they must add up to
-// the balance Horizon reports right now.
+// where every stroop of XLM went, so a falling curve reads as swapped or parked
+// in a vault rather than lost; the lines must add up to Horizon's live balance
 export interface XlmFlows {
   receivedOutside: string
   sentOutside: string
   intoContracts: string
   fromContracts: string
-  // A TTL extend buys months of contract storage in one go and costs orders of
-  // magnitude more than a transaction fee, so lumping the two together makes an
-  // account look like it bleeds fees when it paid rent once.
+  // a TTL extend costs orders of magnitude more than a fee; lumped in with fees,
+  // one rent payment makes the account look like it bleeds fees
   storageRent: string
   txFees: string
   heldNow: string
@@ -76,11 +72,8 @@ interface Delta {
   amount: bigint
 }
 
-// Effects carry every credit and debit but never the fee, and a fee-only
-// transaction (a TTL extend) moves the balance without producing any effect at
-// all. Replaying effects alone drifts by exactly the fees paid; adding
-// fee_charged per transaction the account itself sourced closes the gap to the
-// stroop, which is what makes this series trustworthy rather than indicative.
+// effects never include the fee, and a fee-only transaction (a TTL extend) has no
+// effects at all, so fee_charged comes from each transaction this account sourced
 async function collectDeltas(
   network: Network,
   account: string,
@@ -89,10 +82,8 @@ async function collectDeltas(
   const deltas: Delta[] = []
   let created = false
 
-  // An effect id is "<operation id>-<index>", so effects raised by the same
-  // operation share a prefix. When a contract effect sits next to our own
-  // credit or debit, the value moved to or from a contract (a swap, a vault
-  // deposit) rather than to somebody else.
+  // an effect id is "<operation id>-<index>"; a contract effect in the same
+  // operation as our credit or debit means the value went to or from a contract
   const contractOps = new Set<string>()
   let receivedOutside = 0n
   let sentOutside = 0n
@@ -223,7 +214,7 @@ export async function getBalanceHistory(
 
   const { deltas, complete, created, flows } = await collectDeltas(network, account)
 
-  // the five lines only mean anything if they land on the live balance
+  // the flows only mean anything if they land on the live balance
   const liveNative = balances.find((b) => b.isNative)?.balance ?? '0'
   flows.reconciles = complete && flows.heldNow === stroopsToDecimal(decimalToStroops(liveNative))
 
@@ -261,11 +252,8 @@ export async function getBalanceHistory(
   return { points, complete, reachesAccountCreation: created, flows }
 }
 
-// The replay only produces a point where something moved, so a cursor dragged
-// across a quiet fortnight has nothing to land on. Fill the gaps by carrying the
-// last known holdings forward: a balance is a step function, so the carried
-// value is what the account actually held at that instant. Never interpolate
-// between two points - that would draw a number the account never had.
+// carries holdings forward so quiet stretches still give the cursor a point;
+// never interpolate, that would draw a number the account never had
 export function densify(points: BalancePoint[], target = 320): BalancePoint[] {
   if (points.length < 2) return points
   const first = points[0].ts
@@ -309,9 +297,8 @@ export function useBalanceHistory(network: Network, account: string | null) {
   })
 }
 
-// Value a point with today's prices. There is no historical price feed on
-// Stellar we can read from the browser, so the curve shows how the holdings
-// themselves moved, with the market held still. Callers must say so.
+// there is no historical price feed we can read from the browser, so every point
+// is valued at today's prices with the market held still; callers must say so
 export function valueAtCurrentPrice(
   point: BalancePoint,
   priceByKey: Record<AssetKey, number>,

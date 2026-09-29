@@ -5,8 +5,7 @@ import { submitSignedXdr, waitForTx, type SorobanRestorePreamble } from './facto
 import { INCLUSION_FEE_STROOPS, CONTRACTS, type Network } from '../../config/contracts'
 
 // create_pool deploys a fresh vault owned by the caller for a token pair. It runs
-// caller.require_auth and takes no other trusted address, so unlike the liquidity
-// paths there is no caller-supplied router to drain through.
+// caller.require_auth and takes no other trusted address.
 export async function buildCreatePoolTx(
   network: Network,
   caller: string,

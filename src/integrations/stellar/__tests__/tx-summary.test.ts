@@ -1,8 +1,5 @@
 // @vitest-environment node
-// the ed25519 lib rejects jsdom's Uint8Array, and this is a pure decoder, so run
-// it in node. reproduces the review's multi-source hijack: a tx whose source is
-// the account under review but which carries an operation sourced from a DIFFERENT
-// account, the shape that drained a separate account on-chain.
+// the ed25519 lib rejects jsdom's Uint8Array
 import { describe, it, expect } from 'vitest'
 import {
   Account,

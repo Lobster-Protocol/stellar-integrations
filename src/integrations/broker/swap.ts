@@ -9,7 +9,7 @@ export type OnSignedHash = (hash: string) => void
 
 // only full transactions get signed. the broker's soroban leg arrives as a bare
 // auth digest we can't inspect (and a sep-43 wallet would double-hash it), so
-// those quotes fall back to the direct dex path. onHash logs each broker-side hash.
+// those quotes fall back to the direct dex path.
 export function makeAuthCallback(
   account: string,
   networkPassphrase: string,

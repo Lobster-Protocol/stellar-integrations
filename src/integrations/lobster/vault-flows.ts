@@ -7,13 +7,6 @@ import { toActivityEvent, type ActivityEvent } from '../horizon/activity'
 import { useAccountExists } from '../horizon/account'
 import { decimalToStroops, stroopsToDecimal } from '../stellar/amount'
 
-// What a wallet has moved in and out of each of its vaults, read off the ledger.
-// A vault's own valuation over time is not recoverable: every getter on the
-// contract answers for the current ledger, and soroban rpc keeps only a short
-// window of past state. What is recoverable, in full, is the transfers between
-// the owner and the vault, because those are operations on the owner's account
-// and Horizon keeps every one of them.
-
 // Horizon's ceiling per page, and how far back we walk before calling the trail
 // clipped rather than quietly counting from halfway through.
 const PAGE = 200
@@ -21,12 +14,9 @@ const MAX_PAGES = 3
 
 export interface VaultMove {
   ts: number
-  // the contract on the other side of the transfer
   vault: string
   code: string
-  // signed stroops: positive went into the vault, negative came back to the
-  // wallet. integer math the whole way, so a long trail still lands on the
-  // figure the ledger holds rather than near it.
+  // signed stroops, positive into the vault. bigint so a long trail sums exactly
   amount: bigint
 }
 
@@ -36,9 +26,8 @@ export interface VaultFlows {
   complete: boolean
 }
 
-// Only a contract can be a vault, so an account on the other side is somebody
-// paying the wallet rather than a vault returning to it. A zero line is a leg
-// the call declared and left alone, which is not a move.
+// only a contract can be a vault, so an account counterparty is a plain payment.
+// a zero line is a leg the call declared and never touched
 export function movesFromEvents(events: ActivityEvent[]): VaultMove[] {
   const out: VaultMove[] = []
   for (const e of events) {
@@ -94,10 +83,7 @@ export async function getVaultFlows(network: Network, account: string): Promise<
   return { moves: movesFromEvents(events), complete }
 }
 
-// One entry per moment something moved, carrying every code's running total.
-// A code that did not move at this moment keeps the total it already had: a
-// cumulative sum is a step function, so the carried figure is exactly what it
-// was, not a value read between two points.
+// one per moment something moved; codes that sat still carry their last total
 export interface FlowPoint {
   ts: number
   net: Record<string, number>
@@ -114,15 +100,9 @@ export interface VaultFlowSeries {
   count: number
 }
 
-const cmp = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0)
-
-// The running total for one vault, code by code. Null when nothing moved
-// between this wallet and that vault in what was read, which callers show as an
-// empty state rather than a flat line at zero.
-//
-// `prefer` is the vault's own pair, so the panels come out in the order the rest
-// of the card already reads. A code we cannot tie back to one of the two tokens
-// falls in behind them, heaviest traffic first.
+// null when nothing moved with this vault, so callers show an empty state rather
+// than a flat line at zero. `prefer` is the vault's pair, so panels keep the card's
+// order, and any other code falls in behind it, busiest first
 export function vaultFlowSeries(
   moves: VaultMove[],
   vault: string,
@@ -147,7 +127,7 @@ export function vaultFlowSeries(
     return i === -1 ? wanted.length : i
   }
   const codes = Object.keys(volume).sort(
-    (a, b) => rank(a) - rank(b) || cmp(volume[b], volume[a]),
+    (a, b) => rank(a) - rank(b) || (volume[a] > volume[b] ? -1 : volume[a] < volume[b] ? 1 : 0),
   )
 
   const running: Record<string, bigint> = {}
@@ -186,8 +166,7 @@ export function useVaultFlows(network: Network, account: string | null) {
     queryKey: ['lobster', 'vault-flows', network, account],
     queryFn: () => getVaultFlows(network, account!),
     enabled: !!account && exists,
-    // short enough that a deposit signed in the wallet shows up when the reader
-    // comes back to the tab, rather than a card that still says nothing moved
+    // focus refetch is off app-wide, so a new deposit shows up on the next mount once stale
     staleTime: 60_000,
     retry: 1,
   })

@@ -10,9 +10,8 @@ import { useAccountExists } from '../horizon/account'
 
 export type Venue = 'soroswap' | 'phoenix' | 'aquarius' | 'idle'
 
-// ACT_DEX values written by the vault. Soroswap/Phoenix/Aquarius come from the
-// add_liquidity_* paths; 5 is what the constructor sets and what every withdraw
-// restores, meaning the tokens sit in the vault rather than in a pool.
+// ACT_DEX as the vault writes it. 5 is set by the constructor and restored by
+// every withdraw: the tokens sit in the vault rather than in a pool.
 const VENUE: Record<number, Venue> = {
   0: 'soroswap',
   1: 'phoenix',
@@ -55,9 +54,8 @@ const LP_GETTER: Record<Exclude<Venue, 'idle'>, string> = {
   aquarius: 'get_lp_aquarius',
 }
 
-// get_amounts_tokens is documented as the balances held "not in pools", so on a
-// vault that is working it reads close to zero. What the position is actually
-// worth comes from the pool: these return the vault's share of the reserves.
+// get_amounts_tokens only counts what is "not in pools", so a working vault reads
+// near zero there. these return the vault's share of the pool reserves instead.
 const POOLED_GETTER: Record<Exclude<Venue, 'idle'>, string> = {
   soroswap: 'get_amounts_from_soroswap',
   phoenix: 'get_amounts_from_phoenix',
@@ -128,9 +126,8 @@ export async function getVaultPositions(
   const pools = await getPoolsByUser(network, user)
   if (pools.length === 0) return []
   const source = user || CONTRACTS[network].lobster.readSource
-  // one vault whose storage TTL expired (or hits a transient rpc error) must not
-  // hide the healthy ones, so settle each independently and flag a failed read
-  // instead of rejecting the whole list.
+  // one vault whose storage TTL expired, or a transient rpc error, must not hide
+  // the healthy ones, so each read settles on its own and a failure is flagged.
   const settled = await Promise.allSettled(pools.map((p) => readVault(network, source, p)))
   return settled.map((r, i) =>
     r.status === 'fulfilled'
@@ -165,9 +162,8 @@ export function useVaultPositions(network: Network, user: string | null) {
   })
 }
 
-// Everything a vault controls, token by token: what sits in it, plus what its
-// pool position represents. A vault that is working holds almost nothing
-// directly, so counting only the first would report a live position as empty.
+// a working vault holds almost nothing directly, so leaving out the pooled legs
+// would report a live position as empty.
 export function vaultLegs(p: VaultPosition): Array<[string, string]> {
   const legs: Array<[string, string]> = [
     [p.token0, p.amount0],
@@ -178,17 +174,12 @@ export function vaultLegs(p: VaultPosition): Array<[string, string]> {
   return legs
 }
 
-// A vault holding nothing, neither in itself nor in a pool, is clutter on a
-// list. Tested against every leg rather than the idle balance alone, so a
-// working position is never mistaken for an empty one.
 export function isVaultEmpty(p: VaultPosition): boolean {
   return vaultLegs(p).every(([, amount]) => Number(amount) === 0)
 }
 
-// The last time the owner moved anything on each vault, taken from the activity
-// already read. A vault missing from the map has had no move in the operations
-// loaded so far, which is not the same as never, so callers show nothing rather
-// than claim it has been idle forever.
+// a vault missing from the map had no move in the operations loaded so far,
+// which is not the same as never, so callers show nothing for it.
 export function lastMoveByVault(
   events: Array<{ at: string; contractId?: string; moves: Array<{ counterparty?: string }> }>,
 ): Map<string, string> {
@@ -205,11 +196,8 @@ export function lastMoveByVault(
   return seen
 }
 
-// Value a vault leg by leg. Only tokens we have a price for contribute, so a
-// pair with one unpriceable side reports what it can and flags the rest. A
-// working vault whose pool would not answer is flagged too: its total is short
-// by whatever the position holds, and saying so beats quoting a number that is
-// missing most of it.
+// an unpriced leg, or a working vault whose pool would not answer, leaves the
+// total short, so the result is flagged partial rather than quoted as whole.
 export function valueVault(
   p: VaultPosition,
   priceOf: (tokenId: string) => number | null,

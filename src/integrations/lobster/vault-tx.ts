@@ -14,9 +14,8 @@ import { INCLUSION_FEE_STROOPS } from '../../config/contracts'
 
 export type VaultAction = 'deposit' | 'withdraw'
 
-// deposit pulls token0/token1 from the caller into the vault; withdraw_contract
-// sends the vault's own token0/token1 back to its owner. Both take the same
-// (caller, amount0, amount1) shape, so one builder covers both.
+// withdraw_contract sends the vault's own token0/token1 back to its owner, and takes
+// the same (caller, amount0, amount1) as deposit, so one builder covers both
 const METHOD: Record<VaultAction, string> = {
   deposit: 'deposit',
   withdraw: 'withdraw_contract',
@@ -29,9 +28,8 @@ export async function buildVaultActionTx(
   caller: string,
   amount0: string,
   amount1: string,
-  // a single-sig call submits in seconds; a multisig call has to collect a quorum
-  // across people, so its timebound is widened well past the 60s default or the
-  // envelope expires (tx_too_late) before the second signature arrives.
+  // multisig callers widen this well past 60s: a quorum takes longer to collect and
+  // the envelope would expire (tx_too_late) before the second signature arrives
   timeoutSecs = 60,
 ): Promise<{ xdr: string; restorePreamble?: SorobanRestorePreamble }> {
   const server = getSorobanServer(network)

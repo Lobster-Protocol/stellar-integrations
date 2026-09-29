@@ -2,10 +2,7 @@ import { useEffect } from 'react'
 
 import type { Network } from '../../config/contracts'
 
-// Net asset value history, sampled while the dashboard is open. No on-chain
-// feed exists for a wallet's portfolio value over time, so we record it
-// ourselves: each visit with a priced portfolio appends one point, at most
-// once an hour.
+// no on-chain feed has a wallet's value over time, so we sample it ourselves
 
 export interface NavPoint {
   ts: number
@@ -14,9 +11,8 @@ export interface NavPoint {
 
 const MIN_GAP_MS = 60 * 60 * 1000
 const MAX_POINTS = 1000
-// the series tracks wallet plus vaults, the same measure the pages lead with. The
-// 2 in the key keeps a wallet-only series left in browser storage out of it:
-// splicing the two measures would draw a jump that never happened.
+// the 2 keeps a wallet-only series already in browser storage apart from this
+// wallet-plus-vaults one: splicing the two would draw a jump that never happened
 const key = (network: Network, address: string) => `lob_nav2_${network}_${address}`
 
 export function readNavHistory(network: Network, address: string | null): NavPoint[] {
@@ -27,38 +23,6 @@ export function readNavHistory(network: Network, address: string | null): NavPoi
   } catch {
     return []
   }
-}
-
-export interface NavStats {
-  change: number | null // percent move since the first snapshot
-  drawdown: number | null // deepest peak-to-trough drop, percent (<= 0)
-  // how long the snapshots actually span. A flat 0.00% over ten minutes is not
-  // the same claim as a flat 0.00% over a month, and the reader has to see which.
-  observedHours: number | null
-}
-
-export function computeNavStats(history: NavPoint[]): NavStats {
-  const first = history[0]
-  const latest = history[history.length - 1]
-  // one snapshot compares against itself and always reads 0%, which looks like a
-  // measured flat move rather than the absence of one
-  const change =
-    history.length >= 2 && first.usd > 0 ? ((latest.usd - first.usd) / first.usd) * 100 : null
-
-  let drawdown: number | null = null
-  if (history.length >= 2) {
-    let peak = history[0].usd
-    let worst = 0
-    for (const p of history) {
-      if (p.usd > peak) peak = p.usd
-      if (peak > 0) worst = Math.min(worst, (p.usd - peak) / peak)
-    }
-    drawdown = worst * 100
-  }
-  const observedHours =
-    history.length >= 2 ? (latest.ts - first.ts) / 3_600_000 : null
-
-  return { change, drawdown, observedHours }
 }
 
 export function recordNav(network: Network, address: string | null, usd: number | null): void {

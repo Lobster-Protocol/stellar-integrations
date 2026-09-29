@@ -63,7 +63,6 @@ export async function quoteBridge(
 
   assertStellarRoute(stellarUsdc)
 
-  // no cctp on stellar yet; allbridge messenger still delivers native usdc
   const messenger = Messenger.ALLBRIDGE
   // the token list ships an empty poolInfo, so the plain getAmountToBeReceived
   // underflows to zero. read the live pool state from chain.
@@ -75,14 +74,12 @@ export async function quoteBridge(
   )
   const gasFee = await sdk.getGasFeeOptions(sourceUsdc, stellarUsdc, messenger)
 
-  // average source->stellar time the SDK publishes for this messenger, in ms.
-  // some corridors omit it, so keep null rather than inventing a figure. the
-  // /1000 also fails safe: a value already in seconds rounds below the floor.
+  // transferTime is in ms and some corridors omit it. a value already in seconds
+  // lands under the 10s floor, so it reads as null too.
   const rawMs = sourceUsdc.transferTime?.[ChainSymbol.SRB]?.[messenger]
   const secs = typeof rawMs === 'number' ? Math.round(rawMs / 1000) : NaN
   const estimatedTimeSeconds = secs >= 10 && secs <= 86_400 ? secs : null
 
-  // skip entries without a .float string instead of stringifying objects
   const narrowedGasFee: Record<string, string> = {}
   for (const [k, v] of Object.entries(gasFee)) {
     if (v && typeof v === 'object' && 'float' in v && typeof (v as { float: unknown }).float === 'string') {

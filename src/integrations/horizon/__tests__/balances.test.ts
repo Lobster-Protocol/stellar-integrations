@@ -3,21 +3,10 @@ import { NotFoundError } from '@stellar/stellar-sdk'
 import { CONTRACTS } from '../../../config/contracts'
 
 const loadAccount = vi.fn()
-const operationsCall = vi.fn()
-const operationsForAccount = vi.fn(() => ({
-  order: () => ({
-    limit: () => ({
-      call: operationsCall,
-    }),
-  }),
-}))
 
 vi.mock('../client', () => ({
   getHorizonServer: () => ({
     loadAccount,
-    operations: () => ({
-      forAccount: operationsForAccount,
-    }),
   }),
 }))
 
@@ -29,13 +18,6 @@ vi.mock('../../stellar/token-balance', () => ({
 }))
 
 const { getAccountBalances } = await import('../account')
-
-// Constructing a real NotFoundError without an actual HTTP response is
-// awkward - the SDK constructor takes (message, response). We instantiate
-// it with a stub object that's good enough for the SDK to be happy.
-function makeNotFound(): NotFoundError {
-  return new NotFoundError('not found', { status: 404 } as never)
-}
 
 describe('getAccountBalances', () => {
   beforeEach(() => {
@@ -103,7 +85,7 @@ describe('getAccountBalances', () => {
   })
 
   it('reads an account that is not on the ledger as holding nothing', async () => {
-    loadAccount.mockRejectedValueOnce(makeNotFound())
+    loadAccount.mockRejectedValueOnce(new NotFoundError('not found', { status: 404 } as never))
     const balances = await getAccountBalances('testnet', 'GMISSING')
     expect(balances).toEqual([])
   })

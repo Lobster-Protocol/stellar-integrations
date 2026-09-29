@@ -4,7 +4,6 @@ import {
   hiddenVaults,
   hideVault,
   hideVaults,
-  showVault,
   showAllVaults,
   partitionHidden,
 } from '../hidden-vaults'
@@ -34,13 +33,6 @@ describe('hidden vaults', () => {
     hideVault('testnet', A, 'CVAULT1')
     expect(hiddenVaults('testnet', B)).toEqual([])
     expect(hiddenVaults('mainnet', A)).toEqual([])
-  })
-
-  it('brings one back', () => {
-    hideVault('testnet', A, 'CVAULT1')
-    hideVault('testnet', A, 'CVAULT2')
-    showVault('testnet', A, 'CVAULT1')
-    expect(hiddenVaults('testnet', A)).toEqual(['CVAULT2'])
   })
 
   it('brings them all back', () => {

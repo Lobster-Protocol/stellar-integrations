@@ -9,7 +9,7 @@ vi.mock('../../lobster/client', async () => {
   }
 })
 
-// testnet now carries a real soroswap router, so blank it here to keep the
+// testnet carries a real soroswap router, so blank it here to keep the
 // no-router guard tests meaningful.
 vi.mock('../../../config/contracts', async () => {
   const actual = await vi.importActual<typeof import('../../../config/contracts')>('../../../config/contracts')

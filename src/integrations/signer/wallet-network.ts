@@ -1,8 +1,7 @@
 import { StellarWalletsKit } from '@creit-tech/stellar-wallets-kit'
 
-// the passphrase the connected wallet is set to, or null when it can't be read.
-// callers compare it against the app network to warn before the wallet's own
-// signing block ("set to Main Net").
+// null when the wallet can't say. read up front so a mismatch is flagged before the
+// wallet blocks the signature on its own ("set to Main Net").
 export async function getWalletNetworkPassphrase(): Promise<string | null> {
   try {
     const res = await StellarWalletsKit.getNetwork()

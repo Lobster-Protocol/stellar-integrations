@@ -2,9 +2,8 @@ import { useSearchParams } from 'react-router-dom'
 
 import { KIND_GROUPS, matchesQuery, type ActivityEvent, type KindGroup } from './activity'
 
-// Ledger timestamps are UTC and so are the export columns, so a picked day is
-// read as a UTC day too. Reading it in local time would put a Paris evening in
-// the previous row of a file whose header says UTC.
+// ledger timestamps and export columns are UTC, so a picked day is a UTC day
+// too; read in local time, a Paris evening would land on the wrong day
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 function longDay(day: string): string {
@@ -16,12 +15,8 @@ function longDay(day: string): string {
   })
 }
 
-// A picked day is a whole UTC day: the start opens it, the end closes it at the
-// last millisecond, so an operation stamped in the evening of the end date is
-// inside the window rather than one row past it. The shape check is not enough
-// on its own, 2026-13-45 gets through it and parses to NaN, and a NaN bound
-// compares false against every timestamp: the window would quietly hold
-// everything while the page claimed it was filtering.
+// 2026-13-45 passes the shape check but parses to NaN, and a NaN bound compares
+// false against every timestamp: the window would silently hold everything
 function dayMs(day: string, time: string): number | null {
   if (!DAY.test(day)) return null
   const ms = Date.parse(`${day}T${time}Z`)
@@ -84,8 +79,8 @@ export function useActivityFilters(): ActivityFilterState {
   }
 }
 
-// The date window and the search both shrink the set every count is taken from.
-// The tab is a browsing choice on top of that, which is why it is not in here.
+// the date window and the search both shrink the set every count is taken from.
+// The tab is a browsing choice on top of that, which is why it is not in here
 export function inWindow(e: ActivityEvent, f: ActivityFilterState): boolean {
   const at = Date.parse(e.at)
   if (f.startMs != null && at < f.startMs) return false
@@ -94,8 +89,8 @@ export function inWindow(e: ActivityEvent, f: ActivityFilterState): boolean {
   return matchesQuery(e, f.query)
 }
 
-// Names the window in the same words everywhere it is reported, so a tile, a
-// download note and a filename can never describe different periods.
+// names the window in the same words everywhere it is reported, so a tile and a
+// download note can never describe different periods
 export function describeWindow(f: Pick<ActivityFilterState, 'from' | 'to'>): string {
   if (f.from && f.to) return `between ${longDay(f.from)} and ${longDay(f.to)} (UTC)`
   if (f.from) return `since ${longDay(f.from)} (UTC)`
@@ -103,15 +98,12 @@ export function describeWindow(f: Pick<ActivityFilterState, 'from' | 'to'>): str
   return 'over the whole history'
 }
 
-// The feed will not hold more than this many pages on its own. Without a ceiling
-// a start date set years back would fire a request per page at Horizon until the
-// account ran out, on a single click.
+// without a ceiling, a start date set years back would fire one Horizon request
+// per page until the account ran out, from a single click
 export const MAX_FEED_PAGES = 10
 
-// A start date is a promise that everything after it is on the page, and the
-// feed only holds the pages it has read. This decides whether to keep reading,
-// so that a count shown under a date filter is the real one rather than the one
-// that happened to be loaded, and says when it gave up instead.
+// a count under a start date must cover everything since then, not only the
+// pages loaded so far: keep reading until it does, or report the ceiling
 export function feedPaging(args: {
   startMs: number | null
   oldestAt: string | null

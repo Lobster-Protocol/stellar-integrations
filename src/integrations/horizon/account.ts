@@ -6,7 +6,6 @@ import { getSorobanTokenBalance } from '../stellar/token-balance'
 import { stroopsToDecimal } from '../stellar/amount'
 
 type BalanceLine = Horizon.HorizonApi.BalanceLine
-type BalanceLineAsset = Horizon.HorizonApi.BalanceLineAsset
 
 export interface AccountBalance {
   code: string
@@ -15,15 +14,11 @@ export interface AccountBalance {
   isNative: boolean
 }
 
-function isBalanceLineWithCode(b: BalanceLine): b is BalanceLineAsset {
-  return b.asset_type === 'credit_alphanum4' || b.asset_type === 'credit_alphanum12'
-}
-
 function mapBalance(b: BalanceLine): AccountBalance | null {
   if (b.asset_type === 'native') {
     return { code: 'XLM', balance: b.balance, isNative: true }
   }
-  if (isBalanceLineWithCode(b)) {
+  if (b.asset_type === 'credit_alphanum4' || b.asset_type === 'credit_alphanum12') {
     return {
       code: b.asset_code,
       issuer: b.asset_issuer,
@@ -51,9 +46,8 @@ export async function getAccountBalances(
     throw err
   }
 
-  // Horizon lists only classic balances, so testnet's soroban-only USDC is
-  // invisible after a swap. append it from the SAC (null-safe), unless a classic
-  // USDC already shows (mainnet wraps the same trustline balance).
+  // Horizon lists only classic balances, so testnet's soroban-only USDC is read
+  // from the SAC; on mainnet the SAC wraps the classic trustline already listed
   const usdcSac = CONTRACTS[network].tokens.usdcSac
   if (usdcSac && !classic.some((b) => b.code === 'USDC')) {
     const raw = await getSorobanTokenBalance(network, usdcSac, accountId)
@@ -74,10 +68,8 @@ export function useAccountBalances(network: Network, accountId: string | null) {
   })
 }
 
-// a brand-new account is not created on-chain until it is funded, so each layer
-// reports it differently: Horizon 404s with NotFoundError, the soroban rpc throws
-// a plain Error("Account not found: G..."). Test all three shapes so "the account
-// does not exist" is never taken for a real fault.
+// an unfunded account is not on-chain yet: Horizon answers 404 and the soroban
+// rpc throws Error("Account not found: G..."), and neither is a real fault
 export function isAccountMissing(err: unknown): boolean {
   if (err instanceof NotFoundError) return true
   if (err && typeof err === 'object') {
@@ -91,9 +83,8 @@ export function isAccountMissing(err: unknown): boolean {
 
 export type AccountExistence = 'unknown' | 'missing' | 'live'
 
-// derived from the balances read, so it costs no extra request: a live account
-// lists at least its native XLM, a missing one comes back empty, and a Horizon
-// outage stays 'unknown' rather than reading as an empty wallet.
+// derived from the balances query at no extra request: a live account always
+// lists its native XLM, and a Horizon outage stays 'unknown', not 'missing'
 export function useAccountExists(network: Network, accountId: string | null): AccountExistence {
   const balances = useAccountBalances(network, accountId)
   if (!accountId) return 'unknown'

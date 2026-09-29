@@ -9,15 +9,12 @@ export interface RoutingHealth {
 
 export function getRoutingHealth(network: Network): RoutingHealth {
   const c = CONTRACTS[network]
-  // a dashboard-set env var can carry a stray newline or spaces; trim so a
-  // blank or whitespace value reads as no key rather than a live one.
+  // a dashboard-set env var can carry a stray newline, so whitespace alone is no key
   const partnerKey = import.meta.env.VITE_STELLAR_BROKER_PARTNER_KEY?.trim()
-  // stellar broker is mainnet only, so on testnet we skip it and route straight
-  // to the soroswap router.
+  // stellar broker only runs on mainnet
   const brokerOnNetwork = network === 'mainnet' && !!c.broker.endpoint
   return {
-    // the trade rides the keyed trading socket; a quote is just a public GET.
-    // so trading needs the key, quoting only needs the endpoint to be set.
+    // trading rides the keyed socket, while a quote is a public GET that needs no key
     brokerEnabled: !!partnerKey && brokerOnNetwork,
     brokerQuoteEnabled: brokerOnNetwork,
     fallbackEnabled: !!c.soroswap.router,

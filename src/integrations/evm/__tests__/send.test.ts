@@ -50,7 +50,7 @@ describe('toUsdcBaseUnits (6 decimals)', () => {
     expect(toUsdcBaseUnits('0.000001')).toBe(1n)
   })
 
-  it('stays exact at a million, past what a float would hold', () => {
+  it('stays exact at a million', () => {
     expect(toUsdcBaseUnits('1000000')).toBe(1_000_000_000_000n)
   })
 })

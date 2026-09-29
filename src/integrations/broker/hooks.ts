@@ -8,9 +8,8 @@ import { submitSignedXdr, waitForTx } from '../lobster/factory'
 import type { Signer } from '../signer/types'
 import type { BrokerQuoteParams } from './types'
 
-// 1% slippage on the soroswap leg. broker default is 2% but the direct
-// router gives a tighter quote so we ask for less. exported so the swap panel
-// shows the number it actually enforces, not the broker's looser quote figure.
+// the direct router quotes tighter than the broker's 2% default, so ask for less.
+// exported so the swap panel shows the figure actually enforced.
 export const SOROSWAP_SLIPPAGE = 0.01
 // 3 minute swap deadline. avoids stale auth in slow signing flows.
 const SOROSWAP_DEADLINE_SEC = 180
@@ -48,13 +47,9 @@ export interface SoroswapConfirmArgs {
   signer: Signer
 }
 
-// builds the prepared soroswap swap envelope, ready to sign. split out of the
-// one-shot mutation so a multisig owner can freeze this envelope once and gather
-// a quorum on it. windowSecs widens BOTH clocks that would otherwise expire mid
-// signing: the tx timebound and the in-contract deadline. it does not sign or
-// submit. the minAmountOut (1% haircut) is frozen here, so if the pool moves past
-// it before the quorum completes the swap is declined on-chain, never filled at a
-// worse price.
+// kept apart from the mutation so a multisig owner can gather a quorum on one
+// frozen envelope. windowSecs widens both the tx timebound and the in-contract
+// deadline; below the frozen minAmountOut the swap is declined on-chain.
 export async function buildSoroswapConfirmTx(
   args: SoroswapConfirmArgs,
   windowSecs = SOROSWAP_DEADLINE_SEC,

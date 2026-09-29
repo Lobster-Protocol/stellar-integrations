@@ -48,8 +48,6 @@ describe('swapTokensFor', () => {
     }
   })
 
-  // the CODE-ISSUER derivation must reproduce the canonical mainnet USDC SAC,
-  // proving the generic path is behaviour-preserving for the one we hardcode.
   it('derives the mainnet USDC SAC from its CODE-ISSUER form', () => {
     const usdc = swapTokensFor('mainnet').find((t) => t.code === 'USDC')!
     expect(brokerAssetToSac(usdc.asset, 'mainnet')).toBe(CONTRACTS.mainnet.tokens.usdcSac)

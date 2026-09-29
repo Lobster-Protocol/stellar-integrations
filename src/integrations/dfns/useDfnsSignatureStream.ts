@@ -24,8 +24,7 @@ export function useDfnsSignatureStream(): DfnsEvent[] {
   const apiToken = relay?.apiToken
 
   // a profile switch starts a fresh feed, so the previous profile's events never
-  // linger under the new one. reset during render (react's documented way to
-  // derive state from a changed input), not in the effect.
+  // linger under the new one. reset during render, not in the effect.
   const seenProfile = useRef(profileId)
   if (seenProfile.current !== profileId) {
     seenProfile.current = profileId
@@ -33,7 +32,6 @@ export function useDfnsSignatureStream(): DfnsEvent[] {
   }
 
   useEffect(() => {
-    // the old stream (and its token in the url) is torn down by the cleanup below.
     if (!baseUrl) return
     // EventSource can't set headers, so the token rides as a query param
     const url = apiToken ? `${baseUrl}/sse?token=${encodeURIComponent(apiToken)}` : `${baseUrl}/sse`
@@ -44,7 +42,7 @@ export function useDfnsSignatureStream(): DfnsEvent[] {
         if (typeof evt.id !== 'string' || !DfnsEventKindSchema.safeParse(evt.kind).success) return
         setEvents((prev) => [evt, ...prev].slice(0, MAX_EVENTS))
       } catch {
-        // server is the source of truth, skip malformed frames silently
+        // skip malformed frames
       }
     }
     for (const k of SUBSCRIBED_KINDS) es.addEventListener(k, handler)

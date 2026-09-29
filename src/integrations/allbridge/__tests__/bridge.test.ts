@@ -7,8 +7,6 @@ import type { BridgeRequest } from '../types'
 // the source token carries the avg transfer time to stellar (SRB), in ms
 const TRANSFER_TIME = { [ChainSymbol.SRB]: { [Messenger.ALLBRIDGE]: 180_000 } }
 // a healthy allbridge pool sits near 0.003; a parked one is cranked toward 1.
-// every entry carries the field so overriding one in a test still produces the
-// same shape, which is what the sdk hands back.
 const TOKENS = {
   ETH: { symbol: 'USDC', chainSymbol: 'ETH', bridgeAddress: '0xBRIDGE-ETH', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003, poolAddress: '0xPOOL-ETH' },
   ARB: { symbol: 'USDC', chainSymbol: 'ARB', bridgeAddress: '0xBRIDGE-ARB', decimals: 6, transferTime: TRANSFER_TIME, feeShare: 0.003, poolAddress: '0xPOOL-ARB' },
@@ -92,9 +90,7 @@ describe('quoteBridge', () => {
     await expect(quoteBridge(sdk as never, VALID_REQ, false)).rejects.toThrow(/no longer carries USDC into Stellar/i)
   })
 
-  // what the live api returns for the stellar token since allbridge pulled its
-  // pools: no pool at all and a feeShare of "0", which the old feeShare-only
-  // check read as healthy
+  // the live api returns the stellar token with no pool and a feeShare of "0"
   it('refuses the route when allbridge lists no stellar pool, even at a zero fee', async () => {
     sdk.tokensByChain.mockImplementation(async (chain: string) => [
       chain === 'SRB' ? ({ ...TOKENS.SRB, poolAddress: null, feeShare: '0' } as never) : TOKENS[chain as keyof typeof TOKENS],

@@ -4,10 +4,8 @@ import type { Signer, SignOpts } from './types'
 export const dfnsSigner: Signer = {
   name: 'dfns',
   async signTransaction(xdr: string, opts: SignOpts) {
-    // the relay answers this quickly: a pending id (held for approval, polled
-    // elsewhere) or the signed envelope. it does not wait out the human approval,
-    // so a long silence means the relay itself is stuck. give up after a minute
-    // rather than leave the caller on "Awaiting signature" forever.
+    // the relay hands back a pending id rather than wait out a human approval, so a
+    // minute of silence means the relay itself is stuck
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 60_000)
     let res: Response

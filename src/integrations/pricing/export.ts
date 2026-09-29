@@ -29,23 +29,14 @@ function pct(value: number, total: number): string {
   return total > 0 ? ((value / total) * 100).toFixed(2) : '0.00'
 }
 
-// Float arithmetic leaves tails like 0.17870360000000002, which reads as false
-// precision in a spreadsheet. Twelve significant digits keeps every figure a
-// price or a valuation can carry and drops the noise.
+// float tails like 0.17870360000000002 read as false precision in a spreadsheet;
+// twelve significant digits keep every figure a price can carry
 function num(n: number): number {
   return Number.parseFloat(n.toPrecision(12))
 }
 
-function unitPrice(value: number | null, amount: string): number | '' {
-  const held = Number(amount)
-  if (value == null || !Number.isFinite(held) || held <= 0) return ''
-  return num(value / held)
-}
-
-// What the wallet holds right now, loose balances and vault legs in one shape so
-// a sheet can total them together. Nothing gets a value it doesn't have: a token
-// with no market pool comes through with an amount and empty price columns.
-// No total row either, because a stray total breaks a pivot table.
+// an unpriced token keeps its amount with empty money columns, and there is no
+// total row because a stray total breaks a pivot table
 export function holdingsRows(
   lines: ValuedBalance[],
   p: Portfolio,
@@ -56,14 +47,15 @@ export function holdingsRows(
   const rows: Array<Array<string | number>> = []
 
   for (const l of lines) {
-    if (Number(l.balance) <= 0) continue
+    const held = Number(l.balance)
+    if (held <= 0) continue
     rows.push([
       'Wallet',
       'Wallet',
       l.code,
       l.issuer ?? (l.isNative ? 'native' : ''),
       l.balance,
-      unitPrice(l.usd, l.balance),
+      l.usd == null || !Number.isFinite(held) ? '' : num(l.usd / held),
       l.usd == null ? '' : num(l.usd),
       l.usd == null ? '' : unit,
       l.usd == null ? '' : pct(l.usd, p.total),
@@ -97,10 +89,8 @@ export function holdingsRows(
   return rows
 }
 
-// Value history, one row per moment a balance actually moved. Rows between moves
-// would only repeat a number the reader can already infer. The value column is
-// named the way it is on purpose: past holdings priced at today's rate is what
-// the chart draws, and that is not what they were worth at the time.
+// one row per real move, and the value column says "today's price" on purpose:
+// past holdings priced at today's rate are not what they were worth at the time
 export function valueHistoryColumns(assetKeys: AssetKey[]): string[] {
   return [
     'Timestamp (UTC)',

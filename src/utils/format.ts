@@ -34,18 +34,12 @@ export function compactNumber(n: number): string {
   return n.toFixed(2)
 }
 
-export function formatUSD(n: number): string {
-  return `$${compactNumber(n)}`
-}
-
-// A portfolio total is quoted in the network's USDC. On mainnet that is money
-// and takes a dollar sign; on testnet it is a test token, and printing "$" for
-// it would read as a dollar value the wallet does not hold.
+// testnet USDC is a test token, so it prints as USDC rather than as dollars
 export function formatValue(n: number, unit: 'USD' | 'USDC'): string {
-  return unit === 'USD' ? formatUSD(n) : `${compactNumber(n)} USDC`
+  return unit === 'USD' ? `$${compactNumber(n)}` : `${compactNumber(n)} USDC`
 }
 
-// horizon balances are 7-decimal fixed point; 2dp above 1, up to 7 below
+// horizon balances are 7-decimal fixed point
 export function formatBalance(raw: string): string {
   const n = Number(raw)
   if (!Number.isFinite(n)) return raw

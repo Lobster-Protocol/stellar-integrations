@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { relayFetch } from './relay'
 import { operatorHeaders } from './operator'
 import { useActiveProfile } from './use-profiles'
+import type { DfnsNetwork } from './profiles'
 
 const NS = 'dfns'
 const STALE = 60_000
@@ -36,10 +37,8 @@ export interface DfnsApprovalGroup {
   approvers?: { userId?: { in?: string[] } }
 }
 
-// The relay forwards the DFNS policy objects verbatim, so the rule configuration
-// (amount limit, recipient list) and the approval quorum ride along. Kept optional
-// because a rule like AlwaysTrigger carries no configuration and a Block/NoAction
-// action carries no group.
+// forwarded verbatim from dfns. optional because AlwaysTrigger carries no
+// configuration and a Block/NoAction action carries no approval group.
 export interface DfnsPolicySummary {
   id: string
   name: string
@@ -56,9 +55,8 @@ export interface DfnsWalletSummary {
   network: string
 }
 
-// every read keys on the active profile id, so switching profiles never serves one
-// client's wallets/policies/approvals from another's cache, and reads are off until
-// a profile is selected.
+// reads key on the active profile id so a switch never serves one client's data
+// from another's cache, and stay off until a profile is selected.
 export function useDfnsPolicies() {
   const p = useActiveProfile()
   return useQuery<{ items: DfnsPolicySummary[] }>({
@@ -117,7 +115,7 @@ export function useCreateDfnsWallet() {
   const qc = useQueryClient()
   const p = useActiveProfile()
   return useMutation({
-    mutationFn: async (args: { name: string; network: 'Stellar' | 'StellarTestnet' }): Promise<DfnsWalletSummary> =>
+    mutationFn: async (args: { name: string; network: DfnsNetwork }): Promise<DfnsWalletSummary> =>
       fetchJson('/dfns/wallets', {
         method: 'POST',
         body: JSON.stringify(args),

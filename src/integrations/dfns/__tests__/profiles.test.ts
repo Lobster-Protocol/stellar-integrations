@@ -13,13 +13,9 @@ import {
   assertRelayUrl,
   selectedWallet,
   setSelectedWallet,
-  clearSelectedWallet,
 } from '../profiles'
 
-// the test env sets VITE_LOBSTER_API_URL, so the demo profile is present, but it
-// is opt-in: nothing is active until a profile is picked, so a client never lands
-// silently on our org. these cover the client-profile crud + the active selection
-// the multi-profile custody switch relies on.
+// the test env sets VITE_LOBSTER_API_URL, so the demo profile is present.
 
 beforeEach(() => {
   localStorage.clear()
@@ -65,8 +61,6 @@ describe('dfns profiles', () => {
     expect(activeProfileId()).toBe(b.id)
     removeClientProfile(b.id)
     expect(clientProfiles().some((p) => p.id === b.id)).toBe(false)
-    // removing the active profile leaves nothing active: not the other client, and
-    // above all not the demo. the operator picks again on purpose.
     expect(activeProfileId()).toBeNull()
     expect(clientProfiles().some((p) => p.id === a.id)).toBe(true)
   })
@@ -75,7 +69,6 @@ describe('dfns profiles', () => {
     const p = addClientProfile(conn)
     expect(activeProfileId()).toBe(p.id)
     setActiveProfile('client-gone')
-    // an unresolvable stored id selects nothing; it never silently falls back.
     expect(activeProfileId()).toBeNull()
     expect(activeProfile()).toBeNull()
   })
@@ -85,13 +78,12 @@ describe('dfns profiles', () => {
     expect(clientProfiles()).toHaveLength(0)
   })
 
-  it('clears the demo operator token and active selection on disconnect (M9)', () => {
+  it('clears the demo operator token and active selection on disconnect', () => {
     setActiveProfile(DEMO_PROFILE_ID)
     localStorage.setItem('lob_operator_token', 'op-secret')
     expect(activeProfileId()).toBe(DEMO_PROFILE_ID)
     clearActiveProfile()
-    // nothing stays active, and above all the operator token (the approve/create
-    // bearer) must not linger in storage for a later session to reuse.
+    // the operator token must not linger in storage for a later session to reuse.
     expect(activeProfileId()).toBeNull()
     expect(localStorage.getItem('lob_operator_token')).toBeNull()
   })
@@ -125,8 +117,7 @@ describe('assertRelayUrl (the money-token destination guard)', () => {
   })
 
   it('refuses a client relay url that is actually the lobster demo relay', () => {
-    // a client who pastes our own relay as "their own" would route their ops onto
-    // our org. the check keys on the demo host, so set it to a public one to reach it.
+    // the check keys on the demo host, so set it to a public one to reach it.
     const orig = import.meta.env.VITE_LOBSTER_API_URL
     Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'https://demo.lobster.example')
     try {
@@ -138,17 +129,13 @@ describe('assertRelayUrl (the money-token destination guard)', () => {
 })
 
 describe('selectedWallet (which of a client org wallets acts as custody)', () => {
-  const conn = { label: 'Acme DFNS', relayBaseUrl: 'https://relay.acme.test', apiToken: 'read-tok' }
-
-  it('remembers a pick per profile and per network, and clears it', () => {
+  it('remembers a pick per profile and per network', () => {
     const p = addClientProfile(conn)
     expect(selectedWallet(p.id, 'StellarTestnet')).toBeNull()
     setSelectedWallet(p.id, { walletId: 'wa-1', address: 'GABC', network: 'StellarTestnet' })
     expect(selectedWallet(p.id, 'StellarTestnet')?.address).toBe('GABC')
     // a different network keeps its own pick, independent of testnet
     expect(selectedWallet(p.id, 'Stellar')).toBeNull()
-    clearSelectedWallet(p.id, 'StellarTestnet')
-    expect(selectedWallet(p.id, 'StellarTestnet')).toBeNull()
   })
 
   it('forgets a profile pick when the profile is removed', () => {

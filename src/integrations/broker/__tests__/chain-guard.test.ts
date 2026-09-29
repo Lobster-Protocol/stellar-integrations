@@ -38,8 +38,6 @@ function invokeContractOp(contractId: string, source?: string) {
 beforeEach(() => {
   fromXDRMock.mockReset()
   fromScAddressMock.mockReset()
-  // each test that uses invokeHostFunction stubs fromScAddress.toString()
-  // to return the contract id we pre-baked into the op mock.
   fromScAddressMock.mockImplementation((cid: string) => ({ toString: () => cid }))
 })
 

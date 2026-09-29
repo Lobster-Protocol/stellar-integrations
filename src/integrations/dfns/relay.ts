@@ -1,10 +1,7 @@
 import { activeRelay, type ActiveRelay } from './profiles'
 
-// One place for the relay convention: base url and read token come from the ACTIVE
-// dfns profile, not a build-time env, so the dashboard can talk to the client's own
-// relay. A caller can pass a bound relay to pin a multi-step flow (a poll) to the
-// profile it started on, so a mid-flow switch cannot redirect it to another relay.
-// bearer token in a header, no ambient cookies (the relay reads no cookie).
+// pass `bound` to pin a multi-step flow (a poll) to the profile it started on, so a
+// mid-flow switch cannot redirect it. no ambient cookies, the relay reads none.
 export function relayFetch(path: string, init: RequestInit = {}, bound?: ActiveRelay): Promise<Response> {
   const relay = bound ?? activeRelay()
   if (!relay) throw new Error('No DFNS profile is selected')
@@ -16,10 +13,8 @@ export function relayFetch(path: string, init: RequestInit = {}, bound?: ActiveR
   return fetch(`${relay.baseUrl}${path}`, { ...init, headers })
 }
 
-// polls a pending dfns signature until it confirms on chain (returns the hash) or
-// is rejected. the approval is a human step in the dfns console, so the window is
-// wide, but a bad token/id or a dead endpoint fails fast rather than waiting it out
-// and blaming a missing approval. pass a signal to stop the loop on unmount.
+// approval is a human step in the dfns console, so the window is wide, but a bad
+// token/id or a dead endpoint fails fast instead of looking like a missing approval.
 export async function pollSignatureStatus(
   id: string,
   opts: { intervalMs?: number; timeoutMs?: number; signal?: AbortSignal } = {},
@@ -55,11 +50,8 @@ export async function pollSignatureStatus(
 
 export type SignatureResult = { txHash: string } | { signedTxXdr: string }
 
-// polls a held dfns signature to its end and returns what dfns produced: a classic
-// tx confirms on chain and comes back as a hash; a soroban tx dfns signs but does
-// not broadcast, so it comes back as an envelope the caller submits itself. same
-// wide window and same relay binding as pollSignatureStatus, so a mid-flow profile
-// switch cannot redirect the poll.
+// dfns broadcasts a classic tx itself (a hash comes back) but only signs a soroban
+// one (an envelope comes back for the caller to submit).
 export async function pollSignatureResult(
   id: string,
   opts: { intervalMs?: number; timeoutMs?: number; signal?: AbortSignal } = {},
@@ -105,10 +97,8 @@ export interface TransferOutcome {
   held: boolean
 }
 
-// Asks DFNS to build and send the payment itself. That is the one request shape
-// its approval rules can read, so it is the only way to show a rule letting
-// something through rather than holding it. Everything the dashboard signs as
-// raw XDR is held by any policy at all.
+// dfns builds and sends this payment itself, the one request shape its approval
+// rules can read. anything signed as raw xdr is held by any policy at all.
 export async function requestTransfer(to: string, stroops: string): Promise<TransferOutcome> {
   const res = await relayFetch('/dfns/transfer', {
     method: 'POST',

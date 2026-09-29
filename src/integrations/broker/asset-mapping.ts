@@ -6,14 +6,13 @@ import { decimalToStroops } from '../stellar/amount'
 
 // broker asset format: 'xlm' for native, 'CODE-ISSUER' for classic, C... for
 // soroban tokens. soroswap and our analytics need the SAC contract id, so we
-// map per network. shared between broker/hooks.ts and routing/route.ts.
+// map per network.
 export function brokerAssetToSac(asset: string, network: Network): string | null {
   const c = CONTRACTS[network]
   if (asset === 'xlm') return isContractId(c.tokens.xlmSac) ? c.tokens.xlmSac : null
   if (asset.startsWith('C')) return isContractId(asset) ? asset : null
-  // CODE-ISSUER classic asset. the SAC is deterministic from the code, issuer
-  // and network passphrase, so derive it rather than keep a table of contract
-  // ids. covers USDC and every mainnet swap token in one path.
+  // a classic asset's SAC is deterministic from code, issuer and network
+  // passphrase, so derive it rather than keep a table of contract ids.
   const dash = asset.indexOf('-')
   if (dash > 0) {
     const issuer = asset.slice(dash + 1)

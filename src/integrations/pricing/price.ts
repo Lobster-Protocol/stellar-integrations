@@ -9,18 +9,15 @@ export interface ValuedBalance extends AccountBalance {
   usd: number | null
 }
 
-// The ids that count as USDC at par, so a look-alike token sharing the code
-// can't inflate a total: the network's own (the classic issuer on mainnet,
-// Soroswap's SAC on testnet) and Circle's, which the bridge mints. On mainnet
-// the two are the same issuer; on testnet they are two different tokens.
+// the only ids counted as USDC at par, so a look-alike can't inflate a total:
+// the network's own and Circle's, which the bridge mints (one issuer on mainnet)
 export function usdcAtPar(network: Network): Set<string> {
   const { usdcIssuer, usdcSac } = CONTRACTS[network].tokens
   return new Set([usdcIssuer || usdcSac, CONTRACTS[network].cctp.usdcIssuer].filter(Boolean))
 }
 
-// Value held balances: XLM at the live quote, USDC at par, anything else stays
-// unpriced. usdTotal is null when nothing could be priced, which tells the
-// caller to show native units instead of a total.
+// usdTotal is null when nothing could be priced, which tells the caller to show
+// native units instead of a total
 export function valueBalances(
   balances: AccountBalance[],
   xlmPrice: number | null,
@@ -44,38 +41,20 @@ export function valueBalances(
   return { lines, usdTotal: anyPriced ? total : null }
 }
 
-// donut slices for the held lines. mixing dollars (priced lines) with raw token
-// counts (unpriced) in one pie distorts the split, so when anything is priced
-// (mainnet) weight purely by USD and drop what we cannot price; only when
-// nothing is priced (testnet) fall back to token amount, where every slice is
-// at least the same kind of number.
-export function allocationWeights(lines: ValuedBalance[]): { name: string; value: number }[] {
-  const held = lines.filter((l) => Number(l.balance) > 0)
-  const priced = held.filter((l) => l.usd != null && l.usd > 0)
-  if (priced.length > 0) return priced.map((l) => ({ name: l.code, value: l.usd as number }))
-  return held.map((l) => ({ name: l.code, value: Number(l.balance) }))
-}
-
-// A price is always one XLM expressed in the network's USDC. On mainnet that is
-// a dollar figure; on testnet the same quote is denominated in a test USDC that
-// is not money, so the unit is named rather than dressed up as dollars.
+// a price is one XLM in the network's USDC; on testnet that USDC is not money,
+// so the unit is named rather than dressed up as dollars
 export type PriceUnit = 'USD' | 'USDC'
 
 export function priceUnit(network: Network): PriceUnit {
   return network === 'mainnet' ? 'USD' : 'USDC'
 }
 
-// The broker turns down any trade worth less than a dollar, and a single XLM is
-// well under that, so asking it to price one unit gets nothing back. The probe
-// asks for a size it will quote and divides. Measured on XLM/USDC, the unit
-// price moves 0.1% between 8 and 1000 XLM, so what comes back is the real
-// executable price rather than an average bent by depth.
+// the broker won't quote a trade under a dollar, so probe with a size it will
+// price and divide; the unit price moves 0.1% between 8 and 1000 XLM
 const MAINNET_PROBE_XLM = 100
 
-// Mainnet goes through the broker, which aggregates every venue. Testnet has no
-// broker, but Soroswap runs there with a real XLM/USDC pool, so the router
-// quotes a real price off real reserves. Null when neither answers, so callers
-// fall back to native units instead of inventing a figure.
+// testnet has no broker, so it reads Soroswap's XLM/USDC pool instead; null when
+// nothing answers, so callers show native units rather than invent a figure
 export async function fetchXlmPrice(network: Network): Promise<number | null> {
   if (network === 'mainnet') {
     const issuer = CONTRACTS.mainnet.tokens.usdcIssuer
@@ -109,9 +88,8 @@ export async function fetchXlmPrice(network: Network): Promise<number | null> {
 const ONE_UNIT = 10_000_000n
 const PRICE_STALE_MS = 30_000
 
-// Vault legs are token contract ids rather than asset codes, so pricing them
-// needs the SAC registry rather than the balance line. Anything outside the two
-// canonical ids has no price we can stand behind and returns null.
+// vault legs are token contract ids, not asset codes, so they price off the SAC
+// registry; anything outside the canonical ids has no price we can stand behind
 export function tokenPricer(network: Network, xlmPrice: number | null) {
   const { xlmSac, usdcSac } = CONTRACTS[network].tokens
   const circleUsdcSac = CONTRACTS[network].cctp.usdcSac

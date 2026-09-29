@@ -3,9 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import type { Network } from '../lobster/types'
 import { readAccountSigning } from './multisig'
 
-// reads the connected account's signers and thresholds from Horizon. a value
-// action gates on this: when the account is multisig the vault modal collects a
-// quorum of signatures instead of one.
 export function useAccountSigning(network: Network, accountId: string | null) {
   return useQuery({
     queryKey: ['stellar', 'signing', network, accountId],

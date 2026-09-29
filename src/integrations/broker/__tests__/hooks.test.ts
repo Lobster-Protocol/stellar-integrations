@@ -3,9 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { BrokerQuoteParams } from '../types'
 import type { Signer } from '../../signer/types'
 
-// capture what buildSoroswapConfirmTx hands the envelope builder, so we can assert
-// the minAmountOut it freezes. buildSoroswapSwapTx itself talks to the chain, so it
-// is mocked; asset-mapping is mocked so the confirm path resolves without a network.
+// buildSoroswapSwapTx talks to the chain, so a spy takes its place and records the
+// minAmountOut; asset-mapping is stubbed so the confirm path needs no network.
 const { buildSpy } = vi.hoisted(() => ({ buildSpy: vi.fn(() => Promise.resolve('PREPARED_XDR')) }))
 vi.mock('../soroswap-fallback', () => ({ buildSoroswapSwapTx: buildSpy }))
 vi.mock('../asset-mapping', () => ({
@@ -34,8 +33,7 @@ const args = (buyingStroops: bigint) => ({
 describe('SOROSWAP_SLIPPAGE', () => {
   it('is 1% - the single figure the swap panel shows and the leg enforces', () => {
     // the panel renders SOROSWAP_SLIPPAGE * 100 and the confirm path derives
-    // minAmountOut from the same constant, so display and enforcement can't drift
-    // (the old bug: "2%" shown, 1% enforced).
+    // minAmountOut from the same constant, so display and enforcement can't drift.
     expect(SOROSWAP_SLIPPAGE).toBe(0.01)
     expect(SOROSWAP_SLIPPAGE * 100).toBe(1)
   })

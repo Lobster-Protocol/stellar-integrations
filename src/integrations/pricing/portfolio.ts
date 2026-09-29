@@ -20,10 +20,8 @@ export interface Portfolio {
   vaults: Array<{ vault: VaultPosition; value: number; partial: boolean }>
 }
 
-// One place decides what the portfolio is worth and how it splits, so Overview
-// and Allocation cannot drift into showing different percentages for the same
-// wallet. Unpriceable tokens are counted nowhere rather than at a made-up price;
-// they are listed separately instead.
+// one place values and splits the portfolio so no two pages disagree on a
+// percentage; unpriceable tokens are listed apart, never given a made-up price
 export function buildPortfolio(
   lines: ValuedBalance[],
   vaultPositions: VaultPosition[],

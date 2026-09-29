@@ -4,14 +4,11 @@ export interface SignOpts {
 }
 
 export interface SignResult {
-  // a signed envelope the caller submits itself (wallet kit; or dfns when it
-  // only signs a soroban tx).
+  // for the caller to submit (wallet kit, or dfns on a soroban tx)
   signedTxXdr?: string
-  // a tx hash for a tx the signer already broadcast (dfns signs AND broadcasts
-  // a classic tx natively), so the caller uses the hash instead of submitting.
+  // dfns signs and broadcasts a classic tx itself, so there is nothing to submit
   broadcastHash?: string
-  // a dfns signature id held for a human approval; the caller shows a pending
-  // state and polls for the hash once someone approves in the dfns console.
+  // a dfns signature held for approval; the caller polls it for the hash
   pendingId?: string
 }
 

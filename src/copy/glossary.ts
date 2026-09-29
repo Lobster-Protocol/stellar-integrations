@@ -1,6 +1,5 @@
 // Plain-language copy for the protocol terms the dashboard has to put on screen.
-// Kept in one place so a term reads the same wherever it shows up, and so the
-// wording can be reviewed without opening every component.
+// Kept in one place so a term reads the same wherever it shows up.
 
 export type GlossaryKey =
   | 'trustline'
