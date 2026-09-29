@@ -34,7 +34,7 @@ The panel at the bottom of `/audit` runs the whole round trip. Its button
 reads "Call the Factory with" and then the name of the wallet you connected. It
 builds a `get_admin` call as a real transaction, hands the XDR to your wallet,
 submits the signed result to Soroban RPC, then polls until a ledger includes it.
-You pay the resource fee and nothing else. On success it shows the tx hash with
+You pay the network fee and nothing else. On success it shows the tx hash with
 a link to stellar.expert.
 
 The same panel has a "DFNS relay (advanced)" tab. Pick the Lobster testnet demo

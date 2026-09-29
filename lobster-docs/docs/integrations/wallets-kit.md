@@ -12,9 +12,10 @@ WalletConnect wallets once a project id is set.
 
 ## Connecting
 
-The kit opens a modal to pick a wallet. The chosen address and wallet name go
-into React context and are mirrored to localStorage so a reload stays connected.
-Only the address and the wallet name are stored, never a key or a signed payload.
+The kit opens a modal to pick a wallet. The chosen address, the wallet name and
+the kit's id for that wallet go into React context and are mirrored to
+localStorage so a reload stays connected. Only those three are stored, never a
+key or a signed payload.
 
 ## Signing
 

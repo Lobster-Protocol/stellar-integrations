@@ -6,18 +6,18 @@ trade step of a strategy, with a direct Soroswap path as the fallback.
 
 ## Setup
 
-`@stellar-broker/client` talks to the broker over a WebSocket the client opens
-from an https origin, read from config. The connection needs a partner key;
-without it the broker leg is disabled and routing drops straight to the fallback.
-The package main field points at a file the bundle doesn't ship, so the build
-aliases the import to the esm source. That alias is in both `vite.config.ts` and
-`vitest.config.ts`.
+`@stellar-broker/client` gets a quote over plain https with no key, and trades
+over a WebSocket it opens on the same https origin. That socket needs a partner
+key. Without one, routing treats the broker answer as a price reference and runs
+the swap on the fallback. The package main field points at a file the bundle
+doesn't ship, so the build aliases the import to the esm source. That alias is
+in both `vite.config.ts` and `vitest.config.ts`.
 
 ## Routing a swap
 
 1. Ask the broker for a quote with selling asset, buying asset and amount.
 2. The quote comes back with an estimated output and an equivalent direct-trade
-   estimate, so you can see what the routing actually saved.
+   estimate, so you can see what the routing saved.
 3. Check the quote against the local guards (slippage ceiling, profit sanity, a
    ratio cap versus the direct trade). A quote that deviates too far is rejected,
    not retried at a worse price.

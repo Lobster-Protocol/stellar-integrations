@@ -1,8 +1,7 @@
 # Allbridge Core
 
 Allbridge Core was the first way we brought USDC from an EVM chain onto Stellar.
-It no longer can, and the bridge now runs on [Circle CCTP](bridge.md). This page
-says what changed and what is left of the integration.
+It no longer can, and the bridge now runs on [Circle CCTP](bridge.md).
 
 ## What changed on Allbridge's side
 
@@ -21,9 +20,8 @@ Three things, all visible from outside:
 
 The client, the quote and the transaction builders are still in the code, on
 both the browser and the server side, with their tests. We point the SDK at the
-live API host, and the guard before a quote or a send now checks that a Stellar
-pool exists at all. It used to read the pool fee instead, and a fee of zero on a
-pool that isn't there passed. When the route is missing, the answer is a plain
+live API host, and the guard before a quote or a send checks that a Stellar pool
+exists at all. When the route is missing, the answer is a plain
 sentence saying Allbridge no longer carries USDC into Stellar, never a transfer
 that cannot land.
 
@@ -39,5 +37,5 @@ a form.
 ## Where it lives
 
 `src/integrations/allbridge/` and `server/allbridge/`. The `/allbridge/*` routes
-still answer, with the same guard in front. The bridge that runs today is on the
-[bridge page](bridge.md).
+still answer, and the quote and send routes keep the same guard in front. The
+bridge that runs today is on the [bridge page](bridge.md).

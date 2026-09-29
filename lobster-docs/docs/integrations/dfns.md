@@ -20,12 +20,14 @@ on testnet, funds a fresh one through friendbot.
 
 ## Signing
 
-The service builds the transaction, hands DFNS the unsigned envelope as hex, and
-polls until the signature reaches a terminal state. DFNS broadcasts the result
-itself. For a Soroban call that DFNS doesn't submit, the signed envelope comes
-back and the service submits it through its own RPC. The passphrase is derived
-server side from the configured network, and a request whose passphrase disagrees
-is rejected, so a caller can't trick the signer onto the wrong network.
+The dashboard builds the transaction and posts it. The service puts it on a
+fresh sequence number, hands DFNS the unsigned envelope as hex, and polls for up
+to ten seconds. If an approval policy is still holding the signature by then,
+the dashboard gets a pending id back and keeps polling it. DFNS broadcasts a
+classic transaction itself. A Soroban call it only signs, so the signed envelope
+comes back and the dashboard submits it through its own RPC. The passphrase is
+derived server side from the configured network, and a request whose passphrase
+disagrees is rejected, so a caller can't trick the signer onto the wrong network.
 
 ## The sign guard
 
@@ -48,7 +50,7 @@ and `get_multisig`. The name alone isn't enough. The contract has to be on an
 allowlist and the call has to carry no arguments. It also has to carry no
 authorization entries, since a token transfer needs the treasury's own
 authorization attached while a view returns a value and signs nothing away. An
-upload or a deploy is refused before any of that.
+upload or a deploy is refused outright.
 
 The view allowlist comes from `DFNS_SOROBAN_VIEW_CONTRACTS`, a comma-separated
 list of contract ids. Name nothing there and it falls back to the Lobster factory
@@ -68,8 +70,8 @@ The guard reads the invocation out of the envelope rather than trusting what the
 caller says about it. On `/audit`, "Call the Factory (DFNS MPC)" signs a
 `get_admin` view from the treasury through MPC. DFNS can't price a contract call,
 so the policy holds it for an approver first, and on the testnet demo the relay
-approves it itself. DFNS then hands the signed envelope back for the service to
-submit.
+approves it itself. DFNS then hands the signed envelope back, and the dashboard
+submits it.
 
 ## Policies and approval
 
@@ -89,9 +91,8 @@ and would hold everything. The testnet treasury runs a recipient rule instead: a
 payment to an address on its list clears, anything else waits for an approver.
 
 Each policy is scoped to a list of wallet ids. DFNS also allows scoping by wallet
-tag, which is worth knowing because it fails quietly: no wallet in our org carries
-a tag, so a policy filtered on tags would match nothing and look active while
-covering zero wallets.
+tag, and that one fails quietly: no wallet in our org carries a tag, so a policy
+filtered on tags would match nothing and look active while covering zero wallets.
 
 One more thing if you go reproduce this. DFNS evaluates an amount policy against
 a transfer request, where it built the payment and knows the asset and the
