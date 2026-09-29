@@ -33,6 +33,31 @@ function readConfig(env: NodeJS.ProcessEnv = process.env): MonitorConfig {
   return { network, rpcUrl: rpcUrlFor(network, env), intervalMs, pushgatewayUrl: env.PUSHGATEWAY_URL }
 }
 
+// TTL_MONITOR_NETWORK names one network or a list, "testnet,mainnet". each gets
+// its own loop so a failing network never holds the other up; anything else
+// falls back to testnet, same as readConfig.
+export function readConfigs(env: NodeJS.ProcessEnv = process.env): MonitorConfig[] {
+  const asked = (env.TTL_MONITOR_NETWORK ?? '').split(',').map((s) => s.trim())
+  const networks = (['testnet', 'mainnet'] as const).filter((n) => asked.includes(n))
+  const base = readConfig(env)
+  return (networks.length ? networks : [base.network]).map((network) => ({
+    ...base,
+    network,
+    rpcUrl: rpcUrlFor(network, env),
+  }))
+}
+
+// the code key a contract instance runs on. the factory's own hash lives only
+// in its instance entry on chain, so it is read from there, never configured.
+export function executableCodeKey(entry?: xdr.LedgerEntryData): xdr.LedgerKey | null {
+  if (entry?.switch().name !== 'contractData') return null
+  const val = entry.contractData().val()
+  if (val.switch().name !== 'scvContractInstance') return null
+  const exec = val.instance().executable()
+  if (exec.switch().name !== 'contractExecutableWasm') return null
+  return xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: exec.wasmHash() }))
+}
+
 // one-shot scan a route or test can call without the daemon loop. throws when
 // the factory isn't deployed on the network, which the caller turns into a 503.
 export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network)): Promise<ScanResult> {
@@ -45,26 +70,28 @@ export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network))
   }
   const wasm = Buffer.from(wasmHash, 'hex')
   if (wasm.length !== 32) throw new Error(`factory wasm hash for ${network} is not 32 bytes`)
-  // the factory instance and its wasm code archive sit on separate clocks
-  // (CAP-53), so both are watched. the deployed pool's own code key and any
-  // position instances get added here once contracts.ts carries the pool id;
-  // until then this watches the two factory keys.
+  // the factory instance, the code it runs on and the vault code it deploys each
+  // archive on their own clock (CAP-53), so all of them are watched. the factory's
+  // code is read off its instance; wasmHash names the vault code on mainnet but
+  // the factory's own code on testnet, so a key already watched isn't added twice.
   const instanceKey = new Contract(factory).getFootprint()
-  const codeKey = xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: wasm }))
-  const kinds = new Map([
-    [instanceKey.toXDR('base64'), 'instance'],
-    [codeKey.toXDR('base64'), 'code'],
-  ])
-  const scan = await scanTtl([instanceKey, codeKey], server)
+  const configuredKey = xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: wasm }))
+  const kinds = new Map([[instanceKey.toXDR('base64'), 'instance']])
+  const ownCode = executableCodeKey((await server.getLedgerEntries(instanceKey)).entries[0]?.val)
+  if (ownCode) kinds.set(ownCode.toXDR('base64'), 'factory-code')
+  if (!kinds.has(configuredKey.toXDR('base64'))) kinds.set(configuredKey.toXDR('base64'), 'vault-code')
+  const scan = await scanTtl(
+    [...kinds.keys()].map((k) => xdr.LedgerKey.fromXDR(k, 'base64')),
+    server,
+  )
   for (const s of scan.statuses) s.kind = kinds.get(s.keyXdr)
 
   // a live factory whose configured code archive reads as gone means the hash in
   // contracts.ts no longer matches the deployed code, almost always a wasmHash
-  // left stale after a redeploy. an instance can't run on archived code, so this
-  // pairing is the stale-config signature, not real archival. fail loud rather
-  // than auto-extend a dead key while the real code archive marches down unwatched.
+  // left stale after a redeploy; vault deploys pass that same hash and would fail
+  // too. fail loud rather than auto-extend a dead key.
   const inst = scan.statuses.find((s) => s.kind === 'instance')
-  const code = scan.statuses.find((s) => s.kind === 'code')
+  const code = scan.statuses.find((s) => s.keyXdr === configuredKey.toXDR('base64'))
   if (inst && inst.reading.level !== 'archived' && code && code.reading.level === 'archived') {
     throw new Error(
       `Lobster factory on ${network} is live but its configured wasm code key ` +

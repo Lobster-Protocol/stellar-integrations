@@ -7,7 +7,7 @@ import { metricsTiming, mountMetrics } from './metrics/http'
 import { startDfnsMetricsLoop } from './metrics/dfns-signing'
 import { registry } from './metrics/registry'
 import { otlpEnabled, pushExposition } from './metrics/otlp'
-import { startLoop as startTtlLoop } from './ttl-monitor/index'
+import { startLoop as startTtlLoop, readConfigs as ttlConfigs } from './ttl-monitor/index'
 import { scan as scanHealth, formatMetrics as formatHealth } from './probe/index'
 
 const PORT = Number(process.env.PORT || 8787)
@@ -42,7 +42,9 @@ if ((process.env.METRICS_TOKEN || otlpEnabled()) && (process.env.DFNS_PRIVATE_KE
 // GRAFANA_OTLP_URL set they go to grafana, and so do the relay's own request
 // metrics, once a minute.
 if (process.env.TTL_MONITOR_EMBEDDED === '1') {
-  startTtlLoop().catch((err) => console.error('[ttl-monitor] loop crashed', err))
+  for (const config of ttlConfigs()) {
+    startTtlLoop(config).catch((err) => console.error(`[ttl-monitor:${config.network}] loop crashed`, err))
+  }
 }
 if (process.env.PROBE_EMBEDDED === '1') {
   const pass = async () => {

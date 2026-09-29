@@ -8,6 +8,9 @@ import {
 } from '../ttl-monitor/ledger'
 import { clampExtendTo } from '../ttl-monitor/extend'
 import { scanTtl, keysNeedingExtend } from '../ttl-monitor/monitor'
+import { readConfigs, executableCodeKey } from '../ttl-monitor/index'
+import { xdr, Address } from '@stellar/stellar-sdk'
+import { CONTRACTS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
 
 describe('readTtl', () => {
   it('reads runway against the latest ledger of the same response', () => {
@@ -87,5 +90,55 @@ describe('scanTtl', () => {
       { keyXdr: 'C', reading: readTtl(undefined, 1_000_000) },
     ]
     expect(keysNeedingExtend(statuses).map((s) => s.keyXdr)).toEqual(['B'])
+  })
+})
+
+describe('readConfigs', () => {
+  it('watches testnet alone when nothing is named', () => {
+    expect(readConfigs({}).map((c) => c.network)).toEqual(['testnet'])
+  })
+
+  it('keeps a single named network', () => {
+    expect(readConfigs({ TTL_MONITOR_NETWORK: 'mainnet' }).map((c) => c.network)).toEqual(['mainnet'])
+  })
+
+  it('runs one loop per listed network, each on its own rpc', () => {
+    const configs = readConfigs({ TTL_MONITOR_NETWORK: 'testnet, mainnet', SOROBAN_RPC_MAINNET: 'https://rpc.example' })
+    expect(configs.map((c) => [c.network, c.rpcUrl])).toEqual([
+      ['testnet', STELLAR_RPC_FALLBACK.testnet.soroban],
+      ['mainnet', 'https://rpc.example'],
+    ])
+  })
+
+  it('drops a network it does not know', () => {
+    expect(readConfigs({ TTL_MONITOR_NETWORK: 'mainnet,futurenet' }).map((c) => c.network)).toEqual(['mainnet'])
+    expect(readConfigs({ TTL_MONITOR_NETWORK: 'futurenet' }).map((c) => c.network)).toEqual(['testnet'])
+  })
+})
+
+describe('executableCodeKey', () => {
+  const instanceEntry = (executable: xdr.ContractExecutable) =>
+    xdr.LedgerEntryData.contractData(
+      new xdr.ContractDataEntry({
+        ext: new xdr.ExtensionPoint(0),
+        contract: Address.fromString(CONTRACTS.testnet.lobster.factory).toScAddress(),
+        key: xdr.ScVal.scvLedgerKeyContractInstance(),
+        durability: xdr.ContractDataDurability.persistent(),
+        val: xdr.ScVal.scvContractInstance(new xdr.ScContractInstance({ executable, storage: null })),
+      }),
+    )
+
+  it('reads the code key a wasm contract runs on', () => {
+    const hash = Buffer.alloc(32, 7)
+    const key = executableCodeKey(instanceEntry(xdr.ContractExecutable.contractExecutableWasm(hash)))
+    expect(key?.contractCode().hash().equals(hash)).toBe(true)
+  })
+
+  it('has no code key for a stellar asset contract', () => {
+    expect(executableCodeKey(instanceEntry(xdr.ContractExecutable.contractExecutableStellarAsset()))).toBeNull()
+  })
+
+  it('returns nothing without an entry', () => {
+    expect(executableCodeKey(undefined)).toBeNull()
   })
 })

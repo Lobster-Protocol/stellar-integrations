@@ -1,4 +1,4 @@
-import { startLoop } from './index'
+import { startLoop, readConfigs } from './index'
 
 // standalone worker (npm run ttl-monitor). server/index.ts runs the same loop
 // in-process when TTL_MONITOR_EMBEDDED=1; this is the out-of-process version a
@@ -10,7 +10,9 @@ for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   })
 }
 
-startLoop().catch((err) => {
-  console.error('[ttl-monitor] loop crashed', err)
-  process.exit(1)
-})
+for (const config of readConfigs()) {
+  startLoop(config).catch((err) => {
+    console.error(`[ttl-monitor:${config.network}] loop crashed`, err)
+    process.exit(1)
+  })
+}
