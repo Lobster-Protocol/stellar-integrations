@@ -4,12 +4,9 @@ import { ALLBRIDGE_CORE_API, EVM_RPC_FALLBACK, STELLAR_RPC_FALLBACK } from '../.
 
 let sdk: AllbridgeCoreSdk | null = null
 
-// Allbridge Core ships mainnet config only: the core api, the soroban passphrase
-// and every chain symbol are mainnet, and there is no testnet core api to serve
-// testnet bridge contracts. So this always targets mainnet. The point of holding
-// it server-side is to have the whole integration (quote, raw tx build, transfer
-// status) ready for a future deployment without the browser bundle carrying the
-// sdk and its evm/solana deps.
+// allbridge core ships mainnet config only, with no testnet core api, so this
+// always targets mainnet. it runs server-side to keep the sdk and its evm/solana
+// deps out of the browser bundle.
 function nodeUrls(): NodeRpcUrls {
   const e = process.env
   return {

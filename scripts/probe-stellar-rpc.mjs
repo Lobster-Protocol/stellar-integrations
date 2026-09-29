@@ -1,7 +1,3 @@
-// Probe the Stellar testnet + mainnet RPCs and confirm both respond.
-//
-// Run:  node scripts/probe-stellar-rpc.mjs
-
 import { rpc, Networks } from '@stellar/stellar-sdk'
 
 const ENDPOINTS = {

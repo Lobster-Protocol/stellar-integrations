@@ -12,9 +12,8 @@ export function clampExtendTo(target: number): number {
   return Math.min(Math.max(0, Math.floor(target)), MAX_ENTRY_TTL)
 }
 
-// fee stays at base on purpose: rent scales with entry size times duration and
-// blows up near the cap, so the real fee comes out of assembleTransaction
-// after simulation, never a guess up front.
+// fee stays at base on purpose: rent blows up near the cap, so the real fee comes
+// from assembleTransaction after simulation, never a guess up front.
 export function buildExtendTtlTx(
   account: Account,
   key: xdr.LedgerKey,

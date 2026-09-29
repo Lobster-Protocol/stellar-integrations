@@ -3,14 +3,9 @@ import { AsymmetricKeySigner } from '@dfns/sdk-keysigner'
 
 import { requireEnv } from '../env'
 
-// The auto-approver votes as a dedicated DFNS User, never as the initiating
-// service account. A service account can vote only when serviceAccountsCanApprove
-// is enabled on the org, and that flag is gated behind a DFNS support ticket. A
-// User approver needs no such flag - only the Policies:Evaluations:Vote permission
-// and membership in the policy's approval group. The User holds a raw Key
-// credential whose private key lives in the relay env, so the relay signs the
-// approval itself, with no passkey prompt and no one clicking approve.
-
+// votes as a dedicated DFNS User, not the service account: a service account can
+// vote only with serviceAccountsCanApprove, which DFNS gates behind a support
+// ticket. the User's Key credential sits in the relay env, so no passkey prompt.
 export function approverConfigured(): boolean {
   return Boolean(
     process.env.DFNS_APPROVER_AUTH_TOKEN &&
@@ -19,14 +14,12 @@ export function approverConfigured(): boolean {
   )
 }
 
-// Built on demand: a policy hold is rare (only a held signature reaches here), so
-// there is no hot path to cache for, and building fresh means a key rotated in the
-// env is picked up on the next hold rather than served stale from a cached signer.
+// not cached, so a key rotated in the env is picked up on the next hold. holds are
+// rare, so there is no hot path to save.
 export function getApproverClient(): DfnsApiClient {
   const signer = new AsymmetricKeySigner({
     credId: requireEnv('DFNS_APPROVER_CRED_ID'),
-    // a PEM pasted on one line keeps its newlines escaped; unescape it, the same
-    // way the service-account key loader does.
+    // a PEM pasted on one line keeps its newlines escaped
     privateKey: requireEnv('DFNS_APPROVER_PRIVATE_KEY').replace(/\\n/g, '\n'),
   })
   return new DfnsApiClient({

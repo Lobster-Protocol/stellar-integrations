@@ -3,9 +3,7 @@ import { getDfnsClient } from '../dfns/client'
 
 const STATUSES = ['Pending', 'Approved', 'Denied', 'Expired'] as const
 
-// read-only: counts approvals per status with the same listApprovals call the
-// approval routes use. one page of 100 is plenty here; past that the count is a
-// floor and it logs.
+// read-only. one page of 100 is plenty here; past that the count is a floor.
 export async function refreshDfnsApprovalMetrics(
   client: Pick<ReturnType<typeof getDfnsClient>, 'policies'> = getDfnsClient(),
 ): Promise<void> {
@@ -19,8 +17,7 @@ export async function refreshDfnsApprovalMetrics(
   }
 }
 
-// refresh every minute. a failed read only logs, and the timer is unref'd so it
-// never holds the process open.
+// unref'd so the timer never holds the process open.
 export function startDfnsMetricsLoop(intervalMs = 60_000): NodeJS.Timeout {
   const tick = () =>
     refreshDfnsApprovalMetrics().catch((err) =>

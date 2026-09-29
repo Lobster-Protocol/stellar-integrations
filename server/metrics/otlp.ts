@@ -8,8 +8,7 @@ export function otlpEnabled(env = process.env): boolean {
   return Boolean(env.GRAFANA_OTLP_URL && env.GRAFANA_OTLP_USER && env.GRAFANA_OTLP_TOKEN)
 }
 
-// name{a="x",b="y"} value, one per line. comments, blanks and anything that is not
-// a finite number are dropped.
+// name{a="x",b="y"} value, one per line.
 export function parseExposition(text: string): Sample[] {
   const out: Sample[] = []
   for (const raw of text.split('\n')) {

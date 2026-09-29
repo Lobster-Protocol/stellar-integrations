@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// mock the approver identity + the approval listing so we exercise arming and
-// scoping without touching dfns. approverConfigured reads a test-only env hook.
 const { listSpy, decideSpy } = vi.hoisted(() => ({
   listSpy: vi.fn(),
   decideSpy: vi.fn(async () => ({ id: 'ap-x' })),
@@ -40,7 +38,7 @@ describe('autoApproveArmed (fail-closed)', () => {
     expect(autoApproveArmed()).toBe(false)
   })
 
-  it('is off on mainnet even when the flag is set (the load-bearing guard)', () => {
+  it('is off on mainnet even when the flag is set', () => {
     arm()
     process.env.DFNS_STELLAR_NETWORK = 'Stellar'
     expect(autoApproveArmed()).toBe(false)

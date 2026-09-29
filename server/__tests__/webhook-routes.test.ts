@@ -6,13 +6,10 @@ vi.hoisted(() => {
   process.env.DASHBOARD_ORIGIN = 'http://localhost:5173'
   process.env.DFNS_STELLAR_NETWORK = 'StellarTestnet'
   process.env.DFNS_TREASURY_ADDRESS = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
-  // permissive flag keeps existing /dfns/sign tests passing without
-  // having to hand them an amount cap. real deploys must set one or the
-  // route returns 503.
+  // lets the sign tests run without the amount cap a real deploy has to set.
   process.env.DFNS_GUARD_PERMISSIVE = '1'
-  // permissive stopped meaning "any destination" once the guard started
-  // falling back to the treasury paying itself, so the sample payment's
-  // destination has to be listed for these tests to reach the sign path.
+  // permissive alone only lets the treasury pay itself, so the sample
+  // payment's destination has to be listed.
   process.env.DFNS_DESTINATION_WHITELIST = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
 })
 
@@ -47,7 +44,7 @@ vi.mock('../dfns/approvals', () => ({
 import { app } from '../webhook'
 import { TransactionBuilder, Networks, Account, BASE_FEE, Operation, Asset } from '@stellar/stellar-sdk'
 
-function buildSampleXdr(): string {
+function sampleXdr(): string {
   const src = new Account('GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU', '12345')
   const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
     .addOperation(Operation.payment({
@@ -61,9 +58,6 @@ function buildSampleXdr(): string {
 }
 
 
-// the api token sign-guard makes /dfns/sign fail-closed. tests that hit
-// the sign endpoint set + send the token; the token-guard suite asserts
-// the 401 branch with no token presented.
 const SIGN_API_TOKEN = 'test-api-token-32-chars-long-x'
 // the two custody writes (create a wallet, decide an approval) sit behind a
 // second, server-only token on top of the api token.
@@ -188,9 +182,6 @@ describe('POST /dfns/wallets', () => {
 })
 
 describe('POST /dfns/sign', () => {
-  const sampleXdr = buildSampleXdr
-  // every /dfns/sign test needs the api token + treasury env set, with
-  // the token passed through as a bearer header.
   function signRequest(body: object): Request {
     return new Request('http://localhost/dfns/sign', {
       method: 'POST',
@@ -308,7 +299,7 @@ describe('POST /dfns/approvals/:id/decision', () => {
   })
 })
 
-describe('token guard on read endpoints', () => {
+describe('token guard', () => {
   it('keeps /dfns/wallets POST behind the token guard', async () => {
     process.env.LOBSTER_API_TOKEN = SIGN_API_TOKEN
     const res = await app.fetch(

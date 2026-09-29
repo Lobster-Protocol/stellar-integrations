@@ -1,14 +1,11 @@
 import { getDfnsClient } from './client'
 import { SignGuardRejected, type SignGuardConfig } from './sign-guard'
 
-// DFNS reads an approval policy against a transfer request, where it builds the
-// payment itself and knows the recipient and the asset. Against a raw signing
-// request it reads nothing: ask it for an amount and it answers "only supported
-// on a transfer request", ask it for a recipient and it answers "recipient
-// address not specified". So every signature going through /dfns/sign is held by
-// any policy at all, and this route is the only one where a rule can let
-// something through. It is what makes the auto-approve side of the policy
-// visible instead of theoretical.
+// DFNS evaluates amount and recipient rules only on a transfer request, where it
+// builds the payment itself. on a raw signing request an amount rule answers "only
+// supported on a transfer request" and a recipient rule "recipient address not
+// specified", so every /dfns/sign signature is held by any policy and this is the
+// only route where a rule can let something through.
 
 export interface TransferRequest {
   to: string

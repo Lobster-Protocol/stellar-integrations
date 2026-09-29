@@ -9,8 +9,7 @@ import {
 import { getAllbridgeSdk } from './client'
 import type { RawTx } from './types'
 
-// only the evm sources allbridge lists usdc pools for, into stellar. bsc is left
-// out on purpose: its usdc is 18-decimal and our approve scaling assumes 6.
+// bsc is left out on purpose: its usdc is 18-decimal and our approve scaling assumes 6.
 export type EvmChain = 'ETH' | 'ARB'
 const USDC = 'USDC'
 
@@ -59,8 +58,7 @@ export async function quote(chain: EvmChain, amount: string): Promise<BridgeQuot
   const gasFee = await sdk.getGasFeeOptions(src, dst, messenger)
   const etaMs = sdk.getAverageTransferTime(src, dst, messenger)
 
-  // gas fee options come back keyed by payment method with a { float } string;
-  // flatten to method -> float and drop anything without one.
+  // keyed by payment method, each with a { float } string
   const gasFeeOptions: Record<string, string> = {}
   for (const [k, v] of Object.entries(gasFee)) {
     if (v && typeof v === 'object' && 'float' in v && typeof (v as { float: unknown }).float === 'string') {
@@ -77,8 +75,7 @@ export async function quote(chain: EvmChain, amount: string): Promise<BridgeQuot
   }
 }
 
-// raw evm tx that bridges usdc from `chain` to a stellar address. builds only:
-// the caller (a wallet or a custodial evm signer) signs and broadcasts.
+// builds only: the caller (a wallet or a custodial evm signer) signs and broadcasts.
 export async function buildSend(
   chain: EvmChain,
   amount: string,
@@ -105,9 +102,8 @@ export async function buildApprove(chain: EvmChain, owner: string, amount: strin
   return (await getAllbridgeSdk().bridge.rawTxBuilder.approve({ token: src, owner, amount })) as RawTx
 }
 
-// delivery on stellar is relayer-automatic (no claim tx), but the transfer takes
-// minutes; this is how a caller learns whether it landed. the source txId is the
-// evm hash returned by the send.
+// delivery on stellar is relayer-automatic (no claim tx) but takes minutes. txId
+// is the evm hash of the send.
 export function transferStatus(chain: EvmChain, txId: string): Promise<TransferStatusResponse> {
   return getAllbridgeSdk().getTransferStatus(toChain(chain), txId)
 }

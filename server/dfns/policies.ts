@@ -8,9 +8,8 @@ function num(name: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback
 }
 
-// DFNS scopes a policy either by wallet id or by wallet tag. We scope by id: not
-// one wallet in the org carries a tag, so a tag filter would match nothing, while
-// an id list is explicit and the console shows exactly which wallets a rule covers.
+// scoped by wallet id, not tag: no wallet in the org carries a tag, and an id list
+// shows in the console exactly which wallets a rule covers.
 function onWallets(walletIds: string[]) {
   if (walletIds.length === 0) {
     throw new Error('a policy needs at least one wallet id, or it covers nothing')
@@ -22,7 +21,7 @@ export interface PolicyParams {
   walletIds: string[]
   approverUserIds: string[]
   quorum: number
-  // minutes the request stays open before auto-reject. 7 days by default.
+  // minutes the request stays open before auto-reject
   autoRejectTimeoutMin: number
   limitUsd?: number
   name?: string
@@ -55,9 +54,8 @@ export async function createTreasuryAmountPolicy(p: PolicyParams) {
   })
 }
 
-// auto-approve under a usd threshold. paired with createTreasuryAmountPolicy
-// for amounts above it: small sums clear without a human, the bigger ones
-// route through an approver quorum.
+// the other half of createTreasuryAmountPolicy: under the threshold a signature
+// clears without a human.
 export async function createAutoApproveAmountPolicy(walletIds: string[], limitUsd?: number) {
   const dfns = getDfnsClient()
   const limit = limitUsd ?? num('DFNS_POLICY_AUTO_APPROVE_LIMIT_USD', 100)

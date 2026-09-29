@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   readTtl,
-  chunk,
   WARN_LEDGERS,
   CRIT_LEDGERS,
   MAX_ENTRY_TTL,
@@ -38,17 +37,6 @@ describe('readTtl', () => {
   })
 })
 
-describe('chunk', () => {
-  it('splits into 200-key batches by default', () => {
-    const xs = Array.from({ length: 450 }, (_, i) => i)
-    const batches = chunk(xs)
-    expect(batches.map((b) => b.length)).toEqual([200, 200, 50])
-  })
-  it('rejects a non-positive size instead of looping forever', () => {
-    expect(() => chunk([1, 2], 0)).toThrow()
-  })
-})
-
 describe('clampExtendTo', () => {
   it('never asks past the protocol ceiling', () => {
     expect(clampExtendTo(MAX_ENTRY_TTL + 10_000)).toBe(MAX_ENTRY_TTL)
@@ -73,7 +61,7 @@ describe('scanTtl', () => {
         entries: [
           { key: fakeKey('A'), liveUntilLedgerSeq: 1_100_000 }, // ok
           { key: fakeKey('B'), liveUntilLedgerSeq: 1_000_000 + 10 }, // crit
-          // C omitted -> archived
+          // C omitted, so archived
         ],
       }),
     }

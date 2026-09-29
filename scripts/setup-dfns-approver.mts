@@ -1,20 +1,9 @@
-// Provisions the testnet auto-approver identity: the DFNS User whose Key
-// credential the relay uses to release its own held signatures. Run once, by an
-// operator, against the demo org.
-//
 //   tsx scripts/setup-dfns-approver.mts            generate the keypair, show the org policies, print the steps
 //   tsx scripts/setup-dfns-approver.mts --verify   check that DFNS_APPROVER_* can authenticate and read approvals
 //
-// It does not write to DFNS. Putting a credential on a votable org user needs a
-// user-action in the console (delegated registration only makes end-users, which
-// cannot vote), so the console step stays manual. The script does the parts that
-// are safe and easy to get wrong: it generates the keypair in the exact shape
-// DFNS wants, lists the policies so you add the approver to the right one, prints
-// the ordered steps, and verifies the identity once it is set.
-//
-// Why a User and not the service account: a service account can vote only when
-// serviceAccountsCanApprove is on, which DFNS gates behind a support ticket. A
-// User approver needs no such flag.
+// it writes nothing to DFNS: a credential on a votable org user needs a
+// user-action in the console, since delegated registration only makes end-users,
+// which cannot vote.
 
 import { generateKeyPairSync } from 'node:crypto'
 import { writeFileSync, mkdirSync } from 'node:fs'
@@ -45,9 +34,8 @@ if (process.argv.includes('--verify')) {
   process.exit(0)
 }
 
-// Generate the Key credential keypair in DFNS's shapes: an SPKI public PEM to
-// register on the User, a PKCS8 private PEM for the relay to sign with. ed25519
-// matches DFNS's EDDSA option.
+// DFNS takes an SPKI public PEM on the User and a PKCS8 private PEM to sign
+// with. ed25519 is its EDDSA option.
 const { publicKey, privateKey } = generateKeyPairSync('ed25519', {
   publicKeyEncoding: { type: 'spki', format: 'pem' },
   privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
@@ -61,8 +49,7 @@ console.log(`  ${outDir}/approver.public.pem   register this as the User's Key c
 console.log(`  ${outDir}/approver.key          becomes DFNS_APPROVER_PRIVATE_KEY on Render`)
 console.log('')
 
-// Read-only look at the org's policies, so you know which one to add the approver
-// to. Skipped cleanly when the service-account env is not present on this box.
+// needs the service-account env, which this box may not have
 try {
   const { listPolicies } = await import('../server/dfns/policies')
   const res = await listPolicies()

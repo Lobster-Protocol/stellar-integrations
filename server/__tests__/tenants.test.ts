@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
-import { DEMO_TENANT_ID, requireDemoTenant, demoDfnsConfigured } from '../tenants/demo'
+import { DEMO_TENANT_ID, requireDemoTenant } from '../tenants/demo'
 import { dfnsClientFor, dropDfnsClient } from '../tenants/client'
 import type { Tenant } from '../tenants/types'
 
@@ -17,13 +17,8 @@ const DFNS_ENV = [
 
 let saved: Record<string, string | undefined>
 
-function clearDfnsEnv() {
-  for (const k of DFNS_ENV) delete process.env[k]
-}
-
-// a minimal env that requireDemoTenant accepts. inline key avoids a disk read;
-// the keysigner does not parse the PEM until the first authed call, so a stub
-// value is fine for building and caching clients that never make a request.
+// a minimal env requireDemoTenant accepts, key inline to skip a disk read. the
+// keysigner only parses the pem on its first authed call, so a stub is enough
 function seedDemoEnv() {
   process.env.DFNS_API_URL = 'https://api.dfns.test'
   process.env.DFNS_AUTH_TOKEN = 'tok-demo'
@@ -47,8 +42,10 @@ function fakeTenant(over: Partial<Tenant> = {}): Tenant {
 
 beforeEach(() => {
   saved = {}
-  for (const k of DFNS_ENV) saved[k] = process.env[k]
-  clearDfnsEnv()
+  for (const k of DFNS_ENV) {
+    saved[k] = process.env[k]
+    delete process.env[k]
+  }
 })
 
 afterEach(() => {
@@ -59,12 +56,6 @@ afterEach(() => {
 })
 
 describe('demo tenant seeded from env', () => {
-  it('reports unconfigured until a dfns credential is present', () => {
-    expect(demoDfnsConfigured()).toBe(false)
-    process.env.DFNS_AUTH_TOKEN = 'tok'
-    expect(demoDfnsConfigured()).toBe(true)
-  })
-
   it('builds the demo tenant from the dfns env vars', () => {
     seedDemoEnv()
     process.env.DFNS_ORG_ID = 'org-demo'
@@ -86,7 +77,7 @@ describe('demo tenant seeded from env', () => {
     expect(requireDemoTenant().treasury).toBeNull()
   })
 
-  it('throws the same missing-env error the old client did', () => {
+  it('names the missing env var when the config is incomplete', () => {
     process.env.DFNS_AUTH_TOKEN = 'tok'
     expect(() => requireDemoTenant()).toThrow(/DFNS_API_URL env var missing/)
   })

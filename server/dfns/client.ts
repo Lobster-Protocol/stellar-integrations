@@ -3,7 +3,6 @@ import type { DfnsApiClient } from '@dfns/sdk'
 import { dfnsClientFor } from '../tenants/client'
 import { requireDemoTenant } from '../tenants/demo'
 
-// the demo tenant's dfns client, built and cached by the per-tenant factory.
 export function getDfnsClient(): DfnsApiClient {
   return dfnsClientFor(requireDemoTenant())
 }

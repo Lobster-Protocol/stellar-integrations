@@ -2,10 +2,8 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 
 // extended mica record per cdr 2025/1140 table 3 with the dfns / decision /
-// execution blocks added, plus recordHash + prevHash chaining so an auditor
-// can detect tampered or reordered records by recomputing the chain. when the
-// official esma message specs zip is out, swap this schema for the
-// json-schema-to-typescript output and keep the same chain logic.
+// execution blocks added, plus recordHash + prevRecordHash chaining so an auditor
+// can detect tampered or reordered records by recomputing the chain.
 
 export const McaSideSchema = z.enum(['buy', 'sell'])
 
@@ -31,9 +29,6 @@ export const McaExecutionBlockSchema = z.object({
 })
 
 export const McaRecordSchema = z.object({
-  // chain header: every record carries the sha256 of its canonical body
-  // plus the previous record's hash. the first record in a batch sets
-  // prevRecordHash to null.
   recordHash: z.string(),
   prevRecordHash: z.string().nullable(),
 
@@ -90,10 +85,8 @@ export interface ExportContext {
   resolveVenue: (contractId: string | undefined) => string
 }
 
-// sort keys at every level. a top-level key array passed as the stringify
-// replacer filters nested keys too, so the dfns/decision/execution blocks
-// would serialize as {} and drop out of the hash - tampering inside them
-// would go undetected. recurse instead.
+// sort keys at every level. a key array as the stringify replacer would also
+// filter nested keys and drop the dfns/decision/execution blocks from the hash.
 function canonical(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(canonical)
   if (v && typeof v === 'object') {
@@ -105,16 +98,12 @@ function canonical(v: unknown): unknown {
   return v
 }
 
-// canonical json, sha256 hex. recordHash is excluded from the body it signs
-// (a hash can't depend on itself).
 function hashBody(record: Omit<McaRecord, 'recordHash'>): string {
   return createHash('sha256').update(JSON.stringify(canonical(record))).digest('hex')
 }
 
-// startPrevHash threads the chain across transactions: an export concatenates
-// the records of many txs, and verifyChain walks the whole array, so the first
-// record of tx N+1 must carry the last hash of tx N (not null) or the verifier
-// reads a break at every tx boundary. defaults to null for a standalone tx.
+// startPrevHash threads the chain across txs. verifyChain walks a whole export,
+// so the first record of a tx has to carry the last hash of the tx before it.
 export function buildMcaRecords(
   tx: StellarTxSnapshot,
   ctx: ExportContext,

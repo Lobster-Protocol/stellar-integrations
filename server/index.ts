@@ -12,11 +12,8 @@ import { scan as scanHealth, formatMetrics as formatHealth } from './probe/index
 
 const PORT = Number(process.env.PORT || 8787)
 
-// fail-fast at boot if the dfns credentials are wrong. dfns-keysigner
-// does not throw on bad PEMs at construction. the first authed call is
-// when the decoder error shows up, so trigger one before traffic arrives.
-// dev path (no dfns vars set) skips the ping so local e2e can boot
-// without a PEM on disk.
+// fail fast on bad dfns credentials. dfns-keysigner does not throw on a bad
+// PEM at construction, only on the first authed call, so make one at boot.
 if (process.env.DFNS_PRIVATE_KEY_PATH || process.env.DFNS_PRIVATE_KEY) {
   await pingDfns().catch((err) => {
     console.error('dfns ping failed at boot:', err)
@@ -38,9 +35,7 @@ if ((process.env.METRICS_TOKEN || otlpEnabled()) && (process.env.DFNS_PRIVATE_KE
   startDfnsMetricsLoop()
 }
 
-// the relay never sleeps, so it runs the ttl and health scans itself. with
-// GRAFANA_OTLP_URL set they go to grafana, and so do the relay's own request
-// metrics, once a minute.
+// the relay never sleeps, so it runs the ttl and health scans itself.
 if (process.env.TTL_MONITOR_EMBEDDED === '1') {
   for (const config of ttlConfigs()) {
     startTtlLoop(config).catch((err) => console.error(`[ttl-monitor:${config.network}] loop crashed`, err))

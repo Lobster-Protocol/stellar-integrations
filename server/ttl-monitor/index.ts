@@ -18,16 +18,13 @@ interface MonitorConfig {
 
 const DEFAULT_INTERVAL_MS = 300_000
 
-// the caller's own rpc wins; the public endpoint is the fallback so a read
-// still works without a private node configured.
 function rpcUrlFor(network: Network, env: NodeJS.ProcessEnv = process.env): string {
   const override = network === 'mainnet' ? env.SOROBAN_RPC_MAINNET : env.SOROBAN_RPC_TESTNET
   return override || STELLAR_RPC_FALLBACK[network].soroban
 }
 
 function readConfig(env: NodeJS.ProcessEnv = process.env): MonitorConfig {
-  // mainnet has to be asked for by name; an unset or mistyped var falls back
-  // to testnet like every other network default in this repo
+  // mainnet has to be asked for by name; an unset or mistyped var means testnet
   const network: Network = env.TTL_MONITOR_NETWORK === 'mainnet' ? 'mainnet' : 'testnet'
   const intervalMs = Number(env.TTL_MONITOR_INTERVAL_MS) || DEFAULT_INTERVAL_MS
   return { network, rpcUrl: rpcUrlFor(network, env), intervalMs, pushgatewayUrl: env.PUSHGATEWAY_URL }
@@ -61,8 +58,8 @@ export function executableCodeKey(entry?: xdr.LedgerEntryData): xdr.LedgerKey | 
 // one-shot scan a route or test can call without the daemon loop. throws when
 // the factory isn't deployed on the network, which the caller turns into a 503.
 export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network)): Promise<ScanResult> {
-  // the sdk default is no timeout at all; a stuck public endpoint would pin
-  // the daemon pass and hold /ttl requests open, so cap it
+  // the sdk default is no timeout at all; a stuck endpoint would pin the daemon
+  // pass and hold /ttl requests open
   const server = new rpc.Server(rpcUrl, { allowHttp: rpcUrl.startsWith('http://'), timeout: 15_000 })
   const { factory, wasmHash } = CONTRACTS[network].lobster
   if (!factory || !wasmHash) {
@@ -102,9 +99,7 @@ export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network))
   return scan
 }
 
-// prometheus exposition: a runway gauge per key in ledgers and seconds, plus the
-// latest ledger the scan read against so a stale push shows up rather than being
-// silently trusted.
+// the latest-ledger gauge makes a stale push visible instead of silently trusted.
 export function formatMetrics(scan: ScanResult, network: Network): string {
   const labels = (s: KeyStatus) =>
     `{network="${network}",kind="${s.kind ?? 'unknown'}",key="${s.keyXdr}"}`
@@ -135,9 +130,7 @@ async function pushMetrics(url: string, scan: ScanResult, network: Network): Pro
   if (!res.ok) throw new Error(`pushgateway answered ${res.status}`)
 }
 
-// the signer the daemon hands an assembled xdr to. left unset, a pass only
-// reports the keys that need extending, which is the standing mode until the
-// mainnet deploy.
+// with no signer wired, a pass only reports the keys that need extending.
 export interface ExtendSigner {
   sourceAddress: string
   // asserted against the pass so a mainnet daemon can't drive a testnet-wired
@@ -146,9 +139,8 @@ export interface ExtendSigner {
   sign(xdrBase64: string, networkPassphrase: string): Promise<string>
 }
 
-// extend each critical key back to a month of runway, capping the fee so a
-// runaway rent estimate near the ceiling can't sign an arbitrary amount. one
-// bad key logs and moves on rather than stranding the rest.
+// the fee cap stops a runaway rent estimate near the ceiling from signing an
+// arbitrary amount. one bad key logs and moves on rather than stranding the rest.
 export async function extendKeys(
   server: rpc.Server,
   keys: KeyStatus[],

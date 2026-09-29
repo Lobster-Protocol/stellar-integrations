@@ -27,8 +27,6 @@ import { app } from '../webhook'
 const API_TOKEN = 'test-api-token-32-chars-long-x'
 const OPERATOR_TOKEN = 'test-operator-token-40-chars-long-value'
 
-// both write routes take the same pair of tokens, so the suite drives them
-// through one builder rather than repeating the header block eight times.
 function write(path: string, headers: Record<string, string>, body = '{ malformed'): Request {
   return new Request(`http://localhost${path}`, {
     method: 'POST',

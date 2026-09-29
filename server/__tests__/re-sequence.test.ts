@@ -28,10 +28,8 @@ function trustlineAt(seq: string) {
 
 describe('rebuildWithSequence', () => {
   it('rebinds the sequence to the fresh account, one past its current value', () => {
-    // the client built this against a now-stale sequence (100 -> tx seq 101)
     const stale = trustlineAt('100')
     expect(stale.sequence).toBe('101')
-    // the account has since moved to 999
     const fresh = rebuildWithSequence(stale, new Account(TREASURY, '999'), Networks.TESTNET)
     expect(fresh.sequence).toBe('1000')
   })
@@ -63,10 +61,6 @@ describe('rebuildWithSequence', () => {
   })
 })
 
-// a soroban call held for approval used to come back from the rebuild with no
-// footprint at all, and the network turned it down as malformed. these pin both
-// halves: the resources survive, and the fee that already covered them does not
-// get charged twice.
 describe('rebuildWithSequence on a soroban envelope', () => {
   const FACTORY = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO'
   const RESOURCE_FEE = 13211

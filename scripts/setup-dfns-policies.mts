@@ -1,16 +1,12 @@
-// One-time setup for the DFNS approval policies the treasury wallets run
-// under. An operator runs this per environment; the relay itself never creates
-// policies at runtime.
+// run by an operator per environment; the relay never creates policies at runtime.
 //
 //   tsx scripts/setup-dfns-policies.mts --dry-run   print the plan, change nothing
 //   tsx scripts/setup-dfns-policies.mts             create the policies
 //   tsx scripts/setup-dfns-policies.mts --reset     archive the active ones first
 //
-// It writes two thresholds, not one, because a single always-on rule hides half
-// of what custody does. The demo wallet gets a pair: below the threshold a
-// signature clears on its own, above it a named approver has to release it, and
-// both rules show up in the console and on the Audit page. Every other wallet
-// keeps the strict rule where anything at all needs an approver.
+// the demo wallet gets a pair of rules so both sides of custody show: under its
+// threshold a signature clears on its own, over it an approver has to release it.
+// every other wallet keeps the strict rule.
 //
 // Env:
 //   DFNS_APPROVER_USER_IDS   comma-separated DFNS userIds who sign off

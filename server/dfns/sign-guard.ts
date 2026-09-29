@@ -2,10 +2,9 @@ import { Address, xdr, type Transaction, type FeeBumpTransaction } from '@stella
 import { decimalToStroops } from '../../src/integrations/stellar/amount'
 import { CONTRACTS } from '../../src/config/contracts'
 
-// only value-bounded classic ops may sign from the treasury. soroban calls and
-// DEX offers are excluded: their outflow escapes the amount cap and destination
-// whitelist below (a soroban transfer() or a dictated-price offer would drain the
-// treasury unchecked). changeTrust is in because it moves no value.
+// soroban calls and DEX offers are not here: their outflow escapes the amount cap
+// and destination whitelist below, so a transfer() or a dictated-price offer would
+// drain the treasury unchecked. changeTrust moves no value.
 const ALLOWED_OPS = new Set([
   'payment',
   'pathPaymentStrictSend',
@@ -14,11 +13,8 @@ const ALLOWED_OPS = new Set([
   'changeTrust',
 ])
 
-// A soroban invocation is admitted only as a named view on a contract the
-// operator listed, carrying no authorization entries. A view returns a value and
-// signs nothing away; without auth entries the invocation cannot move a token,
-// because a SAC transfer needs the treasury's own authorization to be attached.
-// Anything else stays out, for the reason above.
+// a view passes only on a listed contract and with no auth entries: without the
+// treasury's authorization attached, a SAC transfer cannot move a token.
 const SOROBAN_VIEW_METHODS = new Set([
   'get_admin',
   'get_pool_count',
@@ -27,10 +23,8 @@ const SOROBAN_VIEW_METHODS = new Set([
   'get_multisig',
 ])
 
-// the operator can name the contracts explicitly. with none named we fall back
-// to our own factory ids rather than refusing every view: a zero-argument view on
-// a contract we deployed gives a caller nothing, and an empty list would make the
-// view path fail on config alone.
+// with none named, fall back to our own factory ids rather than refuse every view:
+// a zero-argument view on a contract we deployed gives a caller nothing.
 function viewContracts(): string[] {
   const named = (process.env.DFNS_SOROBAN_VIEW_CONTRACTS ?? '')
     .split(',')
@@ -42,8 +36,8 @@ function viewContracts(): string[] {
     .filter(Boolean)
 }
 
-// Throws unless the operation is one of those views. Reads the invocation out of
-// the envelope rather than trusting anything the caller says about it.
+// reads the invocation out of the envelope rather than trusting what the caller
+// says about it.
 export function checkSorobanView(op: unknown, allowed: string[]): void {
   if (allowed.length === 0) {
     throw new SignGuardRejected('soroban views are not enabled on this signer')
@@ -69,22 +63,14 @@ export function checkSorobanView(op: unknown, allowed: string[]): void {
   }
 }
 
-// The value methods the treasury may invoke on a contract the operator listed for
-// it: the vault deposit/withdraw the dashboard builds. Unlike a view these carry
-// authorization and move tokens, so they only sign at all when the operator names
-// the contract in DFNS_SOROBAN_TREASURY_CONTRACTS. deposit pays the vault itself;
-// withdraw_contract pays the vault's stored owner, so the operator lists only vaults
-// its own treasury owns, the same trust the payment whitelist already carries. DFNS
-// cannot price a raw transaction, so the approval policy this mode requires is what
-// holds each one for a human. A drain method like a SAC transfer() is not here, so
-// it stays out even on a listed contract.
+// these carry authorization and move tokens, so they sign only on a contract named
+// in DFNS_SOROBAN_TREASURY_CONTRACTS. withdraw_contract pays the vault's stored
+// owner, so the operator lists only vaults its own treasury owns. DFNS cannot price
+// a raw transaction, so the approval policy is what holds each one for a human.
 const SOROBAN_VALUE_METHODS = new Set(['deposit', 'withdraw_contract'])
 
-// True when the invocation is one of those value calls, on a listed contract,
-// sourced by the treasury. It does not throw: a false sends the op on to
-// checkSorobanView, which is what refuses the views-with-auth, the unlisted
-// contracts and everything else. So the value path can only ever widen what is
-// admitted, never narrow what the view path already rejects.
+// never throws: a false sends the op on to checkSorobanView, so this path can only
+// widen what is admitted, never narrow what the view path rejects.
 export function isTreasuryValueCall(op: unknown, allowed: string[], treasury: string): boolean {
   if (allowed.length === 0) return false
   const { func, source } = op as { func?: xdr.HostFunction; source?: string }
@@ -130,12 +116,10 @@ const MAX_FEE_STROOPS = 10_000_000n
 // that carries an admitted value call, so the classic path keeps its tight 1 XLM.
 const MAX_SOROBAN_FEE_STROOPS = 50_000_000n
 
-// what a payment is capped at when the operator set no cap. two cases, because
-// they carry different risk. with no whitelist either, the only destination left
-// is the treasury itself, and an account paying itself loses nothing but the
-// fee, so the ceiling can be roomy enough for the custody demo to cross the
-// approval threshold. with a whitelist set but no cap, the destination can be
-// somebody else, so it stays tight.
+// payment cap when the operator set none. with no whitelist either, the treasury
+// can only pay itself and loses nothing but the fee, so the cap can be roomy enough
+// for the custody demo to cross the approval threshold. with a whitelist the
+// destination can be somebody else, so it stays tight.
 const SELF_ONLY_CAP_STROOPS = 1_000_000_000n
 const FALLBACK_CAP_STROOPS = 10_000_000n
 
@@ -147,31 +131,23 @@ export class SignGuardRejected extends Error {
 }
 
 export interface SignGuardConfig {
-  // env-set address of the treasury wallet whose key DFNS holds. every tx
-  // submitted to /dfns/sign must source from this account.
+  // every tx submitted to /dfns/sign must source from this account
   treasuryAddress: string
-  // destinations any payment / path payment may target. an empty list here
-  // still disables the check, so readSignGuardConfig never hands one over:
+  // an empty list disables the check, so readSignGuardConfig never hands one over:
   // when the operator sets nothing it falls back to the treasury itself.
   destinationWhitelist: string[]
-  // contracts a read-only soroban view may target. an empty list refuses every
-  // soroban invocation. readSignGuardConfig falls back to our own factory ids
-  // when the operator names none.
+  // an empty list refuses every view
   sorobanViewContracts?: string[]
-  // contracts the treasury may invoke a value method on (vault deposit/withdraw).
-  // an empty list refuses every one. no fallback, unlike the view list: a value
-  // call moves tokens, so the operator names each contract explicitly or none
-  // sign at all.
+  // no fallback, unlike the view list: a value call moves tokens, so the operator
+  // names each contract or none sign at all.
   sorobanValueContracts?: string[]
-  // hard cap for any payment-style op, in stroops. 0 disables the check, so
-  // readSignGuardConfig substitutes a low cap rather than passing 0 through.
+  // 0 disables the check, so readSignGuardConfig never passes 0 through
   maxAmountStroops: bigint
 }
 
-// caps the actual outflow. each payment kind carries the spend in a different
-// field (payment.amount, strictSend.sendAmount, strictReceive.sendMax), so the
-// caller passes the right one. when a cap is set we refuse an op with no
-// recognizable amount rather than letting it through uncapped.
+// each payment kind carries the spend in a different field, so the caller passes
+// the right one. with a cap set, an op with no recognizable amount is refused
+// rather than let through uncapped.
 function checkAmount(amount: string | undefined, max: bigint, kind: string): void {
   if (max <= 0n) return
   if (amount === undefined) {
@@ -184,9 +160,7 @@ function checkAmount(amount: string | undefined, max: bigint, kind: string): voi
 
 function checkDestination(op: { destination?: string }, list: string[], kind: string): void {
   if (list.length === 0) return
-  // fail closed on a missing destination, like checkAmount does on a missing
-  // amount: a whitelist that silently waved through a destination-less op would
-  // be a hole in the last line of defense.
+  // fail closed on a missing destination, as checkAmount does on a missing amount
   if (!op.destination || !list.includes(op.destination)) {
     throw new SignGuardRejected(`${kind} destination ${op.destination ?? '(unset)'} not in whitelist`)
   }
@@ -218,9 +192,6 @@ export function inspectSignXdr(
   }
   for (const op of inner.operations) {
     if (op.type === 'invokeHostFunction') {
-      // a listed value call is admitted once its first arg checks out as the
-      // treasury; anything else falls to the view path, which rejects auth entries,
-      // unlisted contracts and non-view methods.
       if (isTreasuryValueCall(op, cfg.sorobanValueContracts ?? [], cfg.treasuryAddress)) {
         checkValueCallRecipient(op, cfg.treasuryAddress)
         continue
@@ -266,13 +237,10 @@ export function readSignGuardConfig(): SignGuardConfig | null {
   // the operator opts in via DFNS_GUARD_PERMISSIVE=1 (testing path only).
   const permissive = process.env.DFNS_GUARD_PERMISSIVE === '1'
   if (!permissive && (list.length === 0 || cap <= 0n)) return null
-  // the browser token that reaches this route rides in the public bundle, so
-  // permissive can't mean unbounded. it only lets the operator leave the two
-  // variables unset, and then the treasury can pay nobody but itself, under a
-  // low cap.
+  // permissive still can't mean unbounded. it only lets the operator leave the
+  // two variables unset, and then the treasury can pay nobody but itself, under
+  // a low cap.
   const selfOnly = list.length === 0
-  // the treasury-callable value contracts. named only, no fallback: a value call
-  // moves tokens, so an unset variable means the treasury signs no contract call.
   const valueContracts = (process.env.DFNS_SOROBAN_TREASURY_CONTRACTS ?? '')
     .split(',')
     .map((s) => s.trim())

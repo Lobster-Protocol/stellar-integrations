@@ -42,24 +42,6 @@ function buildPayment(opts: {
   return builder.setTimeout(60).build()
 }
 
-function buildAccountMerge() {
-  const src = new Account(TREASURY, '1')
-  return new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
-    .addOperation(Operation.accountMerge({ destination: OTHER }))
-    .setTimeout(60)
-    .build()
-}
-
-function buildSetOptions() {
-  const src = new Account(TREASURY, '1')
-  return new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
-    .addOperation(
-      Operation.setOptions({ signer: { ed25519PublicKey: Keypair.random().publicKey(), weight: 1 } }),
-    )
-    .setTimeout(60)
-    .build()
-}
-
 function buildSorobanTransfer(contractId: string, to: string, amountStroops: bigint) {
   const src = new Account(TREASURY, '1')
   const args = [
@@ -86,9 +68,8 @@ describe('inspectSignXdr', () => {
   const baseCfg = { treasuryAddress: TREASURY, destinationWhitelist: [], maxAmountStroops: 0n }
 
   it('leaves the destination alone when handed an empty whitelist', () => {
-    // readSignGuardConfig never produces one, it falls back to the treasury.
-    // this pins the primitive so the fallback stays the only thing standing
-    // between a permissive deploy and an arbitrary destination.
+    // readSignGuardConfig never produces one, it falls back to the treasury, and
+    // that fallback is all that keeps an arbitrary destination out
     const tx = buildPayment({ destination: OTHER, amount: '10' })
     expect(() => inspectSignXdr(tx, baseCfg)).not.toThrow()
   })
@@ -106,12 +87,22 @@ describe('inspectSignXdr', () => {
   })
 
   it('rejects an accountMerge op even when sourced by the treasury', () => {
-    const tx = buildAccountMerge()
+    const src = new Account(TREASURY, '1')
+    const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
+      .addOperation(Operation.accountMerge({ destination: OTHER }))
+      .setTimeout(60)
+      .build()
     expect(() => inspectSignXdr(tx, baseCfg)).toThrow(/not allowed/i)
   })
 
   it('rejects a setOptions op even when sourced by the treasury', () => {
-    const tx = buildSetOptions()
+    const src = new Account(TREASURY, '1')
+    const tx = new TransactionBuilder(src, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
+      .addOperation(
+        Operation.setOptions({ signer: { ed25519PublicKey: Keypair.random().publicKey(), weight: 1 } }),
+      )
+      .setTimeout(60)
+      .build()
     expect(() => inspectSignXdr(tx, baseCfg)).toThrow(/not allowed/i)
   })
 
@@ -151,8 +142,7 @@ describe('inspectSignXdr', () => {
   })
 
   it('rejects an invokeHostFunction even when sourced by the treasury', () => {
-    // the exact drain scenario the allowlist comment describes: transfer() on
-    // the real usdc sac, straight from contracts.ts
+    // transfer() on the real usdc sac, the drain the allowlist is there to stop
     const usdcSac = CONTRACTS.mainnet.tokens.usdcSac
     const tx = buildSorobanTransfer(usdcSac, OTHER, 1_000_000n)
     // still refused: the default config lists no view contract at all
@@ -211,9 +201,8 @@ describe('readSignGuardConfig', () => {
     try {
       const cfg = readSignGuardConfig()
       expect(cfg).not.toBeNull()
-      // the treasury paying itself is the only destination left, and the cap is
-      // real. [] and 0n would turn both checks off on a route the public bundle
-      // token can reach.
+      // [] and 0n would turn both checks off, so only the treasury paying
+      // itself is left, under a real cap
       expect(cfg!.destinationWhitelist).toEqual([TREASURY])
       expect(cfg!.maxAmountStroops).toBeGreaterThan(0n)
     } finally {
@@ -284,8 +273,8 @@ describe('readSignGuardConfig', () => {
   })
 })
 
-// A soroban view is the one invocation the treasury signer admits, and only
-// because a view returns a value and carries no authorization to move anything.
+// a view is safe to sign because it returns a value and carries no
+// authorization to move anything
 describe('soroban views', () => {
   const FACTORY = CONTRACTS.testnet.lobster.factory
   const noViews = { treasuryAddress: TREASURY, destinationWhitelist: [], maxAmountStroops: 0n }
@@ -313,7 +302,7 @@ describe('soroban views', () => {
   })
 
   it('refuses a contract that was never listed', () => {
-    const other = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'
+    const other = CONTRACTS.testnet.tokens.xlmSac
     expect(() => inspectSignXdr(buildView(other, 'get_admin'), viewCfg)).toThrow(/not in the view allowlist/i)
   })
 
@@ -357,11 +346,8 @@ describe('soroban views', () => {
   })
 })
 
-// The treasury signs a vault deposit/withdraw only when the operator lists the
-// contract. These carry authorization and move tokens, so the list plus the
-// method allowlist is the whole control: an unlisted contract, or a method that
-// is not deposit/withdraw_contract, stays out. DFNS then holds every admitted one
-// for a human because it cannot price a contract call.
+// deposit and withdraw_contract carry authorization and move tokens, so they only
+// sign on a contract the operator lists, with the treasury as the beneficiary
 describe('soroban value calls', () => {
   const VAULT = CONTRACTS.testnet.lobster.factory
   const noValue = { treasuryAddress: TREASURY, destinationWhitelist: [], maxAmountStroops: 0n }
