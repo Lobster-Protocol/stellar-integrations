@@ -13,9 +13,8 @@ test.describe('the MiCA export control', () => {
     // it to unconditionally
     await expect(page.getByText('MiCA audit export')).toBeVisible()
 
-    // the export control renders in both states now: the panel keeps its button
-    // and explains underneath when it has no relay to ask. so the button is no
-    // longer the discriminator, the panel's own sentence is.
+    // the button renders in both states, so the panel's own sentence is what
+    // tells them apart
     await expect(page.getByRole('button', { name: /Download JSON/i })).toBeVisible()
 
     const noProfile = page.getByText(/no relay to ask for the records/i)

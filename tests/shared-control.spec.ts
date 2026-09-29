@@ -2,11 +2,8 @@ import { test, expect } from '@playwright/test'
 
 import { gotoWithWallet } from './fixtures'
 
-// Native Stellar multisig ("shared control") is not something you set up here:
-// multisig is DFNS custody. The Custody page must not offer to turn a native
-// quorum on, and there is no standalone co-sign card. The one path left is a
-// revert that only shows for an account that already carries a quorum, which a
-// single-sig E2E wallet does not, so nothing shared-control renders here.
+// multisig is DFNS custody. the one native path is a revert shown only to an
+// account that already carries a quorum, which the single-sig test wallet does not
 
 test.describe('shared control', () => {
   test('the custody page does not offer to set up a native multisig', async ({ page }) => {

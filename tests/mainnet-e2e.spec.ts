@@ -2,11 +2,6 @@ import { test, expect } from '@playwright/test'
 
 import { BASE, SOROBAN_RPC_MAINNET, MAINNET_FACTORY, MAINNET_SOURCE, shorten } from './fixtures'
 
-// checks the dashboard shows live mainnet data, run against the public
-// network. it stays a blank harness until the Factory is deployed: with
-// PLAYWRIGHT_MAINNET_FACTORY / _SOURCE unset the whole file skips, so it is safe
-// to keep in CI and ready to run the moment mainnet lands. mirrors the testnet
-// ground-truth pattern in ux-onchain-integration.spec.ts.
 const ready = MAINNET_FACTORY !== '' && MAINNET_SOURCE !== ''
 
 async function readAdminAndPoolCount(): Promise<{ admin: string; poolCount: number }> {

@@ -4,13 +4,8 @@ import { resolve } from 'node:path'
 
 import { BASE } from './fixtures'
 
-// These three headers come from vercel.json, and `vite preview` serves dist off
-// disk without ever reading that file, so a local run cannot see them on the
-// wire. Skipping on localhost meant they were checked by nothing on any run we
-// actually make, so each test now checks the rule we ship, every run, and adds
-// the live response only when the suite is pointed at a deploy:
-//
-//   PLAYWRIGHT_BASE_URL=https://stellar-instit.lobster-protocol.com npx playwright test tests/ux-headers.spec.ts
+// these headers come from vercel.json, which `vite preview` never reads, so a local
+// run checks the declared rule and only a run against a deploy checks the wire too
 const isLocal = /localhost|127\.0\.0\.1/.test(BASE)
 
 interface VercelConfig {

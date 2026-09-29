@@ -3,9 +3,8 @@ import { TransactionBuilder, Networks } from '@stellar/stellar-sdk'
 
 import { seedDfnsDemo, seedWallet, TEST_SOURCE_TESTNET } from './fixtures'
 
-// MPC custody mode swaps in the dfns signer, which posts the built xdr to
-// /dfns/sign. the dfns endpoints are mocked (the real flow needs the sandbox +
-// relay); the build step still hits live testnet rpc, like the other on-chain specs.
+// the dfns endpoints are mocked since the real flow needs the sandbox and relay,
+// but building the tx still hits live testnet rpc
 const apiUrl = process.env.VITE_LOBSTER_API_URL
 
 test.describe('DFNS MPC signing path', () => {
@@ -48,12 +47,8 @@ test.describe('DFNS MPC signing path', () => {
     // the network busy, so idle never fires.
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
-    // the raw-xdr payment is the one this spec is about: the dashboard builds
-    // the envelope and hands it to /dfns/sign. its neighbour of the same amount
-    // asks the relay to build and send the transfer itself, which never touches
-    // this endpoint. an older wording ("Sign a treasury payment with DFNS MPC")
-    // matched no button at all, so the spec died on the locator rather than on
-    // the signing path it exists to cover.
+    // only the raw-xdr payment reaches /dfns/sign. its neighbour of the same
+    // amount has the relay build and send the transfer itself
     const btn = page.getByRole('button', { name: /raw XDR/i })
     await expect(btn).toBeVisible()
 

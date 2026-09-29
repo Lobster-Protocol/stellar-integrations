@@ -1,9 +1,7 @@
 import { test, expect } from '@playwright/test'
 
-// the docs site serves every prose page plus the generated api reference,
-// and stays noindex until launch. runs against a served build set
-// by DOCS_BASE_URL (local `npm run serve` in lobster-docs, or the deployed
-// site). skips when that isn't set, so it's green until the site is up.
+// noindex until launch. DOCS_BASE_URL points at a served build, `npm run serve`
+// in lobster-docs or the hosted site
 const DOCS_BASE = process.env.DOCS_BASE_URL ?? ''
 
 const PAGES = [
@@ -32,8 +30,8 @@ test.describe('Docs site', () => {
   }
 
   test('publishes the generated API reference', async ({ request }) => {
-    // the openapi plugin emits the bff under /api; the tag landing page is the
-    // stable entry the sidebar links to.
+    // the openapi plugin emits the bff under /api, and the intro page it names
+    // after the spec title is the stable entry the sidebar links to
     const res = await request.get(`${DOCS_BASE}/api/lobster-bff`)
     expect([200, 301, 302]).toContain(res.status())
   })

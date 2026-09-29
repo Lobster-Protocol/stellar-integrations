@@ -16,8 +16,7 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /Performance/ }).click()
     await expect(page).toHaveURL(/\/performance$/)
-    // the curve, not just the route: the card frame is there either way, so
-    // the plotted series is what says the history actually came back
+    // the card frame renders either way; only the plotted series shows the history came back
     await expect(page.getByRole('heading', { name: 'Wallet balance over time' })).toBeVisible()
     await expect(page.locator('.recharts-area-curve').first()).toBeVisible({ timeout: 25_000 })
   })
@@ -39,9 +38,7 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
     await expect(page).toHaveURL(/\/bridges$/)
-    // the provider tile names who carries the USDC across, which is the piece
-    // the test is called after. anchored on the tile so a stray mention of the
-    // name elsewhere on the page cannot stand in for it.
+    // anchored on the tile so a stray mention of the name elsewhere cannot stand in for it
     const provider = page
       .getByText('Carried by', { exact: true })
       .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]')
@@ -55,7 +52,7 @@ test.describe('Cross-page navigation', () => {
     await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
   })
 
-  test('custody is reachable and no longer offers a native multisig setup', async ({ page }) => {
+  test('custody is reachable and offers no native multisig setup', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: 'Custody', exact: true }).click()
     await expect(page).toHaveURL(/\/audit$/)
@@ -104,8 +101,6 @@ test.describe('Mobile responsiveness', () => {
 
   test('the drawer carries every nav item, not a subset', async ({ page }) => {
     await gotoNoWallet(page)
-    // by accessible name, not "first button holding an svg": that matched
-    // whichever icon button happened to come first in the DOM
     const hamburger = page.getByRole('button', { name: /Open menu/i })
     await hamburger.click()
     for (const label of ['Overview', 'Performance', 'Activity', 'Allocation', 'Bridges', 'Positions', 'Custody']) {
@@ -115,9 +110,7 @@ test.describe('Mobile responsiveness', () => {
 
   test('leaves a way to connect on a phone', async ({ page }) => {
     await gotoNoWallet(page)
-    // Two Connect Wallet buttons render when no wallet is connected: one
-    // in the TopBar and one in the Overview empty state. We only assert
-    // that at least one is visible to the user.
+    // the top bar and the Overview empty state each render one
     await expect(page.getByRole('button', { name: /Connect Wallet/ }).first()).toBeVisible()
   })
 })
@@ -142,12 +135,11 @@ test.describe('Network toggle', () => {
     })
     await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
-    // both buttons are always on screen, so their visibility proves nothing.
-    // the selected one carries the raised pill classes, and that is the only
-    // place the fallback shows up until something writes the value back.
+    // both buttons are always visible; until something writes the value back, the
+    // raised pill class on the selected one is the only place the fallback shows
     await expect(page.getByRole('button', { name: 'Testnet' })).toHaveClass(/bg-bg-card/)
     await expect(page.getByRole('button', { name: 'Mainnet' })).not.toHaveClass(/bg-bg-card/)
-    // and the app really is reading testnet: the footer names the live network
+    // the footer names the network the app is actually reading
     await expect(page.locator('footer')).toContainText('testnet')
   })
 
@@ -169,7 +161,6 @@ test.describe('controls that are icons still have names', () => {
 
   test('the disconnect control names itself', async ({ page }) => {
     await gotoWithWallet(page)
-    // disconnect now lives in the wallet chip's menu, reached by an aria-labelled trigger
     await page.getByRole('button', { name: 'Connected wallet' }).click()
     await expect(page.getByRole('menuitem', { name: /Disconnect/i })).toBeVisible()
   })

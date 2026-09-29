@@ -2,9 +2,6 @@ import { test, expect, type Page } from '@playwright/test'
 
 import { BROKER_ENDPOINT, MAINNET_USDC_ISSUER, seedWallet } from './fixtures'
 
-// best execution across venues is the whole point of the broker, so the check
-// is that the dashboard shows what the broker actually answered, next to the
-// direct route, and the two figures match a quote this spec fetched for itself.
 const PROBE_XLM = 100
 
 interface Quote {
@@ -14,9 +11,8 @@ interface Quote {
   profit?: string
 }
 
-// The ground truth comes from a third party, so a slow or missing broker has to
-// read as "nothing to compare against" and skip. Letting it throw would turn a
-// quiet market into a red build.
+// the ground truth comes from a third party, so a slow or missing broker skips
+// the spec instead of failing it
 async function liveQuote(): Promise<Quote> {
   const url =
     `${BROKER_ENDPOINT}/quote?sellingAsset=XLM&buyingAsset=USDC-${MAINNET_USDC_ISSUER}` +
@@ -68,7 +64,6 @@ test.describe('best execution', () => {
     expect(direct).not.toBeNull()
 
     // the page quotes a moment after this spec did, so allow for market drift
-    // while still proving it is the same number and not a placeholder
     const live = Number(truth.estimatedBuyingAmount)
     expect(Math.abs(broker! - live) / live).toBeLessThan(0.05)
     expect(broker!).toBeGreaterThanOrEqual(direct!)
@@ -80,15 +75,11 @@ test.describe('best execution', () => {
 
     await openSwapWithAmount(page, String(PROBE_XLM))
 
-    // what the name promises, and it holds whichever route wins
     await expect(page.getByText('Direct route, same size')).toBeVisible({ timeout: 45000 })
     await expect(page.getByText(/^Via Stellar Broker$/)).toBeVisible()
 
-    // three ways this can end: the broker leg is executable (needs a partner
-    // key in the bundle), the swap falls back to Soroswap, or nothing on the
-    // pair can be signed. exactly one of them, named. summing the three and
-    // taking any non-zero as a pass accepted a page that showed two at once,
-    // and a page that showed a headline with no control under it.
+    // exactly one of three endings: the broker leg (needs a partner key in the
+    // bundle), the soroswap fallback, or nothing signable on the pair
     const legs = {
       'broker leg': page.getByText('Live best-execution quote from Stellar Broker'),
       'soroswap leg': page.getByRole('button', { name: 'Confirm Soroswap swap' }),

@@ -1,11 +1,10 @@
 import { test, expect } from '@playwright/test'
 
-import { seedWallet } from './fixtures'
+import { gotoWithWallet } from './fixtures'
 
 test.describe('the swap form', () => {
   test('opens from the Overview Swap button and shows the asset form', async ({ page }) => {
-    await seedWallet(page)
-    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Swap' }).click()
 
     await expect(page.getByText('Best-execution swap')).toBeVisible()
@@ -15,8 +14,7 @@ test.describe('the swap form', () => {
   })
 
   test('shows the differ message when selling and buying are identical', async ({ page }) => {
-    await seedWallet(page)
-    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Swap' }).click()
 
     // form has two <select>s; flip buying to XLM so it matches selling
@@ -27,8 +25,7 @@ test.describe('the swap form', () => {
   })
 
   test('does not show a confirm button without an amount', async ({ page }) => {
-    await seedWallet(page)
-    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Swap' }).click()
 
     await expect(page.getByRole('button', { name: /Confirm (broker|Soroswap) swap/ })).toHaveCount(0)

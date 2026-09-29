@@ -2,9 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { DEMO_VAULT_OWNER, gotoWithWallet } from './fixtures'
 
-// The wallet these specs seed owns no vault, which is the case that matters for
-// the create path: the page has to offer it rather than show an empty list and
-// stop there.
+// the seeded wallet owns no vault, which is the case the create path is for
 test.describe('vault lifecycle', () => {
   test('offers to create a vault, and says a vault cannot be deleted', async ({ page }) => {
     await gotoWithWallet(page, '/positions')
@@ -34,18 +32,15 @@ test.describe('vault lifecycle', () => {
   })
 })
 
+async function asOwner(page: import('@playwright/test').Page) {
+  await page.addInitScript((a) => {
+    localStorage.setItem('lob_addr', a)
+    localStorage.setItem('lob_wname', 'Freighter')
+  }, DEMO_VAULT_OWNER)
+  await page.goto('/positions', { waitUntil: 'domcontentloaded' })
+}
+
 test.describe('vault detail', () => {
-  // this wallet owns the demo vaults, so it is the one that has cards to open
-  const OWNER = DEMO_VAULT_OWNER
-
-  async function asOwner(page: import('@playwright/test').Page) {
-    await page.addInitScript((a) => {
-      localStorage.setItem('lob_addr', a)
-      localStorage.setItem('lob_wname', 'Freighter')
-    }, OWNER)
-    await page.goto('/positions', { waitUntil: 'domcontentloaded' })
-  }
-
   test('opens a vault and reads its contract for the rest', async ({ page }) => {
     await asOwner(page)
     const toggle = page.getByText('What this vault holds and where').first()
@@ -108,18 +103,7 @@ test.describe('vault detail', () => {
 })
 
 test.describe('a crowded vault list', () => {
-  const OWNER = DEMO_VAULT_OWNER
-
-  async function asOwner(page: import('@playwright/test').Page) {
-    await page.addInitScript((a) => {
-      localStorage.setItem('lob_addr', a)
-      localStorage.setItem('lob_wname', 'Freighter')
-    }, OWNER)
-    await page.goto('/positions', { waitUntil: 'domcontentloaded' })
-  }
-
-  // reading the whole card and pulling the figure out beats a text selector,
-  // which would need its own escaping just to find a number
+  // pull the figure out of the card text; a text selector would need its own escaping
   async function cardValues(page: import('@playwright/test').Page): Promise<number[]> {
     const texts = await page
       .locator('div.rounded-3xl')

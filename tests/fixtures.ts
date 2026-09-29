@@ -1,21 +1,15 @@
-// shared playwright test fixtures. canonical values live in
-// src/config/contracts.ts; we keep a small mirror here so the e2e specs
-// stay self-contained without crossing tsconfig project boundaries.
+// canonical values live in src/config/contracts.ts, mirrored here so the specs
+// stay self-contained
 
 import type { Page } from '@playwright/test'
 
-// matches the baseURL in playwright.config.ts; exposed here for the few
-// specs that use the request fixture (which does not auto-prepend baseURL)
-// or that need absolute urls for redirect checks.
+// matches the baseURL in playwright.config.ts, for specs that need the absolute url
 export const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'https://stellar-instit.lobster-protocol.com'
 
-// soroban rpc target for on-chain integration specs. override per environment.
 export const SOROBAN_RPC = process.env.PLAYWRIGHT_SOROBAN_RPC ?? 'https://soroban-testnet.stellar.org'
 
-// mainnet harness. the deployed Factory C-address is NOT committed here - it
-// comes from the env once the mainnet deploy lands, so the mainnet spec stays
-// a blank harness (it skips) until then. MAINNET_SOURCE is any funded
-// G-account used as the simulation source for read calls.
+// no mainnet factory is committed, so the mainnet spec skips until the env names
+// one. MAINNET_SOURCE is any funded account, the source for simulated reads
 export const SOROBAN_RPC_MAINNET = process.env.PLAYWRIGHT_SOROBAN_RPC_MAINNET ?? 'https://mainnet.sorobanrpc.com'
 export const MAINNET_FACTORY = process.env.PLAYWRIGHT_MAINNET_FACTORY ?? ''
 export const MAINNET_SOURCE = process.env.PLAYWRIGHT_MAINNET_SOURCE ?? ''
@@ -31,26 +25,22 @@ export const TEST_FACTORY_TESTNET = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHT
 // matches contracts.ts testnet.lobster.readSource (deployer)
 export const TEST_SOURCE_TESTNET = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 
-// the testnet wallet that owns the demo vaults. the vault specs need an account
-// with cards on the page; TEST_WALLET owns none, which is what makes it the
-// right one for the create path.
+// the testnet wallet behind the demo vaults the vault specs act on. TEST_WALLET
+// has none, which is what the create path needs
 export const DEMO_VAULT_OWNER = 'GCVFDROZF3D565FAURFQBXQEOHT4BPQK2P66JUCL5XQWNWQBOGXMRVQA'
 
-// matches contracts.ts mainnet.tokens.usdcIssuer and mainnet.broker.endpoint.
-// the best-execution spec reads a live quote from the broker as ground truth,
-// then checks the dashboard shows the same figure.
+// matches contracts.ts mainnet.tokens.usdcIssuer and mainnet.broker.endpoint
 export const MAINNET_USDC_ISSUER = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
 export const BROKER_ENDPOINT = process.env.PLAYWRIGHT_BROKER_URL ?? 'https://api.stellar.broker'
 
-// must match shortenAddress in src/utils/format.ts: three ASCII dots, not the
-// ellipsis character, so the DOM text the specs compare against lines up.
+// must match shortenAddress in src/utils/format.ts, three ascii dots and not the
+// ellipsis character, or the DOM text will not line up
 export function shorten(addr: string, n = 8): string {
   return `${addr.slice(0, n)}...${addr.slice(-n)}`
 }
 
-// Picking a DFNS profile is opt-in now: nothing is active until someone
-// chooses one, so the custody panels stay dark and the sign buttons never
-// mount. A spec that drives those has to pick the demo the way a person would.
+// no dfns profile is active until someone picks one, and until then the custody
+// panels stay dark and the sign buttons never mount
 export async function seedDfnsDemo(page: Page) {
   await page.addInitScript(() => localStorage.setItem('lob_dfns_active', '__demo__'))
 }
@@ -62,9 +52,6 @@ export async function seedWallet(page: Page) {
   }, [TEST_WALLET.address, TEST_WALLET.name] as const)
 }
 
-// seedWallet + page.goto in one call, the most common pattern across the
-// public specs. accepts a relative path that playwright prepends with the
-// configured baseURL.
 export async function gotoWithWallet(page: Page, path: string = '/') {
   await seedWallet(page)
   await page.goto(path, { waitUntil: 'domcontentloaded' })

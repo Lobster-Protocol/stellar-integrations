@@ -2,9 +2,8 @@ import { test, expect } from '@playwright/test'
 
 import { BASE } from './fixtures'
 
-// this file doubles as the screenshot pass for the phone layout, which is why
-// it walks ground ux-navigation already covers. the screenshots are the point,
-// so the walk stays even where the assertions live elsewhere too.
+// doubles as the screenshot pass for the phone layout, hence the overlap with
+// ux-navigation
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
 
 test('trades the sidebar for a menu button at phone width', async ({ page }) => {
@@ -48,8 +47,7 @@ test('brings the wallets kit up at phone width', async ({ page }) => {
   await expect(connectBtn).toBeVisible()
   await connectBtn.click()
 
-  // the kit modal has to actually come up at phone width, which is the part
-  // the screenshot alone never checked
+  // a screenshot alone passes whether or not the modal came up
   const modal = page.locator('section.stellar-wallets-kit')
   await expect(modal).toBeVisible()
   await expect(modal.getByRole('heading', { name: 'Connect Wallet' })).toBeVisible()

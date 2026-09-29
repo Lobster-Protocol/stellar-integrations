@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test'
 
-// what a deploy has to serve before anyone logs in. raw http where it can be,
-// so a failure names the missing header or file rather than a locator. split
-// one per artifact on purpose: a batched version told us "something is off"
-// and nothing more.
 import { BASE } from './fixtures'
 
 test.describe('what the deploy serves before anyone logs in', () => {
@@ -57,7 +53,6 @@ test.describe('what the deploy serves before anyone logs in', () => {
   test('the trustline tile reads the wallet, never a hardcoded Active', async ({ page }) => {
     await page.goto(`${BASE}/bridges`)
     await expect(page.getByText('Connect wallet').first()).toBeVisible({ timeout: 15_000 })
-    // and the trustline tile reports the live branch, never a hardcoded Active.
     // the label carries a help tip beside it, so anchor on the tile, not the word
     const trustline = page
       .getByText('Trustline', { exact: false })

@@ -12,19 +12,15 @@ test.describe('the approval queue', () => {
     await expect(page.getByText('Pending approvals')).toBeVisible()
 
     // decided from the render, not from a node-side env var: the relay url is
-    // baked into the bundle, and the old check passed whether the panel had
-    // opted out or blown up on mount.
+    // baked into the bundle
     const off = page.getByText(/Connect a DFNS organization to see this/)
     if ((await off.count()) > 0) {
       await expect(off.first()).toBeVisible()
       return
     }
 
-    // wired, so the panel has to land on a state it can name: still reading,
-    // nothing queued, something queued, or why the queue could not be read. a
-    // build pointed at a relay that is not up ends on the last of those, which
-    // is the panel working rather than failing. matched page-wide on purpose so
-    // a reshuffle of the panel markup does not break the check.
+    // a relay that is down ends on the read error, which still counts as the panel
+    // working. matched page-wide so a markup reshuffle does not break the check
     const named = page
       .getByText(/Nothing is waiting for approval/i)
       .or(page.getByRole('button', { name: 'Approve' }))

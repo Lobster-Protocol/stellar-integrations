@@ -1,15 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { gotoWithWallet } from './fixtures'
 
-// the TTL countdown card is on /audit, under the custody panels, and reads its
-// network from context. The daemon-side math is covered by the vitest unit;
-// this checks the card renders and that it names the state it is in.
-//
-// These runs have no storage feed behind VITE_LOBSTER_API_URL (ci points it at
-// a dead 127.0.0.1 on purpose), so the card lands in its unreachable state. It
-// takes a few seconds to get there: a refused connection to localhost costs two
-// on windows, and the query retries once before it gives up, so the waits below
-// are longer than the five-second default.
+// ci points VITE_LOBSTER_API_URL at a dead 127.0.0.1, and the card is slow to give up on
+// it: a refused localhost connect takes two seconds on windows and the query retries once
 test.describe('TTL countdown card', () => {
   const card = (page: Page) =>
     page.locator('div.card').filter({ hasText: 'Contract storage lease' }).first()

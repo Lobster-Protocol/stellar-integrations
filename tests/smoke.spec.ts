@@ -24,7 +24,6 @@ test('overview shows the connect prompt when not connected', async ({ page }) =>
 test('performance asks for a wallet instead of drawing an empty curve', async ({ page }) => {
   await page.goto(BASE + '/performance', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Performance' })).toBeVisible()
-  // no wallet connected, so it asks to connect rather than showing numbers
   await expect(page.getByText(/Connect a wallet to rebuild its history/i)).toBeVisible()
 })
 
@@ -67,8 +66,7 @@ test('writes the network choice through to storage, both ways', async ({ page })
   const testnet = page.getByRole('button', { name: 'Testnet' })
   const mainnet = page.getByRole('button', { name: 'Mainnet' })
 
-  // the toggle marks the live network with the raised pill classes, and writes
-  // the choice through to storage, so check both ends of the switch
+  // the live network is the one wearing the raised pill class
   await mainnet.click()
   await expect(mainnet).toHaveClass(/bg-bg-card/)
   await expect(testnet).not.toHaveClass(/bg-bg-card/)
@@ -85,9 +83,7 @@ test('brings up the wallets kit with wallets in it', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Connect Wallet' }).first().click()
 
-  // the wallets kit appends its own section and lists what it can talk to.
-  // clicking used to be followed by a screenshot and nothing else, so a kit
-  // that never opened still read as a pass.
+  // the wallets kit appends its own section to the page
   const modal = page.locator('section.stellar-wallets-kit')
   await expect(modal).toBeVisible()
   await expect(modal.getByRole('heading', { name: 'Connect Wallet' })).toBeVisible()
@@ -108,10 +104,8 @@ test('leaves no console error behind past the known browser noise', async ({ pag
     await page.waitForTimeout(500)
   }
 
-  // three classes of browser noise are not the app misbehaving: a missing
-  // favicon, a 404 from reading an account that is not on the ledger, and a
-  // refused connection to a relay a test build is not expected to have. every
-  // other console error is a real fault, and this used to only log them.
+  // not faults: a missing favicon, a 404 for an account not on the ledger, and a
+  // refused connection to a relay a test build does not have
   const critical = errors.filter(
     (e) => !e.includes('favicon') && !e.includes('404') && !e.includes('net::ERR'),
   )

@@ -15,8 +15,7 @@ interface GroundTruth {
 }
 
 async function readGroundTruth(): Promise<GroundTruth> {
-  // Use the stellar-sdk to call simulateTransaction once per view function.
-  // Imported dynamically because the SDK is heavy and we only need it here.
+  // imported dynamically because the SDK is heavy and only this function needs it
   const sdk = await import('@stellar/stellar-sdk')
   const { Contract, TransactionBuilder, BASE_FEE, Networks, rpc, scValToNative } = sdk
   const server = new rpc.Server(RPC_URL)
@@ -57,11 +56,9 @@ test.describe('Live Factory reads match the /audit DOM', () => {
 
   test('Factory admin from on-chain matches the rendered Admin stat', async ({ page }) => {
     await page.goto(`${BASE}/audit`)
-    // The factory card shows "Reading from Soroban RPC..." until the
-    // simulation resolves, after which "Pools created" appears.
+    // "Pools created" only shows once the simulation resolves
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
-    // anchor on the card through its h3: the stat labels each carry a help tip
-    // of their own, so the heading is the steady handle
+    // anchor on the card's h3: every stat label carries a help tip of its own
     const card = page
       .getByRole('heading', { name: /Factory contract/ })
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
@@ -71,8 +68,7 @@ test.describe('Live Factory reads match the /audit DOM', () => {
   test('Factory pool_count from on-chain matches the rendered Pools created', async ({ page }) => {
     await page.goto(`${BASE}/audit`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
-    // the label and the value share a Stat block, so read the block rather
-    // than the label, and a markup reshuffle does not break the check
+    // the label and the value share a Stat block, so read the block
     const stat = page.getByText(/^Pools created$/i).locator('..')
     await expect(stat).toContainText(String(truth.poolCount))
   })
@@ -106,8 +102,7 @@ test.describe('Live Factory reads match the /audit DOM', () => {
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 
     const callsBefore = sorobanCalls
-    // scope to the Factory card: the TTL card below it also has a refresh, and
-    // that one reads the monitoring relay rather than Soroban
+    // the TTL card below also has a refresh, and that one reads the relay, not Soroban
     const factoryCard = page
       .getByRole('heading', { name: 'Factory contract' })
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
@@ -122,8 +117,7 @@ test.describe('Live Factory reads match the /audit DOM', () => {
     await page.goto(`${BASE}/audit`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 
-    // Capture the first age label, wait, capture again. The interval
-    // re-renders once a second; "just now" should turn into "Xs ago" within 3 s.
+    // the label re-renders once a second, so "just now" has moved on by the second read
     const factoryCard = page
       .getByRole('heading', { name: 'Factory contract' })
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
@@ -138,8 +132,7 @@ test.describe('Live Factory reads match the /audit DOM', () => {
 
   test('switching to mainnet stops showing the testnet factory', async ({ page }) => {
     await page.goto(`${BASE}/audit`)
-    // the storage card says the same thing about mainnet a little further down,
-    // so read the answer inside the factory card itself
+    // the storage card further down says the same, so read it inside the factory card
     const card = page
       .getByRole('heading', { name: 'Factory contract' })
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
@@ -181,8 +174,7 @@ test.describe('Activity with no wallet connected', () => {
     })
 
     await page.goto(`${BASE}/activity`, { waitUntil: 'domcontentloaded' })
-    // give any mount effects a beat to fire a request, then assert the card
-    // stayed silent. networkidle never settles here with the live polling.
+    // a fixed wait for mount effects: networkidle never settles with the live polling
     await page.waitForTimeout(1500)
 
     expect(horizonCalls).toBe(0)

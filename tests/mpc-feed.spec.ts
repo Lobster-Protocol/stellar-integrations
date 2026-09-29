@@ -12,13 +12,8 @@ test.describe('the custody page', () => {
     await expect(page.getByRole('heading', { name: 'DFNS custody' })).toBeVisible()
     await expect(page.getByRole('heading', { name: /Signing activity/ })).toBeVisible()
 
-    // every custody panel now names itself in both states, so the titles no
-    // longer separate a live panel from an off one. the bundle carries the
-    // relay url from build-time env this process cannot read, so decide on the
-    // one thing only the off state prints.
-    // the panels decide their own state once the relay answers, so anchor on a
-    // title before counting: reading the marker too early made the two tests
-    // disagree about the same page.
+    // titles show in both states, so read the marker only the off state prints,
+    // and only once a title is up: the panels settle when the relay answers
     await expect(page.getByText('DFNS wallets')).toBeVisible()
     const off = page.getByText(/Connect a DFNS organization to see this/)
     const wired = (await off.count()) === 0
@@ -43,9 +38,7 @@ test.describe('the custody page', () => {
     await seedWallet(page)
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
-    // the panels decide their own state once the relay answers, so anchor on a
-    // title before counting: reading the marker too early made the two tests
-    // disagree about the same page.
+    // the panels settle when the relay answers, so wait for a title before counting
     await expect(page.getByText('DFNS wallets')).toBeVisible()
     const off = page.getByText(/Connect a DFNS organization to see this/)
     if ((await off.count()) > 0) {
@@ -55,9 +48,8 @@ test.describe('the custody page', () => {
       return
     }
 
-    // nothing has been signed in this browser, so the feed sits at zero and
-    // carries no event rows. the count is the assertion; the empty-state
-    // wording is the component's to change.
+    // nothing has been signed in this browser, so the feed sits at zero. hold it
+    // to the count, the empty-state wording is the component's to change
     await expect(page.getByText('0 events')).toBeVisible()
     await expect(page.getByRole('heading', { name: /Signing activity/ })).toBeVisible()
   })

@@ -2,11 +2,6 @@ import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-// The README is the only committed file that publishes transaction hashes, so it
-// is the one people will check. These specs read it and hold every link to the
-// ledger: the transaction has to exist, have succeeded, and come from a wallet
-// we control unless the line says in as many words that it does not.
-
 const OURS = [
   // DFNS treasury, testnet then mainnet
   'GCWEI7HVEOPEMP7YTULFH5DMGCJCHMEKZHBHTI3R66WMKX276A4W2OPB',
@@ -14,8 +9,7 @@ const OURS = [
   // deployer / demo wallets
   'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
   'GCVFDROZF3D565FAURFQBXQEOHT4BPQK2P66JUCL5XQWNWQBOGXMRVQA',
-  // the browser-wallet test account behind the Freighter and xBull signatures.
-  // one key imported into both wallets, which is why both proofs share a source.
+  // the browser-wallet test account, one key imported into both Freighter and xBull
   'GC6QPGCOCI2FTQYTLVHNWC6I6MQYZPGCLJOO5X7KV2Z4ZMIY67I6JKDY',
   // the bridge test account that receives and delivers the USDC bridged in
   'GCC5G4MUAFQIGKJSMGBVVXM63KK4PGBCXD4CR4VPYQKBYGPXLDR4HA74',
@@ -88,7 +82,6 @@ test.describe('the hashes the README publishes', () => {
       }
       const src = r.body.source_account as string
       if (l.disowned) {
-        // the point of the label: it is somebody else's, and the README says so
         expect(OURS).not.toContain(src)
       } else {
         expect(

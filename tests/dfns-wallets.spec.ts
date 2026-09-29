@@ -11,10 +11,8 @@ test.describe('the custody wallet list', () => {
 
     await expect(page.getByText('DFNS wallets')).toBeVisible()
 
-    // decided from the render, not from a node-side env var that says nothing
-    // about whether the panel mounted. the write controls sit behind an
-    // operator token this browser does not hold, so the count the live panel
-    // always carries is what separates it from the off state.
+    // decided from the render, since the relay url is baked into the bundle. the
+    // write controls need an operator token this browser lacks, so go by the count
     const count = page.getByText(/^\d+ total$/)
     const wired = (await count.count()) > 0
 
