@@ -45,6 +45,8 @@ so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
 | a broker route our decoder reads, one Soroswap pool and two Aquarius pools in a single ledger. **not our transaction**, it is a live broker route on mainnet we decode to show what the broker bundles | [`f5a3533f`](https://stellar.expert/explorer/public/tx/f5a3533f2b92a3159d7eedcb443806f6ef998159b39e8556c65fed73d7b4bea6) |
 | fallback straight to the Soroswap router, no broker in the path | [`766cd060`](https://stellar.expert/explorer/public/tx/766cd0602dfb2f59f812397331dac4121480c84b6a1104c3462541fb786096e6) |
 | Soroswap swap signed by DFNS MPC on mainnet, no broker in the path | [`056593f3`](https://stellar.expert/explorer/public/tx/056593f3a49c5c6011af6732f95b9f5f928ba0707024547a6e4d09f61f336fa5) |
+| the Lobster factory deployed on mainnet, admin then handed to the DFNS treasury | [`43bd8748`](https://stellar.expert/explorer/public/tx/43bd8748235bf1728633265c5544cf1701fca1b70646c8cf79a6147ffdf91eb9), [`f27dd796`](https://stellar.expert/explorer/public/tx/f27dd796fc6eea4a831a7c80140e4b08cfe698d6fdb8579c48c552970cf96b54) |
+| the vault code the factory deploys per pool, and the factory code, uploaded to mainnet | [`ed5f7257`](https://stellar.expert/explorer/public/tx/ed5f7257925eae08befbdf4ec5bdb6f55d75363f15b6b3d9a7728dddb21f96d9), [`bb6b7306`](https://stellar.expert/explorer/public/tx/bb6b73068fd12b0f0c8547b5916789f2fbfe7677373f99affaeb59d72c3b6379) |
 | Soroban call signed by DFNS MPC, not a local key. `get_admin` on the Factory, held for an approver and released by one | [`96f4bcfe`](https://stellar.expert/explorer/testnet/tx/96f4bcfe2e72cac9a6f2ddd06946d47b55ea340664798dade7c71ff41bbb7d4a) |
 | the same Soroban call, first run | [`bd5db00a`](https://stellar.expert/explorer/testnet/tx/bd5db00a38a40327cdf906f27af94afcce39e679fd81d01a93bacf3479f3ef41) |
 | DFNS policy, cleared with no approver because the recipient is on the list. Sent from the dashboard button, not a script | [`dcd63f56`](https://stellar.expert/explorer/testnet/tx/dcd63f560a2c2e08da057dbc7ba294819875fb1043893dfe1e53a3847abb1f88) |
@@ -57,7 +59,8 @@ so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
 
 Every hash above except `f5a3533f` is sourced from a wallet we control: the DFNS
 treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, the deployer
-`GA2PK7ZW...4MBU`, the demo wallet `GCVFDROZ...RVQA` behind the Soroswap swap, the
+`GA2PK7ZW...4MBU` on testnet and `GA3FDPNG...OXCS` on mainnet, the demo wallet
+`GCVFDROZ...RVQA` behind the Soroswap swap, the
 browser test wallet `GC6QPGCO...JKDY` behind the Freighter and xBull rows, or the
 bridge test wallets `0xDCD5...1a37` and `GCC5G4...HA74`.
 `f5a3533f` is somebody else's broker route, kept because it is what our decoder
