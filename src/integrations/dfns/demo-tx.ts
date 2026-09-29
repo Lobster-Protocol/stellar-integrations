@@ -21,9 +21,8 @@ export async function buildTreasuryPaymentTx(
     account = await server.loadAccount(treasury)
   } catch (err) {
     if (err instanceof NotFoundError) {
-      throw new Error(
-        `This wallet is not funded on ${network} yet. Add some XLM (use friendbot on testnet) first.`,
-      )
+      const where = network === 'testnet' ? ' (use friendbot on testnet)' : ''
+      throw new Error(`This wallet is not funded on ${network} yet. Add some XLM${where} first.`)
     }
     throw err
   }

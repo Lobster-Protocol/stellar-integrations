@@ -1,12 +1,20 @@
-import { http, createConfig } from 'wagmi'
+import { http, fallback, createConfig } from 'wagmi'
 import { mainnet, arbitrum, bsc, base, sepolia, baseSepolia, arbitrumSepolia } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
 
-import { cctpChain } from '../../config/contracts'
+import { cctpChain, type Network } from '../../config/contracts'
 
 // injected wallets only: a wagmi walletConnect connector would start a second WC core next
 // to the Stellar kit's (same project id), and the two overwrite each other's sessions
 const connectors = [injected({ shimDisconnect: true })]
+
+// an override first, then the registry's public endpoint, then one that keeps
+// old receipts, each tried when the one before it fails
+function sourceChainTransport(override: string | undefined, network: Network, key: string) {
+  const { rpcFallback, rpcArchive } = cctpChain(network, key)
+  const urls = [override, rpcFallback, rpcArchive].filter((u): u is string => !!u)
+  return fallback(urls.map((u) => http(u)))
+}
 
 // wagmi only switches to chains listed here, so every CCTP source chain is,
 // Sepolia testnets included
@@ -17,17 +25,13 @@ export const wagmiConfig = createConfig({
   // browser could not read a balance or wait for a receipt there. Every CCTP
   // source chain falls back to the endpoint in the registry instead
   transports: {
-    [mainnet.id]: http(import.meta.env.VITE_ETH_RPC || cctpChain('mainnet', 'ETH').rpcFallback),
-    [arbitrum.id]: http(import.meta.env.VITE_ARB_RPC || cctpChain('mainnet', 'ARB').rpcFallback),
+    [mainnet.id]: sourceChainTransport(import.meta.env.VITE_ETH_RPC, 'mainnet', 'ETH'),
+    [arbitrum.id]: sourceChainTransport(import.meta.env.VITE_ARB_RPC, 'mainnet', 'ARB'),
     [bsc.id]: http(import.meta.env.VITE_BSC_RPC || undefined),
-    [base.id]: http(import.meta.env.VITE_BASE_RPC || cctpChain('mainnet', 'BASE').rpcFallback),
-    [sepolia.id]: http(import.meta.env.VITE_SEPOLIA_RPC || cctpChain('testnet', 'ETH').rpcFallback),
-    [baseSepolia.id]: http(
-      import.meta.env.VITE_BASE_SEPOLIA_RPC || cctpChain('testnet', 'BASE').rpcFallback,
-    ),
-    [arbitrumSepolia.id]: http(
-      import.meta.env.VITE_ARB_SEPOLIA_RPC || cctpChain('testnet', 'ARB').rpcFallback,
-    ),
+    [base.id]: sourceChainTransport(import.meta.env.VITE_BASE_RPC, 'mainnet', 'BASE'),
+    [sepolia.id]: sourceChainTransport(import.meta.env.VITE_SEPOLIA_RPC, 'testnet', 'ETH'),
+    [baseSepolia.id]: sourceChainTransport(import.meta.env.VITE_BASE_SEPOLIA_RPC, 'testnet', 'BASE'),
+    [arbitrumSepolia.id]: sourceChainTransport(import.meta.env.VITE_ARB_SEPOLIA_RPC, 'testnet', 'ARB'),
   },
 })
 

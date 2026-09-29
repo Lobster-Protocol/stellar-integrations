@@ -278,8 +278,13 @@ export async function readBurnToStellar(
   let receipt
   try {
     receipt = await getTransactionReceipt(wagmiConfig, { chainId, hash })
-  } catch {
-    throw new EvmBurnError(`No confirmed transaction with that hash on ${chain.name}`)
+  } catch (err) {
+    // only the chain saying it has no such receipt means no such transaction; an
+    // endpoint that fails says nothing about the hash
+    if (err instanceof Error && err.name === 'TransactionReceiptNotFoundError') {
+      throw new EvmBurnError(`No confirmed transaction with that hash on ${chain.name}`)
+    }
+    throw new EvmBurnError(`Could not read ${chain.name} just now. Try again in a moment.`)
   }
   if (receipt.status !== 'success') throw new EvmBurnError('That transaction reverted, so nothing was burned')
   const burns = parseEventLogs({ abi: DEPOSIT_FOR_BURN_EVENT, logs: receipt.logs, eventName: 'DepositForBurn' }).filter(

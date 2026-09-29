@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { encodeAbiParameters, encodeEventTopics, type Hex } from 'viem'
+import { encodeAbiParameters, encodeEventTopics, TransactionReceiptNotFoundError, type Hex } from 'viem'
 
 const { receiptMock } = vi.hoisted(() => ({ receiptMock: vi.fn() }))
 vi.mock('wagmi/actions', async (importOriginal) => ({
@@ -67,8 +67,13 @@ describe('readBurnToStellar', () => {
   })
 
   it('says so when the chain has no such transaction', async () => {
-    receiptMock.mockRejectedValueOnce(new Error('TransactionReceiptNotFoundError'))
+    receiptMock.mockRejectedValueOnce(new TransactionReceiptNotFoundError({ hash: HASH }))
     await expect(readBurnToStellar(chain, HASH, FORWARDER)).rejects.toThrow('No confirmed transaction with that hash on Base Sepolia')
+  })
+
+  it('does not blame the hash when the endpoint fails', async () => {
+    receiptMock.mockRejectedValueOnce(new Error('HTTP request failed. Status: 403'))
+    await expect(readBurnToStellar(chain, HASH, FORWARDER)).rejects.toThrow('Could not read Base Sepolia just now. Try again in a moment.')
   })
 
   it('refuses a reverted transaction', async () => {

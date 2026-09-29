@@ -220,6 +220,9 @@ export interface CctpSourceChain {
   tokenMessenger: `0x${string}`
   messageTransmitter: `0x${string}`
   rpcFallback: string
+  // tried when rpcFallback fails; publicnode turns away receipts more than a few
+  // hours old on Base and Arbitrum mainnet, and a burn finished later is one
+  rpcArchive: string
   explorerTx: (hash: string) => string
 }
 
@@ -241,6 +244,7 @@ const cctpMainnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_MAINNET,
     messageTransmitter: CCTP_MT_MAINNET,
     rpcFallback: 'https://base-rpc.publicnode.com',
+    rpcArchive: 'https://mainnet.base.org',
     explorerTx: (h) => `https://basescan.org/tx/${h}`,
   },
   {
@@ -252,6 +256,7 @@ const cctpMainnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_MAINNET,
     messageTransmitter: CCTP_MT_MAINNET,
     rpcFallback: 'https://arbitrum-one-rpc.publicnode.com',
+    rpcArchive: 'https://arb1.arbitrum.io/rpc',
     explorerTx: (h) => `https://arbiscan.io/tx/${h}`,
   },
   {
@@ -263,6 +268,7 @@ const cctpMainnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_MAINNET,
     messageTransmitter: CCTP_MT_MAINNET,
     rpcFallback: 'https://ethereum-rpc.publicnode.com',
+    rpcArchive: 'https://eth.drpc.org',
     explorerTx: (h) => `https://etherscan.io/tx/${h}`,
   },
 ]
@@ -278,6 +284,7 @@ const cctpTestnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_TESTNET,
     messageTransmitter: CCTP_MT_TESTNET,
     rpcFallback: 'https://base-sepolia-rpc.publicnode.com',
+    rpcArchive: 'https://sepolia.base.org',
     explorerTx: (h) => `https://sepolia.basescan.org/tx/${h}`,
   },
   {
@@ -289,6 +296,7 @@ const cctpTestnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_TESTNET,
     messageTransmitter: CCTP_MT_TESTNET,
     rpcFallback: 'https://arbitrum-sepolia-rpc.publicnode.com',
+    rpcArchive: 'https://sepolia-rollup.arbitrum.io/rpc',
     explorerTx: (h) => `https://sepolia.arbiscan.io/tx/${h}`,
   },
   {
@@ -300,6 +308,7 @@ const cctpTestnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_TESTNET,
     messageTransmitter: CCTP_MT_TESTNET,
     rpcFallback: 'https://ethereum-sepolia-rpc.publicnode.com',
+    rpcArchive: 'https://1rpc.io/sepolia',
     explorerTx: (h) => `https://sepolia.etherscan.io/tx/${h}`,
   },
 ]
