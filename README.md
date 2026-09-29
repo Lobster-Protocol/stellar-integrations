@@ -33,10 +33,10 @@ stellar contract invoke --id CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRP
 # 1
 ```
 
-## Integration proofs
+## Transactions
 
 Best-execution routing goes through Stellar Broker, which only runs on mainnet,
-so the two routing proofs are mainnet. The DFNS custody proofs are on testnet, and
+so the routing transactions are mainnet. The DFNS custody ones are on testnet, and
 so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
 
 | what | link |
@@ -56,8 +56,10 @@ so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
 | a standard transfer from Ethereum Sepolia, no fee, delivered whole: burn, then delivery | [`0xf92c8225`](https://sepolia.etherscan.io/tx/0xf92c8225e4508f7225cebc7b1898d9cbb886c114a1197c2d8856a005242af534), [`ac28bbce`](https://stellar.expert/explorer/testnet/tx/ac28bbcee0bed070c158207288c854c354eba4086d6a6e39a33c6a1799c1c4da) |
 
 Every hash above except `f5a3533f` is sourced from a wallet we control: the DFNS
-treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, the deployer,
-or the bridge test wallets `0xDCD5...1a37` and `GCC5G4...HA74`.
+treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, the deployer
+`GA2PK7ZW...4MBU`, the demo wallet `GCVFDROZ...RVQA` behind the Soroswap swap, the
+browser test wallet `GC6QPGCO...JKDY` behind the Freighter and xBull rows, or the
+bridge test wallets `0xDCD5...1a37` and `GCC5G4...HA74`.
 `f5a3533f` is somebody else's broker route, kept because it is what our decoder
 reads. The row says so instead of counting it as our own execution.
 
@@ -70,14 +72,14 @@ its own request. `dcd63f56` went to the treasury itself and settled with no
 approval recorded against it, straight off the dashboard button.
 `67d46c3f` went through a second person.
 
-Worth knowing if you try to reproduce this. DFNS reads a policy against a
-transfer request, where it builds the payment and knows the asset and the
-recipient. It cannot read one against a raw signing request: ask it to evaluate
-an amount and it answers "only supported on a transfer request", ask it for a
-recipient and it answers "recipient address not specified". Either way the rule
-fails closed and holds the signature. Amount rules have a second problem on
-testnet, where DFNS has no market price for testXLM and says so. That is why the
-rule here is written on the recipient rather than on a dollar figure.
+DFNS reads a policy against a transfer request, where it builds the payment and
+knows the asset and the recipient. It cannot read one against a raw signing
+request: ask it to evaluate an amount and it answers "only supported on a
+transfer request", ask it for a recipient and it answers "recipient address not
+specified". Either way the rule fails closed and holds the signature. Amount
+rules have a second problem on testnet, where DFNS has no market price for
+testXLM and says so. That is why the rule here is written on the recipient
+rather than on a dollar figure.
 
 ## Stack
 

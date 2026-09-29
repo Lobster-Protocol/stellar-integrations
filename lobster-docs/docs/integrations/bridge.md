@@ -10,7 +10,7 @@ moves.
 1. The Stellar account that will receive opens a USDC trustline. Without one the
    last step fails, so the dashboard checks it before anything else.
 2. On the source chain, the wallet approves Circle's `TokenMessengerV2` for the
-   exact amount. Never an open-ended allowance.
+   exact amount, never an open-ended allowance.
 3. The same wallet calls `depositForBurnWithHook`. The USDC is burned and the
    burn hash is the EVM-side proof.
 4. Circle's attestation service signs the burn. We ask for it by burn hash at
@@ -83,7 +83,7 @@ that does not go through Circle's forwarder, is refused before anything is track
 
 With DFNS custody on, the dashboard bridges into the treasury, not into the
 browser wallet. The treasury signs once, for its USDC trustline, through the
-relay; a trustline moves no value, so no approval policy holds it. It never signs
+relay and under the same approval policy as its other signatures. It never signs
 the delivery: any connected Stellar wallet pays that fee and the USDC still lands
 in the treasury. The relay's signing guard does not let the treasury call
 `mint_and_forward` itself, so with no browser wallet connected the transfer waits
