@@ -45,23 +45,17 @@ dist-ssr
 screenshots/
 test-results/
 
-# Local-only working material, never pushed.
-# Convention: a folder named _local/ anywhere in the tree is local-only.
-# Drop notes, scratch docs, anything per-area there and it stays off GitHub.
+# local-only working files, never pushed. any _local/ folder in the tree counts
 _local/
 **/_local/
 _docs/
-# grafana provisioning + dashboards, kept local with the rest of the ops setup
-monitoring/
-# docusaurus site deps + output (also covered by lobster-docs/.gitignore)
-lobster-docs/node_modules/
-lobster-docs/build/
-lobster-docs/.docusaurus/
 notes/
 docs/*.md
 docs/*.json
 NOTES.md
 CHANGELOG.md
+# grafana provisioning + dashboards, kept local with the rest of the ops setup
+monitoring/
 
 # build artefacts not worth committing
 .vercel/
@@ -71,7 +65,7 @@ playwright-report/
 .vite/
 .cache/
 
-# chrome profile of the real-wallet harness (holds the freighter test key)
+# browser profile for local wallet testing
 .wallet-test-profile/
 
 # OS leaks beyond .DS_Store

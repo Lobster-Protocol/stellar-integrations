@@ -1,7 +1,7 @@
 name: deploy relay
 
-# redeploy the render relay when its own code changes. render's git integration
-# stopped firing for this service, so ci hits the service deploy hook instead.
+# redeploy the render relay when its code changes. render's own git auto-deploy
+# doesn't fire for this service, so ci calls its deploy hook.
 on:
   push:
     branches: [main]

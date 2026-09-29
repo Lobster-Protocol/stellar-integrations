@@ -3,33 +3,24 @@
 @theme {
   --color-primary: #3693fb;
   --color-primary-dark: #2d7ad1;
-  --color-primary-light: #d7e9fe;
-  --color-secondary: #ff8770;
-  --color-secondary-light: #ffe7e2;
-  --color-secondary-dark: #d4705d;
   --color-bg: #f3f4f7;
   --color-bg-card: #ffffff;
   --color-text: #080a0c;
   --color-text-secondary: #6d7f9c;
   --color-text-muted: #9ca3af;
   --color-border: rgba(13, 45, 76, 0.08);
-  --color-success: #82e0ab;
   --color-error: #ff6370;
   --color-coral: #cf4327;
   --color-green: #10b981;
   --color-red: #ef4444;
-  --color-yellow: #eab308;
-  /* Status scale, good to critical. Darker than the plain green/yellow above
-     because those sit at 2.5:1 and 1.9:1 on a white card, which is fine behind
-     a filled shape and unreadable as text. Amber and red still collapse under
-     deuteranopia at any lightness, so every status here also carries an icon
-     and a word. */
+  /* status scale, good to critical. darker than the green above (2.5:1 on a
+     white card) and a plain yellow like #eab308 (1.9:1), which work behind a
+     filled shape but not as text. amber and red still collapse under
+     deuteranopia at any lightness, so every status also carries an icon and a
+     word. */
   --color-ok: #0f9b6c;
   --color-warn: #8a6d00;
   --color-crit: #cf4327;
-  --color-soroswap: #3b82f6;
-  --color-phoenix: #f97316;
-  --color-aquarius: #9333ea;
 }
 
 html {
@@ -47,11 +38,6 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Outfit', 'Poppins', sans-serif;
-}
-
-/* fix safari flex gap */
-@supports not (gap: 1px) {
-  .flex > * + * { margin-left: 0.5rem; }
 }
 
 ::-webkit-scrollbar { width: 6px; }
@@ -72,8 +58,6 @@ h1, h2, h3, h4, h5, h6 {
 .stellar-wallets-kit footer {
   display: none !important;
 }
-
-/* .debug-border { outline: 1px solid red; } */
 
 /* hide the chrome when printing */
 @media print {

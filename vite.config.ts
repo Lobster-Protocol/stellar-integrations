@@ -24,15 +24,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Split heavy third-party libs into their own chunks so they can
-        // be cached across page navigations and across deploys (assuming
-        // the lib version itself doesn't change).
+        // the big vendor libs get their own chunks, so a deploy that only
+        // touches app code leaves them in the browser cache
         manualChunks(id) {
           if (id.includes('node_modules/@stellar/stellar-sdk')) {
             return 'stellar-sdk'
-          }
-          if (id.includes('node_modules/@allbridge/')) {
-            return 'allbridge-sdk'
           }
           if (id.includes('node_modules/recharts')) {
             return 'recharts'
