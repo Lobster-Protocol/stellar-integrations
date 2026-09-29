@@ -151,11 +151,12 @@ test.describe('Network toggle', () => {
     await expect(page.locator('footer')).toContainText('testnet')
   })
 
-  test('says positions has nothing deployed on mainnet yet', async ({ page }) => {
+  test('positions on mainnet offers a vault like testnet does', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Mainnet' }).click()
     await page.getByRole('link', { name: 'Positions', exact: true }).click()
-    await expect(page.getByText(/not deployed/i).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /^\+ Create vault$/ })).toBeVisible({ timeout: 25000 })
+    await expect(page.getByText(/not deployed/i)).toHaveCount(0)
   })
 })
 

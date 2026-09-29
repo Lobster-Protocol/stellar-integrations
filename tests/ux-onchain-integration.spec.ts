@@ -146,9 +146,12 @@ test.describe('Live Factory reads match the /audit DOM', () => {
     await expect(card).toBeVisible({ timeout: 30_000 })
 
     await page.getByRole('button', { name: 'Mainnet' }).click()
-    await expect(card.getByText(/not deployed on mainnet/i)).toBeVisible({
-      timeout: 10_000,
-    })
+    await expect(card.getByRole('link', { name: 'Stellar Expert' })).toHaveAttribute(
+      'href',
+      /\/explorer\/public\/contract\/C[A-Z2-7]{55}$/,
+      { timeout: 10_000 },
+    )
+    await expect(card).not.toContainText(shorten(FACTORY, 8))
     await expect(page.locator(`text=${shorten(SOURCE, 8)}`)).toHaveCount(0)
   })
 
