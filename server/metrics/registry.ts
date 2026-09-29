@@ -28,7 +28,8 @@ export const dfnsApprovals = new Gauge({
 
 const KNOWN_ROUTES = new Set([
   '/health', '/ttl', '/dfns/wallets', '/dfns/policies', '/dfns/approvals',
-  '/dfns/sign', '/dfns/audit/export', '/webhooks/dfns', '/sse', '/metrics',
+  '/dfns/sign', '/dfns/transfer', '/dfns/audit/export', '/webhooks/dfns', '/sse', '/metrics',
+  '/cctp/chains', '/cctp/fees', '/cctp/message', '/cctp/deliver',
   '/allbridge/tokens', '/allbridge/quote', '/allbridge/status',
   '/allbridge/raw/approve', '/allbridge/raw/send',
 ])

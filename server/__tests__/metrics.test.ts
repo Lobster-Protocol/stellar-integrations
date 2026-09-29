@@ -12,6 +12,12 @@ describe('normalizeRoute', () => {
     expect(normalizeRoute('/ttl/')).toBe('/ttl')
   })
 
+  it('names the bridge and transfer routes instead of folding them into other', () => {
+    for (const r of ['/cctp/chains', '/cctp/fees', '/cctp/message', '/cctp/deliver', '/dfns/transfer']) {
+      expect(normalizeRoute(r)).toBe(r)
+    }
+  })
+
   it('collapses id segments to a template', () => {
     expect(normalizeRoute('/dfns/sign/tx-123/status')).toBe('/dfns/sign/:id/status')
     expect(normalizeRoute('/dfns/approvals/ap-9/decision')).toBe('/dfns/approvals/:id/decision')

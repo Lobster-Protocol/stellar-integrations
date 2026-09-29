@@ -1,7 +1,8 @@
-import { scan, pushMetrics } from './index'
+import { scan, pushMetrics, formatMetrics } from './index'
+import { otlpEnabled, pushExposition } from '../metrics/otlp'
 
-// scan service health + balances on a loop. pushgateway is optional; without it
-// a run just logs what's down.
+// scan service health + balances on a loop. the pushgateway and grafana otlp are
+// both optional; without either a run just logs what's down.
 const INTERVAL_MS = Number(process.env.PROBE_INTERVAL_MS) || 60_000
 const PUSHGATEWAY_URL = process.env.PUSHGATEWAY_URL
 
@@ -14,6 +15,7 @@ async function runOnce(): Promise<void> {
     if (!a.exists) console.warn(`[probe] account ${a.role}/${a.network} not found`)
   }
   if (PUSHGATEWAY_URL) await pushMetrics(PUSHGATEWAY_URL, result)
+  if (otlpEnabled()) await pushExposition(formatMetrics(result), 'lobster-probe')
 }
 
 async function startLoop(): Promise<void> {
