@@ -64,6 +64,18 @@ export class UserRejectedError extends Error {
   }
 }
 
+// The transaction left the wallet but no endpoint gave its receipt back in time.
+// It may well be mined: whoever tracks it must not treat it as never sent.
+export class ReceiptUnreadError extends Error {
+  readonly hash: `0x${string}`
+
+  constructor(hash: `0x${string}`, options?: { cause?: unknown }) {
+    super(`Sent (${hash}), but its confirmation could not be read in time`, options)
+    this.name = 'ReceiptUnreadError'
+    this.hash = hash
+  }
+}
+
 function chainIdOf(chain: CctpSourceChain): WagmiChainIdAny {
   if (!isConfiguredChainId(chain.chainId)) {
     throw new EvmBurnError(`${chain.name} is not configured in the wallet layer`)
@@ -150,6 +162,7 @@ async function send(
   chain: CctpSourceChain,
   what: string,
   write: (chainId: WagmiChainIdAny) => Promise<`0x${string}`>,
+  onSent?: (hash: `0x${string}`) => void,
 ): Promise<`0x${string}`> {
   const chainId = await ensureChain(chain)
   let hash: `0x${string}`
@@ -159,7 +172,13 @@ async function send(
     if (isUserRejection(err)) throw new UserRejectedError()
     throw new EvmBurnError(`The ${what} failed on ${chain.name}: ${reasonOf(err)}`, { cause: err })
   }
-  const receipt = await waitForTransactionReceipt(wagmiConfig, { chainId, hash })
+  onSent?.(hash)
+  let receipt
+  try {
+    receipt = await waitForTransactionReceipt(wagmiConfig, { chainId, hash })
+  } catch (err) {
+    throw new ReceiptUnreadError(hash, { cause: err })
+  }
   // a receipt comes back for a reverted transaction too
   if (receipt.status !== 'success') throw new EvmBurnError(`The ${what} was reverted on chain (${hash})`)
   return hash
@@ -181,15 +200,22 @@ async function untilAllowanceVisible(chain: CctpSourceChain, units: bigint, time
 
 // exact amount, never unlimited: an open approval outlives the transfer
 export async function approveUsdc(chain: CctpSourceChain, units: bigint): Promise<`0x${string}`> {
-  const hash = await send(chain, 'approval', (chainId) =>
-    writeContract(wagmiConfig, {
-      chainId,
-      address: chain.usdc,
-      abi: erc20Abi,
-      functionName: 'approve',
-      args: [chain.tokenMessenger, units],
-    }),
-  )
+  let hash: `0x${string}`
+  try {
+    hash = await send(chain, 'approval', (chainId) =>
+      writeContract(wagmiConfig, {
+        chainId,
+        address: chain.usdc,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [chain.tokenMessenger, units],
+      }),
+    )
+  } catch (err) {
+    // only the receipt is missing: the allowance on chain says whether the approval landed
+    if (!(err instanceof ReceiptUnreadError)) throw err
+    hash = err.hash
+  }
   await untilAllowanceVisible(chain, units)
   return hash
 }
@@ -220,17 +246,22 @@ export function burnArgs(req: BurnRequest) {
   ] as const
 }
 
-export async function burnToStellar(req: BurnRequest): Promise<`0x${string}`> {
+// onSent hears the hash the moment the burn leaves the wallet, before any receipt
+export async function burnToStellar(req: BurnRequest, onSent?: (hash: `0x${string}`) => void): Promise<`0x${string}`> {
   if (req.maxFee >= req.units) throw new EvmBurnError('The fee would swallow the whole amount')
   const args = burnArgs(req)
-  return send(req.chain, 'burn', (chainId) =>
-    writeContract(wagmiConfig, {
-      chainId,
-      address: req.chain.tokenMessenger,
-      abi: TOKEN_MESSENGER_V2_ABI,
-      functionName: 'depositForBurnWithHook',
-      args,
-    }),
+  return send(
+    req.chain,
+    'burn',
+    (chainId) =>
+      writeContract(wagmiConfig, {
+        chainId,
+        address: req.chain.tokenMessenger,
+        abi: TOKEN_MESSENGER_V2_ABI,
+        functionName: 'depositForBurnWithHook',
+        args,
+      }),
+    onSent,
   )
 }
 

@@ -26,13 +26,14 @@ import {
   approveUsdc,
   burnToStellar,
   readAllowance,
+  ReceiptUnreadError,
   toEvmUsdcUnits,
   UserRejectedError,
 } from '../integrations/cctp/evm-burn'
 import { maxFeeFor } from '../integrations/cctp/iris'
 import { checkClaim, claimOnStellar } from '../integrations/cctp/claim'
 import { useAttestation, useCctpFees, useSourceBalances } from '../integrations/cctp/hooks'
-import { markDelivered, trackTransfer, type TrackedTransfer } from '../integrations/cctp/transfers'
+import { forgetTransfer, markDelivered, trackTransfer, type TrackedTransfer } from '../integrations/cctp/transfers'
 
 interface Props {
   open: boolean
@@ -266,28 +267,45 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
           await approveUsdc(chain, units)
         }
         setPhase({ kind: 'burning' })
-        const hash = await burnToStellar({
-          chain,
-          units,
-          recipient: receiving,
-          forwarder: CONTRACTS[network].cctp.forwarder,
-          maxFee,
-          finality,
-        })
-        const tracked: TrackedTransfer = {
-          id: hash,
-          network,
-          chainKey: chain.key,
-          chainName: chain.name,
-          sourceDomain: chain.domain,
-          amount,
-          recipient: receiving,
-          finality,
-          createdAt: Date.now(),
-          stage: 'burned',
+        // tracked the moment the burn leaves the wallet: when its receipt is slow to come back,
+        // the transfer must not vanish from the page while Circle is already on it
+        const sent: { transfer: TrackedTransfer | null } = { transfer: null }
+        try {
+          await burnToStellar(
+            {
+              chain,
+              units,
+              recipient: receiving,
+              forwarder: CONTRACTS[network].cctp.forwarder,
+              maxFee,
+              finality,
+            },
+            (hash) => {
+              sent.transfer = {
+                id: hash,
+                network,
+                chainKey: chain.key,
+                chainName: chain.name,
+                sourceDomain: chain.domain,
+                amount,
+                recipient: receiving,
+                finality,
+                createdAt: Date.now(),
+                stage: 'burned',
+              }
+              trackTransfer(sent.transfer)
+            },
+          )
+        } catch (err) {
+          // a receipt nobody could read is not a failed burn: Circle's signature settles it
+          if (!(err instanceof ReceiptUnreadError) || !sent.transfer) {
+            // a burn reverted on chain moved nothing; stop tracking it
+            if (sent.transfer) forgetTransfer(network, sent.transfer.id)
+            throw err
+          }
         }
-        trackTransfer(tracked)
-        setPhase({ kind: 'waiting', transfer: tracked })
+        if (!sent.transfer) throw new Error('The burn went out without a hash')
+        setPhase({ kind: 'waiting', transfer: sent.transfer })
         void balances.refetch()
       } catch (err) {
         if (err instanceof UserRejectedError) {
@@ -651,6 +669,13 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
             {declined && (
               <p className="text-[11px] text-text-secondary mt-2 text-center">
                 You declined in your wallet, so the USDC did not move.
+              </p>
+            )}
+            {phase.kind === 'burning' && chain && (
+              // Rabby reads the Stellar account in the hook as an EVM address and calls it unknown
+              <p className="text-[11px] text-text-secondary mt-2 text-center">
+                Your wallet may flag the receiver as an unknown address: it reads the Stellar account in the burn as
+                an EVM one. The contract you sign with is Circle&apos;s, {shortenAddress(chain.tokenMessenger, 6, 4)}.
               </p>
             )}
             <p className="text-[10px] text-text-muted mt-2 text-center">
