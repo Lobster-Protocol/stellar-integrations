@@ -21,8 +21,9 @@ export interface AccountReading {
   role: string
   network: string
   exists: boolean
-  xlm: number
-  usdc?: number
+  // enough XLM left to keep paying network fees. the balance itself never
+  // leaves the relay: monitoring says whether an account works, not what it holds
+  reserveOk: boolean
 }
 
 export interface ScanResult {
@@ -136,34 +137,29 @@ async function probeSoroswap(): Promise<ProbeResult | null> {
   }
 }
 
-// horizon account payload -> the balances we track. split out so a test hits
-// the parsing without a network call.
-export function parseBalances(
-  payload: { balances?: Array<{ asset_type: string; balance: string; asset_code?: string; asset_issuer?: string }> },
-  usdcIssuer?: string,
-): { xlm: number; usdc?: number } {
-  let xlm = 0
-  let usdc: number | undefined
-  for (const b of payload.balances ?? []) {
-    if (b.asset_type === 'native') xlm = Number(b.balance)
-    else if (usdcIssuer && b.asset_code === 'USDC' && b.asset_issuer === usdcIssuer) usdc = Number(b.balance)
-  }
-  return { xlm, usdc }
+// under this much XLM a tracked account can stop paying network fees
+const FEE_RESERVE_XLM = Number(process.env.MONITOR_FEE_RESERVE_XLM) || 10
+
+// split out so a test hits the check without a network call
+export function hasFeeReserve(
+  payload: { balances?: Array<{ asset_type: string; balance: string }> },
+  min = FEE_RESERVE_XLM,
+): boolean {
+  const native = payload.balances?.find((b) => b.asset_type === 'native')
+  return !!native && Number(native.balance) >= min
 }
 
-async function readAccount(a: AccountTarget): Promise<AccountReading> {
+// a 404 is a real answer, the account is gone. any other failure is unknown,
+// and unknown is left out rather than reported as an empty account.
+async function readAccount(a: AccountTarget): Promise<AccountReading | null> {
   const horizon = STELLAR_RPC_FALLBACK[a.network].horizon
   const r = await timed(async () => {
     const res = await fetch(`${horizon}/accounts/${a.address}`, { signal: AbortSignal.timeout(TIMEOUT_MS) })
-    if (res.status === 404) return { exists: false as const }
+    if (res.status === 404) return { exists: false, reserveOk: false }
     if (!res.ok) throw new Error(`horizon ${res.status}`)
-    const body = (await res.json()) as Parameters<typeof parseBalances>[0]
-    return { exists: true as const, ...parseBalances(body, a.usdcIssuer) }
+    return { exists: true, reserveOk: hasFeeReserve((await res.json()) as Parameters<typeof hasFeeReserve>[0]) }
   })
-  if (!r.ok || !r.value || !r.value.exists) {
-    return { role: a.role, network: a.network, exists: false, xlm: 0 }
-  }
-  return { role: a.role, network: a.network, exists: true, xlm: r.value.xlm, usdc: r.value.usdc }
+  return r.ok && r.value ? { role: a.role, network: a.network, ...r.value } : null
 }
 
 export async function scan(): Promise<ScanResult> {
@@ -173,7 +169,11 @@ export async function scan(): Promise<ScanResult> {
     probeSoroswap(),
     vendorStatus(),
   ])
-  return { probes: soroswap ? [...probes, soroswap] : probes, accounts, vendors }
+  return {
+    probes: soroswap ? [...probes, soroswap] : probes,
+    accounts: accounts.filter((a): a is AccountReading => a !== null),
+    vendors,
+  }
 }
 
 export function formatMetrics(s: ScanResult): string {
@@ -195,12 +195,9 @@ export function formatMetrics(s: ScanResult): string {
     '# HELP lobster_account_exists tracked account funded/exists on chain',
     '# TYPE lobster_account_exists gauge',
     ...s.accounts.map((a) => `lobster_account_exists{role="${a.role}",network="${a.network}"} ${a.exists ? 1 : 0}`),
-    '# HELP lobster_account_balance balance of a tracked account by asset',
-    '# TYPE lobster_account_balance gauge',
-    ...s.accounts.map((a) => `lobster_account_balance{role="${a.role}",network="${a.network}",asset="XLM"} ${a.xlm}`),
-    ...s.accounts
-      .filter((a) => a.usdc !== undefined)
-      .map((a) => `lobster_account_balance{role="${a.role}",network="${a.network}",asset="USDC"} ${a.usdc}`),
+    '# HELP lobster_account_fee_reserve_ok tracked account holds enough XLM to keep paying network fees (1) or not (0)',
+    '# TYPE lobster_account_fee_reserve_ok gauge',
+    ...s.accounts.map((a) => `lobster_account_fee_reserve_ok{role="${a.role}",network="${a.network}"} ${a.reserveOk ? 1 : 0}`),
     '# HELP lobster_vendor_status status page state: 0 operational, 1 maintenance, 2 degraded, 3 partial outage, 4 major outage',
     '# TYPE lobster_vendor_status gauge',
     ...(s.vendors ?? []).map((v) => `lobster_vendor_status{vendor="${v.vendor}",component="${v.component}"} ${v.level}`),

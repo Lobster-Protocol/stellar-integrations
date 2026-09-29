@@ -20,7 +20,6 @@ export interface AccountTarget {
   role: string
   network: 'testnet' | 'mainnet'
   address: string
-  usdcIssuer?: string
 }
 
 const env = process.env
@@ -60,14 +59,13 @@ export function accountTargets(): AccountTarget[] {
   const list: AccountTarget[] = []
   // the treasury the sign guard enforces, unless MONITOR_TREASURY_ADDRESS names
   // another: a relay that signs on testnet still has to watch the funded mainnet
-  // treasury, which is what the balance board and the low-xlm alert read
+  // treasury, which is what the fee reserve board and alert read
   const treasury = env.MONITOR_TREASURY_ADDRESS || env.DFNS_TREASURY_ADDRESS
   if (treasury) {
     list.push({
       role: 'dfns-treasury',
       network: 'mainnet',
       address: treasury,
-      usdcIssuer: CONTRACTS.mainnet.tokens.usdcIssuer,
     })
   }
   if (env.MONITOR_TESTNET_WALLET) {

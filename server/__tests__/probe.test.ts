@@ -1,36 +1,28 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import {
-  parseBalances, formatMetrics, rpcLedgerClose, horizonLedgerClose, type ScanResult,
+  hasFeeReserve, formatMetrics, rpcLedgerClose, horizonLedgerClose, type ScanResult,
 } from '../probe/index'
 import { accountTargets, httpTargets } from '../probe/targets'
 import { STELLAR_CCTP_DOMAIN } from '../../src/config/contracts'
 
-describe('parseBalances', () => {
-  const issuer = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN'
-
-  it('reads the native balance', () => {
-    const r = parseBalances({ balances: [{ asset_type: 'native', balance: '12.5' }] })
-    expect(r.xlm).toBe(12.5)
-    expect(r.usdc).toBeUndefined()
+describe('hasFeeReserve', () => {
+  it('holds the native balance against the reserve', () => {
+    expect(hasFeeReserve({ balances: [{ asset_type: 'native', balance: '12.5' }] }, 10)).toBe(true)
+    expect(hasFeeReserve({ balances: [{ asset_type: 'native', balance: '9.99' }] }, 10)).toBe(false)
   })
 
-  it('reads USDC only from the matching issuer', () => {
-    const r = parseBalances(
-      {
-        balances: [
-          { asset_type: 'native', balance: '1' },
-          { asset_type: 'credit_alphanum4', balance: '9.3', asset_code: 'USDC', asset_issuer: issuer },
-          { asset_type: 'credit_alphanum4', balance: '99', asset_code: 'USDC', asset_issuer: 'GWRONG' },
-        ],
-      },
-      issuer,
-    )
-    expect(r.xlm).toBe(1)
-    expect(r.usdc).toBe(9.3)
+  it('ignores every other asset', () => {
+    const payload = {
+      balances: [
+        { asset_type: 'native', balance: '1' },
+        { asset_type: 'credit_alphanum4', balance: '500' },
+      ],
+    }
+    expect(hasFeeReserve(payload, 10)).toBe(false)
   })
 
-  it('handles an account with no balances array', () => {
-    expect(parseBalances({})).toEqual({ xlm: 0, usdc: undefined })
+  it('treats an account with no balances array as empty', () => {
+    expect(hasFeeReserve({}, 10)).toBe(false)
   })
 })
 
@@ -41,23 +33,22 @@ describe('formatMetrics', () => {
       { name: 'dfns-api', area: 'custody', up: false, latencySeconds: 10 },
     ],
     accounts: [
-      { role: 'dfns-treasury', network: 'mainnet', exists: true, xlm: 20, usdc: 0.9 },
-      { role: 'dfns-wallet', network: 'testnet', exists: true, xlm: 9997 },
+      { role: 'dfns-treasury', network: 'mainnet', exists: true, reserveOk: true },
+      { role: 'dfns-wallet', network: 'testnet', exists: true, reserveOk: false },
     ],
   }
 
-  it('emits up, latency, exists and balance gauges with labels', () => {
+  it('emits up, latency, exists and fee reserve gauges with labels', () => {
     const out = formatMetrics(sample)
     expect(out).toContain('lobster_probe_up{target="frontend",area="frontend"} 1')
     expect(out).toContain('lobster_probe_up{target="dfns-api",area="custody"} 0')
     expect(out).toContain('lobster_probe_latency_seconds{target="dfns-api",area="custody"} 10')
-    expect(out).toContain('lobster_account_balance{role="dfns-treasury",network="mainnet",asset="XLM"} 20')
-    expect(out).toContain('lobster_account_balance{role="dfns-treasury",network="mainnet",asset="USDC"} 0.9')
+    expect(out).toContain('lobster_account_fee_reserve_ok{role="dfns-treasury",network="mainnet"} 1')
+    expect(out).toContain('lobster_account_fee_reserve_ok{role="dfns-wallet",network="testnet"} 0')
   })
 
-  it('omits a USDC line when the account has no usdc reading', () => {
-    const out = formatMetrics(sample)
-    expect(out).not.toContain('role="dfns-wallet",network="testnet",asset="USDC"')
+  it('never pushes an amount', () => {
+    expect(formatMetrics(sample)).not.toMatch(/balance|asset=/)
   })
 
   it('adds ledger age, protocol and vendor lines only where there is a reading', () => {
