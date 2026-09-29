@@ -84,9 +84,7 @@ export function groupOf(kind: ActivityKind): KindGroup {
   return 'housekeeping'
 }
 
-// Free text search over a row: the label a reader sees, the amounts, the token
-// codes, whoever was on the other side, and the identifiers they'd paste from an
-// explorer. Anything visible in the feed should find its own row.
+// anything visible in the feed, or pasted from an explorer, should find its own row
 export function matchesQuery(e: ActivityEvent, raw: string): boolean {
   const q = raw.trim().toLowerCase()
   if (!q) return true
@@ -101,9 +99,8 @@ export function matchesQuery(e: ActivityEvent, raw: string): boolean {
   return hay.some((h) => h.toLowerCase().includes(q))
 }
 
-// A soroban call carries its target contract in the first parameter and the
-// method name in the first Sym. Everything else is call arguments, which we only
-// read for a swap. Horizon hands these back as base64 ScVals.
+// horizon hands a soroban call back as base64 ScVals: the target contract first, the
+// method name in the first Sym, then the arguments, which are only read for a swap
 function decodeCall(params: { value: string; type: string }[]) {
   let contractId: string | undefined
   let fn: string | undefined
@@ -184,9 +181,7 @@ export function toActivityEvent(op: OpRecord, account: string): ActivityEvent {
       const moves = (op.asset_balance_changes ?? [])
         .map((c) => moveFrom(c, account))
         .filter((m): m is AssetMove => m !== null)
-      // a call that moved nothing and only read state is housekeeping, whatever
-      // its name suggests. Circle's forwarder paying this account a bridged
-      // transfer is money in, not upkeep
+      // Circle's forwarder paying this account a bridged transfer is money in, not upkeep
       const kind =
         fn === 'mint_and_forward' && moves.some((m) => m.direction === 'in') ? 'received' : kindOfSorobanFn(fn)
       return { ...base, kind, moves, contractId, fn, swapPath }

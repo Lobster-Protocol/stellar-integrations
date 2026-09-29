@@ -1,12 +1,9 @@
-// Stellar contract IDs, indexed by network. Never hardcode a C-address
-// or G-address elsewhere - import from here.
+// never hardcode a C or G address elsewhere, import it from here
 
 export type Network = 'testnet' | 'mainnet'
 
-// one entry the swap selector can render. `asset` is the broker-format id the
-// routing layer expects: 'xlm' for native, 'CODE-ISSUER' for a classic asset,
-// or a bare SAC contract id for a soroban token (testnet, where the broker is
-// skipped). brokerAssetToSac maps any of these back to a SAC for Soroswap.
+// `asset` is the broker-format id: 'xlm', 'CODE-ISSUER' for a classic asset, or a
+// bare SAC id on testnet, where the broker is skipped; brokerAssetToSac maps each to a SAC
 export interface SwapToken {
   code: string
   asset: string
@@ -14,20 +11,15 @@ export interface SwapToken {
 
 interface NetworkContracts {
   tokens: {
-    // XLM Stellar Asset Contract - pass as token arg to Soroban calls
     xlmSac: string
-    // USDC Stellar Asset Contract (Soroban side). Not a trustline issuer.
     usdcSac: string
-    // USDC classic-asset issuer (G-address). Use with new Asset('USDC', x)
-    // for changeTrust or to match account.balances[].asset_issuer.
+    // the classic issuer, not the SAC: for changeTrust and account.balances[].asset_issuer
     usdcIssuer: string
   }
-  // extra swap-selector tokens on top of XLM/USDC, in broker-format `asset`
-  // ids. these are the higher-cap Stellar tokens whose Soroswap pool actually
-  // fills (probed pool by pool), so the selector never offers a dead pair.
+  // on top of XLM and USDC, only tokens whose Soroswap pool actually fills, so the
+  // selector never offers a dead pair
   extraSwapTokens: SwapToken[]
-  // the Lobster classic token, used by the DFNS custody demo to open a trustline
-  // from the MPC-held treasury. issuer is empty off testnet.
+  // the Lobster classic token; issuer is empty off testnet
   lobsAsset: { code: string; issuer: string }
   allbridge: {
     bridge: string
@@ -54,17 +46,14 @@ interface NetworkContracts {
   broker: {
     // https origin; the SDK upgrades the underlying WebSocket itself.
     endpoint: string
-    // router contract id is not published. extracted from the first
-    // signed quote XDR at runtime, then cached. empty until we see one.
+    // the broker does not publish its router contract id, so this stays empty
     router: string
   }
   lobster: {
     factory: string
-    // WASM hash the Factory uses to deploy per-user instances. Not an
-    // address; passed as wasm_hash to Factory#deploy_for.
+    // a wasm code hash, not an address
     wasmHash: string
-    // public deployer account used as simulation source for anonymous
-    // reads. empty on mainnet (we require the caller wallet there).
+    // simulation source for anonymous reads
     readSource: string
   }
   // faucet for funding fresh accounts. empty on mainnet, no faucet there.
@@ -77,9 +66,7 @@ const mainnet: NetworkContracts = {
     usdcSac: 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75',
     usdcIssuer: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
   },
-  // higher-cap Stellar tokens with a live Soroswap mainnet pool (probed from
-  // XLM or USDC). EURC and AQUA fill from both; SHX and KALE fill from XLM.
-  // yXLM, PYUSD, BTC and ETH are left out: no usable Soroswap pool on mainnet.
+  // yXLM, PYUSD, BTC and ETH are left out: no usable Soroswap pool on mainnet
   extraSwapTokens: [
     { code: 'EURC', asset: 'EURC-GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2' },
     { code: 'AQUA', asset: 'AQUA-GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA' },
@@ -111,29 +98,24 @@ const mainnet: NetworkContracts = {
     router: '',
   },
   lobster: {
-    // deployed 2026-09-29, admin handed to the DFNS treasury; wasmHash is the
-    // Soroswap-only pool the factory deploys per vault.
+    // admin is the DFNS treasury. wasmHash is the Soroswap-only pool the factory
+    // deploys per vault
     factory: 'CAFGQVKFCZITN7UJUOIJPMULGZRUR7RXG6DAYJ2VBGIGFWHHFGR6MCR5',
     wasmHash: 'a72a67ac4b9fa0ad561032d8d433d4da0024100cdb27f9098cb89997243b8382',
-    // all-zero account: a read-only sim source for the mainnet price quote, which
-    // needs no funds.
+    // all-zero account: a read-only sim needs no funds
     readSource: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
   },
   friendbot: '',
 }
 
 const testnet: NetworkContracts = {
-  // Aquarius and Allbridge are mainnet-only, so those stay empty and the UI
-  // gates them. Soroswap does run on testnet, so its router and the two swap
-  // tokens (native XLM SAC + Soroswap's test USDC) are wired for a live swap.
+  // Aquarius and Allbridge are mainnet-only, so their ids stay empty here
   tokens: {
     xlmSac: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
     usdcSac: 'CB3TLW74NBIOT3BUWOZ3TUM6RFDF6A4GVIRUQRQZABG5KPOUL4JJOV2F',
     usdcIssuer: '',
   },
-  // EURC, XTAR and XRP each have a liquid Soroswap pool from XLM or USDC on
-  // testnet. the broker is skipped on testnet, so these are bare SAC ids that
-  // go straight to the Soroswap router. AQUA and the rest have no pool here.
+  // AQUA and the rest have no Soroswap pool on testnet
   extraSwapTokens: [
     { code: 'EURC', asset: 'CBQDUWBOHS7P4TZIJ3KUPUZQOWMKJC6CQPPFEONSV3BH4X27YVEXWNOT' },
     { code: 'XTAR', asset: 'CCZGLAUBDKJSQK72QOZHVU7CUWKW45OZWYWCLL27AEK74U2OIBK6LXF2' },
@@ -164,14 +146,11 @@ const testnet: NetworkContracts = {
 
 export const CONTRACTS: Record<Network, NetworkContracts> = { mainnet, testnet }
 
-// production dashboard origin. one canonical value; the probe still reads its own
-// MONITOR_FRONTEND_URL override where a deploy needs a different host.
+// the probe can override this with MONITOR_FRONTEND_URL
 export const FRONTEND_URL = 'https://stellar-instit.lobster-protocol.com'
 
-// the tokens offered in the swap selector for a network. XLM and USDC come
-// from the canonical `tokens` block (so their ids are never duplicated), then
-// the network's extra tokens. USDC is classic on mainnet, a soroban token on
-// testnet, which is exactly the split brokerAssetToSac maps back.
+// USDC is classic on mainnet and a soroban token on testnet, the split
+// brokerAssetToSac maps back
 export function swapTokensFor(network: Network): SwapToken[] {
   const t = CONTRACTS[network].tokens
   const usdc: SwapToken = {
@@ -184,8 +163,7 @@ export function swapTokensFor(network: Network): SwapToken[] {
 // chains the Allbridge SDK is built with, mainnet only
 export type EvmChain = 'ETH' | 'ARB' | 'BSC'
 
-// Public RPC endpoints we fall back to when the user did not set their own
-// VITE_*_RPC. Allbridge's SDK needs one per EVM chain plus Stellar.
+// used when no *_RPC env override is set; Allbridge's SDK needs one per EVM chain
 export const EVM_RPC_FALLBACK: Record<EvmChain, string> = {
   ETH: 'https://ethereum-rpc.publicnode.com',
   ARB: 'https://arbitrum-one-rpc.publicnode.com',
@@ -200,7 +178,7 @@ export const ALLBRIDGE_CORE_API = 'https://api.core.allbridge.io'
 export const STELLAR_CCTP_DOMAIN = 27
 
 // fast pays a few bps and lands in about a minute. standard is free but waits
-// for finality, up to 15 min on Ethereum. Circle keys its fee table by these.
+// for finality, usually 15 to 30 min. Circle keys its fee table by these.
 export const CCTP_FINALITY = { fast: 1000, standard: 2000 } as const
 export type CctpFinality = keyof typeof CCTP_FINALITY
 
@@ -226,8 +204,7 @@ export interface CctpSourceChain {
   explorerTx: (hash: string) => string
 }
 
-// Circle deploys V2 at the same address on every chain of a network. Checked with
-// eth_call, along with each chain's localDomain.
+// Circle deploys V2 at the same address on every chain of a network
 const CCTP_TM_MAINNET = '0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d' as const
 const CCTP_MT_MAINNET = '0x81D40F21F12A8F0E3252Bccb954D722d4c464B64' as const
 const CCTP_TM_TESTNET = '0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA' as const
@@ -331,7 +308,6 @@ export function cctpChain(network: Network, key: string): CctpSourceChain {
 
 // 6 on the EVM side, 7 on Stellar. The contract converts, we never do.
 export const CCTP_EVM_USDC_DECIMALS = 6
-export const CCTP_STELLAR_USDC_DECIMALS = 7
 
 // where /bridges sends an asset or a chain that CCTP doesn't carry
 export const BRIDGE_FALLBACK_LINKS = {
@@ -343,12 +319,9 @@ export const BRIDGE_FALLBACK_LINKS = {
   stellarAnchors: 'https://anchors.stellar.org',
 } as const
 
-// What we bid to get into a ledger, before any soroban resource fee. Stellar
-// charges the lowest bid that made it in rather than what you offered, so a
-// generous ceiling costs nothing on a quiet ledger and is the difference
-// between landing and timing out on a busy one. Mainnet has been sitting near
-// capacity where the SDK default of 100 stroops loses the auction every time,
-// which is what the swap timeouts were.
+// inclusion bid, before soroban resource fees. Stellar charges the lowest bid that
+// got in, so a high ceiling costs nothing on a quiet ledger; the SDK's 100 stroops
+// timed swaps out on mainnet
 export const INCLUSION_FEE_STROOPS = '1000000'
 
 export const STELLAR_RPC_FALLBACK: Record<Network, { soroban: string; horizon: string }> = {

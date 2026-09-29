@@ -17,9 +17,8 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
   const { address, connecting, connect } = useWallet()
   const { network, setNetwork } = useNetwork()
 
-  // The bar sticks to the top of the scroll so the network you are on, the wallet
-  // that signs and the connect controls stay in sight down a long page. z-30 keeps
-  // it under the mobile drawer and the connect popover, which both have to cover it.
+  // z-30 keeps the bar under the mobile drawer and the connect popover, which both
+  // have to cover it
   return (
     <div
       className="h-14 flex items-center justify-between px-4 sm:px-6 bg-bg-card/60 backdrop-blur-sm sticky top-0 z-30"
@@ -44,7 +43,6 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* one pill on phones: it names the network you are on and flips it */}
         <button
           onClick={() => setNetwork(network === 'testnet' ? 'mainnet' : 'testnet')}
           aria-label={`Network: ${network}. Switch to ${network === 'testnet' ? 'mainnet' : 'testnet'}`}
@@ -76,8 +74,6 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           </button>
         </div>
 
-        {/* One connected-wallet chip (address actions + disconnect live in its menu).
-            When nothing is connected, the plain Connect Wallet button. */}
         {address ? (
           <WalletChip address={address} network={network} />
         ) : (
@@ -90,9 +86,6 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           </button>
         )}
 
-        {/* DFNS custody: WalletConnect is the default, a relay is the advanced path.
-            Hidden once a DFNS wallet is connected over WalletConnect - that already
-            shows in the wallet chip, so a second "+ MPC" invite would only confuse. */}
         <ConnectMpcControl />
       </div>
     </div>

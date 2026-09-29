@@ -19,10 +19,8 @@ export function networkPassphrase(network: Network): string {
   return network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET
 }
 
-// getAccount 404s for a wallet that holds no funds yet: a brand-new account is
-// not created on-chain until it receives some XLM. Without this it reaches the
-// trader as a raw "Account not found" before signing, so turn just that case
-// into a plain instruction they can act on.
+// a brand-new account is not on-chain until it receives some XLM, so turn the raw
+// "Account not found" into a plain instruction the trader can act on
 export async function loadFunded(server: rpc.Server, caller: string, network: Network) {
   try {
     return await server.getAccount(caller)

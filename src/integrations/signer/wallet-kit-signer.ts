@@ -3,22 +3,11 @@ import { Networks } from '@stellar/stellar-sdk'
 
 import type { Signer, SignOpts } from './types'
 
-// The kit rejects with a bare string or a { code, message } object, not an
-// Error, and callers checking `instanceof Error` would show "Something went
-// wrong" when someone simply declined in their wallet.
-function asError(err: unknown): Error {
-  if (err instanceof Error) return err
-  if (typeof err === 'string' && err) return new Error(err)
-  const message = (err as { message?: unknown } | null)?.message
-  return new Error(typeof message === 'string' && message ? message : 'The wallet did not sign')
-}
-
 const networkName = (passphrase: string) =>
   passphrase === Networks.PUBLIC ? 'Mainnet' : passphrase === Networks.TESTNET ? 'Testnet' : 'another network'
 
-// A wallet set to the other network refuses the signature, and the kit reports
-// that as "The user rejected this request", blaming the person for a setting.
-// A wallet that cannot say which network it is on is left to sign or refuse.
+// the kit reports a wallet on the other network as "The user rejected this request";
+// one that cannot say which network it is on is left to sign or refuse
 async function assertSameNetwork(expected: string): Promise<void> {
   let current: string | undefined
   try {
@@ -42,7 +31,12 @@ export const walletKitSigner: Signer = {
       const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, opts)
       return { signedTxXdr }
     } catch (err) {
-      throw asError(err)
+      // the kit rejects with a bare string or a { code, message } object, and a caller
+      // checking instanceof Error would show "Something went wrong" for a plain decline
+      if (err instanceof Error) throw err
+      if (typeof err === 'string' && err) throw new Error(err)
+      const message = (err as { message?: unknown } | null)?.message
+      throw new Error(typeof message === 'string' && message ? message : 'The wallet did not sign')
     }
   },
 }

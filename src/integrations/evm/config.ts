@@ -21,8 +21,7 @@ function sourceChainTransport(override: string | undefined, network: Network, ke
 export const wagmiConfig = createConfig({
   chains: [mainnet, arbitrum, bsc, base, sepolia, baseSepolia, arbitrumSepolia],
   connectors,
-  // viem's own default for Ethereum, eth.merkle.io, sends no CORS header, so a
-  // browser could not read a balance or wait for a receipt there. Every CCTP
+  // viem's default for Ethereum, eth.merkle.io, sends no CORS header, so every CCTP
   // source chain falls back to the endpoint in the registry instead
   transports: {
     [mainnet.id]: sourceChainTransport(import.meta.env.VITE_ETH_RPC, 'mainnet', 'ETH'),
@@ -41,7 +40,6 @@ export type WagmiChainIdAny = (typeof wagmiConfig)['chains'][number]['id']
 export function isConfiguredChainId(id: number): id is WagmiChainIdAny {
   return wagmiConfig.chains.some((c) => c.id === id)
 }
-
 
 export const EVM_CHAIN_ID = {
   ETH: mainnet.id,
