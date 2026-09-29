@@ -4,9 +4,6 @@ import {
 } from '../../src/config/contracts'
 import type { Network } from '../../src/config/contracts'
 
-// what the production stack depends on, grouped by service area so a dashboard
-// row maps back to a subsystem. env overrides let a deploy point at its own urls.
-
 export interface HttpTarget {
   name: string
   area: 'bridge' | 'frontend' | 'swap' | 'custody' | 'mainnet' | 'shared'
@@ -24,9 +21,8 @@ export interface AccountTarget {
 
 const env = process.env
 
-// the fee quote the bridge asks Circle for before a burn, from the first source
-// chain it offers. Circle's status page can read green while this call fails
-// for us, so it is asked directly.
+// the fee quote the bridge asks Circle for before a burn. Circle's status page
+// can read green while this call fails for us, so it is asked directly.
 function cctpFeeUrl(network: Network): string {
   return `${IRIS_BASE[network]}/v2/burn/USDC/fees/${CCTP_SOURCE_CHAINS[network][0].domain}/${STELLAR_CCTP_DOMAIN}`
 }

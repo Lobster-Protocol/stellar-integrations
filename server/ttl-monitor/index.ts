@@ -67,10 +67,9 @@ export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network))
   }
   const wasm = Buffer.from(wasmHash, 'hex')
   if (wasm.length !== 32) throw new Error(`factory wasm hash for ${network} is not 32 bytes`)
-  // the factory instance, the code it runs on and the vault code it deploys each
-  // archive on their own clock (CAP-53), so all of them are watched. the factory's
-  // code is read off its instance; wasmHash names the vault code on mainnet but
-  // the factory's own code on testnet, so a key already watched isn't added twice.
+  // the factory instance, its code and the vault code it deploys each archive on
+  // their own clock (CAP-53). wasmHash names the vault code on mainnet but the
+  // factory's own code on testnet, so a key already watched isn't added twice.
   const instanceKey = new Contract(factory).getFootprint()
   const configuredKey = xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: wasm }))
   const kinds = new Map([[instanceKey.toXDR('base64'), 'instance']])
@@ -83,10 +82,7 @@ export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network))
   )
   for (const s of scan.statuses) s.kind = kinds.get(s.keyXdr)
 
-  // a live factory whose configured code archive reads as gone means the hash in
-  // contracts.ts no longer matches the deployed code, almost always a wasmHash
-  // left stale after a redeploy; vault deploys pass that same hash and would fail
-  // too. fail loud rather than auto-extend a dead key.
+  // a stale wasmHash breaks vault deploys too, so fail loud rather than auto-extend a dead key
   const inst = scan.statuses.find((s) => s.kind === 'instance')
   const code = scan.statuses.find((s) => s.keyXdr === configuredKey.toXDR('base64'))
   if (inst && inst.reading.level !== 'archived' && code && code.reading.level === 'archived') {

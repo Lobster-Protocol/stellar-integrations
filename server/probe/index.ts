@@ -100,9 +100,8 @@ async function probeOne(t: HttpTarget): Promise<ProbeResult> {
   return result
 }
 
-// synthetic fallback check: the Soroswap router still quoting a mainnet
-// XLM->USDC swap. the stale xlmSac SAC broke exactly this once (get_pair Error
-// #205), so it gets its own watch.
+// the Soroswap router still quoting a mainnet XLM to USDC swap. a stale xlmSac
+// broke exactly this once (get_pair Error #205), so it gets its own watch.
 async function probeSoroswap(): Promise<ProbeResult | null> {
   const tokens = CONTRACTS.mainnet.tokens
   const routerId = CONTRACTS.mainnet.soroswap.router

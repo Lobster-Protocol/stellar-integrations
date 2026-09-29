@@ -3,7 +3,6 @@ import { VENDOR_COMPONENTS, VENDOR_STATUS_PAGES, type Vendor, type VendorCompone
 export interface VendorReading {
   vendor: Vendor
   component: string
-  // 0 operational, 1 maintenance, 2 degraded, 3 partial outage, 4 major outage
   level: number
 }
 

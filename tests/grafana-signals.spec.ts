@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test'
 
-// the operations board carries the four signals and the alert rules are
-// provisioned. hits the Grafana HTTP API with a service account token.
-// skips unless GRAFANA_URL and the token are set, so it's green off a live
-// instance. the token is read from the env, never committed.
 const GRAFANA_URL = process.env.GRAFANA_URL ?? ''
 const GRAFANA_TOKEN = process.env.GRAFANA_SERVICE_ACCOUNT_TOKEN ?? process.env.GRAFANA_TOKEN ?? ''
 
@@ -23,7 +19,7 @@ test.describe('Grafana production signals', () => {
     const panels = body.dashboard?.panels ?? []
     expect(panels.length).toBeGreaterThanOrEqual(4)
     const titles = panels.map((p: { title?: string }) => (p.title ?? '').toLowerCase()).join(' | ')
-    expect(titles).toMatch(/indexer/)
+    expect(titles).toMatch(/sync/)
     expect(titles).toMatch(/ttl|storage/)
     expect(titles).toMatch(/dfns/)
   })
