@@ -60,9 +60,9 @@ so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
 Every hash above except `f5a3533f` is sourced from a wallet we control: the DFNS
 treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, the deployer
 `GA2PK7ZW...4MBU` on testnet and `GA3FDPNG...OXCS` on mainnet, the demo wallet
-`GCVFDROZ...RVQA` behind the Soroswap swap, the
-browser test wallet `GC6QPGCO...JKDY` behind the Freighter and xBull rows, or the
-bridge test wallets `0xDCD5...1a37` and `GCC5G4...HA74`.
+`GCVFDROZ...RVQA` behind the Soroswap swap, the browser test wallet
+`GC6QPGCO...JKDY` behind the Freighter and xBull rows, or the bridge test wallets
+`0xDCD5...1a37` and `GCC5G4...HA74`.
 `f5a3533f` is somebody else's broker route, kept because it is what our decoder
 reads. The row says so instead of counting it as our own execution.
 

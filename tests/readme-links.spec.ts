@@ -9,6 +9,8 @@ const OURS = [
   // deployer / demo wallets
   'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
   'GCVFDROZF3D565FAURFQBXQEOHT4BPQK2P66JUCL5XQWNWQBOGXMRVQA',
+  // the mainnet deployer, which also handed the factory admin to the treasury
+  'GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS',
   // the browser-wallet test account, one key imported into both Freighter and xBull
   'GC6QPGCOCI2FTQYTLVHNWC6I6MQYZPGCLJOO5X7KV2Z4ZMIY67I6JKDY',
   // the bridge test account that receives and delivers the USDC bridged in
