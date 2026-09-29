@@ -196,6 +196,17 @@ test.describe('the Bridges page', () => {
     await expect(page.getByText('Waiting to be delivered')).toHaveCount(0)
   })
 
+  test('refuses to look up something that is not a burn hash', async ({ page }) => {
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: /^Bridges$/ }).click()
+
+    const field = page.getByRole('textbox', { name: 'Burn transaction hash' })
+    await field.fill('0x1234')
+    await field.press('Enter')
+    await expect(page.getByText(/Enter a transaction hash/)).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+
   test('forgets a tracked transfer once asked twice', async ({ page }) => {
     await seedPendingTransfer(page)
     await gotoWithWallet(page)

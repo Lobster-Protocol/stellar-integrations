@@ -71,6 +71,14 @@ still sign it.
 A fast transfer's message expires after roughly a day of Stellar ledgers. Past
 that it needs a fresh signature from Circle before it can be delivered.
 
+A burn sent from somewhere else, another device or straight from a custody
+platform, left no note in this browser. Its hash is enough: paste it under
+"Finish a transfer started elsewhere" on `/bridges`, with the chain it was burned
+on, and the dashboard reads the amount and the Stellar recipient from the burn's
+`DepositForBurn` log. Reading the log rather than the call input means a burn made
+through a smart account works too. A transaction that burned nothing, or a burn
+that does not go through Circle's forwarder, is refused before anything is tracked.
+
 ## Into a DFNS treasury
 
 With DFNS custody on, the dashboard bridges into the treasury, not into the

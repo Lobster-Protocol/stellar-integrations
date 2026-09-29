@@ -1,7 +1,17 @@
-import { BaseError, ContractFunctionRevertedError, erc20Abi, parseUnits, type Address } from 'viem'
+import {
+  BaseError,
+  ContractFunctionRevertedError,
+  erc20Abi,
+  getAddress,
+  hexToBytes,
+  parseEventLogs,
+  parseUnits,
+  type Address,
+} from 'viem'
 import {
   getAccount,
   getBalance,
+  getTransactionReceipt,
   readContract,
   switchChain,
   waitForTransactionReceipt,
@@ -16,7 +26,7 @@ import {
   type CctpFinality,
   type CctpSourceChain,
 } from '../../config/contracts'
-import { contractToBytes32, encodeForwardHook, toHex } from './forward-hook'
+import { contractToBytes32, decodeForwardHook, encodeForwardHook, toHex } from './forward-hook'
 
 // Circle's TokenMessengerV2, just the call we make
 
@@ -222,4 +232,71 @@ export async function burnToStellar(req: BurnRequest): Promise<`0x${string}`> {
       args,
     }),
   )
+}
+
+// what TokenMessengerV2 logs for every burn. Reading the log rather than the call
+// input also covers a burn made from a smart account (a Safe, a custody platform),
+// where the burn is an internal call and the transaction input is something else
+const DEPOSIT_FOR_BURN_EVENT = [
+  {
+    type: 'event',
+    name: 'DepositForBurn',
+    inputs: [
+      { name: 'burnToken', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+      { name: 'depositor', type: 'address', indexed: true },
+      { name: 'mintRecipient', type: 'bytes32', indexed: false },
+      { name: 'destinationDomain', type: 'uint32', indexed: false },
+      { name: 'destinationTokenMessenger', type: 'bytes32', indexed: false },
+      { name: 'destinationCaller', type: 'bytes32', indexed: false },
+      { name: 'maxFee', type: 'uint256', indexed: false },
+      { name: 'minFinalityThreshold', type: 'uint32', indexed: true },
+      { name: 'hookData', type: 'bytes', indexed: false },
+    ],
+  },
+] as const
+
+const ZERO_32 = `0x${'00'.repeat(32)}`
+
+export interface BurnToStellar {
+  units: bigint
+  // the Stellar account the forwarder will pay
+  recipient: string
+  finality: CctpFinality
+}
+
+// A burn made outside this browser, read back from its receipt, so the dashboard
+// can finish a transfer it never saw. Refuses anything the forwarder could not
+// deliver rather than tracking a transfer that can never land.
+export async function readBurnToStellar(
+  chain: CctpSourceChain,
+  hash: `0x${string}`,
+  forwarder: string,
+): Promise<BurnToStellar> {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new EvmBurnError('Enter a transaction hash, 0x followed by 64 hex characters')
+  const chainId = chainIdOf(chain)
+  let receipt
+  try {
+    receipt = await getTransactionReceipt(wagmiConfig, { chainId, hash })
+  } catch {
+    throw new EvmBurnError(`No confirmed transaction with that hash on ${chain.name}`)
+  }
+  if (receipt.status !== 'success') throw new EvmBurnError('That transaction reverted, so nothing was burned')
+  const burns = parseEventLogs({ abi: DEPOSIT_FOR_BURN_EVENT, logs: receipt.logs, eventName: 'DepositForBurn' }).filter(
+    (l) => getAddress(l.address) === getAddress(chain.tokenMessenger),
+  )
+  const burn = burns.find((l) => l.args.destinationDomain === STELLAR_CCTP_DOMAIN)
+  if (!burn) {
+    throw new EvmBurnError(
+      burns.length ? 'That burn is bound for another chain, not Stellar' : `That transaction burned no USDC through CCTP on ${chain.name}`,
+    )
+  }
+  const forwarder32 = toHex(contractToBytes32(forwarder))
+  const { mintRecipient, destinationCaller, hookData, amount, minFinalityThreshold } = burn.args
+  // anyone may deliver when no caller is named; otherwise it has to be the forwarder
+  if (mintRecipient.toLowerCase() !== forwarder32 || ![forwarder32, ZERO_32].includes(destinationCaller.toLowerCase())) {
+    throw new EvmBurnError("That burn does not go through Circle's forwarder, so it cannot be delivered from here")
+  }
+  const { recipient } = decodeForwardHook(hexToBytes(hookData))
+  return { units: amount, recipient, finality: minFinalityThreshold >= CCTP_FINALITY.standard ? 'standard' : 'fast' }
 }

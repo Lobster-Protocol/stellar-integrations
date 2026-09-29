@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 
@@ -8,8 +8,15 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
 import { useTrustline } from '../integrations/stellar/trustline'
 import { useActivity } from '../integrations/horizon/activity'
-import { forgetTransfer, useTrackedTransfers, type TrackedTransfer } from '../integrations/cctp/transfers'
-import { BRIDGE_FALLBACK_LINKS, CONTRACTS, cctpChainsFor } from '../config/contracts'
+import { forgetTransfer, trackTransfer, useTrackedTransfers, type TrackedTransfer } from '../integrations/cctp/transfers'
+import {
+  BRIDGE_FALLBACK_LINKS,
+  CCTP_EVM_USDC_DECIMALS,
+  CONTRACTS,
+  cctpChainsFor,
+  type CctpSourceChain,
+  type Network,
+} from '../config/contracts'
 import { Card, CardHead, Empty, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
@@ -318,6 +325,16 @@ export default function Bridges() {
         )}
       </Card>
 
+      <FinishElsewhere
+        network={network}
+        chains={chains}
+        forwarder={forwarder}
+        onFound={(t) => {
+          setResume(t)
+          setOpen(true)
+        }}
+      />
+
       <Card>
         <CardHead
           title="Other routes"
@@ -359,5 +376,101 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
       </span>
       <span className="text-text-secondary">{children}</span>
     </li>
+  )
+}
+
+// A burn made from another device, or straight from a custody platform, never
+// passed through this browser, so nothing here remembers it. Its hash is enough:
+// the receipt says who it pays and how much.
+function FinishElsewhere({
+  network,
+  chains,
+  forwarder,
+  onFound,
+}: {
+  network: Network
+  chains: CctpSourceChain[]
+  forwarder: string
+  onFound: (t: TrackedTransfer) => void
+}) {
+  const [chainKey, setChainKey] = useState(chains[0]?.key ?? '')
+  const [hash, setHash] = useState('')
+  const [state, setState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null })
+  const chain = chains.find((c) => c.key === chainKey) ?? chains[0]
+
+  const find = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!chain || state.busy) return
+    setState({ busy: true, error: null })
+    try {
+      // loaded on demand: the page chunk stays free of the EVM code
+      const [{ readBurnToStellar }, { formatUnits }] = await Promise.all([
+        import('../integrations/cctp/evm-burn'),
+        import('viem'),
+      ])
+      // lower case, so a hash pasted in capitals matches the one already tracked here
+      const id = hash.trim().toLowerCase() as `0x${string}`
+      const burn = await readBurnToStellar(chain, id, forwarder)
+      const t: TrackedTransfer = {
+        id,
+        network,
+        chainKey: chain.key,
+        chainName: chain.name,
+        sourceDomain: chain.domain,
+        amount: formatUnits(burn.units, CCTP_EVM_USDC_DECIMALS),
+        recipient: burn.recipient,
+        finality: burn.finality,
+        createdAt: Date.now(),
+        stage: 'burned',
+      }
+      trackTransfer(t)
+      setHash('')
+      setState({ busy: false, error: null })
+      onFound(t)
+    } catch (err) {
+      setState({ busy: false, error: err instanceof Error ? err.message.split('\n')[0] : 'Something went wrong' })
+    }
+  }
+
+  return (
+    <Card>
+      <CardHead
+        title="Finish a transfer started elsewhere"
+        note="A burn made from another device, or straight from a custody platform, can be finished here. Pick the chain it was burned on and paste its hash; the dashboard reads the rest from the chain."
+      />
+      <form onSubmit={find} className="flex flex-wrap items-center gap-2 text-xs">
+        {chains.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => setChainKey(c.key)}
+            aria-pressed={chain?.key === c.key}
+            className={cn(
+              'px-3 py-1.5 rounded-full font-medium transition-all',
+              chain?.key === c.key ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'bg-bg text-text-secondary',
+            )}
+          >
+            {c.name}
+          </button>
+        ))}
+        <input
+          type="text"
+          value={hash}
+          onChange={(e) => setHash(e.target.value)}
+          placeholder="0x... burn transaction hash"
+          aria-label="Burn transaction hash"
+          spellCheck={false}
+          className="flex-1 min-w-[220px] px-3 py-1.5 rounded-xl bg-bg text-text font-mono outline-none focus:ring-1 focus:ring-primary/30"
+        />
+        <button
+          type="submit"
+          disabled={!hash.trim() || state.busy}
+          className="px-4 py-1.5 rounded-full bg-primary text-white font-medium disabled:opacity-40"
+        >
+          {state.busy ? 'Reading...' : 'Find it'}
+        </button>
+      </form>
+      {state.error && <p className="mt-2 text-[11px] text-coral break-words">{state.error}</p>}
+    </Card>
   )
 }
