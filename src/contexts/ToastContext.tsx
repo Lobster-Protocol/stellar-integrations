@@ -20,9 +20,7 @@ interface ToastApi {
 
 const Ctx = createContext<ToastApi | null>(null)
 
-// A tiny transient-notification stack, top-right, so the app can acknowledge things
-// that would otherwise happen silently, like a wallet connecting or a connection
-// failing. No dependency: a portal on document.body, above the +MPC popover (z-1000).
+// no dependency: a portal on document.body, above the +MPC popover (z-1000)
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const idRef = useRef(1)

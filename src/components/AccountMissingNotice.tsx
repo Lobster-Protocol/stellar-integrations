@@ -12,10 +12,8 @@ import CopyButton from './CopyButton'
 
 type Fund = 'idle' | 'pending' | 'done' | { error: string }
 
-// A wallet is not on the ledger until it is funded, so most panels have nothing
-// real to read for it. Say that once, above every page, rather than let each
-// empty state blame the price or an empty history for a missing account. On
-// testnet the faucet button gets a fresh wallet moving without leaving the app.
+// a wallet is not on the ledger until it is funded, so say that once, above every
+// page, rather than let each empty state blame the price or an empty history
 export default function AccountMissingNotice() {
   const { address } = useWallet()
   const { network } = useNetwork()

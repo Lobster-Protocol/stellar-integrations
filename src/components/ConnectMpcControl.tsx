@@ -14,11 +14,6 @@ import { shortenAddress, stellarExplorer, cn } from '../utils/format'
 import CopyButton from './CopyButton'
 import ConnectRelayForm from './ConnectRelayForm'
 
-// The top-right "+ MPC" control for connecting a DFNS MPC wallet. The default is
-// WalletConnect - the DFNS wallet pairs from the client's own DFNS console, and
-// signs there. Running your own relay is the other way in, shown plainly, not hidden. It never routes to
-// Lobster's own org: the demo profile is opt-in from the Audit page and shown, if
-// active, plainly as a testnet demo. Approvals happen in the client's DFNS console.
 export default function ConnectMpcControl() {
   const { mode, dfnsAddress, setMode } = useCustody()
   const { connectWalletConnect, walletConnectEnabled, walletId, connecting } = useWallet()
@@ -34,8 +29,7 @@ export default function ConnectMpcControl() {
   const panelRef = useRef<HTMLDivElement>(null)
 
   // the popover renders through a portal on document.body, so the top bar's
-  // backdrop-blur (which traps a z-index) can never let page content paint over
-  // it. anchor it under the trigger with fixed coords, recomputed while open.
+  // backdrop-blur (which traps a z-index) can never let page content paint over it
   useLayoutEffect(() => {
     if (!open) return
     function place() {
@@ -80,7 +74,6 @@ export default function ConnectMpcControl() {
   const showClientChip = mode === 'dfns' && isClient && !!dfnsAddress
   const showDemoChip = mode === 'dfns' && isDemo && !!dfnsAddress
   const isWcConnected = walletId === WALLET_CONNECT_ID
-  // saved relays plus the testnet-only demo, offered as one-click picks in the popover.
   const pickable = profiles.filter((p) => !(p.kind === 'demo' && network === 'mainnet'))
 
   function toggle() {
@@ -89,8 +82,7 @@ export default function ConnectMpcControl() {
   }
 
   // a DFNS wallet connected over WalletConnect already shows in the wallet chip, so a
-  // second "+ MPC" invite beside it only confuses. hide this control then - unless there
-  // is a saved relay or the testnet demo to pick, or we are in relay (dfns) custody.
+  // second "+ MPC" invite beside it only confuses
   if (isWcConnected && !showClientChip && !showDemoChip && pickable.length === 0) return null
 
   return (

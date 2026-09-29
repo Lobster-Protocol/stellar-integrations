@@ -9,10 +9,8 @@ import type { Network } from '../config/contracts'
 import { shortenAddress, stellarExplorer, cn } from '../utils/format'
 import CopyButton from './CopyButton'
 
-// The single "what's connected" chip. One pill - a status dot, the wallet's name, its
-// short address - that opens a menu with the address actions and disconnect, instead
-// of a row of loose icons. A "Signs" tag marks it when it is the active signer, so it
-// never competes silently with the DFNS-relay chip.
+// the "Signs" tag marks the active signer, so this chip never competes silently
+// with the dfns relay chip.
 export default function WalletChip({ address, network }: { address: string; network: Network }) {
   const { walletName, walletId, disconnect } = useWallet()
   const { mode } = useCustody()

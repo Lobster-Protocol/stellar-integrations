@@ -3,15 +3,12 @@ import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import { Card, CardHead, Disclosure, Empty, NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
 
-// A policy that is not Active cannot hold anything back, so the live ones lead
-// and the retired ones go behind a fold. Showing seven rows at equal weight hid
-// the single policy that actually gates signing.
+// a policy that is not Active cannot hold anything back, so the live ones lead
+// and the retired ones go behind a fold.
 const LIVE = 'Active'
 
-// The DFNS rule/action objects carry the actual formulation. State it plainly and
-// factually: the amount limit, the size of the recipient list, the approval quorum.
-// The over/under direction of an amount rule is left out on purpose, it depends on
-// the paired action and is easy to state wrong.
+// the over/under direction of an amount rule is left out on purpose: it depends
+// on the paired action and is easy to state wrong.
 function ruleSummary(rule: DfnsPolicySummary['rule']): string {
   const c = rule.configuration
   if (rule.kind === 'TransactionAmountLimit' && c && c.limit != null) {

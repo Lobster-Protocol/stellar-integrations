@@ -32,9 +32,6 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
   )
 }
 
-// the connect-a-relay form, shared by the Audit custody panel and the top-bar
-// "+ MPC" control. it saves a client profile (never the demo) and, when given,
-// its operator token; the DFNS key never passes through here.
 export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
   const [label, setLabel] = useState('')
   const [url, setUrl] = useState('')
@@ -42,16 +39,6 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
   const [opToken, setOpToken] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [phase, setPhase] = useState<Phase>({ k: 'form' })
-
-  async function runVerify() {
-    setPhase({ k: 'verifying' })
-    try {
-      const wallets = await verifyRelay(url.trim(), readToken.trim())
-      setPhase({ k: 'verified', wallets })
-    } catch (e) {
-      setPhase({ k: 'failed', msg: e instanceof Error ? e.message : 'verification failed' })
-    }
-  }
 
   function save() {
     try {
@@ -154,7 +141,15 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={runVerify}
+          onClick={async () => {
+            setPhase({ k: 'verifying' })
+            try {
+              const wallets = await verifyRelay(url.trim(), readToken.trim())
+              setPhase({ k: 'verified', wallets })
+            } catch (e) {
+              setPhase({ k: 'failed', msg: e instanceof Error ? e.message : 'verification failed' })
+            }
+          }}
           disabled={!url.trim() || phase.k === 'verifying'}
           className="px-3 py-1.5 rounded-full border border-text-muted/20 disabled:opacity-40"
         >

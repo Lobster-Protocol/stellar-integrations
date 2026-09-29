@@ -82,8 +82,7 @@ export default function SignDemoTx() {
         address: source,
       })
 
-      // held for a human approval in dfns: show the pending state and poll until a
-      // second approver signs off, then the hash lands.
+      // held in dfns for a second approver, so the hash only comes back from polling.
       if (pendingId) {
         setState({ phase: 'pending' })
         const ac = new AbortController()
@@ -204,8 +203,6 @@ export default function SignDemoTx() {
         <div className="space-y-3">
           {isDfns ? (
             <div className="space-y-3">
-              {/* the one path that clears with no human: DFNS builds the payment to the
-                  treasury itself, reads its own address off the list, and lets it through. */}
               <button
                 onClick={() => handleAction('transfer')}
                 disabled={busy}
@@ -221,8 +218,7 @@ export default function SignDemoTx() {
                   DFNS console.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {/* a Soroban view signed by MPC; DFNS can't price a contract call, so the policy
-                      holds it for approval (auto-approved on this demo relay). */}
+                  {/* dfns cannot price a contract call, so its policy holds this one for approval */}
                   <button
                     onClick={() => handleAction('ping')}
                     disabled={busy}
@@ -293,7 +289,7 @@ export default function SignDemoTx() {
                   : 'DFNS took the payment straight to the network. It lands on the treasury account within a few seconds.'}
               </p>
               <a
-                href={stellarExplorer(network, 'account', source ?? '')}
+                href={stellarExplorer(network, 'account', source)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block mt-1 text-primary hover:underline"

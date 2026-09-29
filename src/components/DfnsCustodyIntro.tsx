@@ -1,6 +1,3 @@
-// Lead for the custody page: what the DFNS integration is and how it works, so a reader knows
-// what the panels below are showing before they connect anything. The panels themselves report
-// what is actually wired on this session.
 const BEATS = [
   {
     head: 'No one holds the whole key',

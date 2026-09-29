@@ -17,8 +17,7 @@ interface WalletCtx {
   connecting: boolean
   connect: () => Promise<void>
   // open WalletConnect straight away, for a DFNS MPC wallet the client pairs from
-  // their own DFNS console. resolves to the connected address, or null if the
-  // client dismissed the modal. unavailable until the WC project id is set.
+  // their own DFNS console.
   connectWalletConnect: () => Promise<string | null>
   walletConnectEnabled: boolean
   disconnect: () => void
@@ -101,20 +100,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [network])
 
-  // re-attach the wallet session on mount. rehydrating the address from
-  // localStorage shows "connected" but the wallet has not granted the site
-  // access this session, so the first signTransaction is refused with "not
-  // connected". setWallet + fetchAddress runs the wallet's access grant (silent
-  // once it has been approved) so the connection is real before the user signs.
+  // the rehydrated address looks connected, but the wallet refuses to sign until the site
+  // has access this session. setWallet + fetchAddress asks for it, silent once approved.
   useEffect(() => {
     if (!kitInitialised) return
     const wid = localStorage.getItem('lob_wid')
-    // Albedo and other purely web wallets prompt on every getAddress, so a
-    // mount-time re-attach would pop a window on each load. skip them - they grant
-    // access at sign time instead. WalletConnect is skipped for the opposite reason:
-    // its session is restored from storage by the sign-client, and re-running
-    // getAddress would start a fresh pairing and pop the QR modal on every load.
-    // extension wallets (Freighter, xBull, LOBSTR) return silently once approved.
+    // Albedo prompts on every getAddress, so it is left to ask at sign time. WalletConnect
+    // restores its own session, and getAddress would start a fresh pairing and pop the QR.
     if (!wid || wid === ALBEDO_ID || wid === WALLET_CONNECT_ID || !localStorage.getItem('lob_addr'))
       return
     let cancelled = false
@@ -136,9 +128,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // walletId set = open that wallet directly (WalletConnect for a DFNS MPC wallet);
-  // unset = the full chooser. Kept internal so the button's onClick event can never
-  // arrive here as a bogus id.
+  // kept internal so a button's onClick event can never arrive here as a bogus wallet id
   const runConnect = useCallback(
     async (openId?: string): Promise<string | null> => {
       setConnecting(true)
@@ -156,8 +146,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('lob_addr', addr)
         localStorage.setItem('lob_wname', picked)
         // remember which module so we can re-attach the session on the next load
-        // instead of only rehydrating the address (which leaves the wallet
-        // thinking the site is not connected, so it refuses to sign).
         if (mod?.productId) {
           localStorage.setItem('lob_wid', mod.productId)
           setWalletId(mod.productId)

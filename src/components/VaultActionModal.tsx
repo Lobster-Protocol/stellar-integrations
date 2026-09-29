@@ -54,11 +54,8 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   const signingQ = useAccountSigning(network, source)
   const multi = !isDfns && signingQ.data ? isMultisig(signingQ.data) : false
 
-  // a deposit spends the two tokens out of `source`, so show what that wallet
-  // actually holds of each. reading the SAC balance() covers XLM (its SAC) and
-  // USDC alike, and works for the treasury address under dfns custody too. gated
-  // to the deposit form so a withdraw never pays for two sims it won't use - it
-  // reads the vault's own idle holdings instead, below.
+  // SAC balance() covers XLM and USDC alike, and the dfns treasury too. deposit
+  // only, since a withdraw caps against the vault's idle holdings instead.
   const walletHeld = useQuery({
     queryKey: ['vault-wallet-held', network, source, vault.token0, vault.token1],
     queryFn: async () => {
@@ -90,10 +87,8 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   if (!open) return null
 
   const isWithdraw = action === 'withdraw'
-  // what backs each amount input: the vault's idle holdings when withdrawing, the
-  // funding wallet's balance when depositing. the deposit balance loads async and
-  // getSorobanTokenBalance returns null for a zero balance, so a null cap reads as
-  // "unknown / nothing to spend" and never blocks the form on its own.
+  // a null cap (still loading, or getSorobanTokenBalance's null for a zero
+  // balance) never blocks the form on its own.
   const held0 = isWithdraw ? vault.amount0 : walletHeld.data?.[0] ?? null
   const held1 = isWithdraw ? vault.amount1 : walletHeld.data?.[1] ?? null
   const over0 = held0 != null && amount0 !== '' && Number(amount0) > Number(held0)
@@ -124,9 +119,8 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         return
       }
       if (multi) {
-        // a quorum account cannot go through on one signature, so hand the frozen
-        // assembled envelope to the co-sign panel to gather the rest. never
-        // rebuild it after this point or the collected signatures stop matching.
+        // the co-sign panel collects the other signatures on this exact envelope.
+        // never rebuild it after this point or they stop matching.
         setPhase({ k: 'collecting', xdr: built.xdr })
         return
       }
@@ -135,9 +129,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         networkPassphrase: networkPassphrase(network),
         address: source,
       })
-      // dfns held the call for a human approval: wait it out, then a soroban tx
-      // lands as an envelope this submits and a classic one as a hash. the wallet
-      // kit returns neither field, so this branch only runs under dfns custody.
+      // only dfns sets pendingId or broadcastHash; the wallet kit returns an envelope.
       if (signed.pendingId) {
         setPhase({ k: 'pending' })
         const ac = new AbortController()

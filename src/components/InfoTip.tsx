@@ -3,10 +3,6 @@ import { Info } from 'lucide-react'
 
 import { GLOSSARY, type GlossaryKey } from '../copy/glossary'
 
-// A small "i" that sits next to a technical label. Hover or keyboard-focus to
-// read a plain-language definition; a tap toggles it on touch screens, where
-// there is no hover. Text comes from the shared glossary via `term`, or inline
-// via children for one-off notes.
 export function InfoTip({
   term,
   children,

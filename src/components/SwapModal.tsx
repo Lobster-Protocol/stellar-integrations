@@ -61,9 +61,8 @@ export default function SwapModal({ open, onClose }: Props) {
   const [amount, setAmount] = useState('')
 
   const tokens = useMemo(() => swapTokensFor(network), [network])
-  // resolve the picked codes against the current network's token set. switching
-  // network can drop a token (an XTAR pick on testnet, gone on mainnet), so fall
-  // back rather than render an empty select.
+  // switching network can drop a token (an XTAR pick on testnet, gone on mainnet),
+  // so fall back rather than render an empty select.
   const selling = tokens.find((t) => t.code === sellingCode) ?? tokens[0]
   const buying =
     tokens.find((t) => t.code === buyingCode) ??
@@ -71,10 +70,8 @@ export default function SwapModal({ open, onClose }: Props) {
     tokens[0]
   const sameToken = selling.code === buying.code
 
-  // match the selling token to a wallet balance by code (useAccountBalances already
-  // folds testnet's soroban-only USDC into a code:'USDC' line), for a Max button and
-  // an over-balance guard. reserve rules still apply to a full-XLM max, and the
-  // existing swap error covers that case.
+  // useAccountBalances already folds testnet's soroban-only USDC into a code:'USDC'
+  // line. a full-XLM max still runs into the reserve, and the swap error covers that.
   const balancesQ = useAccountBalances(network, address)
   const classicSell = useMemo(() => {
     const lines = balancesQ.data
@@ -145,11 +142,8 @@ export default function SwapModal({ open, onClose }: Props) {
   // stray close would strand an in-progress sign, so gate every dismissal on it.
   const busy = confirmFallback.isPending || multiBuilding
 
-  // the parent keeps this modal mounted when closed, so nothing resets on its own.
-  // clear the amount, the mutation and any co-sign progress on close, or a reopen
-  // shows a stale "Swap confirmed" and the last amount. fire only on the open
-  // toggle: the mutation object identity is unstable, so listing it as a dep would
-  // re-run this on every render.
+  // the parent keeps this mounted while closed: reset on close or a reopen shows a
+  // stale "Swap confirmed". only open is a dep, the mutation object changes each render.
   useEffect(() => {
     if (open) return
     setAmount('')
@@ -362,10 +356,8 @@ export default function SwapModal({ open, onClose }: Props) {
             </div>
           )}
 
-          {/* The broker answers even when nothing here can be signed, and its answer
-              next to the direct route is the whole point of routing through it. So it
-              stays up when the executable leg falls through, which is exactly when the
-              comparison is worth reading. */}
+          {/* shown even when nothing here can sign it: the broker quote next to the
+              direct route is the whole point of routing through it */}
           {broker && (
             <div className="bg-bg rounded-lg p-3 text-xs space-y-1">
               <div className="flex justify-between">
@@ -435,9 +427,6 @@ export default function SwapModal({ open, onClose }: Props) {
             <p className="text-xs text-text-muted">Connect a Stellar wallet to confirm.</p>
           ) : source === 'broker' ? (
             <>
-              {/* the broker leg is priced here but not signed here, so the
-                  user gets a disabled control and the reason instead of a
-                  quote with nothing under it */}
               <button
                 type="button"
                 disabled

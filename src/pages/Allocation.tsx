@@ -103,9 +103,8 @@ export default function Allocation() {
   const portfolio = buildPortfolio(lines, vaults, priceOf, network)
   const { walletValue, vaultValue, total, byAsset, byVenue, unpriced, vaults: vaultValues } =
     portfolio
-  // built here rather than inside the download so the button can tell whether
-  // there is anything to write yet. A vault read that has not landed would make
-  // the file quietly short, so the download waits for both.
+  // built here so the button knows whether there is anything to write yet, and the
+  // download waits for both reads so a late vault read cannot leave it quietly short.
   const loading = balancesQ.isLoading || vaultsQ.isLoading
   const exportRows = holdingsRows(lines, portfolio, priceOf, unit, network)
 

@@ -3,8 +3,7 @@ import { LayoutDashboard, TrendingUp, Activity, PieChart, ArrowLeftRight, Box, S
 import { cn } from '../utils/format'
 import lobsterLogo from '../assets/lobster-logo.png'
 
-// Custody closes the list: it is the account-settings page. Who holds the keys
-// and how many signatures a move needs both live there now. Everything above it
+// custody closes the list: it is the account-settings page, everything above it
 // is something you look at.
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },

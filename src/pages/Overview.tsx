@@ -44,15 +44,15 @@ export default function Overview() {
   const unit = priceUnit(network)
   const price = priceQ.data ?? null
   const valued = valueBalances(balancesQ.data ?? [], price, network)
-  // record the headline figure, so Performance charts the same number the user
-  // reads here rather than a wallet-only subset of it
-  const recorded = buildPortfolio(
+  // same computation Allocation renders, so the two pages can never disagree
+  const portfolio = buildPortfolio(
     valued.lines,
     vaultsQ.data ?? [],
     tokenPricer(network, price),
     network,
   )
-  useRecordNav(network, address, valued.usdTotal != null ? recorded.total : null)
+  // record the headline figure, not a wallet-only subset of it
+  useRecordNav(network, address, valued.usdTotal != null ? portfolio.total : null)
 
   if (!address) {
     return (
@@ -78,9 +78,6 @@ export default function Overview() {
   const held = lines.filter((l) => Number(l.balance) > 0)
   const xlm = lines.find((l) => l.isNative)
   const vaults = vaultsQ.data ?? []
-  const priceOf = tokenPricer(network, price)
-  // same computation Allocation renders, so the two pages can never disagree
-  const portfolio = buildPortfolio(lines, vaults, priceOf, network)
   const alloc = portfolio.byAsset
   // the same reconstruction Performance draws, thinned to a sparkline
   const priceByKey: Record<string, number> = {}
@@ -194,8 +191,6 @@ export default function Overview() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* a preview of the Performance curve, not a copy of it: the balance,
-            the shape of how it got there, and the way through */}
         <Card className="lg:col-span-2 self-start">
           <CardHead
             title="Wallet balance over time"
@@ -211,8 +206,6 @@ export default function Overview() {
           ) : (
             <div className="flex items-center gap-5">
               <div className="shrink-0">
-                {/* the tile above already says "in wallet", so this one names
-                    the end of the curve instead of repeating the words */}
                 <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">
                   Now
                 </div>

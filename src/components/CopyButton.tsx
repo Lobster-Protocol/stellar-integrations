@@ -3,8 +3,6 @@ import { Check, Copy } from 'lucide-react'
 
 import { cn } from '../utils/format'
 
-// Every address and hash on the dashboard is shown shortened, which is readable
-// but useless if you need the real thing in an explorer or a ticket.
 export default function CopyButton({
   value,
   what,

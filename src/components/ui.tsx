@@ -8,9 +8,6 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <div className={cn('rounded-3xl p-5 bg-bg-card card', className)}>{children}</div>
 }
 
-// Card header. `note` is the one-line explanation of what the card shows, which
-// is what makes a panel readable without a manual; `meta` is the live/updated
-// cluster that sits on the right.
 export function CardHead({
   title,
   note,
@@ -31,7 +28,6 @@ export function CardHead({
   )
 }
 
-// An empty panel should say what would fill it, not just that it is empty.
 export function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="py-6 text-center">
@@ -41,9 +37,8 @@ export function Empty({ children, action }: { children: ReactNode; action?: Reac
   )
 }
 
-// A panel whose backing service is missing from this build's configuration.
-// It stays on the page, named and inert, instead of vanishing: someone running
-// a clone can see the feature exists and read what it waits on.
+// stays on the page instead of vanishing, so someone running a clone without
+// the service can see the feature exists and what it waits on
 export function NotConfigured({
   title,
   needs,
@@ -81,8 +76,6 @@ const TONE_CLASS: Record<Tone, string> = {
   accent: 'text-primary',
 }
 
-// The single stat tile the whole dashboard uses. Replaces the three near-copies
-// that had drifted apart across Overview, Performance and Positions.
 export function Stat({
   label,
   value,
@@ -133,9 +126,8 @@ export function Stat({
   )
 }
 
-// A chart is a picture to a screen reader and to anyone who cannot separate the
-// colours, so every one of ours is named and can be read as numbers instead.
-// `rows` is what the chart plots; pass it and the reader gets a table toggle.
+// a chart is only a picture to a screen reader or to anyone who cannot separate
+// the colours, so each one is named and can be read as numbers instead
 export function ChartFrame({
   label,
   columns,
@@ -202,7 +194,6 @@ export function ChartFrame({
   )
 }
 
-// Drill-down: the page reads simply until someone opens this.
 export function Disclosure({
   summary,
   children,

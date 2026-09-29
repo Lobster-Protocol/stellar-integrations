@@ -24,9 +24,8 @@ import TtlCountdownCard from '../components/TtlCountdownCard'
 import { Card, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
-// A 401 proves the relay answered: /health returns 200 and the read is the part
-// that was turned down. Calling that unreachable sends a reader off hunting for
-// a service that is running.
+// a 401 proves the relay answered and only the read was turned down; calling that
+// unreachable sends a reader off hunting for a service that is running.
 function readFailure(err: unknown): string {
   if (err instanceof RelayError && err.status === 401) {
     return 'relay answered, no valid API token'

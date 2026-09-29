@@ -25,7 +25,6 @@ import CreateVaultModal from '../components/CreateVaultModal'
 import type { VaultAction } from '../integrations/lobster/vault-tx'
 import type { VaultPosition } from '../integrations/lobster/position'
 
-// how many vault cards a page shows before it asks
 const LIST_LIMIT = 6
 
 export default function Positions() {
@@ -36,7 +35,6 @@ export default function Positions() {
   // hiding writes straight to localStorage, so a counter is all it takes to
   // read the list back after a change
   const [, refreshHidden] = useReducer((n: number) => n + 1, 0)
-  // a wallet with many vaults gets the biggest few and asks for the rest
   const [showAll, setShowAll] = useState(false)
 
   const vaultsQ = useVaultPositions(network, address)
@@ -53,8 +51,7 @@ export default function Positions() {
 
   const factoryId = CONTRACTS[network].lobster.factory
   const deployed = vaults.filter((v) => v.venue !== 'idle').length
-  // what share of this wallet's money sits in vaults rather than loose in the
-  // wallet. tokens we cannot price count nowhere, so say so when there are any.
+  // tokens we cannot price count nowhere, so say so when there are any
   const inVaults =
     portfolio.total > 0 ? Math.round((portfolio.vaultValue / portfolio.total) * 100) : null
 
@@ -69,7 +66,6 @@ export default function Positions() {
     return a.vault.address.localeCompare(b.vault.address)
   })
   const split = partitionHidden(ordered, hidden, (p) => p.vault.address)
-  const totalValue = portfolio.vaults.reduce((sum, p) => sum + p.value, 0)
   const emptyOnes = split.visible.filter((p) => isVaultEmpty(p.vault))
   const listed = showAll ? split.visible : split.visible.slice(0, LIST_LIMIT)
   const lastMoves = lastMoveByVault(
@@ -105,7 +101,7 @@ export default function Positions() {
           <h2 className="text-lg font-semibold text-text">Positions</h2>
           <p className="text-xs text-text-secondary mt-1">
             Each Lobster vault <InfoTip term="vault" label="a vault" /> is a contract you own. It
-            holds your two tokens and can put them to work on Soroswap, Phoenix or Aquarius.
+            holds your two tokens and can put them to work on Soroswap.
           </p>
         </div>
         {address && (
@@ -181,14 +177,12 @@ export default function Positions() {
         <Card>
           <Empty
             action={
-              factoryId ? (
-                <button
-                  onClick={() => setCreateOpen(true)}
-                  className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all"
-                >
-                  + Create your first vault
-                </button>
-              ) : undefined
+              <button
+                onClick={() => setCreateOpen(true)}
+                className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all"
+              >
+                + Create your first vault
+              </button>
             }
           >
             Nothing registered yet for {shortenAddress(address)}.
@@ -232,7 +226,7 @@ export default function Positions() {
                 network={network}
                 account={address}
                 priceOf={priceOf}
-                share={totalValue > 0 ? (value / totalValue) * 100 : 0}
+                share={portfolio.vaultValue > 0 ? (value / portfolio.vaultValue) * 100 : 0}
                 lastMove={lastMoves.get(v.address)}
                 onAction={(action) => setVaultAction({ vault: v, action })}
                 onHide={() => {

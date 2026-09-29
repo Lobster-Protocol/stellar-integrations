@@ -16,11 +16,7 @@ import { ChartFrame } from './ui'
 const day = (ts: number) =>
   new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
-const signed = (amount: string) => `${Number(amount) > 0 ? '+' : ''}${formatBalance(amount)}`
-
-// The running total of what this wallet has moved into a vault, less what it has
-// taken back, one small panel per token. Two tokens rarely share a scale (500
-// XLM against 1000 LOBS), so they get a panel each rather than one axis that
+// one panel per token, since two tokens rarely share a scale and a single axis
 // flattens the smaller of them.
 export default function VaultFlowChart({
   series,
@@ -40,7 +36,9 @@ export default function VaultFlowChart({
               <div className="flex items-baseline justify-between gap-2 mb-0.5">
                 <span className="text-[11px] font-medium text-text">{code}</span>
                 <span className="text-[11px] tabular-nums">
-                  <span className="text-text">{signed(series.net[code])}</span>
+                  <span className="text-text">
+                    {`${Number(series.net[code]) > 0 ? '+' : ''}${formatBalance(series.net[code])}`}
+                  </span>
                   <span className="text-text-muted"> net</span>
                 </span>
               </div>

@@ -7,7 +7,6 @@ import { isAccountId } from '../integrations/stellar/strkey-guards'
 import { friendbotFund } from '../integrations/stellar/friendbot'
 import { isOperator } from '../integrations/dfns/operator'
 import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
-import type { Network } from '../config/contracts'
 import { Card, CardHead, Empty, NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
 
@@ -21,10 +20,6 @@ type DfnsNetwork = (typeof DFNS_NETWORKS)[number]
 const GROUP_TITLE: Record<DfnsNetwork, string> = {
   Stellar: 'Mainnet',
   StellarTestnet: 'Testnet',
-}
-
-function explorerNetwork(dfnsNetwork: string): Network {
-  return dfnsNetwork === 'Stellar' ? 'mainnet' : 'testnet'
 }
 
 export default function DfnsWalletList() {
@@ -49,12 +44,6 @@ export default function DfnsWalletList() {
 
   const dfnsNetwork: DfnsNetwork = network === 'mainnet' ? 'Stellar' : 'StellarTestnet'
   const items = wallets.data?.items ?? []
-
-  async function handleCreate() {
-    const proposed = name.trim() || `lobster-${dfnsNetwork.toLowerCase()}-${Date.now()}`
-    await create.mutateAsync({ name: proposed, network: dfnsNetwork })
-    setName('')
-  }
 
   async function handleFund(address: string) {
     setFunding((m) => ({ ...m, [address]: 'pending' }))
@@ -99,7 +88,11 @@ export default function DfnsWalletList() {
           />
           <button
             type="button"
-            onClick={handleCreate}
+            onClick={async () => {
+              const proposed = name.trim() || `lobster-${dfnsNetwork.toLowerCase()}-${Date.now()}`
+              await create.mutateAsync({ name: proposed, network: dfnsNetwork })
+              setName('')
+            }}
             disabled={create.isPending}
             className="px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold disabled:opacity-40"
           >
@@ -143,7 +136,7 @@ export default function DfnsWalletList() {
                         </span>
                         {valid ? (
                           <a
-                            href={stellarExplorer(explorerNetwork(w.network), 'account', w.address)}
+                            href={stellarExplorer(w.network === 'Stellar' ? 'mainnet' : 'testnet', 'account', w.address)}
                             target="_blank"
                             rel="noopener noreferrer"
                             title={w.address}

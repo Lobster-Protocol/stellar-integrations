@@ -62,10 +62,8 @@ export default function TtlCountdownCard() {
   // not a ledger with nothing on it, and the card has to tell the two apart.
   const feedConfigured = !!import.meta.env.VITE_LOBSTER_API_URL
 
-  // fetch rejects with a TypeError when it cannot reach the host at all: wrong
-  // port, service down, origin the relay does not allow. There is no response
-  // to read a reason off, so the browser's own "Failed to fetch" is what came
-  // through to the card. The relay's explanations arrive as plain Errors.
+  // fetch rejects with a TypeError when it cannot reach the host at all (wrong port,
+  // service down, origin not allowed); the relay's own explanations are plain Errors.
   const unreachable = ttl.error instanceof TypeError
 
   const reading = deployed && feedConfigured

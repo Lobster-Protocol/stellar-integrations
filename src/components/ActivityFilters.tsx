@@ -34,7 +34,6 @@ export function ActivityFilters({
   vaults: { address: string; label: string }[]
 }) {
   const { group, query, from, to, vault, update } = filters
-  const preset = (days: number) => update({ from: utcDaysAgo(days), to: '' })
 
   return (
     <div className="space-y-2 mb-3">
@@ -94,7 +93,7 @@ export function ActivityFilters({
           <button
             key={p.id}
             type="button"
-            onClick={() => preset(p.id)}
+            onClick={() => update({ from: utcDaysAgo(p.id), to: '' })}
             className={cn(
               'px-2.5 py-1 rounded-full transition-colors',
               from === utcDaysAgo(p.id) && !to

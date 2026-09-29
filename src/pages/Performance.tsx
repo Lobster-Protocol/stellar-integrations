@@ -85,8 +85,8 @@ export default function Performance() {
   // the same total Overview leads with: wallet plus vaults, not wallet alone
   const portfolio = buildPortfolio(lines, vaultsQ.data ?? [], tokenPricer(network, price), network)
   const total = usdTotal != null ? portfolio.total : null
-  // nothing on this page reads the value series any more, but it stays sampled:
-  // a session that only ever lands here would otherwise leave a hole in it
+  // nothing on this page reads the value series, but it stays sampled: a session
+  // that only ever lands here would otherwise leave a hole in it
   useRecordNav(network, address, total)
 
   // only assets whose identity we can pin down get a price, so a look-alike
@@ -125,9 +125,8 @@ export default function Performance() {
 
   const flows = history?.flows
 
-  // narrow the curve to a recent window; carry the running value to the window's
-  // left edge so it starts at the right height instead of mid-air. the table just
-  // lists the real moves inside the window, no synthetic anchor.
+  // carry the running value to the window's left edge so the curve starts at the
+  // right height instead of mid-air; the table only lists real moves, no synthetic anchor
   const cutoffMs = range === 'all' ? null : Date.now() - RANGE_DAYS[range] * 86_400_000
   const viewSeries: Row[] =
     cutoffMs == null

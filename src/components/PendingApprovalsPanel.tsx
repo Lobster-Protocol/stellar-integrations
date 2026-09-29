@@ -13,8 +13,7 @@ export default function PendingApprovalsPanel() {
   // deciding an approval releases a treasury signature, so the buttons belong to
   // an operator. everybody else reads what is waiting.
   const operator = isOperator()
-  // a version-skewed relay could answer 200 with a body that has no `items`;
-  // normalise once so nothing downstream dereferences undefined and throws.
+  // a version-skewed relay can answer 200 with a body that has no `items`
   const items = approvals.data?.items ?? []
   const hasRelay = useHasActiveRelay()
 

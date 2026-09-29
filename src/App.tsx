@@ -42,14 +42,6 @@ class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }
   }
 }
 
-function RouteFallback() {
-  return (
-    <div className="flex items-center justify-center py-20 text-sm text-text-muted">
-      Loading...
-    </div>
-  )
-}
-
 export default function App() {
   const { pathname } = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -72,7 +64,6 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      {/* skip-to-content link, only visible on focus */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-3 focus:py-2 focus:rounded-lg focus:bg-primary focus:text-white focus:text-xs focus:font-semibold"
@@ -121,7 +112,7 @@ export default function App() {
             <main id="main-content" tabIndex={-1} className="flex-1 p-4 sm:p-6 overflow-y-auto">
               <AccountMissingNotice />
               <ErrorBoundary resetKey={pathname}>
-                <Suspense fallback={<RouteFallback />}>
+                <Suspense fallback={<div className="flex items-center justify-center py-20 text-sm text-text-muted">Loading...</div>}>
                   <Routes>
                     <Route path="/" element={<Overview />} />
                     <Route path="/performance" element={<Performance />} />
@@ -130,7 +121,6 @@ export default function App() {
                     <Route path="/allocation" element={<Allocation />} />
                     <Route path="/bridges" element={<Bridges />} />
                     <Route path="/positions" element={<Positions />} />
-                    {/* shared control folded into Custody; keep the old link working */}
                     <Route path="/shared-control" element={<Navigate to="/audit" replace />} />
                     <Route path="/404" element={<NotFound />} />
                     <Route path="*" element={<Navigate to="/404" replace />} />

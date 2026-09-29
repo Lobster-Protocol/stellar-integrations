@@ -42,7 +42,6 @@ describe('VaultFlowChart', () => {
     }
     expect(screen.getByText('Net XLM')).toBeInTheDocument()
     expect(screen.getByText('Net LOBS')).toBeInTheDocument()
-    // both moments the wallet touched this vault, in the XLM column
     expect(screen.getByText('500.00')).toBeInTheDocument()
   })
 

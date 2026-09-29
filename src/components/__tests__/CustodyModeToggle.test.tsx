@@ -17,8 +17,6 @@ function wrap(node: React.ReactNode) {
   )
 }
 
-// The old "Browser wallet vs DFNS (Lobster demo)" mode toggle was removed: you sign with whatever
-// wallet you connect at the top right, and this panel is only about connecting DFNS custody.
 describe('CustodyModeToggle (DFNS custody panel)', () => {
   it('is titled DFNS custody and leads with connecting your own DFNS', () => {
     wrap(<CustodyModeToggle />)
@@ -26,7 +24,7 @@ describe('CustodyModeToggle (DFNS custody panel)', () => {
     expect(screen.getByText(/Connect your own DFNS organization/)).toBeInTheDocument()
   })
 
-  it('no longer shows the browser-wallet-vs-DFNS mode toggle', () => {
+  it('does not show the browser-wallet-vs-DFNS mode toggle', () => {
     wrap(<CustodyModeToggle />)
     expect(screen.queryByRole('button', { name: /^Browser wallet/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /DFNS \(Lobster demo\)/ })).not.toBeInTheDocument()

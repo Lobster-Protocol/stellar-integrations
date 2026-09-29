@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { vi } from 'vitest'
 
 import PendingApprovalsPanel from '../PendingApprovalsPanel'
 import { setActiveProfile, DEMO_PROFILE_ID } from '../../integrations/dfns/profiles'
@@ -15,7 +14,7 @@ beforeEach(() => {
   globalThis.fetch = fetchSpy as unknown as typeof fetch
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   localStorage.clear()
-  // the demo is opt-in now; this panel reads the active profile, so select it.
+  // the demo is opt-in and this panel reads the active profile, so select it.
   setActiveProfile(DEMO_PROFILE_ID)
 })
 
@@ -23,11 +22,6 @@ afterEach(() => {
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', ORIG_API)
   localStorage.clear()
 })
-
-// holding the operator token is what reveals approve and deny
-function asOperator() {
-  localStorage.setItem('lob_operator_token', 'test-operator-token')
-}
 
 const ONE_PENDING = {
   ok: true,
@@ -64,7 +58,7 @@ describe('PendingApprovalsPanel', () => {
   })
 
   it('renders approve and deny for an operator', async () => {
-    asOperator()
+    localStorage.setItem('lob_operator_token', 'test-operator-token')
     fetchSpy.mockResolvedValueOnce(ONE_PENDING)
     wrap(<PendingApprovalsPanel />)
     await waitFor(() => expect(screen.getByText('app-1')).toBeInTheDocument())

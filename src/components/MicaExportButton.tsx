@@ -22,9 +22,6 @@ export default function MicaExportButton() {
       const text = await res.text()
       const parsed = JSON.parse(text) as { records?: unknown[] }
       if (!parsed.records || parsed.records.length === 0) {
-        // the records are built from DFNS webhook events, which the relay holds
-        // in memory. a restart empties the store, so an empty file says nothing
-        // has reached this instance since it came up.
         setNote(
           'The export ran and came back with no records. Every record is built from a DFNS webhook event, and this relay instance has received none since it last started.',
         )

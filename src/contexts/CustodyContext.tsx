@@ -23,14 +23,12 @@ interface CustodyCtx {
 const Ctx = createContext<CustodyCtx | null>(null)
 const STORAGE_KEY = 'lob_custody_mode'
 
-function readInitial(): CustodyMode {
-  if (typeof window === 'undefined') return 'wallet-kit'
-  const v = localStorage.getItem(STORAGE_KEY)
-  return v === 'dfns' ? 'dfns' : 'wallet-kit'
-}
-
 export function CustodyProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<CustodyMode>(readInitial)
+  const [mode, setMode] = useState<CustodyMode>(() => {
+    if (typeof window === 'undefined') return 'wallet-kit'
+    const v = localStorage.getItem(STORAGE_KEY)
+    return v === 'dfns' ? 'dfns' : 'wallet-kit'
+  })
   const { network } = useNetwork()
   const wallets = useDfnsWallets()
   const activeProfile = useActiveProfile()

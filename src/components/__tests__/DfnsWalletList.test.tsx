@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { vi } from 'vitest'
 
 import DfnsWalletList from '../DfnsWalletList'
 import { NetworkProvider } from '../../contexts/NetworkContext'
@@ -17,7 +16,7 @@ beforeEach(() => {
   globalThis.fetch = fetchSpy as unknown as typeof fetch
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   localStorage.clear()
-  // the demo is opt-in now; this list reads the active profile, so select it.
+  // the demo is opt-in and this list reads the active profile, so select it.
   setActiveProfile(DEMO_PROFILE_ID)
 })
 
@@ -25,11 +24,6 @@ afterEach(() => {
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', ORIG_API)
   localStorage.clear()
 })
-
-// holding the operator token is what reveals the wallet-creation form
-function asOperator() {
-  localStorage.setItem('lob_operator_token', 'test-operator-token')
-}
 
 function wrap(node: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -60,7 +54,7 @@ describe('DfnsWalletList', () => {
   })
 
   it('shows the creation form to an operator', async () => {
-    asOperator()
+    localStorage.setItem('lob_operator_token', 'test-operator-token')
     fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) })
     wrap(<DfnsWalletList />)
     await waitFor(() => expect(screen.getByText(/No wallets yet/i)).toBeInTheDocument())

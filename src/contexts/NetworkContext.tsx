@@ -15,13 +15,16 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     return stored === 'mainnet' || stored === 'testnet' ? stored : 'testnet'
   })
 
-  const handleSetNetwork = (n: Network) => {
-    setNet(n)
-    localStorage.setItem('lob_network', n)
-  }
-
   return (
-    <Ctx.Provider value={{ network, setNetwork: handleSetNetwork }}>
+    <Ctx.Provider
+      value={{
+        network,
+        setNetwork: (n: Network) => {
+          setNet(n)
+          localStorage.setItem('lob_network', n)
+        },
+      }}
+    >
       {children}
     </Ctx.Provider>
   )

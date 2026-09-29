@@ -6,7 +6,6 @@ export default function Footer() {
   const { network } = useNetwork()
   const factoryId = CONTRACTS[network].lobster.factory
   const factoryExplorer = factoryId ? stellarExplorer(network, 'contract', factoryId) : null
-  // shown only when the deploy sets a url; an empty value stays hidden
   const docsUrl = import.meta.env.VITE_DOCS_URL as string | undefined
   const grafanaUrl = import.meta.env.VITE_GRAFANA_URL as string | undefined
 

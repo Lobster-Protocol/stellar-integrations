@@ -32,14 +32,6 @@ interface Props {
   caller: string
 }
 
-function readableCreateError(msg: string): string {
-  if (/already/i.test(msg)) {
-    return 'You already have a vault for this exact pair. Open it from the list instead.'
-  }
-  if (/InvalidPoolTokens|same token/i.test(msg)) return 'Pick two different tokens.'
-  return msg.split('\n')[0].slice(0, 180)
-}
-
 export default function CreateVaultModal({ open, onClose, onDone, network, caller }: Props) {
   const tokens = useMemo(() => swapTokensFor(network), [network])
   const [code0, setCode0] = useState(tokens[0]?.code ?? '')
@@ -102,7 +94,15 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
         setPhase({ k: 'failed', msg: `The network reported ${final.status}.` })
       }
     } catch (err) {
-      setPhase({ k: 'failed', msg: readableCreateError(err instanceof Error ? err.message : 'Something went wrong') })
+      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      setPhase({
+        k: 'failed',
+        msg: /already/i.test(msg)
+          ? 'You already have a vault for this exact pair. Open it from the list instead.'
+          : /InvalidPoolTokens|same token/i.test(msg)
+            ? 'Pick two different tokens.'
+            : msg.split('\n')[0].slice(0, 180),
+      })
     } finally {
       inFlight.current = false
     }

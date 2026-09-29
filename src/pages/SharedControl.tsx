@@ -8,17 +8,6 @@ import { Card, CardHead } from '../components/ui'
 import CoSignPanel from '../components/CoSignPanel'
 import { stellarExplorer } from '../utils/format'
 
-// Native Stellar multisig ("shared control") is not something you set up here:
-// the multisig we support is DFNS custody. This section only appears when an
-// account already carries a quorum, and its one job is to turn it back off,
-// dropping the extra signers and the threshold so a swap or a vault move stops
-// needing a co-signature. Turning it off is itself a governance change on the
-// account, so it needs the current quorum, gathered through the co-sign panel.
-
-function short(key: string): string {
-  return `${key.slice(0, 4)}...${key.slice(-4)}`
-}
-
 export default function SharedControl() {
   const { address } = useWallet()
   const { network } = useNetwork()
@@ -29,8 +18,7 @@ export default function SharedControl() {
   const [building, setBuilding] = useState(false)
 
   const data = signing.data
-  // single-sig accounts have nothing to see: there is no on-ramp to a native
-  // quorum any more, only this off-ramp for accounts that already have one.
+  // single-sig accounts have nothing to see: this is only an off-ramp for an existing quorum
   if (!address || signing.isLoading || !data || !isMultisig(data)) return null
 
   async function turnOff() {
@@ -38,8 +26,8 @@ export default function SharedControl() {
     setErr(null)
     setBuilding(true)
     try {
-      // weight 0 removes a signer; bring the master key back to weight 1 and every
-      // threshold to 1, so one signature authorises again.
+      // weight 0 removes a signer; master and every threshold go back to 1 so one
+      // signature authorises again
       const drop = data.signers.filter((s) => s.key !== address).map((s) => ({ key: s.key, weight: 0 }))
       const xdr = await buildSetOptionsTx(network, address, {
         addSigners: drop,
@@ -91,7 +79,7 @@ export default function SharedControl() {
           {data.signers.map((s) => (
             <li key={s.key} className="flex items-center justify-between text-[11px]">
               <span className="font-mono text-text">
-                {short(s.key)}
+                {`${s.key.slice(0, 4)}...${s.key.slice(-4)}`}
                 {s.key === address && ' (this wallet)'}
               </span>
               <span className="text-text-muted">weight {s.weight}</span>

@@ -3,8 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 
 import ConnectDfnsPanel from '../ConnectDfnsPanel'
 
-// the test env sets VITE_LOBSTER_API_URL, so the demo profile is present. these
-// cover the non-network parts: the switcher and the connect form gating.
+// the test env sets VITE_LOBSTER_API_URL, so the demo profile is present.
 
 beforeEach(() => {
   localStorage.clear()
@@ -14,8 +13,7 @@ describe('ConnectDfnsPanel', () => {
   it('lists the demo profile as a testnet sandbox, not active by default', () => {
     render(<ConnectDfnsPanel />)
     expect(screen.getByText('Testnet sandbox')).toBeInTheDocument()
-    // the demo is opt-in now: its "you are on the demo" note only shows once picked,
-    // never by default, so a client is never silently on our org.
+    // the demo is opt-in, so a client is never silently on our org.
     expect(screen.queryByText(/shared sandbox, not your custody/)).not.toBeInTheDocument()
   })
 

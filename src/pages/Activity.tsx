@@ -59,10 +59,8 @@ export default function Activity() {
       .sort((a, b) => b.count - a.count)
   }, [events])
 
-  // The feed pages as you scroll, so what it holds is a window. The export walks
-  // Horizon itself, stops once it has read past the start date, and says so when
-  // the page budget runs out first. The dates scope the file; the search and the
-  // tab are browsing aids and do not.
+  // the feed only holds the pages loaded so far, so the export reads Horizon itself.
+  // the dates scope the file; the search and the tab are browsing aids and do not.
   const read = (report: (m: string) => void) =>
     fetchAllActivity(network, address!, {
       since: filters.startMs,

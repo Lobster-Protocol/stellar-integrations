@@ -8,8 +8,7 @@ import { InfoTip } from './InfoTip'
 
 const PROTOCOLS = ['Stellar Broker', 'Soroswap', 'Aquarius', 'Phoenix', 'Stellar DEX'] as const
 
-// how many recorded routes the list shows before it stops. the log itself keeps
-// fifty; past the first handful a reader is reading history, not the routing.
+// the log keeps fifty; past the first handful it reads as history, not routing
 const SHOWN = 10
 
 export default function RoutingEngineCard() {
@@ -17,9 +16,8 @@ export default function RoutingEngineCard() {
   const entries = useRoutingLog()
   const health = getRoutingHealth(network)
 
-  // read off this build's config, never probed. so no green anywhere in the two
-  // tiles below: green is for something we measured, and the routes at the
-  // bottom are the only measured thing on this card.
+  // read off this build's config, never probed, so the two tiles below never go
+  // green: green is for something we measured.
   const brokerStatus = health.brokerQuoteEnabled
     ? 'configured'
     : network === 'mainnet'
