@@ -70,7 +70,7 @@ export async function checkClaim(
 }
 
 // Circle's contracts fail with bare numbers. 6908 is the message transmitter's
-// spent nonce, 6000-6013 the attestation check. Anything else is shown raw.
+// spent nonce, 6000-6013 the attestation check.
 export function explainClaimFailure(raw: string): string {
   const code = /Error\(Contract, #(\d+)\)/.exec(raw)?.[1]
   if (code === '6908') return 'This transfer was already delivered. The USDC is on the account.'

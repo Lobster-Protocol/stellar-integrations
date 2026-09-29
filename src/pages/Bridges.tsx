@@ -379,9 +379,6 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
   )
 }
 
-// A burn made from another device, or straight from a custody platform, never
-// passed through this browser, so nothing here remembers it. Its hash is enough:
-// the receipt says who it pays and how much.
 function FinishElsewhere({
   network,
   chains,

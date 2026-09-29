@@ -44,13 +44,8 @@ export function toHex(raw: Uint8Array): `0x${string}` {
 
 // A burn names its mint recipient as a contract id, so paying a G account goes
 // through Circle's CctpForwarder: it mints to itself, then pays whoever this
-// hook names. Layout, from Circle's cctp-forwarder source:
-//   bytes 0..23   magic "cctp-forward", or zeros
-//   bytes 24..27  hook version, u32 big-endian, 0
-//   bytes 28..31  recipient length, u32 big-endian
-//   bytes 32..    the recipient strkey, unpadded
-// The magic asks Circle's relayer to finish the transfer. We leave it zero and
-// finish it ourselves, so the delivery hash is ours.
+// hook names. A "cctp-forward" magic would ask Circle's relayer to finish the
+// transfer; we leave it zero and finish it ourselves, so the delivery hash is ours.
 export function encodeForwardHook(stellarAddress: string): Uint8Array {
   assertDeliverable(stellarAddress)
   const recipient = new TextEncoder().encode(stellarAddress)

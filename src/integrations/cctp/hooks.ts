@@ -31,7 +31,6 @@ export function useSourceBalances(chain: CctpSourceChain | null, owner: Address 
   })
 }
 
-// stops once Circle has signed
 export function useAttestation(network: Network, sourceDomain: number | null, burnHash: string | null) {
   return useQuery<IrisAttestation>({
     queryKey: [NS, 'attestation', network, sourceDomain, burnHash],

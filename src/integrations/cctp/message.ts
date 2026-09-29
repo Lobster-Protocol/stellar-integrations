@@ -55,8 +55,7 @@ function u256(raw: Uint8Array, o: number): bigint {
 }
 
 // The bytes we submit come back from Circle, so they get decoded and checked
-// against the transfer we meant before anything goes out. Header is 148 bytes,
-// the burn body 228 more before the hook.
+// against the transfer we meant before anything goes out.
 export function decodeCctpMessage(raw: Uint8Array): CctpMessage {
   if (raw.length < HEADER_LEN + BODY_MIN_LEN) {
     throw new CctpMessageError(

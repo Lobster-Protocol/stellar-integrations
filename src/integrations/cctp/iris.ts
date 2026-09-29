@@ -57,10 +57,9 @@ async function getJson(url: string, timeoutMs: number): Promise<{ status: number
   }
 }
 
-// The message we submit has to be the one Circle returns: on a fast transfer the
-// attester fills in the fee, so the EVM log is not the final message. Circle
-// answers CORS *, so the browser asks directly. One look, no loop: the caller
-// polls, so an unmounted component stops asking.
+// iris answers with CORS *, so the browser asks it directly. on a fast transfer the
+// attester fills in the fee, so submit Circle's message, not the EVM log; no loop
+// here, the caller polls so an unmounted component stops asking
 export async function fetchAttestation(
   network: Network,
   sourceDomain: number,
@@ -81,9 +80,14 @@ export async function fetchAttestation(
   const parsed = IrisMessagesSchema.safeParse(body)
   if (!parsed.success) throw new IrisError('Circle sent an answer we do not recognise')
 
-  // we burn once per tx; if Circle lists several, take the Stellar one. A pending
-  // entry is still 0x, hence the fallback
-  const ours = parsed.data.messages.find((m) => messageDestination(m.message) === STELLAR_CCTP_DOMAIN)
+  // we burn once per tx; if Circle lists several, take the one whose destination
+  // domain (bytes 8..11) is Stellar. A pending entry is still 0x, hence the fallback
+  const ours = parsed.data.messages.find(
+    (m) =>
+      HEX.test(m.message) &&
+      m.message.length >= 2 + 24 &&
+      parseInt(m.message.slice(2 + 16, 2 + 24), 16) === STELLAR_CCTP_DOMAIN,
+  )
   const m = ours ?? parsed.data.messages[0]
   if (!m) return { state: 'pending', delayReason: null }
 
@@ -96,12 +100,6 @@ export async function fetchAttestation(
     attestation: m.attestation as `0x${string}`,
     eventNonce: m.eventNonce,
   }
-}
-
-// bytes 8..11 of a CCTP message are the destination domain
-function messageDestination(hex: string): number | null {
-  if (!HEX.test(hex) || hex.length < 2 + 24) return null
-  return parseInt(hex.slice(2 + 16, 2 + 24), 16)
 }
 
 export interface CctpFees {

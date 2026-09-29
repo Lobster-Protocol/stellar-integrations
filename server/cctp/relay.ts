@@ -51,11 +51,6 @@ function sorobanUrl(network: Network): string {
   return env || STELLAR_RPC_FALLBACK[network].soroban
 }
 
-function horizonUrl(network: Network): string {
-  const env = network === 'mainnet' ? process.env.HORIZON_MAINNET : process.env.HORIZON_TESTNET
-  return env || STELLAR_RPC_FALLBACK[network].horizon
-}
-
 // shut without a key, and mainnet needs its own switch on top
 export function relayKeypair(network: Network): Keypair {
   const secret = process.env.CCTP_RELAY_SECRET ?? ''
@@ -68,7 +63,7 @@ export function relayKeypair(network: Network): Keypair {
   return Keypair.fromSecret(secret)
 }
 
-// per UTC day, in memory. a leaked operator token still can't drain the account
+// deliveries paid per UTC day, counted in memory
 const spent = { day: '', count: 0 }
 
 export function takeDailySlot(now = new Date()): void {
@@ -103,8 +98,11 @@ async function readOnly(network: Network, contractId: string, fn: string, args: 
 
 async function hasUsdcTrustline(network: Network, account: string): Promise<boolean> {
   const { usdcIssuer } = CONTRACTS[network].cctp
+  const horizonUrl =
+    (network === 'mainnet' ? process.env.HORIZON_MAINNET : process.env.HORIZON_TESTNET) ||
+    STELLAR_RPC_FALLBACK[network].horizon
   try {
-    const acct = await new Horizon.Server(horizonUrl(network)).loadAccount(account)
+    const acct = await new Horizon.Server(horizonUrl).loadAccount(account)
     return acct.balances.some(
       (b) => 'asset_code' in b && b.asset_code === 'USDC' && b.asset_issuer === usdcIssuer,
     )
@@ -136,9 +134,8 @@ function usdc(units: bigint): string {
   return frac ? `${whole}.${frac}` : whole.toString()
 }
 
-// Delivers a transfer on Stellar and pays the fee, for an account that doesn't
-// sign from a browser. The message is never taken from the caller: we ask
-// Circle for it by burn hash and check it pays who the caller named.
+// The message is never taken from the caller: we ask Circle for it by burn hash
+// and check it pays who the caller named.
 export async function deliver(req: ClaimRequest): Promise<ClaimOutcome> {
   const { network } = req
   if (!StrKey.isValidEd25519PublicKey(req.recipient)) throw new RelayRefused('recipient is not a Stellar account')

@@ -126,7 +126,6 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   const titleId = useId()
   const busy = phase.kind === 'approving' || phase.kind === 'burning' || phase.kind === 'delivering'
 
-  // reset on close, or land on the transfer being resumed
   useEffect(() => {
     if (!open) {
       setPhase({ kind: 'form' })
@@ -206,7 +205,7 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   const usdcBal = balances.data?.usdc ?? null
   const gasBal = balances.data?.gas ?? null
   const overBalance = units !== null && usdcBal !== null && units > usdcBal
-  const noGas = gasBal !== null && gasBal === 0n
+  const noGas = gasBal === 0n
 
   if (!open) return null
 

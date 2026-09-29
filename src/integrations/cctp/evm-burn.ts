@@ -28,8 +28,6 @@ import {
 } from '../../config/contracts'
 import { contractToBytes32, decodeForwardHook, encodeForwardHook, toHex } from './forward-hook'
 
-// Circle's TokenMessengerV2, just the call we make
-
 const TOKEN_MESSENGER_V2_ABI = [
   {
     type: 'function',
@@ -265,9 +263,8 @@ export async function burnToStellar(req: BurnRequest, onSent?: (hash: `0x${strin
   )
 }
 
-// what TokenMessengerV2 logs for every burn. Reading the log rather than the call
-// input also covers a burn made from a smart account (a Safe, a custody platform),
-// where the burn is an internal call and the transaction input is something else
+// reading the burn from this log rather than the call input also covers a burn
+// made from a smart account (a Safe, a custody platform), where it is an internal call
 const DEPOSIT_FOR_BURN_EVENT = [
   {
     type: 'event',

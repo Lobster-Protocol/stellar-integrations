@@ -74,14 +74,6 @@ export function forgetTransfer(network: Network, id: string): void {
   write(network, listTransfers(network).filter((t) => t.id !== id))
 }
 
-function snapshot(network: Network): TrackedTransfer[] {
-  const hit = cache.get(network)
-  if (hit) return hit
-  const fresh = listTransfers(network)
-  cache.set(network, fresh)
-  return fresh
-}
-
 function subscribe(onChange: () => void): () => void {
   const handler = () => {
     cache.clear()
@@ -101,7 +93,13 @@ const EMPTY: TrackedTransfer[] = []
 export function useTrackedTransfers(network: Network): TrackedTransfer[] {
   return useSyncExternalStore(
     subscribe,
-    () => snapshot(network),
+    () => {
+      const hit = cache.get(network)
+      if (hit) return hit
+      const fresh = listTransfers(network)
+      cache.set(network, fresh)
+      return fresh
+    },
     () => EMPTY,
   )
 }
