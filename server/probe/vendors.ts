@@ -1,3 +1,4 @@
+import { FRONTEND_URL } from '../../src/config/contracts'
 import { VENDOR_COMPONENTS, VENDOR_STATUS_PAGES, type Vendor, type VendorComponent } from './targets'
 
 export interface VendorReading {
@@ -45,27 +46,33 @@ export function readComponents(
 }
 
 // status pages move slowly and sit behind a cdn, so they are read every five
-// minutes and the minute probe pass reuses the last read in between
+// minutes and the minute probe pass reuses the last read in between. that cdn
+// throttles shared cloud ips now and then: a failed read keeps a vendor's last
+// good one for half an hour, as the pages' own stale-if-error does, then lets it
+// go so the board shows no data rather than an old green.
 const REFRESH_MS = 5 * 60_000
-let last: { at: number; readings: VendorReading[] } | undefined
+const KEEP_ON_ERROR_MS = 30 * 60_000
+const USER_AGENT = `lobster-status-probe (+${FRONTEND_URL})`
+let checkedAt = -Infinity
+const good = new Map<Vendor, { at: number; readings: VendorReading[] }>()
 
 export async function vendorStatus(now = Date.now()): Promise<VendorReading[]> {
-  if (last && now - last.at < REFRESH_MS) return last.readings
-  const vendors = Object.keys(VENDOR_STATUS_PAGES) as Vendor[]
-  const settled = await Promise.allSettled(
-    vendors.map(async (v) => {
-      const res = await fetch(`${VENDOR_STATUS_PAGES[v]}/api/v2/components.json`, {
-        signal: AbortSignal.timeout(10_000),
-      })
-      if (!res.ok) throw new Error(`${v} status page answered ${res.status}`)
-      return readComponents(v, (await res.json()) as { components?: PageComponent[] })
-    }),
-  )
-  const readings: VendorReading[] = []
-  for (const s of settled) {
-    if (s.status === 'fulfilled') readings.push(...s.value)
-    else console.warn('[probe] status page read failed', s.reason)
+  if (now - checkedAt >= REFRESH_MS) {
+    checkedAt = now
+    await Promise.all(
+      (Object.keys(VENDOR_STATUS_PAGES) as Vendor[]).map(async (v) => {
+        try {
+          const res = await fetch(`${VENDOR_STATUS_PAGES[v]}/api/v2/components.json`, {
+            headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
+            signal: AbortSignal.timeout(15_000),
+          })
+          if (!res.ok) throw new Error(`answered ${res.status}`)
+          good.set(v, { at: now, readings: readComponents(v, (await res.json()) as { components?: PageComponent[] }) })
+        } catch (err) {
+          console.warn(`[probe] ${v} status page read failed:`, err instanceof Error ? err.message : err)
+        }
+      }),
+    )
   }
-  last = { at: now, readings }
-  return readings
+  return [...good.values()].filter((g) => now - g.at <= KEEP_ON_ERROR_MS).flatMap((g) => g.readings)
 }

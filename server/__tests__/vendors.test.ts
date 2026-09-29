@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { readComponents } from '../probe/vendors'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { readComponents, vendorStatus } from '../probe/vendors'
 
 const page = {
   components: [
@@ -44,5 +44,26 @@ describe('readComponents against odd statuses', () => {
       ],
     })
     expect(out).toEqual([])
+  })
+})
+
+describe('vendorStatus', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('keeps the last good read through a failed one, for half an hour at most', async () => {
+    const page = { components: [{ id: 'd1', name: 'REST API', status: 'operational', group_id: null }] }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(page), { status: 200 })))
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const t0 = 1_000_000_000
+    const dfnsApi = (rs: Array<{ vendor: string; component: string }>) => rs.some((r) => r.vendor === 'dfns' && r.component === 'api')
+
+    expect(dfnsApi(await vendorStatus(t0))).toBe(true)
+
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('timeout') }))
+    expect(dfnsApi(await vendorStatus(t0 + 6 * 60_000))).toBe(true)
+    expect(await vendorStatus(t0 + 40 * 60_000)).toEqual([])
   })
 })
