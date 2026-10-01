@@ -15,6 +15,8 @@ const Allocation = lazy(() => import('./pages/Allocation'))
 const Bridges = lazy(() => import('./pages/Bridges'))
 const Positions = lazy(() => import('./pages/Positions'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+// follows bridge transfers on every page; loaded after the chrome, it holds the CCTP code
+const BridgeWatcher = lazy(() => import('./components/BridgeWatcher'))
 
 class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }, { error: Error | null }> {
   state = { error: null as Error | null }
@@ -129,9 +131,25 @@ export default function App() {
               </ErrorBoundary>
             </main>
             <Footer />
+            <Quiet>
+              <Suspense fallback={null}>
+                <BridgeWatcher />
+              </Suspense>
+            </Quiet>
           </div>
         </div>
       </div>
     </ErrorBoundary>
   )
+}
+
+// a background helper that fails, a stale chunk after a deploy say, takes nothing else down with it
+class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
 }

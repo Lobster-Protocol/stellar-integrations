@@ -188,7 +188,8 @@ export const IRIS_BASE: Record<Network, string> = {
   mainnet: 'https://iris-api.circle.com',
 }
 
-// `domain` is Circle's number for the chain, `chainId` the EVM one wagmi switches to
+// an EVM chain the bridge carries USDC from, and back to. `domain` is Circle's
+// number for the chain, `chainId` the EVM one wagmi switches to
 export interface CctpSourceChain {
   key: string
   name: string
@@ -306,8 +307,10 @@ export function cctpChain(network: Network, key: string): CctpSourceChain {
   return found
 }
 
-// 6 on the EVM side, 7 on Stellar. The contract converts, we never do.
+// 6 on the EVM side and in Circle's messages, 7 on Stellar. On the way in the
+// contract converts; on the way out the amount typed is scaled to Stellar's units
 export const CCTP_EVM_USDC_DECIMALS = 6
+export const CCTP_STELLAR_USDC_DECIMALS = 7
 
 // where /bridges sends an asset or a chain that CCTP doesn't carry
 export const BRIDGE_FALLBACK_LINKS = {

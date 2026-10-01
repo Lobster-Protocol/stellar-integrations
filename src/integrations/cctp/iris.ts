@@ -13,14 +13,21 @@ const IrisMessageSchema = z.object({
   status: z.string(),
   // Circle's reason when it holds a transfer, e.g. a fee under the minimum
   delayReason: z.string().nullable().optional(),
+  // only on a burn that asked Circle to mint on the other side: PENDING, then COMPLETE
+  forwardState: z.string().nullable().optional(),
+  forwardTxHash: z.string().nullable().optional(),
 })
 
 const IrisMessagesSchema = z.object({ messages: z.array(IrisMessageSchema) })
+
+// 6-decimal USDC units, what Circle charges to mint on the destination for you
+const ForwardFeeSchema = z.object({ low: z.number(), med: z.number(), high: z.number() })
 
 const FeeTierSchema = z.object({
   finalityThreshold: z.number(),
   // basis points of the amount, not a flat amount
   minimumFee: z.number(),
+  forwardFee: ForwardFeeSchema.optional(),
 })
 const FeesSchema = z.array(FeeTierSchema)
 
@@ -31,6 +38,8 @@ export type IrisAttestation =
       message: `0x${string}`
       attestation: `0x${string}`
       eventNonce: string
+      forwardState: string | null
+      forwardTxHash: string | null
     }
 
 export class IrisError extends Error {
@@ -41,6 +50,18 @@ export class IrisError extends Error {
 }
 
 const EVM_TX_HASH = /^0x[0-9a-fA-F]{64}$/
+const STELLAR_TX_HASH = /^[0-9a-fA-F]{64}$/
+
+// Circle files a Stellar burn under its bare hash and finds nothing for the 0x form
+export function irisTxHash(sourceDomain: number, txHash: string): string {
+  if (sourceDomain === STELLAR_CCTP_DOMAIN) {
+    const bare = txHash.replace(/^0x/i, '').toLowerCase()
+    if (!STELLAR_TX_HASH.test(bare)) throw new IrisError('not a Stellar transaction hash')
+    return bare
+  }
+  if (!EVM_TX_HASH.test(txHash)) throw new IrisError('not an EVM transaction hash')
+  return txHash
+}
 
 async function getJson(url: string, timeoutMs: number): Promise<{ status: number; body: unknown }> {
   const ctrl = new AbortController()
@@ -65,11 +86,14 @@ export async function fetchAttestation(
   sourceDomain: number,
   txHash: string,
   timeoutMs = 10_000,
+  // where the burn is bound: Stellar on the way in, the EVM chain's domain on the way
+  // out, null to take whatever Circle lists first
+  destinationDomain: number | null = STELLAR_CCTP_DOMAIN,
 ): Promise<IrisAttestation> {
-  if (!EVM_TX_HASH.test(txHash)) throw new IrisError('not an EVM transaction hash')
   if (!Number.isInteger(sourceDomain) || sourceDomain < 0) throw new IrisError('bad source domain')
+  const hash = irisTxHash(sourceDomain, txHash)
 
-  const url = `${IRIS_BASE[network]}/v2/messages/${sourceDomain}?transactionHash=${txHash}`
+  const url = `${IRIS_BASE[network]}/v2/messages/${sourceDomain}?transactionHash=${hash}`
   const { status, body } = await getJson(url, timeoutMs)
 
   // 404 until Circle has indexed the burn, the normal first answer
@@ -81,12 +105,13 @@ export async function fetchAttestation(
   if (!parsed.success) throw new IrisError('Circle sent an answer we do not recognise')
 
   // we burn once per tx; if Circle lists several, take the one whose destination
-  // domain (bytes 8..11) is Stellar. A pending entry is still 0x, hence the fallback
+  // domain (bytes 8..11) is ours. A pending entry is still 0x, hence the fallback
   const ours = parsed.data.messages.find(
     (m) =>
+      destinationDomain !== null &&
       HEX.test(m.message) &&
       m.message.length >= 2 + 24 &&
-      parseInt(m.message.slice(2 + 16, 2 + 24), 16) === STELLAR_CCTP_DOMAIN,
+      parseInt(m.message.slice(2 + 16, 2 + 24), 16) === destinationDomain,
   )
   const m = ours ?? parsed.data.messages[0]
   if (!m) return { state: 'pending', delayReason: null }
@@ -99,6 +124,8 @@ export async function fetchAttestation(
     message: m.message as `0x${string}`,
     attestation: m.attestation as `0x${string}`,
     eventNonce: m.eventNonce,
+    forwardState: m.forwardState ?? null,
+    forwardTxHash: m.forwardTxHash && EVM_TX_HASH.test(m.forwardTxHash) ? m.forwardTxHash : null,
   }
 }
 
@@ -121,6 +148,34 @@ export async function fetchFees(
   if (!parsed.success) throw new IrisError('Circle fee answer has an unexpected shape')
   const at = (t: number) => parsed.data.find((f) => f.finalityThreshold === t)?.minimumFee ?? null
   return { fastBps: at(CCTP_FINALITY.fast), standardBps: at(CCTP_FINALITY.standard) }
+}
+
+export interface ForwardQuote {
+  // 6-decimal units; Circle keeps the whole max fee when it mints for you, so this
+  // is the price, not a ceiling
+  fee: bigint
+  // Circle's protocol fee in basis points, 0 from Stellar today
+  bps: number
+}
+
+// what Circle charges to mint a Stellar burn on the EVM chain for you. Stellar
+// finalises in seconds, so Circle quotes the same for both thresholds
+export async function fetchForwardQuote(
+  network: Network,
+  destinationDomain: number,
+  timeoutMs = 8_000,
+): Promise<ForwardQuote> {
+  const url = `${IRIS_BASE[network]}/v2/burn/USDC/fees/${STELLAR_CCTP_DOMAIN}/${destinationDomain}?forward=true`
+  const { status, body } = await getJson(url, timeoutMs)
+  if (status < 200 || status >= 300) throw new IrisError(`Circle fee lookup answered ${status}`)
+  const parsed = FeesSchema.safeParse(body)
+  if (!parsed.success) throw new IrisError('Circle fee answer has an unexpected shape')
+  const tier =
+    parsed.data.find((f) => f.finalityThreshold === CCTP_FINALITY.standard) ??
+    parsed.data.find((f) => f.finalityThreshold === CCTP_FINALITY.fast)
+  if (!tier?.forwardFee) throw new IrisError('Circle does not deliver to that chain for you')
+  // the top of Circle's range: what goes over the real cost buys priority, it is not lost to a stall
+  return { fee: BigInt(Math.ceil(tier.forwardFee.high)), bps: tier.minimumFee }
 }
 
 // Circle won't attest a fast burn whose maxFee is under its current minimum, and

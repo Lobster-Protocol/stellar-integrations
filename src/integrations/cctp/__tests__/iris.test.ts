@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 
-import { fetchAttestation, fetchFees, maxFeeFor, IrisError } from '../iris'
+import { fetchAttestation, fetchFees, fetchForwardQuote, irisTxHash, maxFeeFor, IrisError } from '../iris'
 
 const TX = `0x${'ab'.repeat(32)}`
 // the head of a real Base to Stellar message: version 1, domain 6, domain 27
@@ -38,7 +38,14 @@ describe('fetchAttestation', () => {
       ],
     })
     const got = await fetchAttestation('mainnet', 6, TX)
-    expect(got).toEqual({ state: 'complete', message: MSG, attestation: ATT, eventNonce: '0xe70e' })
+    expect(got).toEqual({
+      state: 'complete',
+      message: MSG,
+      attestation: ATT,
+      eventNonce: '0xe70e',
+      forwardState: null,
+      forwardTxHash: null,
+    })
   })
 
   it('stays pending while the attestation still reads PENDING', async () => {
@@ -93,6 +100,75 @@ describe('fetchAttestation', () => {
   it('names a rate limit as one', async () => {
     mockFetch(429, {})
     await expect(fetchAttestation('testnet', 6, TX)).rejects.toThrow(/rate limiting/)
+  })
+})
+
+describe('a burn out of Stellar', () => {
+  const STELLAR_TX = 'a1c5776a6eb373dc54409f1de75c4ba0484b779db43ced4d3bfc85270801e774'
+  // Stellar to Arbitrum: version 1, domain 27, domain 3
+  const OUT_MSG = '0x000000010000001b00000003' + 'cd'.repeat(452)
+
+  it('asks Circle with the bare hash, which is the only form it finds', async () => {
+    const fn = mockFetch(404, {})
+    await fetchAttestation('mainnet', 27, `0x${STELLAR_TX.toUpperCase()}`, 10_000, 3)
+    expect(String((fn.mock.calls[0] as unknown[])[0])).toContain(`/v2/messages/27?transactionHash=${STELLAR_TX}`)
+  })
+
+  it('refuses a Stellar hash of the wrong length before calling out', async () => {
+    const fn = mockFetch(200, {})
+    expect(() => irisTxHash(27, 'abcd')).toThrow(IrisError)
+    await expect(fetchAttestation('mainnet', 27, 'abcd', 10_000, 3)).rejects.toThrow(/Stellar transaction hash/)
+    expect(fn).not.toHaveBeenCalled()
+  })
+
+  it("picks the message bound for the chain asked for and reports Circle's own mint", async () => {
+    mockFetch(200, {
+      messages: [
+        {
+          attestation: ATT,
+          message: OUT_MSG,
+          eventNonce: '0x01',
+          cctpVersion: 2,
+          status: 'complete',
+          forwardState: 'COMPLETE',
+          forwardTxHash: `0x${'53'.repeat(32)}`,
+        },
+      ],
+    })
+    await expect(fetchAttestation('mainnet', 27, STELLAR_TX, 10_000, 3)).resolves.toMatchObject({
+      state: 'complete',
+      message: OUT_MSG,
+      forwardState: 'COMPLETE',
+      forwardTxHash: `0x${'53'.repeat(32)}`,
+    })
+  })
+
+  it('drops a forward hash that is not an EVM transaction hash', async () => {
+    mockFetch(200, {
+      messages: [
+        { attestation: ATT, message: OUT_MSG, eventNonce: '0x01', cctpVersion: 2, status: 'complete', forwardState: 'PENDING', forwardTxHash: 'nope' },
+      ],
+    })
+    await expect(fetchAttestation('mainnet', 27, STELLAR_TX, 10_000, 3)).resolves.toMatchObject({
+      forwardState: 'PENDING',
+      forwardTxHash: null,
+    })
+  })
+})
+
+describe('fetchForwardQuote', () => {
+  it("takes the top of Circle's range, since Circle keeps the whole fee when it mints", async () => {
+    const fn = mockFetch(200, [
+      { finalityThreshold: 1000, minimumFee: 0, forwardFee: { low: 75409, med: 77829, high: 80249 } },
+      { finalityThreshold: 2000, minimumFee: 0, forwardFee: { low: 75409, med: 77829, high: 80249 } },
+    ])
+    await expect(fetchForwardQuote('mainnet', 3)).resolves.toEqual({ fee: 80_249n, bps: 0 })
+    expect(String((fn.mock.calls[0] as unknown[])[0])).toContain('/v2/burn/USDC/fees/27/3?forward=true')
+  })
+
+  it('says so when Circle offers no delivery to that chain', async () => {
+    mockFetch(200, [{ finalityThreshold: 2000, minimumFee: 0 }])
+    await expect(fetchForwardQuote('mainnet', 3)).rejects.toThrow(/does not deliver/)
   })
 })
 

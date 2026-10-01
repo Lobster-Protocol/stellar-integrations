@@ -15,6 +15,8 @@ import {
   recipientOf,
   assertMessageMatches,
   assertAttestation,
+  assertEvmMessageMatches,
+  evmRecipientOf,
   CctpMessageError,
 } from '../message'
 import { STELLAR_CCTP_DOMAIN, CONTRACTS } from '../../../config/contracts'
@@ -196,5 +198,60 @@ describe('attestation shape', () => {
 
   it('refuses empty bytes', () => {
     expect(() => assertAttestation(new Uint8Array(0))).toThrow(CctpMessageError)
+  })
+})
+
+// A real Stellar to Arbitrum transfer on mainnet, Stellar tx a1c5776a...e774, which
+// asked Circle to mint it: 5 USDC to an EVM wallet, Circle's fee taken from it
+const REAL_OUT_MESSAGE =
+  '000000010000001b00000003a34fdbf748c947c73e47b197a5abe40468099815' +
+  '88c06fdcd17b08776485661f09a3773ffd1ff361f8315d629adf17d3e4730fd0' +
+  '0a6900715431ed4b142aded200000000000000000000000028b5a0e9c621a5ba' +
+  'daa536219b3a228c8168cf5d0000000000000000000000000000000000000000' +
+  '000000000000000000000000000003e8000007d000000001adefce59aee52968' +
+  'f76061d494c2525b75659fa4296a65f499ef29e56477e4960000000000000000' +
+  '00000000dcd592a255323772f9b1ef5db83d2a0cfcf91a370000000000000000' +
+  '0000000000000000000000000000000000000000004c4b4085d3719401608329' +
+  '3261835add9eda95c79822b8f828f2afc4141c19f758e3c30000000000000000' +
+  '000000000000000000000000000000000000000000027f5c0000000000000000' +
+  '000000000000000000000000000000000000000000027f5c0000000000000000' +
+  '000000000000000000000000000000000000000000000000636374702d666f72' +
+  '776172640000000000000000000000000000000000000000'
+
+describe('a message out of Stellar', () => {
+  const msg = decodeCctpMessage(hexToBytes(REAL_OUT_MESSAGE))
+  const WALLET = '0xDCD592A255323772f9B1EF5db83D2A0CFcF91a37'
+
+  it('reads the EVM wallet it pays and the amount in 6 decimals', () => {
+    expect(msg.sourceDomain).toBe(STELLAR_CCTP_DOMAIN)
+    expect(msg.destinationDomain).toBe(3)
+    expect(evmRecipientOf(msg)).toBe(WALLET.toLowerCase())
+    expect(msg.body.amount).toBe(5_000_000n)
+    // Circle kept the whole fee it was allowed when it minted
+    expect(msg.body.feeExecuted).toBe(msg.body.maxFee)
+    expect(amountToLand(msg)).toBe(4_836_324n)
+  })
+
+  it('passes when it pays the wallet expected on the chain expected, whatever the case', () => {
+    expect(() =>
+      assertEvmMessageMatches(msg, { sourceDomain: 27, destinationDomain: 3, recipient: WALLET }),
+    ).not.toThrow()
+  })
+
+  it('refuses another chain, another wallet or another source', () => {
+    expect(() => assertEvmMessageMatches(msg, { sourceDomain: 27, destinationDomain: 6, recipient: WALLET })).toThrow(
+      CctpMessageError,
+    )
+    expect(() =>
+      assertEvmMessageMatches(msg, { sourceDomain: 27, destinationDomain: 3, recipient: `0x${'22'.repeat(20)}` }),
+    ).toThrow(/pays/)
+    expect(() => assertEvmMessageMatches(msg, { sourceDomain: 6, destinationDomain: 3, recipient: WALLET })).toThrow(
+      /came from/,
+    )
+  })
+
+  it('refuses to read a Stellar contract as an EVM wallet', () => {
+    const into = decodeCctpMessage(hexToBytes(REAL_MESSAGE))
+    expect(() => evmRecipientOf(into)).toThrow(/not an EVM address/)
   })
 })

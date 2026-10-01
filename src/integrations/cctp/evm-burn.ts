@@ -156,7 +156,9 @@ export async function readAllowance(chain: CctpSourceChain, owner: Address): Pro
   })
 }
 
-async function send(
+// one transaction from the connected wallet: on the right chain, a decline told
+// apart from a failure, and a sent one never lost for want of a receipt
+export async function sendEvmTx(
   chain: CctpSourceChain,
   what: string,
   write: (chainId: WagmiChainIdAny) => Promise<`0x${string}`>,
@@ -200,7 +202,7 @@ async function untilAllowanceVisible(chain: CctpSourceChain, units: bigint, time
 export async function approveUsdc(chain: CctpSourceChain, units: bigint): Promise<`0x${string}`> {
   let hash: `0x${string}`
   try {
-    hash = await send(chain, 'approval', (chainId) =>
+    hash = await sendEvmTx(chain, 'approval', (chainId) =>
       writeContract(wagmiConfig, {
         chainId,
         address: chain.usdc,
@@ -248,7 +250,7 @@ export function burnArgs(req: BurnRequest) {
 export async function burnToStellar(req: BurnRequest, onSent?: (hash: `0x${string}`) => void): Promise<`0x${string}`> {
   if (req.maxFee >= req.units) throw new EvmBurnError('The fee would swallow the whole amount')
   const args = burnArgs(req)
-  return send(
+  return sendEvmTx(
     req.chain,
     'burn',
     (chainId) =>
@@ -258,6 +260,61 @@ export async function burnToStellar(req: BurnRequest, onSent?: (hash: `0x${strin
         abi: TOKEN_MESSENGER_V2_ABI,
         functionName: 'depositForBurnWithHook',
         args,
+      }),
+    onSent,
+  )
+}
+
+const MESSAGE_TRANSMITTER_V2_ABI = [
+  {
+    type: 'function',
+    name: 'receiveMessage',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'message', type: 'bytes' },
+      { name: 'attestation', type: 'bytes' },
+    ],
+    outputs: [{ name: 'success', type: 'bool' }],
+  },
+  {
+    type: 'function',
+    name: 'usedNonces',
+    stateMutability: 'view',
+    inputs: [{ name: 'nonce', type: 'bytes32' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const
+
+// 1 once a message has been received on this chain, by anyone, Circle included
+export async function isReceivedOnEvm(chain: CctpSourceChain, nonce: `0x${string}`): Promise<boolean> {
+  const used = await readContract(wagmiConfig, {
+    chainId: chainIdOf(chain),
+    address: chain.messageTransmitter,
+    abi: MESSAGE_TRANSMITTER_V2_ABI,
+    functionName: 'usedNonces',
+    args: [nonce],
+  })
+  return used !== 0n
+}
+
+// mints a burn from Stellar on `chain` with the connected wallet, which pays the gas.
+// Any wallet may: the burn names no destination caller
+export async function receiveOnEvm(
+  chain: CctpSourceChain,
+  message: `0x${string}`,
+  attestation: `0x${string}`,
+  onSent?: (hash: `0x${string}`) => void,
+): Promise<`0x${string}`> {
+  return sendEvmTx(
+    chain,
+    'mint',
+    (chainId) =>
+      writeContract(wagmiConfig, {
+        chainId,
+        address: chain.messageTransmitter,
+        abi: MESSAGE_TRANSMITTER_V2_ABI,
+        functionName: 'receiveMessage',
+        args: [message, attestation],
       }),
     onSent,
   )

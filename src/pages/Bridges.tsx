@@ -2,17 +2,18 @@ import { lazy, Suspense, useMemo, useState, type FormEvent, type ReactNode } fro
 import { Link } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 
-import { cn, formatBalance, shortenAddress } from '../utils/format'
+import { cn, formatBalance, shortenAddress, stellarExplorer } from '../utils/format'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
 import { useTrustline } from '../integrations/stellar/trustline'
 import { useActivity } from '../integrations/horizon/activity'
-import { forgetTransfer, trackTransfer, useTrackedTransfers, type TrackedTransfer } from '../integrations/cctp/transfers'
+import { trackTransfer, useTrackedTransfers, type TrackedTransfer, type TransferDirection } from '../integrations/cctp/transfers'
 import {
   BRIDGE_FALLBACK_LINKS,
   CCTP_EVM_USDC_DECIMALS,
   CONTRACTS,
+  STELLAR_CCTP_DOMAIN,
   cctpChainsFor,
   type CctpSourceChain,
   type Network,
@@ -22,6 +23,9 @@ import { InfoTip } from '../components/InfoTip'
 
 // the bridge pulls in viem and the CCTP code, so keep it out of the page chunk
 const BridgeModal = lazy(() => import('../components/BridgeModal'))
+const BridgeWallets = lazy(() => import('../components/BridgeWallets'))
+const InProgressRow = lazy(() => import('../components/BridgeTransfers').then((m) => ({ default: m.InProgressRow })))
+const HistoryRow = lazy(() => import('../components/BridgeTransfers').then((m) => ({ default: m.HistoryRow })))
 
 function Arrow() {
   return (
@@ -39,19 +43,19 @@ function Arrow() {
   )
 }
 
-function Corridor({ chains }: { chains: string[] }) {
+function Corridor({ from, to, burned, minted }: { from: string[]; to: string[]; burned: string; minted: string }) {
   return (
     <div className="flex items-stretch gap-2 text-xs">
       <div className="flex-1 rounded-2xl bg-bg px-3 py-3">
         <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">From</div>
         <ul className="space-y-1">
-          {chains.map((c) => (
+          {from.map((c) => (
             <li key={c} className="text-text">
               {c}
             </li>
           ))}
         </ul>
-        <div className="text-text-muted mt-1.5">USDC is burned</div>
+        <div className="text-text-muted mt-1.5">{burned}</div>
       </div>
       <Arrow />
       <div className="flex-1 rounded-2xl bg-primary/5 px-3 py-3">
@@ -62,8 +66,14 @@ function Corridor({ chains }: { chains: string[] }) {
       <Arrow />
       <div className="flex-1 rounded-2xl bg-bg px-3 py-3">
         <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">To</div>
-        <div className="text-text">Stellar</div>
-        <div className="text-text-muted mt-1.5">native USDC is minted to you</div>
+        <ul className="space-y-1">
+          {to.map((c) => (
+            <li key={c} className="text-text">
+              {c}
+            </li>
+          ))}
+        </ul>
+        <div className="text-text-muted mt-1.5">{minted}</div>
       </div>
     </div>
   )
@@ -117,11 +127,16 @@ export default function Bridges() {
 
   const [open, setOpen] = useState(false)
   const [resume, setResume] = useState<TrackedTransfer | null>(null)
+  const [direction, setDirection] = useState<TransferDirection>('to-stellar')
 
-  // either account can finish a delivery: mint_and_forward needs no signature from the one paid
+  // either account can finish a delivery: mint_and_forward needs no signature from the
+  // one paid. A transfer out of Stellar is listed for the browser that started it
   const pending = tracked.filter(
-    (t) => t.stage === 'burned' && (!address || t.recipient === address || t.recipient === walletAddress),
+    (t) =>
+      t.stage === 'burned' &&
+      (t.direction === 'from-stellar' || !address || t.recipient === address || t.recipient === walletAddress),
   )
+  const history = tracked.filter((t) => t.stage === 'delivered').slice(0, 10)
 
   let trustlineLabel: string
   let trustlineClass: string
@@ -154,76 +169,77 @@ export default function Bridges() {
       .filter((x) => !!x.move)
   }, [activityQ.data, usdcIssuer, forwarder])
 
-  const openFresh = () => {
+  const openFresh = (d: TransferDirection) => {
     setResume(null)
+    setDirection(d)
     setOpen(true)
   }
+  const openOn = (t: TrackedTransfer) => {
+    setResume(t)
+    setOpen(true)
+  }
+  const names = chains.map((c) => c.name)
 
   return (
     <div className="space-y-6">
       <Suspense fallback={null}>
-        <BridgeModal open={open} onClose={() => setOpen(false)} resume={resume} />
+        <BridgeModal open={open} onClose={() => setOpen(false)} resume={resume} initialDirection={direction} />
       </Suspense>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold text-text">Bridges</h2>
           <p className="text-xs text-text-secondary mt-1">
-            Bringing USDC from another chain onto Stellar, and what has to be ready before it can arrive.
+            USDC between Stellar and {names.join(', ')}, in both directions, through Circle CCTP. Where each transfer
+            stands, and what has to be ready first.
           </p>
         </div>
-        <button
-          onClick={openFresh}
-          className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all shrink-0"
-          style={{ boxShadow: '0 8px 20px rgba(54, 147, 251, 0.2)' }}
-        >
-          Bridge USDC
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => openFresh('from-stellar')}
+            className="px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/15 transition-all"
+          >
+            Send out of Stellar
+          </button>
+          <button
+            onClick={() => openFresh('to-stellar')}
+            className="px-5 py-2 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-all"
+            style={{ boxShadow: '0 8px 20px rgba(54, 147, 251, 0.2)' }}
+          >
+            Bridge USDC
+          </button>
+        </div>
       </div>
+
+      <Card>
+        <CardHead
+          title="Your wallets"
+          note="Both ends of the bridge. The EVM wallet holds the USDC on the other chains, the Stellar wallet holds it on Stellar; each signs on its own chain."
+        />
+        <Suspense fallback={<p className="text-xs text-text-muted">Loading wallets...</p>}>
+          <BridgeWallets network={network} />
+        </Suspense>
+      </Card>
 
       {pending.length > 0 && (
         <Card>
           <CardHead
             title="Waiting to be delivered"
-            note="Burned on the source chain, not yet collected on Stellar. The USDC is safe, it just needs one more signature."
+            note="Burned on one side, not yet arrived on the other. The USDC is safe; each line says whose move it is, and Finish opens it."
           />
           <ul className="divide-y divide-border">
-            {pending.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
-                <span className="text-text">
-                  {t.amount} USDC from {t.chainName}
-                  <span className="text-text-muted ml-2">{new Date(t.createdAt).toLocaleString('en-GB')}</span>
-                </span>
-                <span className="flex items-center gap-3 shrink-0">
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Stop tracking this transfer here? It stays on chain either way.')) {
-                        forgetTransfer(network, t.id)
-                      }
-                    }}
-                    className="text-text-muted hover:text-coral"
-                  >
-                    forget
-                  </button>
-                  <button
-                    onClick={() => {
-                      setResume(t)
-                      setOpen(true)
-                    }}
-                    className="px-3 py-1 rounded-full bg-primary text-white font-medium"
-                  >
-                    Finish
-                  </button>
-                </span>
-              </li>
-            ))}
+            <Suspense fallback={null}>
+              {pending.map((t) => (
+                <InProgressRow key={t.id} network={network} transfer={t} onOpen={openOn} />
+              ))}
+            </Suspense>
           </ul>
         </Card>
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat label="Carried by" value="Circle CCTP" sub={network === 'testnet' ? 'test networks, test USDC' : 'mainnet'} />
-        <Stat label="Token" value="USDC" sub={`${chains.length} source chains`} />
+        <Stat label="Token" value="USDC" sub={`${chains.length} chains, both ways`} />
         <Stat
           label={
             <>
@@ -252,9 +268,17 @@ export default function Bridges() {
       <Card>
         <CardHead
           title="The route"
-          note="USDC is burned on the source chain, Circle signs that burn, and the burned amount, less Circle's fee on a fast transfer, is minted as native USDC on Stellar. No wrapped token, no pool in between."
+          note="USDC is burned on the chain it leaves, Circle signs that burn, and the same amount, less Circle's fee when there is one, is minted as native USDC on the other side. No wrapped token, no pool in between."
         />
-        <Corridor chains={chains.map((c) => c.name)} />
+        <div className="space-y-3">
+          <Corridor from={names} to={['Stellar']} burned="USDC is burned" minted="native USDC is minted to you" />
+          <Corridor
+            from={['Stellar']}
+            to={names}
+            burned="USDC is burned"
+            minted="minted by Circle, or by your EVM wallet"
+          />
+        </div>
         {network === 'testnet' && (
           <p className="text-xs text-text-secondary mt-3">
             On testnet every step is real, on Circle's test networks with test USDC that has no value. That is
@@ -265,39 +289,72 @@ export default function Bridges() {
 
       <Card>
         <CardHead title="Before you bridge" />
-        <ol className="space-y-2.5 text-xs">
-          <Step n={1}>
-            Turn on a USDC trustline <InfoTip term="trustline" label="a trustline" /> for your Stellar account.
-            Without it the USDC has nowhere to land.{' '}
-            <span className={cn('font-medium', trustlineClass)}>{trustlineLabel}</span>
-          </Step>
-          <Step n={2}>
-            Connect a browser wallet holding USDC and a little gas on {chains.map((c) => c.name).join(', ')}.
-            {network === 'testnet' && (
-              <>
-                {' '}
-                Test USDC comes from{' '}
-                <a
-                  href={BRIDGE_FALLBACK_LINKS.circleFaucet}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Circle's faucet
-                </a>
-                .
-              </>
-            )}
-          </Step>
-          <Step n={3}>
-            Open{' '}
-            <button type="button" onClick={openFresh} className="text-primary hover:underline">
-              the bridge
-            </button>
-            . Your EVM wallet signs the burn, then your Stellar wallet signs the delivery once Circle has signed.
-          </Step>
-        </ol>
+        <div className="grid gap-4 sm:grid-cols-2 text-xs">
+          <div>
+            <p className="text-text font-medium mb-2">Into Stellar</p>
+            <ol className="space-y-2.5">
+              <Step n={1}>
+                Turn on a USDC trustline <InfoTip term="trustline" label="a trustline" /> for your Stellar account.
+                Without it the USDC has nowhere to land.{' '}
+                <span className={cn('font-medium', trustlineClass)}>{trustlineLabel}</span>
+              </Step>
+              <Step n={2}>
+                Connect an EVM wallet holding USDC and a little gas on {names.join(', ')}.
+                {network === 'testnet' && (
+                  <>
+                    {' '}
+                    Test USDC comes from{' '}
+                    <a
+                      href={BRIDGE_FALLBACK_LINKS.circleFaucet}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Circle's faucet
+                    </a>
+                    .
+                  </>
+                )}
+              </Step>
+              <Step n={3}>
+                Open{' '}
+                <button type="button" onClick={() => openFresh('to-stellar')} className="text-primary hover:underline">
+                  the bridge
+                </button>
+                . Your EVM wallet signs the burn, then your Stellar wallet signs the delivery once Circle has signed.
+              </Step>
+            </ol>
+          </div>
+          <div>
+            <p className="text-text font-medium mb-2">Out of Stellar</p>
+            <ol className="space-y-2.5">
+              <Step n={1}>Connect the Stellar wallet that holds the USDC, with a little XLM for two network fees.</Step>
+              <Step n={2}>Connect the EVM wallet that should receive the USDC.</Step>
+              <Step n={3}>
+                Open{' '}
+                <button type="button" onClick={() => openFresh('from-stellar')} className="text-primary hover:underline">
+                  the way out
+                </button>
+                . Your Stellar wallet approves the exact amount and burns it; Circle then mints it on the EVM chain for a
+                small fee, or your EVM wallet receives it and pays the gas.
+              </Step>
+            </ol>
+          </div>
+        </div>
       </Card>
+
+      {history.length > 0 && (
+        <Card>
+          <CardHead title="Finished here" note="Transfers this browser saw through, both ways, with each side's transaction." />
+          <ul className="divide-y divide-border">
+            <Suspense fallback={null}>
+              {history.map((t) => (
+                <HistoryRow key={t.id} network={network} transfer={t} />
+              ))}
+            </Suspense>
+          </ul>
+        </Card>
+      )}
 
       <Card>
         <CardHead
@@ -318,22 +375,26 @@ export default function Bridges() {
             {arrivals.slice(0, 8).map(({ e, move }) => (
               <li key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
                 <span className="text-text">+{formatBalance(move!.amount)} USDC</span>
-                <span className="text-text-muted">{new Date(e.at).toLocaleDateString('en-GB')}</span>
+                <span className="flex items-center gap-3">
+                  <span className="text-text-muted">{new Date(e.at).toLocaleDateString('en-GB')}</span>
+                  {e.txHash && (
+                    <a
+                      href={stellarExplorer(network, 'tx', e.txHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      {shortenAddress(e.txHash, 4, 4)} <ExternalLink size={10} />
+                    </a>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
         )}
       </Card>
 
-      <FinishElsewhere
-        network={network}
-        chains={chains}
-        forwarder={forwarder}
-        onFound={(t) => {
-          setResume(t)
-          setOpen(true)
-        }}
-      />
+      <FinishElsewhere network={network} chains={chains} forwarder={forwarder} onFound={openOn} />
 
       <Card>
         <CardHead
@@ -379,6 +440,9 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
   )
 }
 
+// a source chain to pick for a burn made elsewhere: one of the EVM chains, or Stellar
+const STELLAR_KEY = 'STELLAR'
+
 function FinishElsewhere({
   network,
   chains,
@@ -393,33 +457,15 @@ function FinishElsewhere({
   const [chainKey, setChainKey] = useState(chains[0]?.key ?? '')
   const [hash, setHash] = useState('')
   const [state, setState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null })
+  const fromStellar = chainKey === STELLAR_KEY
   const chain = chains.find((c) => c.key === chainKey) ?? chains[0]
 
   const find = async (e: FormEvent) => {
     e.preventDefault()
-    if (!chain || state.busy) return
+    if (state.busy) return
     setState({ busy: true, error: null })
     try {
-      // loaded on demand: the page chunk stays free of the EVM code
-      const [{ readBurnToStellar }, { formatUnits }] = await Promise.all([
-        import('../integrations/cctp/evm-burn'),
-        import('viem'),
-      ])
-      // lower case, so a hash pasted in capitals matches the one already tracked here
-      const id = hash.trim().toLowerCase() as `0x${string}`
-      const burn = await readBurnToStellar(chain, id, forwarder)
-      const t: TrackedTransfer = {
-        id,
-        network,
-        chainKey: chain.key,
-        chainName: chain.name,
-        sourceDomain: chain.domain,
-        amount: formatUnits(burn.units, CCTP_EVM_USDC_DECIMALS),
-        recipient: burn.recipient,
-        finality: burn.finality,
-        createdAt: Date.now(),
-        stage: 'burned',
-      }
+      const t = fromStellar ? await readStellarBurn(network, chains, hash) : await readEvmBurn(network, chain, hash, forwarder)
       trackTransfer(t)
       setHash('')
       setState({ busy: false, error: null })
@@ -436,15 +482,15 @@ function FinishElsewhere({
         note="A burn made from another device, or straight from a custody platform, can be finished here. Pick the chain it was burned on and paste its hash; the dashboard reads the rest from the chain."
       />
       <form onSubmit={find} className="flex flex-wrap items-center gap-2 text-xs">
-        {chains.map((c) => (
+        {[...chains.map((c) => ({ key: c.key, name: c.name })), { key: STELLAR_KEY, name: 'Stellar' }].map((c) => (
           <button
             key={c.key}
             type="button"
             onClick={() => setChainKey(c.key)}
-            aria-pressed={chain?.key === c.key}
+            aria-pressed={chainKey === c.key}
             className={cn(
               'px-3 py-1.5 rounded-full font-medium transition-all',
-              chain?.key === c.key ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'bg-bg text-text-secondary',
+              chainKey === c.key ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'bg-bg text-text-secondary',
             )}
           >
             {c.name}
@@ -454,7 +500,7 @@ function FinishElsewhere({
           type="text"
           value={hash}
           onChange={(e) => setHash(e.target.value)}
-          placeholder="0x... burn transaction hash"
+          placeholder={fromStellar ? 'Stellar burn transaction hash' : '0x... burn transaction hash'}
           aria-label="Burn transaction hash"
           spellCheck={false}
           className="flex-1 min-w-[220px] px-3 py-1.5 rounded-xl bg-bg text-text font-mono outline-none focus:ring-1 focus:ring-primary/30"
@@ -470,4 +516,67 @@ function FinishElsewhere({
       {state.error && <p className="mt-2 text-[11px] text-coral break-words">{state.error}</p>}
     </Card>
   )
+}
+
+async function readEvmBurn(
+  network: Network,
+  chain: CctpSourceChain,
+  raw: string,
+  forwarder: string,
+): Promise<TrackedTransfer> {
+  // loaded on demand: the page chunk stays free of the EVM code
+  const [{ readBurnToStellar }, { formatUnits }] = await Promise.all([
+    import('../integrations/cctp/evm-burn'),
+    import('viem'),
+  ])
+  // lower case, so a hash pasted in capitals matches the one already tracked here
+  const id = raw.trim().toLowerCase() as `0x${string}`
+  const burn = await readBurnToStellar(chain, id, forwarder)
+  return {
+    id,
+    direction: 'to-stellar',
+    network,
+    chainKey: chain.key,
+    chainName: chain.name,
+    sourceDomain: chain.domain,
+    amount: formatUnits(burn.units, CCTP_EVM_USDC_DECIMALS),
+    recipient: burn.recipient,
+    finality: burn.finality,
+    createdAt: Date.now(),
+    stage: 'burned',
+  }
+}
+
+// A burn out of Stellar is read back from Circle, which has signed it within seconds:
+// the message names the EVM chain, the wallet it pays and whether Circle mints it
+async function readStellarBurn(network: Network, chains: CctpSourceChain[], raw: string): Promise<TrackedTransfer> {
+  const [{ fetchAttestation }, { decodeCctpMessage, evmRecipientOf, hexToBytes }, { formatUnits }] = await Promise.all([
+    import('../integrations/cctp/iris'),
+    import('../integrations/cctp/message'),
+    import('viem'),
+  ])
+  const id = raw.trim().replace(/^0x/i, '').toLowerCase()
+  if (!/^[0-9a-f]{64}$/.test(id)) throw new Error('Enter a Stellar transaction hash, 64 hex characters')
+  const att = await fetchAttestation(network, STELLAR_CCTP_DOMAIN, id, 10_000, null)
+  if (att.state !== 'complete') {
+    throw new Error('Circle has no signed burn under that hash yet. A Stellar burn is signed within a minute; try again shortly.')
+  }
+  const msg = decodeCctpMessage(hexToBytes(att.message))
+  const chain = chains.find((c) => c.domain === msg.destinationDomain)
+  if (!chain) throw new Error('That burn is bound for a chain this page does not carry')
+  const magic = new TextDecoder().decode(msg.body.hookData.subarray(0, 12))
+  return {
+    id,
+    direction: 'from-stellar',
+    network,
+    chainKey: chain.key,
+    chainName: chain.name,
+    sourceDomain: STELLAR_CCTP_DOMAIN,
+    amount: formatUnits(msg.body.amount, CCTP_EVM_USDC_DECIMALS),
+    recipient: evmRecipientOf(msg),
+    finality: 'standard',
+    forwarded: magic === 'cctp-forward',
+    createdAt: Date.now(),
+    stage: 'burned',
+  }
 }

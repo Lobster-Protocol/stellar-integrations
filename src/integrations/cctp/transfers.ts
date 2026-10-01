@@ -4,22 +4,39 @@ import type { CctpFinality, Network } from '../../config/contracts'
 
 export type TransferStage = 'burned' | 'delivered'
 
+// to-stellar: burned on an EVM chain, delivered on Stellar. from-stellar: the reverse
+export type TransferDirection = 'to-stellar' | 'from-stellar'
+
 // Between the burn and the delivery nothing on either chain remembers the
 // transfer, so we do. Hashes and addresses only.
 export interface TrackedTransfer {
-  // the EVM burn hash, unique per transfer
-  id: `0x${string}`
+  // the burn hash, unique per transfer: 0x-prefixed on an EVM chain, bare hex on Stellar
+  id: string
+  // entries saved before the way back existed have none, and were all bound for Stellar
+  direction?: TransferDirection
   network: Network
+  // the EVM chain at the other end, where the burn happened or where the USDC is minted
   chainKey: string
   chainName: string
+  // Circle's number for the chain that burned: the EVM chain's, or Stellar's
   sourceDomain: number
   // what the person typed, for display
   amount: string
+  // a Stellar account on the way in, an EVM address on the way out
   recipient: string
   finality: CctpFinality
   createdAt: number
   stage: TransferStage
+  // on the way out, Circle mints on the EVM chain itself for a fee taken from the amount
+  forwarded?: boolean
+  // when Circle's signature was first seen, and when the USDC landed
+  attestedAt?: number
+  deliveredAt?: number
   deliveredHash?: string
+}
+
+export function directionOf(t: TrackedTransfer): TransferDirection {
+  return t.direction ?? 'to-stellar'
 }
 
 const EVENT = 'lob:cctp-transfers'
@@ -63,11 +80,26 @@ export function trackTransfer(t: TrackedTransfer): void {
   write(t.network, [t, ...list].slice(0, 50))
 }
 
+function update(network: Network, id: string, change: (t: TrackedTransfer) => TrackedTransfer): void {
+  const list = listTransfers(network)
+  if (!list.some((t) => t.id === id)) return
+  write(network, list.map((t) => (t.id === id ? change(t) : t)))
+}
+
+// the first time Circle's signature is seen; a later look keeps that time
+export function markAttested(network: Network, id: string, at = Date.now()): void {
+  const t = listTransfers(network).find((x) => x.id === id)
+  if (!t || t.attestedAt) return
+  update(network, id, (x) => ({ ...x, attestedAt: at }))
+}
+
 export function markDelivered(network: Network, id: string, deliveredHash: string): void {
-  write(
-    network,
-    listTransfers(network).map((t) => (t.id === id ? { ...t, stage: 'delivered', deliveredHash } : t)),
-  )
+  update(network, id, (t) => ({
+    ...t,
+    stage: 'delivered',
+    deliveredHash: deliveredHash || t.deliveredHash,
+    deliveredAt: t.deliveredAt ?? Date.now(),
+  }))
 }
 
 export function forgetTransfer(network: Network, id: string): void {

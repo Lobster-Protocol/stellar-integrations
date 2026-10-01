@@ -20,9 +20,6 @@ import {
   type CctpMessage,
 } from './message'
 
-// read-only calls need a source account but never touch it
-const READ_SOURCE = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF'
-
 type ClaimCheck =
   | { ok: true; msg: CctpMessage }
   | { ok: false; reason: 'already-claimed' | 'expired' | 'no-trustline' | 'paused'; msg: CctpMessage }
@@ -47,10 +44,10 @@ export async function checkClaim(
 
   // a spent nonce means the USDC already landed, whoever submitted it
   const nonce = nativeToScVal(Buffer.from(hexToBytes(msg.nonce)), { type: 'bytes' })
-  if (await simulateRead<boolean>(network, READ_SOURCE, cctp.messageTransmitter, 'is_nonce_used', [nonce])) {
+  if (await simulateRead<boolean>(network, CONTRACTS[network].lobster.readSource, cctp.messageTransmitter, 'is_nonce_used', [nonce])) {
     return { ok: false, reason: 'already-claimed', msg }
   }
-  if (await simulateRead<boolean>(network, READ_SOURCE, cctp.forwarder, 'paused')) {
+  if (await simulateRead<boolean>(network, CONTRACTS[network].lobster.readSource, cctp.forwarder, 'paused')) {
     return { ok: false, reason: 'paused', msg }
   }
 
@@ -67,6 +64,14 @@ export async function checkClaim(
     return { ok: false, reason: 'no-trustline', msg }
   }
   return { ok: true, msg }
+}
+
+// a spent nonce means the USDC landed, whoever delivered it: another tab, the relay,
+// a custody platform
+export async function isDeliveredOnStellar(network: Network, messageHex: string): Promise<boolean> {
+  const msg = decodeCctpMessage(hexToBytes(messageHex))
+  const nonce = nativeToScVal(Buffer.from(hexToBytes(msg.nonce)), { type: 'bytes' })
+  return simulateRead<boolean>(network, CONTRACTS[network].lobster.readSource, CONTRACTS[network].cctp.messageTransmitter, 'is_nonce_used', [nonce])
 }
 
 // Circle's contracts fail with bare numbers. 6908 is the message transmitter's

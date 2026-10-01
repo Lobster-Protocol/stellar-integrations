@@ -28,6 +28,31 @@ async function seedPendingTransfer(page: Page) {
   }, TEST_WALLET.address)
 }
 
+// a burn out of Stellar that Circle has not signed yet, as the page stores one
+async function seedTransferOut(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'lob_cctp_transfers_testnet',
+      JSON.stringify([
+        {
+          id: 'cd'.repeat(32),
+          direction: 'from-stellar',
+          network: 'testnet',
+          chainKey: 'BASE',
+          chainName: 'Base Sepolia',
+          sourceDomain: 27,
+          amount: '2',
+          recipient: `0x${'11'.repeat(20)}`,
+          finality: 'standard',
+          forwarded: true,
+          createdAt: 1_760_000_000_000,
+          stage: 'burned',
+        },
+      ]),
+    )
+  })
+}
+
 async function openBridge(page: Page) {
   await gotoWithWallet(page)
   await page.getByRole('button', { name: '+ Deposit' }).click()
@@ -215,5 +240,82 @@ test.describe('the Bridges page', () => {
     page.once('dialog', (d) => d.accept())
     await page.getByRole('button', { name: 'forget' }).click()
     await expect(page.getByText('Waiting to be delivered')).toHaveCount(0)
+  })
+
+  test('shows both wallets, each with its own way to connect', async ({ page }) => {
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: /^Bridges$/ }).click()
+
+    await expect(page.getByText('Your wallets')).toBeVisible()
+    await expect(page.getByText('EVM wallet', { exact: true })).toBeVisible()
+    await expect(page.getByText('Stellar wallet', { exact: true })).toBeVisible()
+    await expect(page.getByText(/Sends USDC from Base Sepolia, Arbitrum Sepolia, Ethereum Sepolia/)).toBeVisible()
+  })
+
+  test('lists a transfer out of Stellar with where it stands', async ({ page }) => {
+    await page.route('**/iris-api-sandbox.circle.com/**', (route) =>
+      route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"Message not found"}' }),
+    )
+    await seedTransferOut(page)
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: /^Bridges$/ }).click()
+
+    const row = page.getByRole('listitem').filter({ hasText: '2 USDC to Base Sepolia' })
+    await expect(row).toBeVisible()
+    await expect(row.getByText('Waiting for Circle to sign')).toBeVisible()
+    await row.getByRole('button', { name: 'Finish' }).click()
+    await expect(page.getByRole('heading', { name: 'Bridge USDC from Stellar' })).toBeVisible()
+    await expect(page.getByText('Burned on Stellar')).toBeVisible()
+  })
+
+  test('refuses a Stellar hash of the wrong shape when finishing elsewhere', async ({ page }) => {
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: /^Bridges$/ }).click()
+
+    await page.getByRole('button', { name: 'Stellar', exact: true }).click()
+    const field = page.getByRole('textbox', { name: 'Burn transaction hash' })
+    await field.fill('abcd')
+    await field.press('Enter')
+    await expect(page.getByText(/Enter a Stellar transaction hash/)).toBeVisible()
+  })
+})
+
+test.describe('the way out of Stellar', () => {
+  test('opens from its own button and offers the chains to send to', async ({ page }) => {
+    await gotoWithWallet(page)
+    await page.getByRole('link', { name: /^Bridges$/ }).click()
+    await page.getByRole('button', { name: 'Send out of Stellar' }).click()
+
+    await expect(page.getByRole('heading', { name: 'Bridge USDC from Stellar' })).toBeVisible()
+    for (const name of ['Base Sepolia', 'Arbitrum Sepolia', 'Ethereum Sepolia']) {
+      await expect(page.getByRole('dialog').getByRole('button', { name, exact: true })).toBeVisible()
+    }
+    await expect(page.getByRole('button', { name: /Circle delivers it/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /I receive it myself/ })).toBeVisible()
+  })
+
+  test('switches direction from the bridge window, and back', async ({ page }) => {
+    await openBridge(page)
+    await page.getByRole('button', { name: 'Out of Stellar' }).click()
+    await expect(page.getByRole('heading', { name: 'Bridge USDC from Stellar' })).toBeVisible()
+    await page.getByRole('button', { name: 'Into Stellar' }).click()
+    await expect(page.getByRole('heading', { name: 'Bridge USDC to Stellar' })).toBeVisible()
+  })
+
+  test('asks for the receiving EVM wallet before it sends', async ({ page }) => {
+    await openBridge(page)
+    await page.getByRole('button', { name: 'Out of Stellar' }).click()
+    await page.getByRole('textbox', { name: 'Amount in USDC' }).fill('1')
+
+    await expect(page.getByText('Connect the EVM wallet that should receive the USDC.')).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Send 1 USDC to/ })).toBeDisabled()
+  })
+
+  test('refuses a seventh decimal on the way out too', async ({ page }) => {
+    await openBridge(page)
+    await page.getByRole('button', { name: 'Out of Stellar' }).click()
+    await page.getByRole('textbox', { name: 'Amount in USDC' }).fill('1.1234567')
+
+    await expect(page.getByText('The bridge carries USDC to 6 decimals, not 7.')).toBeVisible()
   })
 })

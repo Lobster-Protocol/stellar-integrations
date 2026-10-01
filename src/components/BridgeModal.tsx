@@ -1,7 +1,7 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { X, Check, ExternalLink } from 'lucide-react'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { X, Check } from 'lucide-react'
+import { useAccount, useDisconnect } from 'wagmi'
 import { formatUnits, type Address } from 'viem'
 
 import { cn, shortenAddress, stellarExplorer } from '../utils/format'
@@ -33,13 +33,29 @@ import {
 import { maxFeeFor } from '../integrations/cctp/iris'
 import { checkClaim, claimOnStellar } from '../integrations/cctp/claim'
 import { useAttestation, useCctpFees, useSourceBalances } from '../integrations/cctp/hooks'
-import { forgetTransfer, markDelivered, trackTransfer, type TrackedTransfer } from '../integrations/cctp/transfers'
+import {
+  directionOf,
+  forgetTransfer,
+  markAttested,
+  markDelivered,
+  trackTransfer,
+  useTrackedTransfers,
+  type TrackedTransfer,
+  type TransferDirection,
+} from '../integrations/cctp/transfers'
+import BridgeFromStellar, { type OutStage } from './BridgeFromStellar'
+import { fmtUsdc } from '../integrations/cctp/wallets'
+import { elapsed, expectedDuration, useNow } from '../integrations/cctp/status'
+import { useOnScreen } from '../integrations/cctp/on-screen'
+import { EvmConnectButtons } from './BridgeWallets'
+import { StepList, type Step } from './BridgeProgress'
 
 interface Props {
   open: boolean
   onClose: () => void
   // open straight on a transfer that was burned earlier and never delivered
   resume?: TrackedTransfer | null
+  initialDirection?: TransferDirection
 }
 
 type Phase =
@@ -55,33 +71,18 @@ const USDC = 'USDC'
 // what a wallet displays as the fee is our ceiling bid, not what the ledger charges
 const INCLUSION_FEE_XLM = Number(INCLUSION_FEE_STROOPS) / 10_000_000
 
-// wagmi's raw "Connector not found." reads like a bug in the page rather than a
-// missing wallet extension
-function readableConnectError(message: string): string {
-  if (/connector not found|no injected|provider not found|window\.ethereum/i.test(message)) {
-    return 'No browser wallet answered. Install MetaMask or Rabby, then try again.'
-  }
-  if (/user rejected|user denied|rejected the request/i.test(message)) {
-    return 'The wallet turned the connection down.'
-  }
-  return message.split('\n')[0].slice(0, 160)
-}
-
 function errorText(err: unknown): string {
   if (err instanceof Error) return err.message.split('\n')[0].slice(0, 300)
   return 'Something went wrong'
 }
 
-// en-US like the rest of the app: the amount field only takes a dot, and "0,5"
-// from a French browser next to it would read as another number format
-function fmtUsdc(units: bigint): string {
-  const n = Number(formatUnits(units, CCTP_EVM_USDC_DECIMALS))
-  return n.toLocaleString('en-US', { maximumFractionDigits: 6 })
-}
-
-export default function BridgeModal({ open, onClose, resume }: Props) {
+export default function BridgeModal({ open, onClose, resume, initialDirection = 'to-stellar' }: Props) {
   const { network } = useNetwork()
-  const { address: stellarAddr } = useWallet()
+  const [direction, setDirection] = useState<TransferDirection>(initialDirection)
+  // the way out is a component of its own, which says whether it may be left
+  const [outStage, setOutStage] = useState<OutStage>('form')
+  const onOutStage = useCallback((s: OutStage) => setOutStage(s), [])
+  const { address: stellarAddr, connect: connectStellar, connecting: stellarConnecting } = useWallet()
   const { mode: custodyMode, dfnsAddress, signer: custodySigner } = useCustody()
   // under DFNS custody the USDC lands in the treasury. The delivery needs no
   // signature from it, so a connected browser wallet pays that fee instead
@@ -105,10 +106,6 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   const chain: CctpSourceChain | null = chains.find((c) => c.key === chainKey) ?? chains[0] ?? null
 
   const evm = useAccount()
-  const { connectors, connect, isPending: isConnecting, error: connectError } = useConnect()
-  // a wallet that announces itself (EIP-6963) is listed under its own name, and the
-  // generic entry would offer the same wallet again as "Injected"
-  const walletOptions = connectors.length > 1 ? connectors.filter((c) => c.id !== 'injected') : connectors
   const { disconnect } = useDisconnect()
   const evmAddr = evm.address as Address | undefined
 
@@ -124,7 +121,10 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
   const attestation = useAttestation(network, transfer?.sourceDomain ?? null, transfer?.id ?? null)
 
   const titleId = useId()
-  const busy = phase.kind === 'approving' || phase.kind === 'burning' || phase.kind === 'delivering'
+  const inBusy = phase.kind === 'approving' || phase.kind === 'burning' || phase.kind === 'delivering'
+  const busy = direction === 'to-stellar' ? inBusy : outStage === 'busy'
+  // the direction only changes from a blank form, never under a transfer
+  const canSwitch = phase.kind === 'form' && outStage === 'form' && !resume
 
   useEffect(() => {
     if (!open) {
@@ -132,10 +132,16 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
       setAmount('')
       setTl({ busy: false, error: null })
       setDeclined(false)
+      setOutStage('form')
       return
     }
-    if (resume) setPhase({ kind: 'waiting', transfer: resume })
-  }, [open, resume])
+    if (resume) {
+      setDirection(directionOf(resume))
+      if (directionOf(resume) === 'to-stellar') setPhase({ kind: 'waiting', transfer: resume })
+    } else {
+      setDirection(initialDirection)
+    }
+  }, [open, resume, initialDirection])
 
   // another network means other contracts, so start over. not on mount, where
   // it would drop a transfer the page asked to resume
@@ -405,9 +411,9 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
         onClick={(e) => e.stopPropagation()}
         onKeyDown={keepTabInside}
       >
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-4">
           <h3 id={titleId} className="text-lg font-semibold text-text">
-            Bridge USDC to Stellar
+            {direction === 'to-stellar' ? 'Bridge USDC to Stellar' : 'Bridge USDC from Stellar'}
           </h3>
           <button
             onClick={() => !busy && onClose()}
@@ -419,7 +425,31 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
           </button>
         </div>
 
-        {phase.kind === 'done' ? (
+        {canSwitch && (
+          <div role="group" aria-label="Direction" className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-full bg-bg text-xs">
+            {(['to-stellar', 'from-stellar'] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDirection(d)}
+                aria-pressed={direction === d}
+                className={cn(
+                  'py-1.5 rounded-full font-medium transition-all',
+                  direction === d ? 'bg-bg-card text-primary shadow-sm' : 'text-text-secondary',
+                )}
+              >
+                {d === 'to-stellar' ? 'Into Stellar' : 'Out of Stellar'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {direction === 'from-stellar' ? (
+          <BridgeFromStellar
+            network={network}
+            resume={resume && directionOf(resume) === 'from-stellar' ? resume : null}
+            onStage={onOutStage}
+          />
+        ) : phase.kind === 'done' ? (
           <Done phase={phase} network={network} onClose={onClose} />
         ) : phase.kind === 'failed' ? (
           <div className="text-center py-4">
@@ -478,23 +508,9 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
                     </button>
                   </span>
                 ) : (
-                  <div className="flex gap-1 flex-wrap justify-end">
-                    {walletOptions.map((c) => (
-                      <button
-                        key={c.uid}
-                        onClick={() => connect({ connector: c })}
-                        disabled={isConnecting}
-                        className="px-2 py-1 rounded-md bg-primary text-white text-[11px] font-medium disabled:opacity-50"
-                      >
-                        {c.id === 'injected' ? 'Browser wallet' : c.name}
-                      </button>
-                    ))}
-                  </div>
+                  <EvmConnectButtons small />
                 )}
               </div>
-              {connectError && !evmAddr && (
-                <p className="text-[10px] text-coral">{readableConnectError(connectError.message)}</p>
-              )}
               {evmAddr && chain && (
                 <div className="flex justify-between text-text-secondary">
                   <span>On {chain.name}</span>
@@ -510,7 +526,17 @@ export default function BridgeModal({ open, onClose, resume }: Props) {
               <div className="flex justify-between items-center gap-2">
                 <span className="text-text-secondary">Receiving account</span>
                 <span className="text-text font-mono">
-                  {receiving ? shortenAddress(receiving, 6, 4) : 'connect a Stellar wallet'}
+                  {receiving ? (
+                    shortenAddress(receiving, 6, 4)
+                  ) : (
+                    <button
+                      onClick={connectStellar}
+                      disabled={stellarConnecting}
+                      className="px-2 py-1 rounded-md bg-primary text-white text-[11px] font-sans font-medium disabled:opacity-50"
+                    >
+                      {stellarConnecting ? 'connecting...' : 'connect a Stellar wallet'}
+                    </button>
+                  )}
                   {treasury && (
                     <>
                       {' '}
@@ -758,42 +784,34 @@ function InFlight({
     return () => clearTimeout(timer)
   }, [transfer.createdAt, transfer.finality, ready])
   const slow = slowFor === transfer.createdAt
-  const steps = [
-    { label: `Burned on ${transfer.chainName}`, done: true },
-    { label: 'Signed by Circle', done: ready },
-    { label: 'Delivered on Stellar', done: false },
+  useOnScreen(transfer.id)
+  // the saved copy carries the time Circle signed, kept across a reload
+  const saved = useTrackedTransfers(network).find((t) => t.id === transfer.id)
+  useEffect(() => {
+    if (ready) markAttested(network, transfer.id)
+  }, [ready, network, transfer.id])
+  const now = useNow()
+  const steps: Step[] = [
+    {
+      label: `Burned on ${transfer.chainName}`,
+      done: true,
+      at: transfer.createdAt,
+      link: chain
+        ? { href: chain.explorerTx(transfer.id), text: `Burn on ${transfer.chainName} ${shortenAddress(transfer.id, 6, 4)}` }
+        : undefined,
+    },
+    { label: 'Signed by Circle', done: ready, current: !ready, at: saved?.attestedAt },
+    { label: 'Delivered on Stellar', done: false, current: ready },
   ]
   return (
     <div>
-      <p className="text-sm text-text mb-4">
+      <p className="text-sm text-text mb-1">
         {transfer.amount} USDC from {transfer.chainName} to {shortenAddress(transfer.recipient, 6, 4)}
       </p>
-      <ol className="space-y-2.5 mb-5">
-        {steps.map((s, i) => (
-          <li key={s.label} className="flex items-center gap-3 text-xs">
-            <span
-              className={cn(
-                'shrink-0 h-5 w-5 rounded-full flex items-center justify-center text-[10px]',
-                s.done ? 'bg-green/15 text-green' : 'bg-bg text-text-secondary',
-              )}
-            >
-              {s.done ? <Check size={12} /> : i + 1}
-            </span>
-            <span className={s.done ? 'text-text' : 'text-text-secondary'}>{s.label}</span>
-          </li>
-        ))}
-      </ol>
-
-      {chain && (
-        <a
-          href={chain.explorerTx(transfer.id)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-primary hover:underline inline-flex items-center gap-1 mb-4"
-        >
-          Burn on {transfer.chainName} {shortenAddress(transfer.id, 6, 4)} <ExternalLink size={11} />
-        </a>
-      )}
+      <p className="text-[11px] text-text-muted mb-4">
+        Started {elapsed(transfer.createdAt, now)} ago; {expectedDuration(transfer)}.
+      </p>
+      <StepList steps={steps} />
 
       {!ready ? (
         <p className="text-xs text-text-secondary mb-4">
@@ -856,6 +874,26 @@ function Done({
   onClose: () => void
 }) {
   const chain = cctpChainsFor(network).find((c) => c.key === phase.transfer.chainKey)
+  const saved = useTrackedTransfers(network).find((t) => t.id === phase.transfer.id) ?? phase.transfer
+  const steps: Step[] = [
+    {
+      label: `Burned on ${phase.transfer.chainName}`,
+      done: true,
+      at: phase.transfer.createdAt,
+      link: chain
+        ? { href: chain.explorerTx(phase.transfer.id), text: `Burn on ${phase.transfer.chainName} ${shortenAddress(phase.transfer.id, 6, 4)}` }
+        : undefined,
+    },
+    { label: 'Signed by Circle', done: true, at: saved.attestedAt },
+    {
+      label: 'Delivered on Stellar',
+      done: true,
+      at: saved.deliveredAt,
+      link: phase.deliveredHash
+        ? { href: stellarExplorer(network, 'tx', phase.deliveredHash), text: `Delivery on Stellar ${shortenAddress(phase.deliveredHash, 6, 4)}` }
+        : undefined,
+    },
+  ]
   return (
     <div className="text-center py-4">
       <div className="w-12 h-12 rounded-full bg-green/10 flex items-center justify-center mx-auto mb-4">
@@ -865,31 +903,12 @@ function Done({
       <p className="text-sm text-text-secondary mb-4">
         {phase.transfer.amount} USDC from {phase.transfer.chainName}
         {phase.transfer.finality === 'fast' ? ", net of Circle's fee" : ', no fee on a standard transfer'}
+        {saved.deliveredAt && `, ${elapsed(phase.transfer.createdAt, saved.deliveredAt)} end to end`}
       </p>
-      <div className="flex flex-col gap-1.5 items-center text-xs mb-5">
-        {chain && (
-          <a
-            href={chain.explorerTx(phase.transfer.id)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline inline-flex items-center gap-1"
-          >
-            Burn on {phase.transfer.chainName} {shortenAddress(phase.transfer.id, 6, 4)} <ExternalLink size={11} />
-          </a>
-        )}
-        {phase.deliveredHash ? (
-          <a
-            href={stellarExplorer(network, 'tx', phase.deliveredHash)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline inline-flex items-center gap-1"
-          >
-            Delivery on Stellar {shortenAddress(phase.deliveredHash, 6, 4)} <ExternalLink size={11} />
-          </a>
-        ) : (
-          <span className="text-text-muted">It had already been delivered.</span>
-        )}
+      <div className="text-left">
+        <StepList steps={steps} />
       </div>
+      {!phase.deliveredHash && <p className="text-xs text-text-muted mb-4">It had already been delivered.</p>}
       <button onClick={onClose} className="px-6 py-2 rounded-full bg-primary text-white text-sm font-medium">
         Done
       </button>

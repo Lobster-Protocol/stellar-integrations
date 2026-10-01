@@ -131,6 +131,33 @@ export function assertMessageMatches(msg: CctpMessage, expect: MessageExpectatio
   }
 }
 
+// on the way out the mint recipient is an EVM address in the low 20 bytes
+export function evmRecipientOf(msg: CctpMessage): `0x${string}` {
+  const raw = hexToBytes(msg.body.mintRecipient)
+  if (raw.length !== 32 || raw.subarray(0, 12).some((b) => b !== 0)) {
+    throw new CctpMessageError('message mints to something that is not an EVM address')
+  }
+  return toHex(raw.subarray(12))
+}
+
+// the same care on the way out: the bytes Circle returns must pay the wallet we
+// expect, on the chain we are about to submit to
+export function assertEvmMessageMatches(
+  msg: CctpMessage,
+  expect: { sourceDomain: number; destinationDomain: number; recipient: string },
+): void {
+  if (msg.sourceDomain !== expect.sourceDomain) {
+    throw new CctpMessageError(`message came from domain ${msg.sourceDomain}, not ${expect.sourceDomain}`)
+  }
+  if (msg.destinationDomain !== expect.destinationDomain) {
+    throw new CctpMessageError(`message is bound for domain ${msg.destinationDomain}, not ${expect.destinationDomain}`)
+  }
+  const paid = evmRecipientOf(msg)
+  if (paid.toLowerCase() !== expect.recipient.toLowerCase()) {
+    throw new CctpMessageError(`message pays ${paid}, not the ${expect.recipient} that was claimed`)
+  }
+}
+
 // 65 bytes per signature, and Circle currently wants two
 const SIGNATURE_LEN = 65
 

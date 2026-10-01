@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 
 import {
+  directionOf,
+  markAttested,
   trackTransfer,
   markDelivered,
   forgetTransfer,
@@ -63,5 +65,33 @@ describe('tracked transfers', () => {
     expect(listTransfers('testnet')).toEqual([])
     localStorage.setItem('lob_cctp_transfers_testnet', JSON.stringify([{ id: 1 }, null, 'x']))
     expect(listTransfers('testnet')).toEqual([])
+  })
+
+  it('reads an entry saved before the way back existed as a transfer into Stellar', () => {
+    trackTransfer(transfer())
+    expect(directionOf(listTransfers('testnet')[0])).toBe('to-stellar')
+    expect(directionOf(transfer({ direction: 'from-stellar' }))).toBe('from-stellar')
+  })
+
+  it('keeps the first time Circle was seen signing', () => {
+    trackTransfer(transfer())
+    markAttested('testnet', transfer().id, 100)
+    markAttested('testnet', transfer().id, 200)
+    expect(listTransfers('testnet')[0].attestedAt).toBe(100)
+  })
+
+  it('records when it landed, and keeps a known hash when the next look has none', () => {
+    trackTransfer(transfer({ deliveredHash: 'cafe' }))
+    markDelivered('testnet', transfer().id, '')
+    const t = listTransfers('testnet')[0]
+    expect(t).toMatchObject({ stage: 'delivered', deliveredHash: 'cafe' })
+    expect(typeof t.deliveredAt).toBe('number')
+  })
+
+  it('leaves the list alone for a transfer it does not hold', () => {
+    trackTransfer(transfer())
+    markDelivered('testnet', 'unknown', 'x')
+    markAttested('testnet', 'unknown')
+    expect(listTransfers('testnet')[0].stage).toBe('burned')
   })
 })
