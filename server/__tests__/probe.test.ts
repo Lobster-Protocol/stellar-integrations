@@ -97,6 +97,23 @@ describe('httpTargets', () => {
     }
   })
 
+  it('checks the public status page only when it is named, and wants it to load', () => {
+    const old = process.env.MONITOR_STATUS_PAGE_URL
+    try {
+      delete process.env.MONITOR_STATUS_PAGE_URL
+      expect(httpTargets().some((t) => t.name === 'status-page')).toBe(false)
+      process.env.MONITOR_STATUS_PAGE_URL = 'https://status.example/board'
+      expect(httpTargets().find((t) => t.name === 'status-page')).toMatchObject({
+        url: 'https://status.example/board',
+        probe: 'page',
+        area: 'frontend',
+      })
+    } finally {
+      if (old === undefined) delete process.env.MONITOR_STATUS_PAGE_URL
+      else process.env.MONITOR_STATUS_PAGE_URL = old
+    }
+  })
+
   it('reads ledger age off both rpc endpoints and both horizons', () => {
     const byName = new Map(httpTargets().map((t) => [t.name, t.probe]))
     expect(byName.get('soroban-rpc-mainnet')).toBe('rpc')

@@ -9,8 +9,8 @@ export interface HttpTarget {
   area: 'bridge' | 'frontend' | 'swap' | 'custody' | 'mainnet' | 'shared'
   url: string
   // rpc and horizon also say how old their latest ledger is. cctp has to hand
-  // back a fee table, answering is not enough.
-  probe: 'rpc' | 'horizon' | 'cctp' | 'http'
+  // back a fee table and a page has to load, answering is not enough.
+  probe: 'rpc' | 'horizon' | 'cctp' | 'page' | 'http'
 }
 
 export interface AccountTarget {
@@ -47,6 +47,12 @@ export function httpTargets(): HttpTarget[] {
   const bff = env.VITE_LOBSTER_API_URL || env.MONITOR_BFF_URL
   if (bff && !bff.includes('localhost')) {
     list.push({ name: 'bff-relay', area: 'custody', url: bff, probe: 'http' })
+  }
+  // the public status board: the free grafana instance behind it stops serving
+  // pages after a quiet spell and greets the next visitor with a loading notice.
+  // a check every minute keeps it up and says so when it is not.
+  if (env.MONITOR_STATUS_PAGE_URL) {
+    list.push({ name: 'status-page', area: 'frontend', url: env.MONITOR_STATUS_PAGE_URL, probe: 'page' })
   }
   return list
 }

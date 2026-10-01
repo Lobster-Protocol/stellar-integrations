@@ -81,6 +81,7 @@ async function probeOne(t: HttpTarget): Promise<ProbeResult> {
       const body: unknown = await res.json()
       return { up: res.ok && Array.isArray(body) && body.length > 0 }
     }
+    if (t.probe === 'page') return { up: res.ok }
     // a 404 at a root or a 401 from an api still proves the host answered;
     // only a network error or a 5xx is down
     const up = res.status > 0 && res.status < 500
