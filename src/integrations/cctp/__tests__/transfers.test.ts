@@ -5,6 +5,7 @@ import {
   markAttested,
   trackTransfer,
   markDelivered,
+  markSent,
   forgetTransfer,
   listTransfers,
   type TrackedTransfer,
@@ -86,6 +87,26 @@ describe('tracked transfers', () => {
     const t = listTransfers('testnet')[0]
     expect(t).toMatchObject({ stage: 'delivered', deliveredHash: 'cafe' })
     expect(typeof t.deliveredAt).toBe('number')
+  })
+
+  it('keeps a mint sent before its receipt was read, as the delivery once the chain has it', () => {
+    trackTransfer(transfer({ direction: 'from-stellar' }))
+    markSent('testnet', transfer().id, '0xsent')
+    expect(listTransfers('testnet')[0]).toMatchObject({ stage: 'burned', sentHash: '0xsent' })
+    markDelivered('testnet', transfer().id, '')
+    expect(listTransfers('testnet')[0]).toMatchObject({ stage: 'delivered', deliveredHash: '0xsent' })
+  })
+
+  it('prefers a hash the chain or Circle names, and drops a mint that reverted', () => {
+    trackTransfer(transfer({ direction: 'from-stellar' }))
+    markSent('testnet', transfer().id, '0xsent')
+    markDelivered('testnet', transfer().id, '0xnamed')
+    expect(listTransfers('testnet')[0].deliveredHash).toBe('0xnamed')
+    trackTransfer(transfer({ id: 'b'.repeat(64), direction: 'from-stellar' }))
+    markSent('testnet', 'b'.repeat(64), '0xreverted')
+    markSent('testnet', 'b'.repeat(64), '')
+    markDelivered('testnet', 'b'.repeat(64), '')
+    expect(listTransfers('testnet').find((t) => t.id === 'b'.repeat(64))?.deliveredHash).toBeUndefined()
   })
 
   it('leaves the list alone for a transfer it does not hold', () => {

@@ -33,6 +33,9 @@ export interface TrackedTransfer {
   attestedAt?: number
   deliveredAt?: number
   deliveredHash?: string
+  // a mint our EVM wallet sent: kept from the moment the wallet returns it, so a node
+  // that fails to answer for its receipt does not lose the link to it
+  sentHash?: string
 }
 
 export function directionOf(t: TrackedTransfer): TransferDirection {
@@ -93,11 +96,17 @@ export function markAttested(network: Network, id: string, at = Date.now()): voi
   update(network, id, (x) => ({ ...x, attestedAt: at }))
 }
 
+// an empty hash clears it: the mint reverted, or never left the wallet
+export function markSent(network: Network, id: string, hash: string): void {
+  update(network, id, (t) => ({ ...t, sentHash: hash || undefined }))
+}
+
+// with no hash given, a mint our wallet sent stands as the delivery once the chain has it
 export function markDelivered(network: Network, id: string, deliveredHash: string): void {
   update(network, id, (t) => ({
     ...t,
     stage: 'delivered',
-    deliveredHash: deliveredHash || t.deliveredHash,
+    deliveredHash: deliveredHash || t.deliveredHash || t.sentHash,
     deliveredAt: t.deliveredAt ?? Date.now(),
   }))
 }

@@ -26,6 +26,7 @@ import {
   forgetTransfer,
   markAttested,
   markDelivered,
+  markSent,
   trackTransfer,
   useTrackedTransfers,
   type TrackedTransfer,
@@ -483,7 +484,8 @@ function OutProgress({
     }
   })()
 
-  const mintHash = local?.deliveredHash ?? transfer.deliveredHash ?? (data?.state === 'complete' ? data.forwardTxHash : null)
+  const mintHash =
+    local?.deliveredHash || transfer.deliveredHash || transfer.sentHash || (data?.state === 'complete' ? data.forwardTxHash : null)
   const attestedAt = transfer.attestedAt
   const circleSlow =
     !!transfer.forwarded &&
@@ -509,7 +511,7 @@ function OutProgress({
         setLocal({ deliveredHash: null, already: true })
         return
       }
-      const hash = await receiveOnEvm(chain, data.message, data.attestation)
+      const hash = await receiveOnEvm(chain, data.message, data.attestation, (sent) => markSent(network, transfer.id, sent))
       markDelivered(network, transfer.id, hash)
       setLocal({ deliveredHash: hash, already: false })
       void qc.invalidateQueries({ queryKey: ['cctp', 'holdings'] })
@@ -517,8 +519,10 @@ function OutProgress({
       if (err instanceof UserRejectedError) {
         setError('You declined in your wallet. The transfer is saved, receive it whenever you are ready.')
       } else if (err instanceof ReceiptUnreadError) {
+        // the mint is out and its hash saved: the chain check above finishes the transfer
         setError(`Sent (${shortenAddress(err.hash, 6, 4)}), but its confirmation could not be read yet. Check it on the explorer before sending again.`)
       } else {
+        markSent(network, transfer.id, '')
         setError(errorText(err))
       }
     } finally {
