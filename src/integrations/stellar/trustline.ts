@@ -1,7 +1,7 @@
 import { Asset, Operation, TransactionBuilder, NotFoundError } from '@stellar/stellar-sdk'
 import { useQuery } from '@tanstack/react-query'
 import { getHorizonServer } from '../horizon/client'
-import { useAccountExists } from '../horizon/account'
+import { useAccountBalances, useAccountExists } from '../horizon/account'
 import { networkPassphrase } from '../lobster/client'
 import type { Network } from '../lobster/types'
 import { INCLUSION_FEE_STROOPS } from '../../config/contracts'
@@ -63,18 +63,24 @@ export async function submitTrustlineTx(signedXdr: string, network: Network): Pr
   return res.hash
 }
 
-// waits for the account to exist, a brand-new wallet would only 404 here
+// An account that is not on the ledger yet has no trustline, and that needs no request
+// to say. Until Horizon has said whether the account exists, the query waits and stays
+// pending; a waiting query is not "loading" in TanStack v5, so callers check isPending
+// and show "checking" there. When Horizon fails instead, the query asks on its own, so
+// the failure shows as an error and never as a missing trustline.
 export function useTrustline(
   accountId: string | null,
   assetCode: string,
   assetIssuer: string,
   network: Network,
 ) {
-  const exists = useAccountExists(network, accountId) === 'live'
+  const existence = useAccountExists(network, accountId)
+  const unreadable = useAccountBalances(network, accountId).isError
+  const missing = existence === 'missing'
   return useQuery<boolean>({
-    queryKey: ['trustline', accountId, assetCode, assetIssuer, network],
-    queryFn: () => hasTrustline(accountId!, assetCode, assetIssuer, network),
-    enabled: !!accountId && !!assetIssuer && exists,
+    queryKey: ['trustline', accountId, assetCode, assetIssuer, network, missing],
+    queryFn: () => (missing ? false : hasTrustline(accountId!, assetCode, assetIssuer, network)),
+    enabled: !!accountId && !!assetIssuer && (existence !== 'unknown' || unreadable),
     staleTime: 60_000,
     retry: 1,
   })

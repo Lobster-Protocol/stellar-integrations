@@ -639,10 +639,14 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
                 </span>
                 {!receiving ? (
                   <span className="text-text-muted">connect first</span>
-                ) : trustline.isLoading ? (
+                ) : trustline.isPending ? (
                   <span className="text-text-muted">checking...</span>
                 ) : trustlineOk ? (
                   <span className="text-green font-medium">on</span>
+                ) : trustline.isError ? (
+                  <button onClick={() => void trustline.refetch()} className="text-coral underline">
+                    could not check, try again
+                  </button>
                 ) : (
                   <button
                     onClick={handleTrustline}

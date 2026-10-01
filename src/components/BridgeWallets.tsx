@@ -190,11 +190,12 @@ function StellarWalletCard({ network }: { network: Network }) {
             </p>
           ) : (
             <>
-              <Line label="USDC">{balances.isLoading ? '...' : usdc ? formatBalance(usdc.balance) : 'none'}</Line>
-              <Line label="XLM">{balances.isLoading ? '...' : xlm ? formatBalance(xlm.balance) : '?'}</Line>
+              {/* Horizon down is not an empty account: no "none" or "off" until it has answered */}
+              <Line label="USDC">{balances.isPending ? '...' : balances.isError ? 'unreadable' : usdc ? formatBalance(usdc.balance) : 'none'}</Line>
+              <Line label="XLM">{balances.isPending ? '...' : balances.isError ? 'unreadable' : xlm ? formatBalance(xlm.balance) : '?'}</Line>
               <Line label="Trustline">
                 <span className="inline-flex items-center gap-1">
-                  {balances.isLoading ? '...' : usdc ? <span className="text-green">on</span> : <span className="text-coral">off, turn it on in the bridge</span>}
+                  {balances.isPending ? '...' : balances.isError ? 'unreadable' : usdc ? <span className="text-green">on</span> : <span className="text-coral">off, turn it on in the bridge</span>}
                   <InfoTip term="trustline" label="a trustline" />
                 </span>
               </Line>

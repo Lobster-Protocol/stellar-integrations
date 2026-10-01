@@ -143,7 +143,7 @@ export default function Bridges() {
   if (!address) {
     trustlineLabel = 'Connect wallet'
     trustlineClass = 'text-text-muted'
-  } else if (trustlineQuery.isLoading) {
+  } else if (trustlineQuery.isPending) {
     trustlineLabel = 'Checking...'
     trustlineClass = 'text-text-muted'
   } else if (trustlineQuery.isError) {
