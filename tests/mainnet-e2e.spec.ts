@@ -4,19 +4,27 @@ import { BASE, SOROBAN_RPC_MAINNET, MAINNET_FACTORY, MAINNET_SOURCE, shorten } f
 
 const ready = MAINNET_FACTORY !== '' && MAINNET_SOURCE !== ''
 
-async function readAdminAndPoolCount(): Promise<{ admin: string; poolCount: number }> {
+interface Truth {
+  admin: string
+  poolCount: number
+  // the newest vault, the one the Factory card lists first
+  vault: string
+  owner: string
+}
+
+async function readFactory(): Promise<Truth> {
   const sdk = await import('@stellar/stellar-sdk')
-  const { Contract, TransactionBuilder, BASE_FEE, Networks, rpc, scValToNative } = sdk
+  const { Contract, TransactionBuilder, BASE_FEE, Networks, rpc, scValToNative, nativeToScVal } = sdk
   const server = new rpc.Server(SOROBAN_RPC_MAINNET)
   const contract = new Contract(MAINNET_FACTORY)
   const account = await server.getAccount(MAINNET_SOURCE)
 
-  const read = async (method: string) => {
+  const read = async (method: string, ...args: import('@stellar/stellar-sdk').xdr.ScVal[]) => {
     const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
       networkPassphrase: Networks.PUBLIC,
     })
-      .addOperation(contract.call(method))
+      .addOperation(contract.call(method, ...args))
       .setTimeout(30)
       .build()
     const sim = await server.simulateTransaction(tx)
@@ -26,7 +34,13 @@ async function readAdminAndPoolCount(): Promise<{ admin: string; poolCount: numb
   }
 
   const [admin, poolCount] = await Promise.all([read('get_admin'), read('get_pool_count')])
-  return { admin: String(admin), poolCount: Number(poolCount) }
+  const newest = await read('get_pool_by_id', nativeToScVal(BigInt(poolCount), { type: 'u64' }))
+  return {
+    admin: String(admin),
+    poolCount: Number(poolCount),
+    vault: String(newest.lobster_address),
+    owner: String(newest.owner),
+  }
 }
 
 // anchor on the Factory card through its heading; the stat labels each carry a
@@ -46,10 +60,10 @@ async function openCustodyOnMainnet(page: import('@playwright/test').Page) {
 test.describe('Live mainnet Factory reads match the /audit DOM', () => {
   test.skip(!ready, 'set PLAYWRIGHT_MAINNET_FACTORY and _SOURCE once the mainnet deploy lands')
 
-  let truth: { admin: string; poolCount: number }
+  let truth: Truth
 
   test.beforeAll(async () => {
-    truth = await readAdminAndPoolCount()
+    truth = await readFactory()
   })
 
   test('Contract ID stat renders the mainnet Factory address', async ({ page }) => {
@@ -76,5 +90,36 @@ test.describe('Live mainnet Factory reads match the /audit DOM', () => {
       'href',
       `https://stellar.expert/explorer/public/contract/${MAINNET_FACTORY}`,
     )
+  })
+
+  test('lists the newest vault with no wallet, and opens its owner read-only', async ({ page }) => {
+    await openCustodyOnMainnet(page)
+    const card = factoryCard(page)
+    await expect(card.locator(`a[href$="/contract/${truth.vault}"]`)).toBeVisible({ timeout: 30_000 })
+    await card.getByRole('button', { name: new RegExp(`Owner ${truth.owner.slice(0, 4)}`) }).first().click()
+    await expect(page).toHaveURL(/\/positions/)
+    await expect(page.getByRole('button', { name: 'Leave the read-only view' })).toBeVisible()
+    await expect(page.locator(`a[href$="/contract/${truth.vault}"]`).first()).toBeVisible({ timeout: 30_000 })
+  })
+
+  test('a link opens mainnet on an account, read-only', async ({ page }) => {
+    await page.goto(`${BASE}/positions?network=mainnet&view=${truth.owner}`)
+    await expect(page.getByRole('button', { name: 'Mainnet', exact: true })).toHaveClass(/text-green/)
+    await expect(page.getByRole('button', { name: 'Leave the read-only view' })).toBeVisible()
+    await expect(page.locator(`a[href$="/contract/${truth.vault}"]`).first()).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('Soroswap', { exact: true }).first()).toBeVisible()
+  })
+
+  test('a mainnet swap routes through soroswap, the broker only quotes', async ({ page }) => {
+    await page.goto(`${BASE}/?network=mainnet&view=${truth.owner}`)
+    await page.getByRole('button', { name: 'Swap', exact: true }).click()
+    await page.getByPlaceholder('0.0').fill('1')
+    await expect(page.getByText('Direct via Soroswap')).toBeVisible({ timeout: 30_000 })
+    const confirm = page.getByRole('button', { name: 'Confirm Soroswap swap' })
+    await expect(confirm).toBeEnabled()
+    await expect(page.getByText('Cannot be signed from here')).toHaveCount(0)
+    // the read-only view stops the click before any wallet is asked
+    await confirm.click()
+    await expect(page.getByText(/read-only view of/i)).toBeVisible({ timeout: 30_000 })
   })
 })

@@ -5,6 +5,7 @@ import {
   BASE_FEE,
   Address,
   xdr,
+  nativeToScVal,
   scValToNative,
   rpc,
 } from '@stellar/stellar-sdk'
@@ -67,11 +68,8 @@ function readSource(network: Network, override?: string): string {
   throw new Error('readSource: pass the wallet address for mainnet reads')
 }
 
-export async function getFactoryInfo(
-  network: Network,
-  callerAccount?: string,
-): Promise<FactoryInfo> {
-  const source = readSource(network, callerAccount)
+export async function getFactoryInfo(network: Network): Promise<FactoryInfo> {
+  const source = readSource(network)
   const [admin, wasmHashBytes, poolCountBig] = await Promise.all([
     readContract<string>(network, source, 'get_admin'),
     readContract<Uint8Array>(network, source, 'get_wasm_hash'),
@@ -84,26 +82,39 @@ export async function getFactoryInfo(
   }
 }
 
+type RawPool = { lobster_address: string; owner: string; token0: string; token1: string }
+
+const toPool = (p: RawPool): LobsterPool => ({
+  lobsterAddress: p.lobster_address,
+  owner: p.owner,
+  token0: p.token0,
+  token1: p.token1,
+})
+
+// the factory numbers its vaults from 1, so the newest is the pool count. a vault
+// that fails to read is left out rather than sinking the whole list.
+export async function getLatestVaults(network: Network, poolCount: number, limit: number): Promise<LobsterPool[]> {
+  const source = readSource(network)
+  const ids = Array.from({ length: Math.min(poolCount, limit) }, (_, i) => poolCount - i)
+  const settled = await Promise.allSettled(
+    ids.map((id) =>
+      readContract<RawPool | null | undefined>(network, source, 'get_pool_by_id', [
+        nativeToScVal(BigInt(id), { type: 'u64' }),
+      ]),
+    ),
+  )
+  return settled.flatMap((r) => (r.status === 'fulfilled' && r.value ? [toPool(r.value)] : []))
+}
+
 export async function getPoolsByUser(network: Network, user: string): Promise<LobsterPool[]> {
   assertAccountId(user)
   // the sim runs from a fabricated source, so an unfunded wallet reads fine and
   // just comes back with no pools - no getAccount probe, no 404 in the console.
   const source = readSource(network, user)
-  const raw = await readContract<Array<{
-    lobster_address: string
-    owner: string
-    token0: string
-    token1: string
-  }>>(network, source, 'get_pools_by_user', [
+  const raw = await readContract<RawPool[]>(network, source, 'get_pools_by_user', [
     new Address(user).toScVal(),
   ])
-
-  return raw.map((p) => ({
-    lobsterAddress: p.lobster_address,
-    owner: p.owner,
-    token0: p.token0,
-    token1: p.token1,
-  }))
+  return raw.map(toPool)
 }
 
 export type SorobanRestorePreamble = Extract<

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { Networks } from '@stellar/stellar-sdk'
+import { Address, Networks, nativeToScVal, xdr } from '@stellar/stellar-sdk'
 
 import { networkPassphrase } from '../client'
-import { handleSendResult, TryAgainLaterError, waitForTx, buildPingTx } from '../factory'
+import { handleSendResult, TryAgainLaterError, waitForTx, buildPingTx, getLatestVaults } from '../factory'
 
 const simulateTransaction = vi.fn()
 const getTransaction = vi.fn()
@@ -97,6 +97,47 @@ describe('buildPingTx', () => {
     const { xdr, restorePreamble } = await buildPingTx('testnet', TESTNET_SOURCE)
     expect(xdr).toBe('')
     expect(restorePreamble).toEqual({ minResourceFee: '1000', transactionData: 'PREAMBLE_DATA' })
+  })
+})
+
+describe('getLatestVaults', () => {
+  const VAULT = 'CBEWCQWMKYRBHN2H6GIEYQS4UACN3DHC3KUXHX5F3AOZAKCG5VI7WGQ4'
+  const OWNER = 'GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS'
+  const XLM = 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA'
+  const USDC = 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75'
+
+  const pool = (vault: string) => ({
+    result: {
+      retval: nativeToScVal({
+        lobster_address: new Address(vault),
+        owner: new Address(OWNER),
+        token0: new Address(XLM),
+        token1: new Address(USDC),
+      }),
+    },
+  })
+
+  beforeEach(() => {
+    simulateTransaction.mockReset()
+  })
+
+  it('reads ids from the pool count down, so the newest vault comes first', async () => {
+    const OLDER = 'CAG5LRYQ5JVEUI5TEID72EYOVX44TTUJT5BQR2J6J77FH65PCCFAJDDH'
+    simulateTransaction.mockResolvedValueOnce(pool(VAULT)).mockResolvedValueOnce(pool(OLDER))
+    const vaults = await getLatestVaults('mainnet', 2, 10)
+    expect(simulateTransaction).toHaveBeenCalledTimes(2)
+    expect(vaults.map((v) => v.lobsterAddress)).toEqual([VAULT, OLDER])
+    expect(vaults[0]).toEqual({ lobsterAddress: VAULT, owner: OWNER, token0: XLM, token1: USDC })
+  })
+
+  it('stops at the limit and leaves out an id that reads empty or fails', async () => {
+    simulateTransaction
+      .mockResolvedValueOnce(pool(VAULT))
+      .mockResolvedValueOnce({ result: { retval: xdr.ScVal.scvVoid() } })
+      .mockRejectedValueOnce(new Error('rpc down'))
+    const vaults = await getLatestVaults('testnet', 12, 3)
+    expect(simulateTransaction).toHaveBeenCalledTimes(3)
+    expect(vaults.map((v) => v.lobsterAddress)).toEqual([VAULT])
   })
 })
 

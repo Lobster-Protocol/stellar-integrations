@@ -1,8 +1,8 @@
 import type { RefObject } from 'react'
-import { Menu } from 'lucide-react'
+import { Eye, Menu } from 'lucide-react'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { cn } from '../utils/format'
+import { cn, shortenAddress, stellarExplorer } from '../utils/format'
 import WalletChip from './WalletChip'
 import ConnectMpcControl from './ConnectMpcControl'
 import lobsterIcon from '../assets/lobster-icon.png'
@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props) {
-  const { address, connecting, connect } = useWallet()
+  const { address, viewing, stopViewing, connecting, connect } = useWallet()
   const { network, setNetwork } = useNetwork()
 
   // z-30 keeps the bar under the mobile drawer and the connect popover, which both
@@ -74,7 +74,32 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
           </button>
         </div>
 
-        {address ? (
+        {viewing ? (
+          <div
+            role="status"
+            className="flex items-center gap-1.5 rounded-full border border-text-muted/20 bg-bg px-2.5 py-1"
+          >
+            <Eye size={12} className="text-text-muted shrink-0" aria-hidden="true" />
+            <span className="hidden sm:block text-[10px] text-text-muted leading-none">Read-only view</span>
+            <a
+              href={stellarExplorer(network, 'account', viewing)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={viewing}
+              className="text-xs text-text font-mono hover:text-primary hover:underline"
+            >
+              {shortenAddress(viewing, 4)}
+            </a>
+            <button
+              type="button"
+              onClick={stopViewing}
+              aria-label="Leave the read-only view"
+              className="text-[10px] font-semibold text-primary hover:underline"
+            >
+              Leave
+            </button>
+          </div>
+        ) : address ? (
           <WalletChip address={address} network={network} />
         ) : (
           <button

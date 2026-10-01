@@ -10,6 +10,13 @@ const Ctx = createContext<NetworkCtx | null>(null)
 
 export function NetworkProvider({ children }: { children: ReactNode }) {
   const [network, setNet] = useState<Network>(() => {
+    // a shared link can open a network (?network=mainnet), and that pick sticks the
+    // same way the toggle does
+    const linked = new URLSearchParams(window.location.search).get('network')
+    if (linked === 'mainnet' || linked === 'testnet') {
+      localStorage.setItem('lob_network', linked)
+      return linked
+    }
     const stored = localStorage.getItem('lob_network')
     // anything else (corrupted localStorage, old builds) falls back to testnet
     return stored === 'mainnet' || stored === 'testnet' ? stored : 'testnet'

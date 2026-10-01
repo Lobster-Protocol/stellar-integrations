@@ -18,15 +18,21 @@ you don't need real funds, the friendbot covers the account reserve.
 
 Open the dashboard and use Connect in the top bar, then pick your wallet and
 approve. Your address shows up once it's connected. The toggle next to it
-switches between Testnet and Mainnet. Leave it on Testnet here, the Lobster
-contracts aren't on mainnet yet.
+switches between Testnet and Mainnet, and a link ending in `?network=mainnet`
+opens the dashboard on mainnet directly. Leave it on Testnet for the steps below.
 
 ## Read the Factory
 
 Open `/audit`. The Factory card shows the contract id, the admin and how many
 pools it has created, the last two read straight from the Soroban contract over
-RPC. It's a simulated read, so no signature and no fee. Your own LP positions are
-on `/positions`.
+RPC. It's a simulated read, so no signature, no fee and no wallet needed, on
+either network. Below the numbers, the card lists the latest vaults. Each row can
+open its owner's positions read-only. Your own LP positions are on `/positions`.
+
+Any account can be opened the same way with `?view=` and its address, for
+example `/?network=mainnet&view=G...`. Every page then reads that account, a
+"Read-only view" chip replaces the wallet button, and nothing can be signed until
+you leave the view.
 
 ## Sign a testnet transaction
 

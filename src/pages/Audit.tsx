@@ -4,10 +4,12 @@ import {
   useDfnsPendingApprovals,
   RelayError,
 } from '../integrations/dfns/hooks'
+import { useNavigate } from 'react-router-dom'
+
 import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useFactoryInfo } from '../integrations/lobster/hooks'
+import { useFactoryInfo, useLatestVaults } from '../integrations/lobster/hooks'
 import { CONTRACTS } from '../config/contracts'
 import { shortenAddress, stellarExplorer } from '../utils/format'
 import CustodyModeToggle from '../components/CustodyModeToggle'
@@ -21,6 +23,7 @@ import MicaExportButton from '../components/MicaExportButton'
 import SignDemoTx from '../components/SignDemoTx'
 import SharedControl from './SharedControl'
 import TtlCountdownCard from '../components/TtlCountdownCard'
+import TokenRef from '../components/TokenRef'
 import { Card, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
@@ -41,11 +44,11 @@ export default function Audit() {
   const policies = useDfnsPolicies()
   const approvals = useDfnsPendingApprovals()
 
-  const { address } = useWallet()
+  const { view } = useWallet()
   const { network } = useNetwork()
-  // mainnet reads need a caller to simulate from, so pass the connected wallet
-  // when there is one
-  const factoryInfo = useFactoryInfo(network, address || undefined)
+  const navigate = useNavigate()
+  const factoryInfo = useFactoryInfo(network)
+  const vaults = useLatestVaults(network, factoryInfo.data?.poolCount)
   const factoryId = CONTRACTS[network].lobster.factory
   const factoryExplorer = factoryId ? stellarExplorer(network, 'contract', factoryId) : null
 
@@ -200,6 +203,51 @@ export default function Audit() {
             <Stat label="Pools created" value={String(factoryInfo.data.poolCount)} />
           </div>
         ) : null}
+
+        {vaults.data && vaults.data.length > 0 && (
+          <div className="mt-4">
+            <p className="text-[11px] text-text-muted mb-1">
+              {factoryInfo.data && factoryInfo.data.poolCount > vaults.data.length
+                ? `Latest ${vaults.data.length} vaults`
+                : 'Vaults'}
+              , newest first. Opening one shows its owner's positions read-only, no wallet needed.
+            </p>
+            <ul className="divide-y divide-text-muted/10">
+              {vaults.data.map((v) => (
+                <li
+                  key={v.lobsterAddress}
+                  className="py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs"
+                >
+                  <span className="flex items-center gap-1">
+                    <TokenRef id={v.token0} />
+                    <span className="text-text-muted">/</span>
+                    <TokenRef id={v.token1} />
+                  </span>
+                  <a
+                    href={stellarExplorer(network, 'contract', v.lobsterAddress)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={v.lobsterAddress}
+                    className="font-mono text-text-secondary hover:text-primary hover:underline"
+                  >
+                    {shortenAddress(v.lobsterAddress, 6)}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      view(v.owner)
+                      navigate('/positions')
+                    }}
+                    title={v.owner}
+                    className="text-primary hover:underline"
+                  >
+                    Owner {shortenAddress(v.owner, 4)}: view positions
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Card>
 
       <TtlCountdownCard />

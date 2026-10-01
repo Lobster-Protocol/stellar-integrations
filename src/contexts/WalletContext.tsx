@@ -7,9 +7,16 @@ import { LobstrModule } from '@creit-tech/stellar-wallets-kit/modules/lobstr'
 import { WalletConnectModule, WalletConnectTargetChain, WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
 import { useNetwork } from './NetworkContext'
 import { useToast } from './ToastContext'
+import { setViewingAddress } from '../integrations/signer/wallet-kit-signer'
+import { isAccountId } from '../integrations/stellar/strkey-guards'
 
 interface WalletCtx {
+  // the account every page reads: the connected wallet, or the one being viewed
   address: string | null
+  // someone else's account opened read-only (?view=G...). nothing signs while it is set
+  viewing: string | null
+  view: (account: string) => void
+  stopViewing: () => void
   walletName: string | null
   // the connected wallet's module id (e.g. WALLET_CONNECT_ID), so the UI can tell a
   // DFNS-over-WalletConnect wallet apart from a browser extension wallet.
@@ -28,6 +35,17 @@ const Ctx = createContext<WalletCtx | null>(null)
 // module-level: kit is a static singleton, hot-reload would double-init
 let kitInitialised = false
 
+// a link can open an account read-only; the tab keeps it across reloads until left
+function linkedView(): string | null {
+  const linked = new URLSearchParams(window.location.search).get('view')
+  if (isAccountId(linked)) {
+    sessionStorage.setItem('lob_view', linked!)
+    return linked
+  }
+  const kept = sessionStorage.getItem('lob_view')
+  return isAccountId(kept) ? kept : null
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { network } = useNetwork()
   // Rehydrated from localStorage to avoid the "Connect" flash between page
@@ -35,8 +53,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(() => localStorage.getItem('lob_addr'))
   const [walletName, setWalletName] = useState<string | null>(() => localStorage.getItem('lob_wname'))
   const [walletId, setWalletId] = useState<string | null>(() => localStorage.getItem('lob_wid'))
+  const [viewing, setViewing] = useState<string | null>(linkedView)
   const [connecting, setConnecting] = useState(false)
   const toast = useToast()
+
+  useEffect(() => {
+    setViewingAddress(viewing)
+  }, [viewing])
+
+  const view = useCallback((account: string) => {
+    if (!isAccountId(account)) return
+    sessionStorage.setItem('lob_view', account)
+    setViewing(account)
+  }, [])
+
+  const stopViewing = useCallback(() => {
+    sessionStorage.removeItem('lob_view')
+    setViewing(null)
+    // drop the param too, or a reload of the same url would open the view again
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('view')) {
+      url.searchParams.delete('view')
+      window.history.replaceState(window.history.state, '', url)
+    }
+  }, [])
 
   useEffect(() => {
     if (kitInitialised) return
@@ -141,6 +181,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           : await StellarWalletsKit.authModal()
         const mod = StellarWalletsKit.selectedModule
         const picked = mod?.productName || 'Stellar Wallet'
+        // connecting a wallet ends any read-only view, so the pages show that wallet
+        stopViewing()
         setAddress(addr)
         setWalletName(picked)
         localStorage.setItem('lob_addr', addr)
@@ -171,7 +213,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setConnecting(false)
       }
     },
-    [toast],
+    [toast, stopViewing],
   )
 
   const connect = useCallback(async () => {
@@ -197,7 +239,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ address, walletName, walletId, connecting, connect, connectWalletConnect, walletConnectEnabled, disconnect }}
+      value={{
+        address: viewing ?? address,
+        viewing,
+        view,
+        stopViewing,
+        walletName,
+        walletId,
+        connecting,
+        connect,
+        connectWalletConnect,
+        walletConnectEnabled,
+        disconnect,
+      }}
     >
       {children}
     </Ctx.Provider>

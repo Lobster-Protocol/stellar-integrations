@@ -23,9 +23,23 @@ async function assertSameNetwork(expected: string): Promise<void> {
   }
 }
 
+// a read-only view borrows an address that no wallet here holds, so nothing goes to
+// the kit while one is open, whatever screen asks
+let viewing: string | null = null
+
+export function setViewingAddress(address: string | null) {
+  viewing = address
+}
+
 export const walletKitSigner: Signer = {
   name: 'wallet-kit',
   async signTransaction(xdr: string, opts: SignOpts) {
+    if (viewing) {
+      throw new Error(
+        `This is a read-only view of ${viewing.slice(0, 4)}...${viewing.slice(-4)}. ` +
+          'Leave it and connect a wallet to sign.',
+      )
+    }
     await assertSameNetwork(opts.networkPassphrase)
     try {
       const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, opts)

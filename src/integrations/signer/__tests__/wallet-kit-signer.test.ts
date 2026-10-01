@@ -6,7 +6,7 @@ vi.mock('@creit-tech/stellar-wallets-kit', () => ({
   StellarWalletsKit: { signTransaction: signTransactionMock, getNetwork: getNetworkMock },
 }))
 
-import { walletKitSigner } from '../wallet-kit-signer'
+import { walletKitSigner, setViewingAddress } from '../wallet-kit-signer'
 
 const PASSPHRASE = 'Test SDF Network ; September 2015'
 const ACCOUNT = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
@@ -61,6 +61,20 @@ describe('walletKitSigner', () => {
 
   it('still signs with a wallet that cannot say which network it is on', async () => {
     getNetworkMock.mockRejectedValueOnce({ code: -3, message: 'not supported' })
+    signTransactionMock.mockResolvedValueOnce({ signedTxXdr: 'SIGNED' })
+    const r = await walletKitSigner.signTransaction('RAW', { networkPassphrase: PASSPHRASE, address: ACCOUNT })
+    expect(r).toEqual({ signedTxXdr: 'SIGNED' })
+  })
+
+  it('refuses to reach the wallet while a read-only view is open, and signs again once it is left', async () => {
+    const VIEWED = 'GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS'
+    setViewingAddress(VIEWED)
+    await expect(
+      walletKitSigner.signTransaction('RAW', { networkPassphrase: PASSPHRASE, address: VIEWED }),
+    ).rejects.toThrow('This is a read-only view of GA3F...OXCS. Leave it and connect a wallet to sign.')
+    expect(signTransactionMock).not.toHaveBeenCalled()
+
+    setViewingAddress(null)
     signTransactionMock.mockResolvedValueOnce({ signedTxXdr: 'SIGNED' })
     const r = await walletKitSigner.signTransaction('RAW', { networkPassphrase: PASSPHRASE, address: ACCOUNT })
     expect(r).toEqual({ signedTxXdr: 'SIGNED' })
