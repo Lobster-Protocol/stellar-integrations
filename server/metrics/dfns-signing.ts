@@ -1,4 +1,4 @@
-import { dfnsApprovals } from './registry'
+import { dfnsApprovals, dfnsApprovalsReadAt } from './registry'
 import { getDfnsClient } from '../dfns/client'
 
 const STATUSES = ['Pending', 'Approved', 'Denied', 'Expired'] as const
@@ -15,6 +15,7 @@ export async function refreshDfnsApprovalMetrics(
     }
     dfnsApprovals.set({ status: status.toLowerCase() }, items.length)
   }
+  dfnsApprovalsReadAt.set(Date.now() / 1000)
 }
 
 // unref'd so the timer never holds the process open.

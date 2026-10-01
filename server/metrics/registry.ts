@@ -10,7 +10,9 @@ export const httpDuration = new Histogram({
   name: 'http_request_duration_seconds',
   help: 'relay request duration in seconds',
   labelNames: ['method', 'route', 'status_code'],
-  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  // 1.5 and 2 sit around the 2 s alert line, so a p99 near it reads off real
+  // buckets instead of being drawn up toward 2.5
+  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 1.5, 2, 2.5, 5],
   registers: [registry],
 })
 
@@ -20,6 +22,14 @@ export const dfnsApprovals = new Gauge({
   name: 'lobster_dfns_approvals',
   help: 'DFNS policy approvals by status',
   labelNames: ['status'],
+  registers: [registry],
+})
+
+// a failed read leaves the counts above as they were, so a stuck zero and a real
+// zero look the same; this says when they were last read in full
+export const dfnsApprovalsReadAt = new Gauge({
+  name: 'lobster_dfns_approvals_read_timestamp_seconds',
+  help: 'unix time of the last complete read of DFNS approvals',
   registers: [registry],
 })
 
