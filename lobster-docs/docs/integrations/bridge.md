@@ -72,9 +72,9 @@ actually takes, not the ceiling.
 Circle's forwarding request in the hook (`cctp-forward`, then zeros) and a
 `max_fee` from `/v2/burn/USDC/fees/27/{dst}?forward=true`. Circle keeps all of
 it: what goes over the real cost buys priority on the destination chain and is
-not refunded. The form shows that fee before anything is signed, around 0.05
-USDC to Base or Arbitrum and more to Ethereum, and nothing has to be signed on
-the EVM side.
+not refunded. The form shows that fee before anything is signed, around 0.05 to
+0.10 USDC to Base or Arbitrum and about 2 USDC to Ethereum, and nothing has to be
+signed on the EVM side.
 
 **The EVM wallet receives it.** No fee to Circle. Once Circle has signed, the
 connected EVM wallet calls `receiveMessage(message, attestation)` on Circle's
@@ -84,9 +84,8 @@ own mint fails or stalls: the transfer page offers it after a few minutes.
 Stellar's USDC has 7 decimals and CCTP carries 6, so the form refuses a 7th
 decimal rather than leaving Circle's converter to drop it.
 
-With DFNS custody on, nothing leaves the treasury from here: the relay signs the
-treasury's trustline and deliveries into it, not burns out of it. A connected
-browser wallet sends instead.
+With DFNS custody on, nothing leaves the treasury from here: the relay never signs
+a burn out of it. A connected browser wallet sends instead.
 
 ## Chains
 
@@ -94,6 +93,12 @@ Base, Arbitrum and Ethereum, and their Sepolia testnets. Circle's contracts sit
 at the same address on every EVM chain of a network, and every id we use was
 read back from the chains themselves. They live in `src/config/contracts.ts`
 under `cctp` and `CCTP_SOURCE_CHAINS`. Stellar is CCTP domain 27.
+
+BNB Chain is not on the list. Circle runs CCTP there as domain 17, but Stellar's
+TokenMessengerMinter has no remote messenger for domain 17, on mainnet or testnet
+(`get_remote_token_messenger(17)` comes back empty), so a burn on BNB Chain could
+never be minted on Stellar. Avalanche, OP and Polygon are wired to Stellar the
+same way the three chains above are.
 
 On testnet, the USDC that CCTP mints is Circle's test asset, issuer
 `GBBD47IF...LFLA5`. It is not the test USDC the Soroswap pools use, so it has its

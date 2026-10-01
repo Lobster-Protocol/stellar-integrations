@@ -388,8 +388,8 @@ export default function BridgeFromStellar({
       )}
       {custodyMode === 'dfns' && (
         <Hint>
-          The DFNS treasury cannot send from here: its relay signs deliveries into it, not burns out of it. This sends
-          from the connected browser wallet.
+          The DFNS treasury cannot send from here: its relay never signs a burn out of it. This sends from the
+          connected browser wallet.
         </Hint>
       )}
 
