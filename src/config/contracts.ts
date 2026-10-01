@@ -177,7 +177,7 @@ export const ALLBRIDGE_CORE_API = 'https://api.core.allbridge.io'
 // Circle's number for Stellar
 export const STELLAR_CCTP_DOMAIN = 27
 
-// fast pays a few bps and lands in about a minute. standard is free but waits
+// fast pays a few bps and arrives in about a minute. standard is free but waits
 // for finality, usually 15 to 30 min. Circle keys its fee table by these.
 export const CCTP_FINALITY = { fast: 1000, standard: 2000 } as const
 export type CctpFinality = keyof typeof CCTP_FINALITY

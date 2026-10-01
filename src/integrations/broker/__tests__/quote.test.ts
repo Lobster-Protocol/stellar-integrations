@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { estimateSwap, StellarBrokerError } = vi.hoisted(() => {
   const fn = vi.fn()
-  // mirrors the real sdk error: a numeric `code`, and `name` left as 'Error'
+  // same shape as the real sdk error: a numeric `code`, and `name` left as 'Error'
   // (the sdk never sets it), so detection has to key off the code.
   class Err extends Error {
     readonly code: number

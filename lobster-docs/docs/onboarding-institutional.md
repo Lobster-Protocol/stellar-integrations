@@ -33,7 +33,7 @@ The shape is approve, then burn on the source chain, then wait for Circle's
 signature, then one call on Stellar that delivers. That last call needs no
 signature from the account being paid, so a desk whose treasury never signs from
 a browser can still receive: whoever pays the network fee can submit it. A fast
-transfer costs a few basis points and lands in about a minute. A standard one is
+transfer costs a few basis points and arrives in about a minute. A standard one is
 free and waits for the source chain to finalise.
 
 This leg was first built on Allbridge Core. Allbridge has since removed its

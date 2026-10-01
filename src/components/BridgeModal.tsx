@@ -84,7 +84,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   const onOutStage = useCallback((s: OutStage) => setOutStage(s), [])
   const { address: stellarAddr, connect: connectStellar, connecting: stellarConnecting } = useWallet()
   const { mode: custodyMode, dfnsAddress, signer: custodySigner } = useCustody()
-  // under DFNS custody the USDC lands in the treasury. The delivery needs no
+  // under DFNS custody the USDC goes to the treasury. The delivery needs no
   // signature from it, so a connected browser wallet pays that fee instead
   const treasury = custodyMode === 'dfns' ? dfnsAddress : null
   const receiving = treasury ?? stellarAddr
@@ -680,7 +680,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
                 hands it out for free.
               </Hint>
             )}
-            {!receiving && <Hint>Connect a Stellar wallet first. The USDC lands in that account.</Hint>}
+            {!receiving && <Hint>Connect a Stellar wallet first. The USDC arrives in that account.</Hint>}
 
             <button
               onClick={handleBridge}

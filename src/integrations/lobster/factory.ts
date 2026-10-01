@@ -50,7 +50,7 @@ async function readContract<T = unknown>(
     throw new Error(`Factory.${method} simulation failed: ${sim.error}`)
   }
   if (rpc.Api.isSimulationRestore(sim)) {
-    // a read can't run the restore itself, so surface the archived state as an
+    // a read can't run the restore itself, so report the archived state as an
     // error for the ui to catch (the write path returns the preamble instead).
     throw new RestoreRequiredError(sim.restorePreamble)
   }

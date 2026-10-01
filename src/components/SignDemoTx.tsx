@@ -155,7 +155,7 @@ export default function SignDemoTx() {
             rule first, and the buttons deliberately land on both sides of it. The rule allows a
             payment to an address on the treasury list and holds everything else for a named
             approver. The first payment button asks DFNS to build the payment, so it can read the
-            recipient, see our own address and let it through: the hash lands in seconds with nobody
+            recipient, see our own address and let it through: the hash comes back in seconds with nobody
             in the loop. The other buttons hand DFNS a signed envelope instead, which it cannot read
             a recipient out of, so the policy holds those for approval; on this demo the relay
             approves them automatically, so they finish here too. Every one of them pays the treasury

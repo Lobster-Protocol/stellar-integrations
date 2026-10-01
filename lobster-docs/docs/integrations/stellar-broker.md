@@ -25,7 +25,7 @@ in both `vite.config.ts` and `vitest.config.ts`.
    same size on the direct route and the gap between them, which is the whole
    point of asking the broker.
 
-Confirming through the broker is not wired in the dashboard. `confirmQuote`
+The dashboard does not confirm through the broker. `confirmQuote`
 needs a quote set over the broker trading socket, and a keyless quote never sets
 one, so the confirm always failed and the leg was taken out. The broker answer is
 a live price reference; the signable route is the direct Soroswap one below.
@@ -56,7 +56,7 @@ network and whether a partner key and a router address exist for it.
 The broker is mainnet only. There's no testnet broker to point at, so the
 best-execution comparison only appears when the network toggle is on mainnet.
 
-Soroswap does run on testnet. The testnet factory and router are wired in
+Soroswap does run on testnet. The testnet factory and router are set in
 `src/config/contracts.ts`, along with three extra swap tokens on top of XLM and
 USDC, each with a Soroswap pool that actually fills. So the direct route
 executes on either network, and on testnet routing goes straight to it. Aquarius
