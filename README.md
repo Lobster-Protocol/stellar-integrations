@@ -8,10 +8,24 @@ around the analytics engine.
 
 Live: https://stellar-instit.lobster-protocol.com
 
-## Contracts (testnet)
+## Contracts
 
 The Soroban contracts come from [Lobster-Protocol/Stellar](https://github.com/Lobster-Protocol/Stellar)
-(our 2025 Build Award). They're deployed and callable on testnet.
+(our 2025 Build Award), whose source rebuilds the mainnet wasm byte for byte.
+
+### Mainnet
+
+| what | link |
+| --- | --- |
+| Factory, admin handed to the DFNS treasury | [`CAFGQVKF...MCR5`](https://stellar.expert/explorer/public/contract/CAFGQVKFCZITN7UJUOIJPMULGZRUR7RXG6DAYJ2VBGIGFWHHFGR6MCR5) |
+| first vault, XLM/USDC, working in the Soroswap pool | [`CBEWCQWM...WGQ4`](https://stellar.expert/explorer/public/contract/CBEWCQWMKYRBHN2H6GIEYQS4UACN3DHC3KUXHX5F3AOZAKCG5VI7WGQ4) |
+
+The dashboard reads both with no wallet:
+[the factory and its vaults](https://stellar-instit.lobster-protocol.com/audit?network=mainnet), and
+[the vault's position](https://stellar-instit.lobster-protocol.com/positions?network=mainnet&view=GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS),
+opened read-only on its owner.
+
+### Testnet
 
 Aquarius has no testnet deployment, so its router only has a `mainnet` entry in
 `src/config/contracts.ts`. Soroswap and Circle's CCTP contracts run on both
@@ -36,8 +50,8 @@ stellar contract invoke --id CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRP
 ## Transactions
 
 Best-execution routing goes through Stellar Broker, which only runs on mainnet,
-so the routing transactions are mainnet. The DFNS custody ones are on testnet, and
-so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
+so the routing transactions are mainnet. The DFNS policy rows are on testnet, the
+vault rows on mainnet, and the bridge rows on both.
 
 | what | link |
 | --- | --- |
@@ -47,6 +61,7 @@ so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
 | Soroswap swap signed by DFNS MPC on mainnet, no broker in the path | [`056593f3`](https://stellar.expert/explorer/public/tx/056593f3a49c5c6011af6732f95b9f5f928ba0707024547a6e4d09f61f336fa5) |
 | the Lobster factory deployed on mainnet, admin then handed to the DFNS treasury | [`43bd8748`](https://stellar.expert/explorer/public/tx/43bd8748235bf1728633265c5544cf1701fca1b70646c8cf79a6147ffdf91eb9), [`f27dd796`](https://stellar.expert/explorer/public/tx/f27dd796fc6eea4a831a7c80140e4b08cfe698d6fdb8579c48c552970cf96b54) |
 | the vault code the factory deploys per pool, and the factory code, uploaded to mainnet | [`ed5f7257`](https://stellar.expert/explorer/public/tx/ed5f7257925eae08befbdf4ec5bdb6f55d75363f15b6b3d9a7728dddb21f96d9), [`bb6b7306`](https://stellar.expert/explorer/public/tx/bb6b73068fd12b0f0c8547b5916789f2fbfe7677373f99affaeb59d72c3b6379) |
+| the first mainnet vault: created by the factory, 5 XLM and 1.09 USDC deposited, then put into the Soroswap XLM/USDC pool | [`a5dd6610`](https://stellar.expert/explorer/public/tx/a5dd6610477b103aa860df1caa2f4bd737f9ca8111fa4e07213bd00e583fd38b), [`d9936ee5`](https://stellar.expert/explorer/public/tx/d9936ee57f8719a2fff41c01eb1efe08526d775ffd85c1593bd9e47d9f96c6cb), [`e845c924`](https://stellar.expert/explorer/public/tx/e845c924538dd130f5a9a385b9bf82e9ffc893ec8a4cbd83d1a3312ba9038afc) |
 | Soroban call signed by DFNS MPC, not a local key. `get_admin` on the Factory, held for an approver and released by one | [`96f4bcfe`](https://stellar.expert/explorer/testnet/tx/96f4bcfe2e72cac9a6f2ddd06946d47b55ea340664798dade7c71ff41bbb7d4a) |
 | the same Soroban call, first run | [`bd5db00a`](https://stellar.expert/explorer/testnet/tx/bd5db00a38a40327cdf906f27af94afcce39e679fd81d01a93bacf3479f3ef41) |
 | DFNS policy, cleared with no approver because the recipient is on the list. Sent from the dashboard button, not a script | [`dcd63f56`](https://stellar.expert/explorer/testnet/tx/dcd63f560a2c2e08da057dbc7ba294819875fb1043893dfe1e53a3847abb1f88) |
@@ -56,6 +71,9 @@ so are the bridge ones: USDC burned on a Sepolia chain, delivered on Stellar.
 | USDC bridged in from Base Sepolia with Circle CCTP, started from the dashboard: the burn | [`0xeb55104a`](https://sepolia.basescan.org/tx/0xeb55104ab1c068141de1677f6e96d2ca6fef09956c29be3f0ef9fb31e31b31cd) |
 | the same transfer delivered on Stellar, `mint_and_forward` signed by the receiving wallet | [`d0a761b9`](https://stellar.expert/explorer/testnet/tx/d0a761b9bcf05802c832f5abb7b4b148328c0bfe172149ad04415aee8fa91b4c) |
 | a standard transfer from Ethereum Sepolia, no fee, delivered whole: burn, then delivery | [`0xf92c8225`](https://sepolia.etherscan.io/tx/0xf92c8225e4508f7225cebc7b1898d9cbb886c114a1197c2d8856a005242af534), [`ac28bbce`](https://stellar.expert/explorer/testnet/tx/ac28bbcee0bed070c158207288c854c354eba4086d6a6e39a33c6a1799c1c4da) |
+| mainnet, USDC from Ethereum, fast, started from the dashboard: burn, then delivery | [`0xdba8433c`](https://etherscan.io/tx/0xdba8433c55b5e0a920d243c983f7e3958e1bf2805c4eb53fa6b175be78873edc), [`93449e9b`](https://stellar.expert/explorer/public/tx/93449e9bb91c5d374daffd1bdfb14d814d1ddee59dd55e06cc182f16ded786f5) |
+| mainnet, USDC burned on Base and delivered into the DFNS treasury from the dashboard's finish-by-hash form: burn, then delivery | [`0xae5683b0`](https://basescan.org/tx/0xae5683b030dae869d9f0110e4d5ea7abb1d6860ceef6dbeeaf66de8ce8e4b4cc), [`c1c40432`](https://stellar.expert/explorer/public/tx/c1c404321298c6be0692ad699be092a324af0c401dab8783de07f5eb3fc37482) |
+| mainnet, USDC out of Stellar from the bridge test account: the burn on Stellar, then the mint Circle sent on Arbitrum | [`a1c5776a`](https://stellar.expert/explorer/public/tx/a1c5776a6eb373dc54409f1de75c4ba0484b779db43ced4d3bfc85270801e774), [`0x534ab68e`](https://arbiscan.io/tx/0x534ab68eee614244af2497a0978fe01edcd9c1209d6f4ae0128be2a42091e9ae) |
 
 Every hash above except `f5a3533f` is sourced from a wallet we control: the DFNS
 treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, the deployer
