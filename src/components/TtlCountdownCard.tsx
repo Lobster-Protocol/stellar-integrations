@@ -18,11 +18,14 @@ const LEVEL_STYLE: Record<TtlLevel, { text: string; label: string; icon: LucideI
 }
 
 // the feed returns each watched entry as a base64 ledger key. decode the key
-// type so a reader sees "Contract instance" instead of opaque base64.
-function keyLabel(keyXdr: string): string {
+// type so a reader sees "Contract instance" instead of opaque base64. the code the
+// factory deploys per vault gets its own name, or two rows would read the same.
+function keyLabel(keyXdr: string, vaultWasmHash: string): string {
   try {
     const k = xdr.LedgerKey.fromXDR(keyXdr, 'base64')
-    if (k.switch().name === 'contractCode') return 'Contract code'
+    if (k.switch().name === 'contractCode') {
+      return k.contractCode().hash().toString('hex') === vaultWasmHash ? 'Vault code' : 'Contract code'
+    }
     if (k.switch().name === 'contractData') {
       const cd = k.contractData()
       if (cd.key().switch().name === 'scvLedgerKeyContractInstance') return 'Contract instance'
@@ -125,7 +128,7 @@ export default function TtlCountdownCard() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <Icon size={13} className={`shrink-0 ${style.text}`} aria-hidden />
-                  <span className="text-text truncate" title={s.key}>{keyLabel(s.key)}</span>
+                  <span className="text-text truncate" title={s.key}>{keyLabel(s.key, CONTRACTS[network].lobster.wasmHash)}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`text-[10px] ${style.text}`}>{style.label}</span>

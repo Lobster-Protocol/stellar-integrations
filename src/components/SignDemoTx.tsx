@@ -203,7 +203,7 @@ export default function SignDemoTx() {
         </p>
       ) : network === 'mainnet' ? (
         <p className="text-xs text-coral">
-          The Factory isn't on mainnet yet. Switch to testnet to send a real transaction.
+          This demo only sends on testnet. Switch to testnet to send a real transaction.
         </p>
       ) : (
         <div className="space-y-3">
