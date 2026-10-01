@@ -1,15 +1,17 @@
 # Stellar Broker
 
 Stellar Broker routes a swap across several Stellar DEXs and bundles the legs
-into one ledger, so there's no price gap between them. Lobster calls it for the
-trade step of a strategy, with a direct Soroswap path as the fallback.
+into one ledger, so there's no price gap between them. Lobster asks it for the
+best route on every mainnet swap and shows that route next to the direct Soroswap
+one. The direct route is the one your wallet signs.
 
 ## Setup
 
 `@stellar-broker/client` gets a quote over plain https with no key, and trades
 over a WebSocket it opens on the same https origin. That socket needs a partner
-key. Without one, routing treats the broker answer as a price reference and runs
-the swap on the fallback. The package main field points at a file the bundle
+key, and the swap panel never opens it: the broker answer is a price reference and
+the swap runs on the direct Soroswap route, whether or not the build carries a
+partner key. The package main field points at a file the bundle
 doesn't ship, so the build aliases the import to the esm source. That alias is
 in both `vite.config.ts` and `vitest.config.ts`.
 
@@ -42,14 +44,15 @@ as parallel transactions aimed at the same ledger.
 Not every quote is multi-DEX. A small amount often routes through a single pool,
 and it takes a larger size before the path crosses two venues.
 
-## Fallback
+## The signed route
 
-No route from the broker, a failed connection, no partner key: on any of those,
-routing calls the Soroswap router directly through `@stellar/stellar-sdk`, with
+The swap calls the Soroswap router directly through `@stellar/stellar-sdk`, with
 no broker SDK in the path. It quotes with `router_get_amounts_out` and swaps with
-`swap_exact_tokens_for_tokens`, with a minimum-out floor that refuses a zero.
-Nothing pings the broker for health. The choice is made locally, off the selected
-network and whether a partner key and a router address exist for it.
+`swap_exact_tokens_for_tokens`, with a minimum-out floor that refuses a zero. A
+broker that has no route, fails to answer or quotes something the guards reject
+only takes the comparison away; the swap itself is unaffected. Nothing pings the
+broker for health. What shows is decided locally, off the selected network and
+whether a router address exists for it.
 
 ## Networks
 
@@ -66,5 +69,6 @@ has no testnet deployment and stays empty there.
 
 The client, quote, swap, asset mapping, chain guard and Soroswap fallback are all
 under `src/integrations/broker/`. One directory over, `src/integrations/routing/`
-has the orchestrator that tries the broker and drops to the fallback. Router and
+has the orchestrator that asks the broker for its quote and builds the Soroswap
+leg next to it. Router and
 endpoint addresses come from `src/config/contracts.ts`, per network.

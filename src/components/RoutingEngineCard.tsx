@@ -38,7 +38,7 @@ export default function RoutingEngineCard() {
         }
         note={
           network === 'mainnet'
-            ? 'Swaps try Stellar Broker first. It looks across the exchanges below for the best-priced route and sends the steps together. If the broker cannot find a route or is unavailable, the swap goes straight to Soroswap instead.'
+            ? 'Stellar Broker prices each swap across the exchanges below, and the swap panel shows its best route next to the direct one. The swap itself goes through the Soroswap router, which is what your wallet signs.'
             : 'Stellar Broker runs on mainnet, so on testnet swaps go straight to Soroswap. The exchanges below are what the broker compares on mainnet.'
         }
         meta={<span className="text-xs text-text-muted">{network}</span>}

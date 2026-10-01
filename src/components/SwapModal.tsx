@@ -425,22 +425,6 @@ export default function SwapModal({ open, onClose }: Props) {
 
           {!address ? (
             <p className="text-xs text-text-muted">Connect a Stellar wallet to confirm.</p>
-          ) : source === 'broker' ? (
-            <>
-              <button
-                type="button"
-                disabled
-                className="w-full px-4 py-2 rounded-full bg-primary text-white text-sm font-semibold opacity-40 cursor-not-allowed"
-              >
-                Cannot be signed from here
-              </button>
-              <p className="text-xs text-text-muted">
-                Live best-execution quote from Stellar Broker, comparing Soroswap, Aquarius and
-                Phoenix. The dashboard prices this route but does not sign it: signing a broker
-                route is not switched on here. Pick a pair that routes through Soroswap to trade
-                from this panel.
-              </p>
-            </>
           ) : source === 'soroswap-fallback' ? (
             <>
               {multi && signingQ.data && !coSign && (

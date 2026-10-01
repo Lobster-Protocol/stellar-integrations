@@ -48,7 +48,7 @@ beforeEach(() => {
 })
 
 describe('routeSwap', () => {
-  it('returns broker source when broker quote validates', async () => {
+  it('keeps a valid broker quote as the reference and still routes through soroswap when the build has a partner key', async () => {
     quoteBrokerMock.mockResolvedValueOnce({
       ts: new Date(),
       status: 'success',
@@ -59,8 +59,11 @@ describe('routeSwap', () => {
       estimatedBuyingAmount: '23.45',
       profit: '0.05',
     })
+    quoteSoroswapMock.mockResolvedValueOnce(234_500_000n)
     const r = await routeSwap(VALID_PARAMS, CTX)
-    expect(r.source).toBe('broker')
+    // the swap panel can only sign the soroswap leg, so that is the route
+    expect(r.source).toBe('soroswap-fallback')
+    expect(r.soroswap?.buyingStroops).toBe(234_500_000n)
     expect(r.broker?.status).toBe('success')
   })
 

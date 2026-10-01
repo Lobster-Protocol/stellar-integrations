@@ -7,7 +7,7 @@ import { type Network } from '../../config/contracts'
 import type { BrokerQuoteParams, BrokerQuoteResult } from '../broker/types'
 import { getRoutingHealth } from './health'
 
-export type RouteSource = 'broker' | 'soroswap-fallback' | 'none'
+export type RouteSource = 'soroswap-fallback' | 'none'
 
 export interface RouteResult {
   source: RouteSource
@@ -22,15 +22,15 @@ export async function routeSwap(
 ): Promise<RouteResult> {
   const health = getRoutingHealth(ctx.network)
 
-  // quoting is keyless: with the partner key the quote is the route, without it
-  // the quote rides along as a best-execution reference next to the soroswap leg
+  // the broker quote rides along as a best-execution reference next to the soroswap
+  // leg. the swap panel cannot sign a broker route, so the quote never becomes the
+  // route, partner key or not: otherwise no mainnet pair could be swapped at all.
   let broker: BrokerQuoteResult | undefined
   if (health.brokerQuoteEnabled) {
     try {
       const quote = await quoteBroker(params)
       if (quote && quote.status === 'success' && validateBrokerQuote(quote).ok) {
         broker = quote
-        if (health.brokerEnabled) return { source: 'broker', broker }
       }
     } catch {
       // an unsupported pair, a sub-minimum amount or a down endpoint must not sink
