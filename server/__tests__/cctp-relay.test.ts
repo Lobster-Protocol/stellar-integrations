@@ -158,12 +158,16 @@ describe('cctp routes', () => {
 
   it('names the Stellar side a burn has to pay', async () => {
     const res = await appWith().request('/cctp/chains?network=testnet')
-    const body = (await res.json()) as { stellar: { forwarder: string; usdcIssuer: string; usdcSac: string } }
+    const body = (await res.json()) as { stellar: Record<string, unknown>; directions: string[] }
     expect(body.stellar).toEqual({
+      domain: 27,
       forwarder: CONTRACTS.testnet.cctp.forwarder,
       usdcIssuer: CONTRACTS.testnet.cctp.usdcIssuer,
       usdcSac: CONTRACTS.testnet.cctp.usdcSac,
+      tokenMessengerMinter: CONTRACTS.testnet.cctp.tokenMessengerMinter,
+      messageTransmitter: CONTRACTS.testnet.cctp.messageTransmitter,
     })
+    expect(body.directions).toEqual(['to-stellar', 'from-stellar'])
   })
 
   it('refuses an unknown network', async () => {
@@ -196,5 +200,70 @@ describe('cctp routes', () => {
     process.env.CCTP_RELAY_SECRET = Keypair.random().secret()
     irisAnswers(404, {})
     expect((await deliverTo(appWith(), SOMEONE_ELSE)).status).toBe(404)
+  })
+
+  describe('a burn out of Stellar', () => {
+    const STELLAR_TX = 'a1c5776a6eb373dc54409f1de75c4ba0484b779db43ced4d3bfc85270801e774'
+    // the real Stellar to Arbitrum message of that transaction, which asked Circle to mint it
+    const OUT_MESSAGE =
+      '0x000000010000001b00000003a34fdbf748c947c73e47b197a5abe4046809981588c06fdcd17b08776485661f' +
+      '09a3773ffd1ff361f8315d629adf17d3e4730fd00a6900715431ed4b142aded2' +
+      '00000000000000000000000028b5a0e9c621a5badaa536219b3a228c8168cf5d' +
+      '0000000000000000000000000000000000000000000000000000000000000000' +
+      '000003e8000007d000000001adefce59aee52968f76061d494c2525b75659fa4296a65f499ef29e56477e496' +
+      '000000000000000000000000dcd592a255323772f9b1ef5db83d2a0cfcf91a37' +
+      '00000000000000000000000000000000000000000000000000000000004c4b40' +
+      '85d37194016083293261835add9eda95c79822b8f828f2afc4141c19f758e3c3' +
+      '0000000000000000000000000000000000000000000000000000000000027f5c' +
+      '0000000000000000000000000000000000000000000000000000000000027f5c' +
+      '0000000000000000000000000000000000000000000000000000000000000000' +
+      '636374702d666f72776172640000000000000000000000000000000000000000'
+
+    it('decodes who it pays on the EVM side and whether Circle has minted it', async () => {
+      const fn = irisAnswers(200, {
+        messages: [
+          {
+            message: OUT_MESSAGE,
+            attestation: `0x${'47'.repeat(130)}`,
+            eventNonce: '0xa34f',
+            cctpVersion: 2,
+            status: 'complete',
+            forwardState: 'COMPLETE',
+            forwardTxHash: `0x${'53'.repeat(32)}`,
+          },
+        ],
+      })
+      const res = await appWith().request(`/cctp/message?network=mainnet&domain=27&txHash=0x${STELLAR_TX}`)
+      const body = (await res.json()) as Record<string, unknown>
+      expect(res.status).toBe(200)
+      expect(body).toMatchObject({
+        state: 'attested',
+        sourceDomain: 27,
+        destinationDomain: 3,
+        recipient: '0xdcd592a255323772f9b1ef5db83d2a0cfcf91a37',
+        amount: '5000000',
+        amountToLand: '4836324',
+        forwardState: 'COMPLETE',
+        forwardTxHash: `0x${'53'.repeat(32)}`,
+      })
+      // Circle files a Stellar burn under its bare hash
+      expect(String((fn.mock.calls[0] as unknown[])[0])).toContain(`transactionHash=${STELLAR_TX}`)
+    })
+
+    it('refuses a hash that is not a Stellar transaction', async () => {
+      expect((await appWith().request('/cctp/message?network=mainnet&domain=27&txHash=abcd')).status).toBe(400)
+    })
+
+    it("quotes what Circle charges to mint it on the chain asked for", async () => {
+      irisAnswers(200, [{ finalityThreshold: 2000, minimumFee: 0, forwardFee: { low: 1, med: 2, high: 80249 } }])
+      const res = await appWith().request('/cctp/fees?network=mainnet&domain=27&destination=3')
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ sourceDomain: 27, destinationDomain: 3, forwardFee: '80249', bps: 0 })
+    })
+
+    it('needs a destination it carries USDC to', async () => {
+      expect((await appWith().request('/cctp/fees?network=mainnet&domain=27')).status).toBe(400)
+      expect((await appWith().request('/cctp/fees?network=mainnet&domain=27&destination=27')).status).toBe(400)
+    })
   })
 })

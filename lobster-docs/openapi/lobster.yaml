@@ -340,10 +340,10 @@ paths:
   /cctp/chains:
     get:
       tags: [cctp]
-      summary: Source chains the bridge burns USDC on
+      summary: The EVM chains the bridge carries USDC between Stellar and
       description: >
-        The EVM chains Circle CCTP can bring USDC from, with the contracts a
-        burn goes through. Stellar is CCTP domain 27.
+        The EVM chains Circle CCTP carries USDC from and back to, with the
+        contracts each side goes through. Stellar is CCTP domain 27.
       security: []
       parameters:
         - name: network
@@ -351,15 +351,18 @@ paths:
           required: true
           schema: { type: string, enum: [testnet, mainnet] }
       responses:
-        '200': { description: "destinationDomain; stellar with the forwarder a burn names as mintRecipient and destinationCaller, and Circle's USDC issuer and SAC; items with key, name, domain, chainId, usdc, tokenMessenger" }
+        '200': { description: "destinationDomain; stellar with its domain, the forwarder a burn into Stellar names as mintRecipient and destinationCaller, Circle's USDC issuer and SAC, and the TokenMessengerMinter and MessageTransmitter a burn out of Stellar goes through; directions; items with key, name, domain, chainId, usdc, tokenMessenger, messageTransmitter" }
         '400': { description: network must be testnet or mainnet }
   /cctp/fees:
     get:
       tags: [cctp]
-      summary: Circle's fees from a source chain to Stellar
+      summary: Circle's fees, either way
       description: >
-        Basis points for a fast transfer and for a standard one, read live from
-        Circle. A null fastBps means Circle offers no fast route from there.
+        Into Stellar, basis points for a fast transfer and for a standard one,
+        read live from Circle; a null fastBps means Circle offers no fast route
+        from there. Out of Stellar (domain 27 with a destination), what Circle
+        charges to mint the USDC on that chain itself, in 6-decimal units. Circle
+        keeps all of it.
       security: []
       parameters:
         - name: network
@@ -370,10 +373,15 @@ paths:
           in: query
           required: true
           schema: { type: integer }
-          description: CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base
+          description: CCTP domain of the chain that burns, 0 Ethereum, 3 Arbitrum, 6 Base, 27 Stellar
+        - name: destination
+          in: query
+          required: false
+          schema: { type: integer }
+          description: with domain 27, the EVM chain the USDC goes to
       responses:
-        '200': { description: "fastBps and standardBps" }
-        '400': { description: not a source chain we burn from }
+        '200': { description: "fastBps and standardBps; with domain 27, sourceDomain, destinationDomain, forwardFee and bps" }
+        '400': { description: not a chain we carry USDC from or to }
         '502': { description: Circle did not answer }
   /cctp/message:
     get:
@@ -381,9 +389,12 @@ paths:
       summary: Where a burn stands, and who it pays
       description: >
         Asks Circle for the message behind a burn and decodes it. Pending until
-        Circle has signed. Once signed it gives the Stellar account the transfer
-        pays, the amount burned and the amount that lands after Circle's fee, in
-        6-decimal units.
+        Circle has signed. Once signed it gives the account the transfer pays,
+        a Stellar account on the way in and an EVM address on the way out, the
+        amount burned and the amount that lands after Circle's fee, in 6-decimal
+        units. Out of Stellar it also gives Circle's own mint, forwardState and
+        forwardTxHash, and the message and attestation an EVM wallet submits to
+        receiveMessage when it mints the USDC itself.
       security: []
       parameters:
         - name: network
@@ -398,9 +409,9 @@ paths:
           in: query
           required: true
           schema: { type: string }
-          description: the EVM burn transaction hash
+          description: the burn transaction hash, 0x plus 64 hex on an EVM chain, 64 hex on Stellar
       responses:
-        '200': { description: "state pending with delayReason, or state attested with recipient, amount, amountToLand, feeExecuted, expirationLedger" }
+        '200': { description: "state pending with delayReason, or state attested with recipient, amount, amountToLand, feeExecuted, expirationLedger; out of Stellar also forwardState, forwardTxHash, message and attestation" }
         '400': { description: "bad network, domain or hash" }
         '502': { description: Circle did not answer }
   /cctp/deliver:
