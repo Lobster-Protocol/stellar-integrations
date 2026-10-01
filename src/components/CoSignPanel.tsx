@@ -124,10 +124,14 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
       onSubmitted(hash)
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'submit failed'
+      // horizon rejects with the axios error, whose message is just the http status.
+      // the tx result code is in the response body.
+      const code = (e as { response?: { data?: { extras?: { result_codes?: { transaction?: string } } } } } | null)
+        ?.response?.data?.extras?.result_codes?.transaction
       // the signatures cover one sequence number. if another tx from this account
       // used it meanwhile, this envelope is dead and has to be built again.
       setErr(
-        /bad.?seq|tx_bad_seq|sequence/i.test(raw)
+        code === 'tx_bad_seq' || /bad.?seq|tx_bad_seq|sequence/i.test(raw)
           ? 'Another transaction already used this account sequence number while this one was being signed. This one cannot go through. Build it again from a fresh transaction.'
           : raw.split('\n')[0].slice(0, 180),
       )

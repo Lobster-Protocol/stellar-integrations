@@ -98,9 +98,10 @@ export default function SharedControl() {
             {building ? 'Building the change...' : 'Turn off shared control'}
           </button>
           <p className="text-[11px] text-text-muted mt-2">
-            Turning it off changes the account's signers, which needs the same quorum: sign with this
-            wallet, then with the other signer (or paste their signed copy). Once it lands, the account
-            is single-sig again and the co-sign step disappears from swaps and deposits.
+            Turning it off changes the account's signers, which needs its high threshold, so every
+            signer may have to sign: start with this wallet, then gather the other signatures (or paste
+            their signed copies). Once it lands, the account is single-sig again and the co-sign step
+            disappears from swaps and deposits.
           </p>
           {err && <p className="text-xs text-coral break-words mt-2">{err}</p>}
         </>
