@@ -13,7 +13,6 @@ import {
   assetKey,
   densify,
 } from '../integrations/pricing/history'
-import { useRecordNav } from '../integrations/pricing/nav'
 import { useVaultPositions, VENUE_LABEL } from '../integrations/lobster/position'
 import { useActivity, KIND_LABEL } from '../integrations/horizon/activity'
 import { formatBalance, formatValue, shortenAddress, stellarExplorer } from '../utils/format'
@@ -51,8 +50,6 @@ export default function Overview() {
     tokenPricer(network, price),
     network,
   )
-  // record the headline figure, not a wallet-only subset of it
-  useRecordNav(network, address, valued.usdTotal != null ? portfolio.total : null)
 
   if (!address) {
     return (

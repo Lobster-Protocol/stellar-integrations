@@ -23,7 +23,6 @@ import {
   densify,
   type BalancePoint,
 } from '../integrations/pricing/history'
-import { useRecordNav } from '../integrations/pricing/nav'
 import { valueHistoryCsv, performanceJson } from '../integrations/pricing/export'
 import { exportName } from '../utils/csv'
 import { cn, compactNumber, formatBalance, formatValue } from '../utils/format'
@@ -85,9 +84,6 @@ export default function Performance() {
   // the same total Overview leads with: wallet plus vaults, not wallet alone
   const portfolio = buildPortfolio(lines, vaultsQ.data ?? [], tokenPricer(network, price), network)
   const total = usdTotal != null ? portfolio.total : null
-  // nothing on this page reads the value series, but it stays sampled: a session
-  // that only ever lands here would otherwise leave a hole in it
-  useRecordNav(network, address, total)
 
   // only assets whose identity we can pin down get a price, so a look-alike
   // token can never lift the curve
