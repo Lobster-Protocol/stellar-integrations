@@ -23,6 +23,7 @@ beforeEach(() => {
 afterEach(() => {
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', ORIG_API)
   localStorage.clear()
+  vi.restoreAllMocks()
 })
 
 function wrap(node: React.ReactNode) {
@@ -98,5 +99,34 @@ describe('DfnsWalletList', () => {
     wrap(<DfnsWalletList />)
     await waitFor(() => expect(screen.getByText('lobster-mainnet')).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'fund' })).not.toBeInTheDocument()
+  })
+
+  it('keeps wallets on other chains out of the testnet group', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            id: 'w-1',
+            address: 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
+            name: 'lobster-testnet-1',
+            network: 'StellarTestnet',
+          },
+          {
+            id: 'w-3',
+            address: '0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed',
+            name: 'lobster-sepolia',
+            network: 'EthereumSepolia',
+          },
+        ],
+      }),
+    })
+    wrap(<DfnsWalletList />)
+    await waitFor(() => expect(screen.getByText('lobster-sepolia')).toBeInTheDocument())
+    expect(screen.getAllByText('Testnet')).toHaveLength(1)
+    expect(screen.getByText('Other networks')).toBeInTheDocument()
+    // react reports sibling groups that share a key on console.error
+    expect(error.mock.calls.some(([msg]) => String(msg).includes('same key'))).toBe(false)
   })
 })

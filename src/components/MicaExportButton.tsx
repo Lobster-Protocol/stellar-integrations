@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { relayFetch } from '../integrations/dfns/relay'
 import { useActiveRelay } from '../integrations/dfns/use-profiles'
+import { downloadText } from '../utils/download'
 
 export default function MicaExportButton() {
   const [busy, setBusy] = useState(false)
@@ -27,14 +28,11 @@ export default function MicaExportButton() {
         )
         return
       }
-      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `mica-export-${new Date().toISOString().slice(0, 10)}.json`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      downloadText(
+        `mica-export-${new Date().toISOString().slice(0, 10)}.json`,
+        'application/json',
+        text,
+      )
     } catch (err) {
       setError((err as Error).message)
     } finally {

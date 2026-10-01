@@ -55,14 +55,15 @@ export default function DfnsWalletList() {
     }
   }
 
-  const groups = DFNS_NETWORKS.map((n) => ({
-    network: n,
+  const groups: { key: string; title: string; list: typeof items }[] = DFNS_NETWORKS.map((n) => ({
+    key: n,
+    title: GROUP_TITLE[n],
     list: items.filter((w) => w.network === n),
   })).filter((g) => g.list.length > 0)
 
   // anything DFNS reports on a chain we don't group above still has to show
   const other = items.filter((w) => !DFNS_NETWORKS.includes(w.network as DfnsNetwork))
-  if (other.length > 0) groups.push({ network: 'StellarTestnet', list: other })
+  if (other.length > 0) groups.push({ key: 'other', title: 'Other networks', list: other })
 
   return (
     <Card>
@@ -117,10 +118,10 @@ export default function DfnsWalletList() {
       ) : (
         <div className="space-y-4">
           {groups.map((g) => (
-            <div key={g.network}>
+            <div key={g.key}>
               <div className="flex items-baseline justify-between mb-1">
                 <span className="text-[10px] uppercase tracking-wider text-text-muted">
-                  {GROUP_TITLE[g.network]}
+                  {g.title}
                 </span>
                 <span className="text-[10px] text-text-muted">{g.list.length}</span>
               </div>
