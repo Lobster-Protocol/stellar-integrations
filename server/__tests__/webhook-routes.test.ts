@@ -334,4 +334,49 @@ describe('token guard', () => {
     )
     expect(res.status).toBe(401)
   })
+
+  it('refuses the token as a query string outside /sse', async () => {
+    process.env.LOBSTER_API_TOKEN = SIGN_API_TOKEN
+    const res = await app.fetch(
+      new Request(`http://localhost/dfns/policies?token=${encodeURIComponent(SIGN_API_TOKEN)}`),
+    )
+    expect(res.status).toBe(401)
+    expect(listPoliciesMock).not.toHaveBeenCalled()
+  })
+
+  it('takes the token as a query string on /sse', async () => {
+    process.env.LOBSTER_API_TOKEN = SIGN_API_TOKEN
+    const res = await app.fetch(
+      new Request(`http://localhost/sse?token=${encodeURIComponent(SIGN_API_TOKEN)}`),
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('text/event-stream')
+    // the stream never ends on its own
+    await res.body?.cancel()
+  })
+})
+
+describe('rate limit', () => {
+  afterEach(() => {
+    delete process.env.RATE_LIMIT_PER_MIN
+  })
+
+  async function transferFrom(forwardedFor: string): Promise<Response> {
+    return app.fetch(
+      new Request('http://localhost/dfns/transfer', {
+        method: 'POST',
+        body: '{}',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': forwardedFor },
+      }),
+    )
+  }
+
+  it('keys on the last x-forwarded-for entry', async () => {
+    process.env.RATE_LIMIT_PER_MIN = '2'
+    // the caller writes the leading entries, render appends the address it saw
+    expect((await transferFrom('198.51.100.1, 203.0.113.7')).status).not.toBe(429)
+    expect((await transferFrom('198.51.100.2, 203.0.113.7')).status).not.toBe(429)
+    expect((await transferFrom('198.51.100.3, 203.0.113.7')).status).toBe(429)
+    expect((await transferFrom('198.51.100.3, 203.0.113.8')).status).not.toBe(429)
+  })
 })

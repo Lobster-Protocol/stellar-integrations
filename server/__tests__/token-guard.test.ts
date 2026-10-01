@@ -48,12 +48,13 @@ describe('tokenGuard on /dfns/policies and /dfns/wallets', () => {
     expect(res.status).not.toBe(401)
   })
 
-  it('accepts a valid ?token= query parameter (eventsource path)', async () => {
+  it('accepts a valid ?token= query parameter on the sse stream', async () => {
     process.env.LOBSTER_API_TOKEN = TOKEN
     const res = await app.fetch(
-      new Request(`http://localhost/dfns/policies?token=${encodeURIComponent(TOKEN)}`),
+      new Request(`http://localhost/sse?token=${encodeURIComponent(TOKEN)}`),
     )
     expect(res.status).not.toBe(401)
+    await res.body?.cancel()
   })
 
   it('rejects a token of the right length but wrong content (timing-safe)', async () => {

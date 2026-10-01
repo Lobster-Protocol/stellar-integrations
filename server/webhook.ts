@@ -5,7 +5,7 @@ import { streamSSE } from 'hono/streaming'
 import crypto from 'node:crypto'
 import { EventEmitter } from 'node:events'
 
-import { TransactionBuilder, Networks } from '@stellar/stellar-sdk'
+import { TransactionBuilder, Networks, Asset, type Transaction } from '@stellar/stellar-sdk'
 
 import { requireEnv } from './env'
 import { DfnsWebhookEventSchema, type DfnsWebhookEvent } from './dfns/types'
@@ -26,6 +26,7 @@ import { lookupDti } from './dfns/dti-codes'
 import { scanNetwork } from './ttl-monitor/index'
 import type { ScanResult } from './ttl-monitor/monitor'
 import type { Network } from '../src/config/contracts'
+import { stroopsToDecimal } from '../src/integrations/stellar/amount'
 
 const REPLAY_WINDOW_SEC = 300
 const HEARTBEAT_MS = 20_000
@@ -38,34 +39,41 @@ const bus = new EventEmitter()
 bus.setMaxListeners(0)
 
 // dfns gives every delivery attempt, retries included, a fresh event id, so an id
-// seen twice is the same request sent again, never a dfns retry.
+// seen twice is the same request sent again. a retry names the attempt it repeats
+// in retryOf: when that attempt was stored and only our 200 went missing, the
+// retry carries the same event a second time.
 const seen = new Set<string>()
 const order: string[] = []
 const eventHistory: DfnsWebhookEvent[] = []
 const HISTORY_CAP = 5000
 
-function dedupe(id: string): boolean {
-  if (seen.has(id)) return true
-  seen.add(id)
-  order.push(id)
-  if (order.length > RING_SIZE) {
+function dedupe(id: string, retryOf?: string): boolean {
+  // both ids are kept, since the next attempt may name either one in retryOf. an
+  // empty retryOf names no attempt.
+  const ids = retryOf ? [id, retryOf] : [id]
+  const dup = ids.some((key) => seen.has(key))
+  for (const key of ids) {
+    if (seen.has(key)) continue
+    seen.add(key)
+    order.push(key)
+  }
+  while (order.length > RING_SIZE) {
     const dropped = order.shift()
     if (dropped) seen.delete(dropped)
   }
-  return false
+  return dup
 }
 
 // shared token gate, open when LOBSTER_API_TOKEN is unset so local dev works. cors
-// only binds browsers, so the check has to be server side. the ?token= query is
-// for EventSource, which cannot set headers.
-const tokenGuard = async (c: Context, next: Next) => {
+// only binds browsers, so the check has to be server side.
+const makeTokenGuard = (acceptQuery: boolean) => async (c: Context, next: Next) => {
   const required = process.env.LOBSTER_API_TOKEN
   if (!required) return next()
   const auth = c.req.header('authorization') ?? ''
   const presented =
     (auth.toLowerCase().startsWith('bearer ') ? auth.slice(7) : '') ||
     c.req.header('x-lobster-token') ||
-    c.req.query('token') ||
+    (acceptQuery ? c.req.query('token') : '') ||
     ''
   const a = Buffer.from(presented)
   const b = Buffer.from(required)
@@ -74,6 +82,10 @@ const tokenGuard = async (c: Context, next: Next) => {
   }
   return next()
 }
+const tokenGuard = makeTokenGuard(false)
+// EventSource cannot set headers, so the stream also takes the token as ?token=.
+// no other route does: a query string ends up in proxy and access logs.
+const sseTokenGuard = makeTokenGuard(true)
 
 // second gate on wallet creation, approval decisions and the cctp delivery: the
 // shared token is not enough there; this one is held only by the server and an
@@ -100,7 +112,11 @@ const operatorGuard = async (c: Context, next: Next) => {
 const rlWindows = new Map<string, { count: number; resetAt: number }>()
 const rateLimit = async (c: Context, next: Next) => {
   const perMin = Number(process.env.RATE_LIMIT_PER_MIN ?? '120')
-  const key = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
+  // render's proxy appends the address it took the request from, so the last
+  // x-forwarded-for entry is the caller. the ones before it are whatever the caller
+  // sent, and keying on them would hand out a fresh window per request.
+  const forwarded = (c.req.header('x-forwarded-for') ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+  const key = forwarded.at(-1) ?? 'local'
   const now = Date.now()
   // drop expired windows once the map grows, so a churn of distinct ips can't
   // leak memory over the life of the process.
@@ -453,7 +469,7 @@ app.post('/webhooks/dfns', async (c) => {
     return c.text('stale event', 401)
   }
 
-  if (dedupe(evt.id)) return c.text('ok', 200)
+  if (dedupe(evt.id, evt.retryOf)) return c.text('ok', 200)
 
   eventHistory.push(evt)
   if (eventHistory.length > HISTORY_CAP) eventHistory.shift()
@@ -462,23 +478,86 @@ app.post('/webhooks/dfns', async (c) => {
   return c.text('ok', 200)
 })
 
-// built from the webhook event alone, with no ledger lookup: a source account the
-// event does not name is written as UNKNOWN rather than guessed.
+type SnapshotOp = StellarTxSnapshot['operations'][number]
+
+// the fields read from the request dfns nests under transferRequest or
+// transactionRequest, which follow its get transfer and get transaction responses.
+type DfnsRequest = {
+  walletId?: unknown
+  network?: unknown
+  txHash?: unknown
+  requestBody?: { kind?: unknown; to?: unknown; amount?: unknown; transaction?: unknown }
+}
+
+const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined)
+
+// built from the webhook event and the relay's env, with no ledger lookup: a source
+// account neither of them names is written as UNKNOWN rather than guessed. the flat
+// fields of data fill in whatever the request leaves out.
 function eventToSnapshot(evt: DfnsWebhookEvent): StellarTxSnapshot {
   const data = (evt.data ?? {}) as Record<string, unknown>
-  const hash = typeof data['txHash'] === 'string' ? (data['txHash'] as string) : evt.id
+  const transfer = data['transferRequest'] as DfnsRequest | undefined
+  const request = transfer ?? (data['transactionRequest'] as DfnsRequest | undefined)
+  const body = request?.requestBody
+  const hash = str(request?.txHash) ?? str(data['txHash']) ?? evt.id
   const closeTime = evt.date ?? new Date(evt.timestampSent * 1000).toISOString()
-  const sourceAccount = typeof data['walletAddress'] === 'string' ? (data['walletAddress'] as string) : 'UNKNOWN'
+
+  // a transaction request holds the unsigned envelope as hex. a fee bump is read
+  // through to the tx it wraps, which carries the ops.
+  let tx: Transaction | undefined
+  const envelope = str(body?.transaction)
+  if (envelope) {
+    try {
+      const decoded = envelopeFromSignedData(envelope, serverPassphrase())
+      tx = 'innerTransaction' in decoded ? decoded.innerTransaction : decoded
+    } catch {
+      // unreadable, so the event's other fields fill the record
+    }
+  }
+  if (tx) {
+    const source = tx.source
+    return {
+      hash,
+      ledgerCloseTime: closeTime,
+      sourceAccount: source,
+      // one record per op. a payment gives its recipient, asset and amount; any
+      // other op goes in as invoke_host_function with just its source.
+      operations: tx.operations.map((op): SnapshotOp => {
+        if (op.type !== 'payment') return { type: 'invoke_host_function', sourceAccount: op.source ?? source }
+        return {
+          type: 'payment',
+          sourceAccount: op.source ?? source,
+          destination: op.destination,
+          assetCode: op.asset.getCode(),
+          assetIssuer: op.asset.getIssuer(),
+          amount: op.amount,
+        }
+      }),
+    }
+  }
+
+  // the treasury wallet's address is in the relay's env, so its requests don't
+  // have to spell it out.
+  const wallet = process.env.DFNS_STELLAR_WALLET_ID
+  const treasury = wallet && request?.walletId === wallet ? process.env.DFNS_TREASURY_ADDRESS : undefined
+  const sourceAccount = treasury || (str(data['walletAddress']) ?? 'UNKNOWN')
+  // dfns counts a native amount in the network's smallest unit. on stellar that is
+  // stroops, written as xlm to 7 decimals like a decoded payment; another network's
+  // coin is not xlm, so its amount is left out.
+  const onStellar = request?.network === undefined || DfnsStellarNetworkSchema.safeParse(request?.network).success
+  const native = body?.kind === 'Native' && onStellar
+  const stroops = native ? str(body?.amount) : undefined
   return {
     hash,
     ledgerCloseTime: closeTime,
     sourceAccount,
     operations: [
       {
-        type: 'invoke_host_function',
+        type: transfer ? 'payment' : 'invoke_host_function',
         sourceAccount,
-        destination: typeof data['destination'] === 'string' ? (data['destination'] as string) : undefined,
-        amount: typeof data['amount'] === 'string' ? (data['amount'] as string) : undefined,
+        destination: str(body?.to) ?? str(data['destination']),
+        assetCode: native ? Asset.native().getCode() : undefined,
+        amount: stroops && /^\d+$/.test(stroops) ? stroopsToDecimal(BigInt(stroops)) : str(data['amount']),
       },
     ],
   }
@@ -531,7 +610,7 @@ export function buildSseFrame(e: DfnsWebhookEvent): { id: string; event: string;
   }
 }
 
-app.get('/sse', tokenGuard, (c) => streamSSE(c, async (stream) => {
+app.get('/sse', sseTokenGuard, (c) => streamSSE(c, async (stream) => {
   // emit the retry hint first so the browser uses it on reconnect
   await stream.write('retry: 10000\n\n')
   const onEvent = (e: DfnsWebhookEvent) => {
