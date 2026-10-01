@@ -40,6 +40,17 @@ vi.mock('../dfns/approvals', () => ({
   listPendingApprovals: vi.fn(),
   decideApproval: vi.fn(),
 }))
+// the sign route reads a fresh sequence from horizon before handing the tx to
+// dfns; a fixed account keeps these tests off the network
+vi.mock('../dfns/resequence', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../dfns/resequence')>()
+  const { Account } = await import('@stellar/stellar-sdk')
+  return {
+    ...real,
+    reSequence: async (tx: import('@stellar/stellar-sdk').Transaction, passphrase: string) =>
+      real.rebuildWithSequence(tx, new Account(tx.source, '12345'), passphrase),
+  }
+})
 
 import { app } from '../webhook'
 import { TransactionBuilder, Networks, Account, BASE_FEE, Operation, Asset } from '@stellar/stellar-sdk'
