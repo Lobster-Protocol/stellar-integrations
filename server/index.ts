@@ -8,6 +8,7 @@ import { startDfnsMetricsLoop } from './metrics/dfns-signing'
 import { registry } from './metrics/registry'
 import { otlpEnabled, pushExposition } from './metrics/otlp'
 import { startLoop as startTtlLoop, readConfigs as ttlConfigs } from './ttl-monitor/index'
+import { signerFromEnv as ttlSigner } from './ttl-monitor/signer'
 import { scan as scanHealth, formatMetrics as formatHealth } from './probe/index'
 
 const PORT = Number(process.env.PORT || 8787)
@@ -38,7 +39,7 @@ if ((process.env.METRICS_TOKEN || otlpEnabled()) && (process.env.DFNS_PRIVATE_KE
 // the relay never sleeps, so it runs the ttl and health scans itself.
 if (process.env.TTL_MONITOR_EMBEDDED === '1') {
   for (const config of ttlConfigs()) {
-    startTtlLoop(config).catch((err) => console.error(`[ttl-monitor:${config.network}] loop crashed`, err))
+    startTtlLoop(config, ttlSigner(config.network)).catch((err) => console.error(`[ttl-monitor:${config.network}] loop crashed`, err))
   }
 }
 if (process.env.PROBE_EMBEDDED === '1') {

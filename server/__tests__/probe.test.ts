@@ -145,4 +145,19 @@ describe('accountTargets', () => {
     delete process.env.MONITOR_TREASURY_ADDRESS
     expect(accountTargets().find((a) => a.role === 'dfns-treasury')?.address).toBe('GTREASURY')
   })
+
+  it('watches the rent payer against its own reserve, only once it is named', () => {
+    const OLD = process.env.MONITOR_TTL_EXTENDER_ADDRESS
+    delete process.env.MONITOR_TTL_EXTENDER_ADDRESS
+    expect(accountTargets().some((a) => a.role === 'ttl-extender')).toBe(false)
+    process.env.MONITOR_TTL_EXTENDER_ADDRESS = 'GEXTENDER'
+    expect(accountTargets().find((a) => a.role === 'ttl-extender')).toEqual({
+      role: 'ttl-extender',
+      network: 'mainnet',
+      address: 'GEXTENDER',
+      reserveXlm: 25,
+    })
+    if (OLD === undefined) delete process.env.MONITOR_TTL_EXTENDER_ADDRESS
+    else process.env.MONITOR_TTL_EXTENDER_ADDRESS = OLD
+  })
 })

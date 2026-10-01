@@ -5,11 +5,11 @@ import {
   CRIT_LEDGERS,
   MAX_ENTRY_TTL,
 } from '../ttl-monitor/ledger'
-import { clampExtendTo } from '../ttl-monitor/extend'
+import { buildExtendTtlTx, clampExtendTo } from '../ttl-monitor/extend'
 import { scanTtl, keysNeedingExtend } from '../ttl-monitor/monitor'
-import { readConfigs, executableCodeKey } from '../ttl-monitor/index'
-import { xdr, Address } from '@stellar/stellar-sdk'
-import { CONTRACTS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
+import { readConfigs, executableCodeKey, dueForExtend, formatMetrics } from '../ttl-monitor/index'
+import { xdr, Address, Account, Networks, StrKey } from '@stellar/stellar-sdk'
+import { CONTRACTS, INCLUSION_FEE_STROOPS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
 
 describe('readTtl', () => {
   it('reads runway against the latest ledger of the same response', () => {
@@ -71,13 +71,46 @@ describe('scanTtl', () => {
     expect(byKey).toEqual({ A: 'ok', B: 'crit', C: 'archived' })
   })
 
-  it('keysNeedingExtend returns only the crit band, never archived', async () => {
+  it('keysNeedingExtend takes every key inside 15 days, never an archived one', async () => {
     const statuses = [
-      { keyXdr: 'A', reading: readTtl(1_100_000, 1_000_000) },
-      { keyXdr: 'B', reading: readTtl(1_000_010, 1_000_000) },
-      { keyXdr: 'C', reading: readTtl(undefined, 1_000_000) },
+      { keyXdr: 'A', reading: readTtl(1_000_000 + 259_201, 1_000_000) }, // just outside
+      { keyXdr: 'B', reading: readTtl(1_000_010, 1_000_000) }, // last day
+      { keyXdr: 'C', reading: readTtl(undefined, 1_000_000) }, // archived
+      { keyXdr: 'D', reading: readTtl(1_000_000 + 259_200, 1_000_000) }, // 15 days to the ledger
     ]
-    expect(keysNeedingExtend(statuses).map((s) => s.keyXdr)).toEqual(['B'])
+    expect(keysNeedingExtend(statuses).map((s) => s.keyXdr)).toEqual(['B', 'D'])
+  })
+})
+
+describe('buildExtendTtlTx', () => {
+  it('bids the shared inclusion ceiling and leaves the rent to the simulation', () => {
+    const key = xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: Buffer.alloc(32, 1) }))
+    const tx = buildExtendTtlTx(new Account(StrKey.encodeEd25519PublicKey(Buffer.alloc(32, 3)), '1'), key, 518_400, Networks.PUBLIC)
+    expect(tx.fee).toBe(INCLUSION_FEE_STROOPS)
+    expect(tx.operations).toEqual([expect.objectContaining({ type: 'extendFootprintTtl', extendTo: 518_400 })])
+  })
+})
+
+describe('dueForExtend', () => {
+  const day = 24 * 3600 * 1000
+  const due = ['A', 'B', 'C'].map((keyXdr) => ({ keyXdr, reading: readTtl(1_000_010, 1_000_000) }))
+
+  it('holds a key back for a day after its extend landed', () => {
+    const now = 100 * day
+    const extendedAt = new Map([
+      ['A', now - 3600 * 1000], // an hour ago
+      ['B', now - day], // a day ago
+    ])
+    expect(dueForExtend(due, extendedAt, now).map((s) => s.keyXdr)).toEqual(['B', 'C'])
+    expect(dueForExtend(due, new Map(), now)).toHaveLength(3)
+  })
+})
+
+describe('formatMetrics', () => {
+  it('says whether the network extends its own entries', () => {
+    const scan = { latestLedger: 5, statuses: [] }
+    expect(formatMetrics(scan, 'mainnet', true)).toContain('lobster_ttl_auto_extend{network="mainnet"} 1')
+    expect(formatMetrics(scan, 'testnet')).toContain('lobster_ttl_auto_extend{network="testnet"} 0')
   })
 })
 
@@ -101,6 +134,14 @@ describe('readConfigs', () => {
   it('drops a network it does not know', () => {
     expect(readConfigs({ TTL_MONITOR_NETWORK: 'mainnet,futurenet' }).map((c) => c.network)).toEqual(['mainnet'])
     expect(readConfigs({ TTL_MONITOR_NETWORK: 'futurenet' }).map((c) => c.network)).toEqual(['testnet'])
+  })
+
+  it('caps an extend at 20 XLM unless told otherwise', () => {
+    expect(readConfigs({ TTL_MONITOR_NETWORK: 'mainnet' })[0].feeCapStroops).toBe(200_000_000n)
+    expect(readConfigs({ TTL_EXTEND_FEE_CAP_XLM: '12.5' })[0].feeCapStroops).toBe(125_000_000n)
+    for (const bad of ['lots', '-5', '0', '1e400']) {
+      expect(readConfigs({ TTL_EXTEND_FEE_CAP_XLM: bad })[0].feeCapStroops).toBe(200_000_000n)
+    }
   })
 })
 

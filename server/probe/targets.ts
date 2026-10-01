@@ -17,7 +17,14 @@ export interface AccountTarget {
   role: string
   network: 'testnet' | 'mainnet'
   address: string
+  // XLM under which the account can no longer do its job; the probe's default
+  // fee reserve otherwise
+  reserveXlm?: number
 }
+
+// the two code entries took about 16 XLM of rent a month on mainnet in october
+// 2026, so a low reserve alert leaves some six weeks to top up
+const EXTENDER_RESERVE_XLM = 25
 
 const env = process.env
 
@@ -72,6 +79,10 @@ export function accountTargets(): AccountTarget[] {
   }
   if (env.MONITOR_TESTNET_WALLET) {
     list.push({ role: 'dfns-wallet', network: 'testnet', address: env.MONITOR_TESTNET_WALLET })
+  }
+  // the account that pays mainnet storage rent for the ttl monitor's extends
+  if (env.MONITOR_TTL_EXTENDER_ADDRESS) {
+    list.push({ role: 'ttl-extender', network: 'mainnet', address: env.MONITOR_TTL_EXTENDER_ADDRESS, reserveXlm: EXTENDER_RESERVE_XLM })
   }
   return list
 }

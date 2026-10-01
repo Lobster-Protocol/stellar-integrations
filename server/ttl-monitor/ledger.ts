@@ -13,6 +13,10 @@ export const CRIT_LEDGERS = (24 * 3600) / LEDGER_SECONDS // ~17280, one day out
 // without going anywhere near the rent blow-up at max_entry_ttl.
 export const EXTEND_TARGET_LEDGERS = (30 * 24 * 3600) / LEDGER_SECONDS // 518400
 
+// an auto-extend starts here, a day ahead of the 14 day notice alert, so the ttl
+// alerts only go off when an extend failed to land
+export const EXTEND_BELOW_LEDGERS = (15 * 24 * 3600) / LEDGER_SECONDS // 259200
+
 type TtlLevel = 'ok' | 'warn' | 'crit' | 'archived'
 
 export interface TtlReading {

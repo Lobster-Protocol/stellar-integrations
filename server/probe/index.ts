@@ -157,7 +157,7 @@ async function readAccount(a: AccountTarget): Promise<AccountReading | null> {
     const res = await fetch(`${horizon}/accounts/${a.address}`, { signal: AbortSignal.timeout(TIMEOUT_MS) })
     if (res.status === 404) return { exists: false, reserveOk: false }
     if (!res.ok) throw new Error(`horizon ${res.status}`)
-    return { exists: true, reserveOk: hasFeeReserve((await res.json()) as Parameters<typeof hasFeeReserve>[0]) }
+    return { exists: true, reserveOk: hasFeeReserve((await res.json()) as Parameters<typeof hasFeeReserve>[0], a.reserveXlm) }
   })
   return r.ok && r.value ? { role: a.role, network: a.network, ...r.value } : null
 }

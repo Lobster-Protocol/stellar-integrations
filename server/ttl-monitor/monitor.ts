@@ -1,5 +1,5 @@
 import type { xdr } from '@stellar/stellar-sdk'
-import { chunk, readTtl, type TtlReading } from './ledger'
+import { chunk, readTtl, EXTEND_BELOW_LEDGERS, type TtlReading } from './ledger'
 
 // the slice of rpc.Server the scan needs, narrow so a test can fake it.
 export interface LedgerEntriesReader {
@@ -37,8 +37,9 @@ export async function scanTtl(
   return { latestLedger, statuses }
 }
 
+// an archived key is past extending; it takes a restore
 export function keysNeedingExtend(statuses: KeyStatus[]): KeyStatus[] {
-  return statuses.filter((s) => s.reading.level === 'crit')
+  return statuses.filter((s) => s.reading.level !== 'archived' && s.reading.remainingLedgers <= EXTEND_BELOW_LEDGERS)
 }
 
 export interface KeyStatus {

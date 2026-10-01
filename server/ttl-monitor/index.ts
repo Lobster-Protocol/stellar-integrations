@@ -14,9 +14,18 @@ interface MonitorConfig {
   rpcUrl: string
   intervalMs: number
   pushgatewayUrl?: string
+  feeCapStroops: bigint
 }
 
 const DEFAULT_INTERVAL_MS = 300_000
+// most one extend may cost. the dearest is the 35 KB vault code going from its
+// last day back to 30: about 10.4 XLM on mainnet in october 2026. the cap leaves
+// room for rent to climb, not for a runaway estimate near the ttl ceiling.
+const DEFAULT_FEE_CAP_XLM = 20
+// an extend gives back two weeks or more, so a key that still reads due a day
+// after one landed points at a fault. paying again every pass would only drain
+// the account that pays the rent.
+const EXTEND_COOLDOWN_MS = 24 * 3600 * 1000
 
 function rpcUrlFor(network: Network, env: NodeJS.ProcessEnv = process.env): string {
   const override = network === 'mainnet' ? env.SOROBAN_RPC_MAINNET : env.SOROBAN_RPC_TESTNET
@@ -27,7 +36,15 @@ function readConfig(env: NodeJS.ProcessEnv = process.env): MonitorConfig {
   // mainnet has to be asked for by name; an unset or mistyped var means testnet
   const network: Network = env.TTL_MONITOR_NETWORK === 'mainnet' ? 'mainnet' : 'testnet'
   const intervalMs = Number(env.TTL_MONITOR_INTERVAL_MS) || DEFAULT_INTERVAL_MS
-  return { network, rpcUrl: rpcUrlFor(network, env), intervalMs, pushgatewayUrl: env.PUSHGATEWAY_URL }
+  const cap = Number(env.TTL_EXTEND_FEE_CAP_XLM)
+  const feeCapXlm = Number.isFinite(cap) && cap > 0 ? cap : DEFAULT_FEE_CAP_XLM
+  return {
+    network,
+    rpcUrl: rpcUrlFor(network, env),
+    intervalMs,
+    pushgatewayUrl: env.PUSHGATEWAY_URL,
+    feeCapStroops: BigInt(Math.round(feeCapXlm * 1e7)),
+  }
 }
 
 // TTL_MONITOR_NETWORK names one network or a list, "testnet,mainnet". each gets
@@ -96,7 +113,7 @@ export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network))
 }
 
 // the latest-ledger gauge makes a stale push visible instead of silently trusted.
-export function formatMetrics(scan: ScanResult, network: Network): string {
+export function formatMetrics(scan: ScanResult, network: Network, autoExtend = false): string {
   const labels = (s: KeyStatus) =>
     `{network="${network}",kind="${s.kind ?? 'unknown'}",key="${s.keyXdr}"}`
   const lines = [
@@ -109,15 +126,18 @@ export function formatMetrics(scan: ScanResult, network: Network): string {
     '# HELP lobster_ttl_latest_ledger latest ledger the scan read against',
     '# TYPE lobster_ttl_latest_ledger gauge',
     `lobster_ttl_latest_ledger{network="${network}"} ${scan.latestLedger}`,
+    '# HELP lobster_ttl_auto_extend 1 when the daemon holds a key to extend entries itself',
+    '# TYPE lobster_ttl_auto_extend gauge',
+    `lobster_ttl_auto_extend{network="${network}"} ${autoExtend ? 1 : 0}`,
   ]
   return lines.join('\n') + '\n'
 }
 
-async function pushMetrics(url: string, scan: ScanResult, network: Network): Promise<void> {
+async function pushMetrics(url: string, body: string): Promise<void> {
   const res = await fetch(`${url.replace(/\/$/, '')}/metrics/job/lobster-ttl-monitor`, {
     method: 'POST',
     headers: { 'content-type': 'text/plain' },
-    body: formatMetrics(scan, network),
+    body,
     // a stuck pushgateway must not hang the scan loop
     signal: AbortSignal.timeout(10_000),
   })
@@ -137,13 +157,15 @@ export interface ExtendSigner {
 
 // the fee cap stops a runaway rent estimate near the ceiling from signing an
 // arbitrary amount. one bad key logs and moves on rather than stranding the rest.
+// returns the keys whose extend landed, which is when the rent got paid.
 export async function extendKeys(
   server: rpc.Server,
   keys: KeyStatus[],
   network: Network,
   signer: ExtendSigner,
   feeCapStroops = 5_000_000n,
-): Promise<void> {
+): Promise<string[]> {
+  const landed: string[] = []
   if (signer.network !== network) {
     throw new Error(`extend signer is wired for ${signer.network}, refusing to sign on ${network}`)
   }
@@ -178,6 +200,7 @@ export async function extendKeys(
       }
       const res = await server.pollTransaction(sent.hash)
       if (res.status === 'SUCCESS') {
+        landed.push(s.keyXdr)
         // SUCCESS says the tx applied, not that the entry now has the runway we
         // asked for, so read it back before calling the key done
         const after = await server.getLedgerEntries(key)
@@ -196,30 +219,44 @@ export async function extendKeys(
       console.error(`[ttl-monitor:${network}] extend failed for ${s.keyXdr}`, err)
     }
   }
+  return landed
+}
+
+// the due keys not extended inside the cooldown
+export function dueForExtend(due: KeyStatus[], extendedAt: Map<string, number>, now: number): KeyStatus[] {
+  return due.filter((s) => now - (extendedAt.get(s.keyXdr) ?? -Infinity) >= EXTEND_COOLDOWN_MS)
 }
 
 // metrics push goes last so a pushgateway failure can't silence the console
 // alerts from the same pass.
-async function runOnce(config: MonitorConfig, signer?: ExtendSigner): Promise<void> {
+async function runOnce(config: MonitorConfig, signer?: ExtendSigner, extendedAt = new Map<string, number>()): Promise<void> {
   const scan = await scanNetwork(config.network, config.rpcUrl)
 
   for (const a of scan.statuses.filter((s) => s.reading.level !== 'ok')) {
     console.warn(`[ttl-monitor:${config.network}] ${a.reading.level} ${a.keyXdr} ${a.reading.remainingLedgers} ledgers left`)
   }
 
-  const toExtend = keysNeedingExtend(scan.statuses)
-  if (toExtend.length && signer) {
-    const server = new rpc.Server(config.rpcUrl, { allowHttp: config.rpcUrl.startsWith('http://'), timeout: 15_000 })
-    await extendKeys(server, toExtend, config.network, signer)
-  } else if (toExtend.length) {
-    console.warn(`[ttl-monitor:${config.network}] ${toExtend.length} key(s) need an extend and no signer is wired`)
+  const due = keysNeedingExtend(scan.statuses)
+  if (due.length && signer) {
+    const now = Date.now()
+    const toExtend = dueForExtend(due, extendedAt, now)
+    for (const s of due.filter((d) => !toExtend.includes(d))) {
+      console.error(`[ttl-monitor:${config.network}] ${s.keyXdr} still reads due a day after its extend landed; not paying again yet`)
+    }
+    if (toExtend.length) {
+      const server = new rpc.Server(config.rpcUrl, { allowHttp: config.rpcUrl.startsWith('http://'), timeout: 15_000 })
+      for (const k of await extendKeys(server, toExtend, config.network, signer, config.feeCapStroops)) extendedAt.set(k, now)
+    }
+  } else if (due.length) {
+    console.warn(`[ttl-monitor:${config.network}] ${due.length} key(s) need an extend and no signer is wired`)
   }
 
+  const body = formatMetrics(scan, config.network, !!signer)
   if (config.pushgatewayUrl) {
-    await pushMetrics(config.pushgatewayUrl, scan, config.network)
+    await pushMetrics(config.pushgatewayUrl, body)
   }
   if (otlpEnabled()) {
-    await pushExposition(formatMetrics(scan, config.network), 'lobster-ttl-monitor')
+    await pushExposition(body, 'lobster-ttl-monitor')
   }
 }
 
@@ -228,9 +265,11 @@ export async function startLoop(
   signer?: ExtendSigner,
 ): Promise<void> {
   console.warn(`[ttl-monitor] watching ${config.network} every ${config.intervalMs}ms`)
+  if (signer) console.warn(`[ttl-monitor:${config.network}] extends at 15 days left, paid by ${signer.sourceAddress}`)
+  const extendedAt = new Map<string, number>()
   for (;;) {
     try {
-      await runOnce(config, signer)
+      await runOnce(config, signer, extendedAt)
     } catch (err) {
       console.error('[ttl-monitor] pass failed', err)
     }

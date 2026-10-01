@@ -35,6 +35,10 @@ const KEY_B64 = xdr.LedgerKey.contractCode(
   new xdr.LedgerKeyContractCode({ hash: Buffer.from('ab'.repeat(32), 'hex') }),
 ).toXDR('base64')
 const critStatus = { keyXdr: KEY_B64, reading: readTtl(1_000_010, 1_000_000) }
+const OTHER_B64 = xdr.LedgerKey.contractCode(
+  new xdr.LedgerKeyContractCode({ hash: Buffer.from('cd'.repeat(32), 'hex') }),
+).toXDR('base64')
+const otherStatus = { keyXdr: OTHER_B64, reading: readTtl(1_000_010, 1_000_000) }
 
 function makeServer(over: Record<string, unknown> = {}) {
   return {
@@ -69,6 +73,15 @@ describe('extendKeys', () => {
     expect(signer.sign).toHaveBeenCalledWith('ASSEMBLED_EXTEND', expect.stringContaining('Test'))
     expect(server.sendTransaction).toHaveBeenCalledTimes(1)
     expect(server.pollTransaction).toHaveBeenCalledWith('HASH')
+  })
+
+  it('returns only the keys whose extend landed', async () => {
+    const server = makeServer({
+      pollTransaction: vi.fn().mockResolvedValueOnce({ status: 'SUCCESS' }).mockResolvedValueOnce({ status: 'FAILED' }),
+    })
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(await extendKeys(server as never, [critStatus, otherStatus], 'testnet', makeSigner())).toEqual([KEY_B64])
+    error.mockRestore()
   })
 
   it('never signs a key that archived between the scan and the extend', async () => {
