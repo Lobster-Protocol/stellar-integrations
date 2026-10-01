@@ -93,7 +93,7 @@ export function registerCctpRoutes(app: Hono, guards: Guards): void {
     recipient: z.string().regex(/^G[A-Z2-7]{55}$/, 'recipient must be a Stellar account'),
   })
 
-  // spends our XLM, so operator token like every route that costs us something
+  // spends the relay account's XLM, so it also takes the operator token
   app.post('/cctp/deliver', guards.rateLimit, guards.tokenGuard, guards.operatorGuard, async (c) => {
     const parsed = ClaimSchema.safeParse(await c.req.json().catch(() => null))
     if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message ?? 'bad request' }, 400)

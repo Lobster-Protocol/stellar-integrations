@@ -6,17 +6,14 @@ import { STELLAR_RPC_FALLBACK, type Network } from '../../src/config/contracts'
 // minutes. rebuild the same ops on a fresh sequence so a value that was current
 // at the click is not stale when dfns finally submits it. this closes the
 // build->broadcast window; a tx held for approval while the account is used
-// elsewhere can still race, which is why the treasury signs one op at a time.
+// elsewhere can still race, which is why the treasury signs one tx at a time.
 export function rebuildWithSequence(tx: Transaction, account: Account, passphrase: string): Transaction {
-  // a soroban envelope carries its footprint and resource budget in the tx
-  // extension, and a fresh builder starts without one. copying the operations
-  // alone produced an invokeHostFunction declaring no resources, which the
-  // network rejects as malformed.
+  // the footprint and resource budget sit in the tx extension, not in the ops, and
+  // an invokeHostFunction without them is rejected as malformed.
   const ext = tx.toEnvelope().v1().tx().ext()
   const sorobanData = ext.switch() === 1 ? ext.sorobanData() : null
-  // the builder adds the resource fee back when it sees the soroban data, and
-  // tx.fee already includes it, so hand over the inclusion part alone or the
-  // resource fee gets counted twice.
+  // tx.fee already includes the resource fee and build() adds it again from the
+  // soroban data, so the builder gets the inclusion fee alone.
   const resourceFee = sorobanData ? BigInt(sorobanData.resourceFee().toString()) : 0n
   const inclusion = BigInt(tx.fee) - resourceFee
   const builder = new TransactionBuilder(account, {

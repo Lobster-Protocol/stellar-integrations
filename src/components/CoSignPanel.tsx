@@ -17,11 +17,9 @@ import CopyButton from './CopyButton'
 interface Props {
   network: Network
   signing: AccountSigning
-  // the frozen, assembled transaction everyone signs. built and simulated once,
-  // never rebuilt after a signature is collected, or the hash changes and the
-  // signatures already gathered stop matching.
+  // the frozen transaction everyone signs. never rebuild it once signing starts,
+  // or the hash changes and the signatures already gathered stop matching.
   baseXdr: string
-  // the wallet connected right now, so its holder can add their own signature
   connected: string
   submit: (fullySignedXdr: string) => Promise<string>
   onSubmitted: (hash: string) => void
@@ -56,10 +54,9 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
   const hasDangers = (summary?.dangers.length ?? 0) > 0
   const blocked = hasDangers && !ack
 
-  // a set_options or account_merge is a high-threshold op, so the quorum needed
-  // is high, not med. gate on the real tier or a governance change on a 2-of-3
-  // (high 3 > med 2) would read "enough" at 2 signatures and the chain would
-  // then reject it.
+  // account_merge and any signer or threshold change need the high threshold, and
+  // every set_options op this app builds is such a change. on a 2-of-3 (high 3,
+  // med 2) a med gate would call 2 signatures enough and the chain would reject it.
   const tier: 'med' | 'high' =
     summary?.operations.some((o) => o.type === 'setOptions' || o.type === 'accountMerge')
       ? 'high'
@@ -82,9 +79,8 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
     setErr(null)
     setBusy('signing')
     try {
-      // sign the frozen base, not the growing envelope: each signer signs the
-      // same tx independently and we merge the result, so it never matters
-      // whether a given wallet preserves the other signatures.
+      // sign the frozen base, not the growing envelope, and merge the result, so
+      // nothing relies on a wallet keeping the signatures already gathered.
       const { signedTxXdr } = await walletKitSigner.signTransaction(baseXdr, {
         networkPassphrase: networkPassphrase(network),
         address: connected,
@@ -128,10 +124,8 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
       onSubmitted(hash)
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'submit failed'
-      // a shared account has one sequence number. if another transaction used it
-      // while this one was gathering signatures, the chain rejects this one and
-      // it cannot be salvaged; the signatures are over the old sequence. say so
-      // rather than leaving a raw tx_bad_seq on screen.
+      // the signatures cover one sequence number. if another tx from this account
+      // used it meanwhile, this envelope is dead and has to be built again.
       setErr(
         /bad.?seq|tx_bad_seq|sequence/i.test(raw)
           ? 'Another transaction already used this account sequence number while this one was being signed. This one cannot go through. Build it again from a fresh transaction.'

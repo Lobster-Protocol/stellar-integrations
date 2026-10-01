@@ -33,14 +33,13 @@ export async function getSignatureStatus(
   return DfnsSignatureSchema.parse(res)
 }
 
-// confirmed != broadcasted: a policy can reject between submit and chain.
+// broadcasted can still fail on chain; rejected is a policy refusing the request.
 export function isTerminal(status: string): boolean {
   return status === 'Confirmed' || status === 'Failed' || status === 'Rejected'
 }
 
-// polls up to timeoutMs and returns the last status. it does NOT throw on timeout:
-// a tx held by an approval policy stays non-terminal, and the caller hands the id
-// back to the client to track instead of blocking the request.
+// returns the last status on timeout rather than throwing: a tx held by an approval
+// policy stays non-terminal and the caller hands its id to the client to poll.
 export async function waitForSignatureTerminal(
   walletId: string,
   txId: string,
@@ -55,8 +54,8 @@ export async function waitForSignatureTerminal(
   return cur
 }
 
-// for a soroban tx, which dfns signs but does not broadcast natively: the caller
-// submits this rebuilt envelope through their own rpc.
+// when dfns returns a signed envelope instead of a hash, the client submits it
+// through its own rpc.
 export function envelopeFromSignedData(
   signedDataHex: string,
   networkPassphrase: string,

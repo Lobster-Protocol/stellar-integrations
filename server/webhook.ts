@@ -30,16 +30,15 @@ import type { Network } from '../src/config/contracts'
 const REPLAY_WINDOW_SEC = 300
 const HEARTBEAT_MS = 20_000
 const RING_SIZE = 200
-// how long /dfns/sign waits for an instant result before handing back a pending
-// id. an op no policy holds (a trustline) confirms inside this window; a payment
-// held for approval does not, so the client tracks it via /dfns/sign/:id/status.
+// how long /dfns/sign polls dfns for a result. a signature held for approval
+// outlasts it, so the client gets a pending id and polls the status route.
 const PENDING_POLL_MS = 10_000
 
 const bus = new EventEmitter()
 bus.setMaxListeners(0)
 
-// dedup ring buffer. dfns retries up to 5 times over 24h on non-2xx, so
-// keeping the last 200 event ids lets us absorb the duplicates cleanly.
+// dfns gives every delivery attempt, retries included, a fresh event id, so an id
+// seen twice is the same request sent again, never a dfns retry.
 const seen = new Set<string>()
 const order: string[] = []
 const eventHistory: DfnsWebhookEvent[] = []
@@ -56,10 +55,9 @@ function dedupe(id: string): boolean {
   return false
 }
 
-// token gate for the custody read endpoints. off when LOBSTER_API_TOKEN is
-// unset so local dev is unaffected. cors only blocks browsers, not curl, so
-// these need a server-side check. takes a bearer header, x-lobster-token, or
-// a ?token= query, the last one being how EventSource (no headers) sends it.
+// shared token gate, open when LOBSTER_API_TOKEN is unset so local dev works. cors
+// only binds browsers, so the check has to be server side. the ?token= query is
+// for EventSource, which cannot set headers.
 const tokenGuard = async (c: Context, next: Next) => {
   const required = process.env.LOBSTER_API_TOKEN
   if (!required) return next()
@@ -77,12 +75,9 @@ const tokenGuard = async (c: Context, next: Next) => {
   return next()
 }
 
-// second gate, on top of tokenGuard, for the two routes that write to the
-// custody org: creating a wallet and deciding an approval. LOBSTER_API_TOKEN is
-// inlined into the browser bundle by vite, so every visitor of the dashboard
-// holds it and it cannot stand alone in front of a write. this token never
-// reaches the client. unset means the routes stay shut, like /dfns/sign does
-// without LOBSTER_API_TOKEN.
+// second gate on wallet creation, approval decisions and the cctp delivery: the
+// shared token is not enough there; this one is held only by the server and an
+// operator. unset keeps those routes shut, like /dfns/sign without LOBSTER_API_TOKEN.
 const operatorGuard = async (c: Context, next: Next) => {
   const required = process.env.LOBSTER_OPERATOR_TOKEN
   if (!required) {
@@ -100,10 +95,8 @@ const operatorGuard = async (c: Context, next: Next) => {
   return next()
 }
 
-// fixed-window per-ip limiter for the write/custody routes. a dfns sign or a
-// wallet create each cost a real upstream call, so a caller past the token (or
-// hitting the open dev path) could amplify load or burn dfns quota. generous by
-// default; a prod deploy tightens it with RATE_LIMIT_PER_MIN.
+// per-ip cap, because a sign, a transfer or a wallet create is a real dfns call
+// against our quota.
 const rlWindows = new Map<string, { count: number; resetAt: number }>()
 const rateLimit = async (c: Context, next: Next) => {
   const perMin = Number(process.env.RATE_LIMIT_PER_MIN ?? '120')
@@ -136,11 +129,9 @@ app.use('*', cors({
 registerAllbridgeRoutes(app)
 registerCctpRoutes(app, { rateLimit, tokenGuard, operatorGuard })
 
-// storage ttl read for the dashboard countdown. public, since it only reads
-// public ledger state, and 503 when the factory isn't deployed on the asked
-// network so the ui gates the card instead of showing a broken read. answers
-// from a short cache: ttls move one ledger at a time, and an unauthenticated
-// route must not fan out into an rpc call per request.
+// public: it only reads ledger state. 503 until a first scan works (no factory on
+// that network, or rpc down). cached because ttls move one ledger at a time and an
+// open route must not cost an rpc call per request.
 const TTL_CACHE_MS = 60_000
 const ttlCache = new Map<Network, { at: number; scan: ScanResult }>()
 
@@ -152,9 +143,8 @@ app.get('/ttl', async (c) => {
       entry = { at: Date.now(), scan: await scanNetwork(network) }
       ttlCache.set(network, entry)
     } catch (err) {
-      // rpc down. serve the last good scan and hold off re-scanning for a window,
-      // so this public route can't be turned into an rpc amplifier during an
-      // outage. 503 only when we have never scanned this network.
+      // keep serving the last good scan and wait a full window before the next try,
+      // so an outage does not turn every request into an rpc call.
       if (!entry) return c.json({ error: (err as Error).message }, 503)
       entry.at = Date.now()
     }
@@ -224,10 +214,8 @@ app.get('/dfns/approvals', tokenGuard, async (c) => {
 })
 
 app.post('/dfns/approvals/:id/decision', rateLimit, tokenGuard, operatorGuard, async (c) => {
-  // fail-closed like /dfns/sign: deciding an approval authorizes a pending
-  // signature, so it carries the same risk as signing. the token guard is a
-  // no-op without the env, and we will not let a misconfigured deploy approve
-  // a treasury tx with no auth.
+  // fail-closed like /dfns/sign: an approval decision can release a held treasury
+  // signature, so it gets the same check as signing.
   if (!process.env.LOBSTER_API_TOKEN) {
     return c.json({ error: 'LOBSTER_API_TOKEN must be set before approvals can be decided' }, 503)
   }
@@ -285,10 +273,8 @@ async function tryAutoApprove(
   }
 }
 
-// A payment DFNS builds itself, rather than an envelope we hand it. That is the
-// only shape its approval rules can actually read, so it is the one request that
-// a rule can wave through. Same bounds as /dfns/sign: the destination has to be
-// on the whitelist and the amount under the cap.
+// a payment dfns builds itself, the only request its amount and recipient rules
+// can evaluate (see transfer.ts). same whitelist and cap as /dfns/sign.
 app.post('/dfns/transfer', rateLimit, tokenGuard, async (c) => {
   if (!process.env.LOBSTER_API_TOKEN) {
     return c.json({ error: 'LOBSTER_API_TOKEN must be set before /dfns/transfer is enabled' }, 503)
@@ -327,10 +313,8 @@ app.post('/dfns/transfer', rateLimit, tokenGuard, async (c) => {
 })
 
 app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
-  // fail-closed: refuse to sign anything when the shared token is unset.
-  // the token guard alone is a no-op without the env, and the dfns wallet
-  // holds the treasury key so a misconfigured deploy would otherwise sign
-  // arbitrary xdr.
+  // fail-closed: tokenGuard lets everything through without LOBSTER_API_TOKEN, and
+  // this wallet holds the treasury key.
   if (!process.env.LOBSTER_API_TOKEN) {
     return c.json({ error: 'LOBSTER_API_TOKEN must be set before /dfns/sign is enabled' }, 503)
   }
@@ -407,10 +391,6 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     // no hash and no envelope: an approval policy is holding it for a human. hand
     // the id back so the client can show pending and poll for the eventual hash.
     if (!isTerminal(final.status)) {
-      // testnet demo only: clear the hold ourselves and wait out the execution so
-      // the caller's one request finishes pending -> approved -> executed.
-      // off by default and never on mainnet; a no-op or failure falls straight
-      // back to the human-approval pending flow below.
       const auto = await tryAutoApprove(walletId, initial.id, passphrase)
       if (auto) return c.json(auto)
       trackPending(walletId, initial.id)
@@ -422,8 +402,8 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
   }
 })
 
-// tracks a signature the client is holding after /dfns/sign returned pending. it
-// reads the current dfns status so the ui can show the hash once a human approves.
+// the client polls this after /dfns/sign answered pending, until it comes back with
+// a hash, an envelope or a failure.
 app.get('/dfns/sign/:id/status', rateLimit, tokenGuard, async (c) => {
   const walletId = process.env.DFNS_STELLAR_WALLET_ID
   if (!walletId) return c.json({ error: 'DFNS_STELLAR_WALLET_ID not set' }, 503)
@@ -431,9 +411,8 @@ app.get('/dfns/sign/:id/status', rateLimit, tokenGuard, async (c) => {
   if (!id) return c.json({ error: 'missing signature id' }, 400)
   try {
     const s = await getSignatureStatus(walletId, id)
-    // a soroban tx ends at Signed with an envelope dfns does not broadcast, so
-    // that is terminal for us too: release the in-flight lock and hand the caller
-    // a ready-to-submit envelope, the same shape the immediate /dfns/sign returns.
+    // a soroban tx stops at Signed because dfns does not broadcast it, so that is
+    // terminal here too: release the lock and return the envelope, as /dfns/sign does.
     const signedTxXdr =
       s.status === 'Signed' && s.signedData
         ? envelopeFromSignedData(s.signedData, serverPassphrase()).toXDR()
@@ -483,9 +462,8 @@ app.post('/webhooks/dfns', async (c) => {
   return c.text('ok', 200)
 })
 
-// in-memory event ring buffer mapped to mica records. legal review supplies
-// the dti + venue resolvers later; the skeleton fills 'UNKNOWN' so the
-// export is valid json an auditor can inspect today.
+// built from the webhook event alone, with no ledger lookup: a source account the
+// event does not name is written as UNKNOWN rather than guessed.
 function eventToSnapshot(evt: DfnsWebhookEvent): StellarTxSnapshot {
   const data = (evt.data ?? {}) as Record<string, unknown>
   const hash = typeof data['txHash'] === 'string' ? (data['txHash'] as string) : evt.id
@@ -521,12 +499,11 @@ function defaultExportContext(): ExportContext {
 app.get('/dfns/audit/export', tokenGuard, (c) => {
   const ctx = defaultExportContext()
   const snapshots = eventHistory
-    // one record per settled tx: the lifecycle also emits requested/broadcasted,
-    // which carry no txHash and would double-count the same trade under evt.id.
+    // only confirmed events: the requested and broadcasted events of the same tx
+    // would record it again.
     .filter((e) => e.kind === 'wallet.transaction.confirmed' || e.kind === 'wallet.transfer.confirmed')
     .map((e) => eventToSnapshot(e))
-  // one continuous hash chain across every tx so the whole export verifies
-  // end to end rather than breaking at each tx boundary.
+  // one hash chain across every tx, so verifyChain can walk the whole export.
   const records: ReturnType<typeof buildMcaRecords> = []
   let prevHash: string | null = null
   for (const s of snapshots) {
@@ -534,8 +511,8 @@ app.get('/dfns/audit/export', tokenGuard, (c) => {
     if (recs.length) prevHash = recs[recs.length - 1].recordHash
     records.push(...recs)
   }
-  // never ship a broken audit trail. a corrupt chain means a bug upstream,
-  // and a wrong mica export is worse than a failed request.
+  // a broken chain means a bug upstream, and a wrong mica export is worse than a
+  // failed request.
   const broken = verifyChain(records)
   if (broken !== -1) return c.json({ error: `mica export chain broke at record ${broken}` }, 500)
   return c.body(toEsmaJson(records), 200, {
@@ -544,9 +521,8 @@ app.get('/dfns/audit/export', tokenGuard, (c) => {
   })
 })
 
-// forward metadata only. the raw dfns `data` field carries signed
-// envelopes, wallet ids, amounts and approver identities; the feed ui
-// only needs id/kind/time, so never ship `data` to connected clients.
+// metadata only: dfns `data` carries signed envelopes, wallet ids, amounts and
+// approver identities, and the feed ui needs none of it.
 export function buildSseFrame(e: DfnsWebhookEvent): { id: string; event: string; data: string } {
   return {
     id: e.id,

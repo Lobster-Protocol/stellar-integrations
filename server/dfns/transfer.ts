@@ -4,8 +4,8 @@ import { SignGuardRejected, type SignGuardConfig } from './sign-guard'
 // DFNS evaluates amount and recipient rules only on a transfer request, where it
 // builds the payment itself. on a raw signing request an amount rule answers "only
 // supported on a transfer request" and a recipient rule "recipient address not
-// specified", so every /dfns/sign signature is held by any policy and this is the
-// only route where a rule can let something through.
+// specified", so every /dfns/sign signature is held by any policy, and this is the
+// only request whose amount and recipient a rule can read.
 
 export interface TransferRequest {
   to: string
