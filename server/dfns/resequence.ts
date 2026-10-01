@@ -16,8 +16,12 @@ export function rebuildWithSequence(tx: Transaction, account: Account, passphras
   // soroban data, so the builder gets the inclusion fee alone.
   const resourceFee = sorobanData ? BigInt(sorobanData.resourceFee().toString()) : 0n
   const inclusion = BigInt(tx.fee) - resourceFee
+  // build() also multiplies that fee by the op count, so the builder gets the
+  // per-op share, rounded up so the rebuilt total is never below the original.
+  const opCount = BigInt(Math.max(tx.operations.length, 1))
+  const perOp = ((inclusion > 0n ? inclusion : BigInt(tx.fee)) + opCount - 1n) / opCount
   const builder = new TransactionBuilder(account, {
-    fee: (inclusion > 0n ? inclusion : BigInt(tx.fee)).toString(),
+    fee: perOp.toString(),
     networkPassphrase: passphrase,
   })
   for (const op of tx.toEnvelope().v1().tx().operations()) builder.addOperation(op)

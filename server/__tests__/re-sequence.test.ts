@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   TransactionBuilder,
+  Transaction,
   Networks,
   Account,
   BASE_FEE,
@@ -24,6 +25,17 @@ function trustlineAt(seq: string) {
     .addOperation(Operation.changeTrust({ asset: new Asset('LOBS', LOBS_ISSUER) }))
     .setTimeout(3600)
     .build()
+}
+
+function paymentsAt(seq: string, count: number) {
+  const builder = new TransactionBuilder(new Account(TREASURY, seq), {
+    fee: BASE_FEE,
+    networkPassphrase: Networks.TESTNET,
+  })
+  for (let i = 0; i < count; i++) {
+    builder.addOperation(Operation.payment({ destination: TREASURY, asset: Asset.native(), amount: '1' }))
+  }
+  return builder.setTimeout(3600).build()
 }
 
 describe('rebuildWithSequence', () => {
@@ -58,6 +70,24 @@ describe('rebuildWithSequence', () => {
     expect(op.type).toBe('payment')
     expect(op.destination).toBe(TREASURY)
     expect(op.amount).toBe('0.0100000')
+  })
+
+  it.each([2, 3])('keeps the total fee of a %i-op tx', (count) => {
+    const stale = paymentsAt('100', count)
+    expect(stale.fee).toBe(String(Number(BASE_FEE) * count))
+
+    const fresh = rebuildWithSequence(stale, new Account(TREASURY, '999'), Networks.TESTNET)
+    expect(fresh.operations).toHaveLength(count)
+    expect(fresh.fee).toBe(stale.fee)
+  })
+
+  it('rounds up a fee that does not split evenly across the ops', () => {
+    const env = paymentsAt('100', 2).toEnvelope()
+    env.v1().tx().fee(301)
+    const stale = new Transaction(env, Networks.TESTNET)
+
+    const fresh = rebuildWithSequence(stale, new Account(TREASURY, '999'), Networks.TESTNET)
+    expect(fresh.fee).toBe('302')
   })
 })
 
