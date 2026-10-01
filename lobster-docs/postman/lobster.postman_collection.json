@@ -6,9 +6,9 @@
             "item": [
                 {
                     "id": "1048a2e4-c177-458b-b0e0-eace83f66a84",
-                    "name": "Liveness and version",
+                    "name": "Liveness and service name",
                     "request": {
-                        "name": "Liveness and version",
+                        "name": "Liveness and service name",
                         "description": {},
                         "url": {
                             "path": [
@@ -20,6 +20,12 @@
                             "query": [],
                             "variable": []
                         },
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
                         "method": "GET",
                         "body": {},
                         "auth": null
@@ -39,14 +45,26 @@
                                     "query": [],
                                     "variable": []
                                 },
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
                                 "method": "GET",
                                 "body": {}
                             },
                             "status": "OK",
                             "code": 200,
-                            "header": [],
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"status\": \"ok\",\n  \"service\": \"<string>\"\n}",
                             "cookie": [],
-                            "_postman_previewlanguage": "text"
+                            "_postman_previewlanguage": "json"
                         }
                     ],
                     "event": [],
@@ -392,7 +410,10 @@
                     "name": "Create a Stellar custody wallet",
                     "request": {
                         "name": "Create a Stellar custody wallet",
-                        "description": {},
+                        "description": {
+                            "content": "Takes the operator token on top of the shared token, and answers 503 until both are set on the relay.\n",
+                            "type": "text/plain"
+                        },
                         "url": {
                             "path": [
                                 "dfns",
@@ -421,7 +442,23 @@
                                 }
                             }
                         },
-                        "auth": null
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "key",
+                                    "value": "x-lobster-token"
+                                },
+                                {
+                                    "key": "value",
+                                    "value": "{{apiKey}}"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header"
+                                }
+                            ]
+                        }
                     },
                     "response": [
                         {
@@ -465,7 +502,7 @@
                         },
                         {
                             "id": "44670217-6501-4d1c-abd3-550da1b1eef3",
-                            "name": "name or network missing or invalid",
+                            "name": "bad json, or name or network missing or invalid",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -504,7 +541,7 @@
                         },
                         {
                             "id": "6b368c5a-598d-4108-afee-219c607e0336",
-                            "name": "token required and missing or wrong",
+                            "name": "shared or operator token missing or wrong",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -537,6 +574,45 @@
                             },
                             "status": "Unauthorized",
                             "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "948c86be-72c7-4994-9863-188ba4cf52c5",
+                            "name": "over RATE_LIMIT_PER_MIN calls from this ip in a minute",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"StellarTestnet\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Too Many Requests",
+                            "code": 429,
                             "header": [],
                             "cookie": [],
                             "_postman_previewlanguage": "text"
@@ -576,6 +652,45 @@
                             },
                             "status": "Bad Gateway",
                             "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "f3adecbb-0f10-4259-83df-ebed9495d26f",
+                            "name": "API token or operator token not set, so wallet creation is disabled",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "wallets"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"<string>\",\n  \"network\": \"StellarTestnet\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Service Unavailable",
+                            "code": 503,
                             "header": [],
                             "cookie": [],
                             "_postman_previewlanguage": "text"
@@ -792,7 +907,7 @@
                     "request": {
                         "name": "Approve or deny a pending signature",
                         "description": {
-                            "content": "Fail-closed like /dfns/sign: deciding an approval authorizes a pending treasury signature, so it answers 503 unless the API token is set.\n",
+                            "content": "Fail-closed like /dfns/sign: deciding an approval authorizes a pending treasury signature, so it answers 503 unless the API token is set. It also takes the operator token, and answers 503 until that one is set too.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -836,7 +951,23 @@
                                 }
                             }
                         },
-                        "auth": null
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "key",
+                                    "value": "x-lobster-token"
+                                },
+                                {
+                                    "key": "value",
+                                    "value": "{{apiKey}}"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header"
+                                }
+                            ]
+                        }
                     },
                     "response": [
                         {
@@ -945,7 +1076,7 @@
                         },
                         {
                             "id": "02a125e8-aacf-4111-9f9f-4c89c3b70fb6",
-                            "name": "token required and missing or wrong",
+                            "name": "shared or operator token missing or wrong",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -991,6 +1122,58 @@
                             },
                             "status": "Unauthorized",
                             "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "90f441d9-538d-4aff-be19-a3b568869225",
+                            "name": "over RATE_LIMIT_PER_MIN calls from this ip in a minute",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "approvals",
+                                        ":id",
+                                        "decision"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) ",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"value\": \"Denied\",\n  \"reason\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Too Many Requests",
+                            "code": 429,
                             "header": [],
                             "cookie": [],
                             "_postman_previewlanguage": "text"
@@ -1049,7 +1232,7 @@
                         },
                         {
                             "id": "c520d1f9-7cfa-4db6-84b7-29f2afb826ad",
-                            "name": "API token not set, so approvals are disabled",
+                            "name": "API token or operator token not set, so approvals are disabled",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1302,6 +1485,45 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
+                            "id": "06154486-0261-4171-87f9-5e75839ac0d7",
+                            "name": "over RATE_LIMIT_PER_MIN calls from this ip in a minute",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"xdr\": \"<string>\",\n  \"networkPassphrase\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Too Many Requests",
+                            "code": 429,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
                             "id": "f59d8c48-c9f0-42af-aa78-4d9be57e866a",
                             "name": "DFNS rejected or failed the signature",
                             "originalRequest": {
@@ -1391,7 +1613,7 @@
                     "request": {
                         "name": "Poll a signature held for approval",
                         "description": {
-                            "content": "Reads the current DFNS status of a signature that /dfns/sign returned as pending. The multi-approver flow depends on it: the dashboard shows the pending state, polls here, and gets the transaction hash once a second identity approves. Returns status, txHash and reason.\n",
+                            "content": "Reads the current DFNS status of a signature that /dfns/sign returned as pending. The multi-approver flow depends on it: the dashboard shows the pending state, polls here, and gets the transaction hash once a second identity approves. Returns status, txHash, signedTxXdr and reason. DFNS does not broadcast a Soroban tx, so once one is signed the poll hands back its envelope as signedTxXdr for the caller to submit, as /dfns/sign does.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -1418,6 +1640,12 @@
                                 }
                             ]
                         },
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
                         "method": "GET",
                         "body": {},
                         "auth": null
@@ -1425,7 +1653,7 @@
                     "response": [
                         {
                             "id": "e007959f-ff16-44cc-864e-320c6dfe9fe1",
-                            "name": "current status, with txHash once it has broadcast",
+                            "name": "current status, with txHash once it has broadcast, or signedTxXdr once a Soroban tx is signed",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1451,14 +1679,26 @@
                                         }
                                     ]
                                 },
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
                                 "method": "GET",
                                 "body": {}
                             },
                             "status": "OK",
                             "code": 200,
-                            "header": [],
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"status\": \"<string>\",\n  \"txHash\": \"<string>\",\n  \"signedTxXdr\": \"<string>\",\n  \"reason\": \"<string>\"\n}",
                             "cookie": [],
-                            "_postman_previewlanguage": "text"
+                            "_postman_previewlanguage": "json"
                         },
                         {
                             "id": "2d0e503d-208f-4b8b-bc1f-67d515b7f8d9",
@@ -1535,6 +1775,43 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
+                            "id": "a2b8311a-65ef-46ca-834a-88aa7dc40e94",
+                            "name": "over RATE_LIMIT_PER_MIN calls from this ip in a minute",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "sign",
+                                        ":id",
+                                        "status"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": [
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "(Required) the signature id /dfns/sign handed back with pending",
+                                                "type": "text/plain"
+                                            },
+                                            "type": "any",
+                                            "value": "<string>",
+                                            "key": "id"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "body": {}
+                            },
+                            "status": "Too Many Requests",
+                            "code": 429,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
                             "id": "221b6dce-f7d0-4c9b-b2cd-22765fecf35a",
                             "name": "DFNS read failed",
                             "originalRequest": {
@@ -1601,6 +1878,300 @@
                                 },
                                 "method": "GET",
                                 "body": {}
+                            },
+                            "status": "Service Unavailable",
+                            "code": 503,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        }
+                    ],
+                    "event": [],
+                    "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                    }
+                },
+                {
+                    "id": "10769981-dc72-4bd5-b2e1-e8b9239e8b32",
+                    "name": "Pay XLM from the treasury as a DFNS transfer",
+                    "request": {
+                        "name": "Pay XLM from the treasury as a DFNS transfer",
+                        "description": {
+                            "content": "DFNS builds this payment itself, which makes it the one request whose amount and recipient a DFNS policy rule can read; a raw /dfns/sign request is held by any such rule. The destination has to be on DFNS_DESTINATION_WHITELIST and the amount within DFNS_MAX_AMOUNT_STROOPS, the same bounds /dfns/sign applies. When a policy holds the payment, held is true and approvalId names the approval to decide. Fail-closed like /dfns/sign: 503 when the API token, the wallet id, or the guard env is unset.\n",
+                            "type": "text/plain"
+                        },
+                        "url": {
+                            "path": [
+                                "dfns",
+                                "transfer"
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "query": [],
+                            "variable": []
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "method": "POST",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"to\": \"<string>\",\n  \"stroops\": \"<string>\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "auth": null
+                    },
+                    "response": [
+                        {
+                            "id": "a150fc07-0398-436e-b81d-96e69c7793da",
+                            "name": "the DFNS transfer request, held for approval or already sent",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "transfer"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"to\": \"<string>\",\n  \"stroops\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"id\": \"<string>\",\n  \"status\": \"<string>\",\n  \"approvalId\": \"<string,null>\",\n  \"txHash\": \"<string,null>\",\n  \"held\": \"<boolean>\"\n}",
+                            "cookie": [],
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "id": "4010d9d9-3752-44d3-a17d-361badaf7ee8",
+                            "name": "bad json, to or stroops missing, or blocked by the sign guard",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "transfer"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"to\": \"<string>\",\n  \"stroops\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "d091f552-8cee-4748-9437-ff9b86f8c83e",
+                            "name": "token required and missing or wrong",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "transfer"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"to\": \"<string>\",\n  \"stroops\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "ff7f850a-c4f7-4e3a-8087-9d0ce755f4a0",
+                            "name": "over RATE_LIMIT_PER_MIN calls from this ip in a minute",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "transfer"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"to\": \"<string>\",\n  \"stroops\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Too Many Requests",
+                            "code": 429,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "7af586f1-caa8-4414-8ab1-24eeed8d65b8",
+                            "name": "DFNS rejected or failed the transfer",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "transfer"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"to\": \"<string>\",\n  \"stroops\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Bad Gateway",
+                            "code": 502,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "b76fd9c5-945a-46ac-9a2a-bfc1f597c7ab",
+                            "name": "API token, wallet id, or sign guard not configured",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "dfns",
+                                        "transfer"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"to\": \"<string>\",\n  \"stroops\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
                             },
                             "status": "Service Unavailable",
                             "code": 503,
@@ -1688,8 +2259,8 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
-                            "id": "dc0df262-aab3-47d8-8e32-4422a4a4e8ca",
-                            "name": "DFNS read failed or not configured",
+                            "id": "165edb17-8e36-4394-9df7-9e422623f9b6",
+                            "name": "the record hash chain does not verify, so nothing is exported",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1706,8 +2277,8 @@
                                 "method": "GET",
                                 "body": {}
                             },
-                            "status": "Bad Gateway",
-                            "code": 502,
+                            "status": "Internal Server Error",
+                            "code": 500,
                             "header": [],
                             "cookie": [],
                             "_postman_previewlanguage": "text"
@@ -1745,7 +2316,7 @@
                     "response": [
                         {
                             "id": "77fcd9ab-dfdb-4fd5-af7d-c89bf3882f97",
-                            "name": "accepted",
+                            "name": "accepted, or acknowledged and dropped when the event was already received",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1769,7 +2340,7 @@
                         },
                         {
                             "id": "0b78df3e-5aea-491a-8572-fd8f4d1a769d",
-                            "name": "bad payload or signature check failed",
+                            "name": "the payload is not a DFNS event",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -1790,6 +2361,30 @@
                             "header": [],
                             "cookie": [],
                             "_postman_previewlanguage": "text"
+                        },
+                        {
+                            "id": "82c5a94d-5a40-45a3-86c4-75a3f42eac37",
+                            "name": "signature missing or wrong, or the event was sent outside the replay window",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "webhooks",
+                                        "dfns"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "method": "POST",
+                                "body": {}
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
                         }
                     ],
                     "event": [],
@@ -1803,7 +2398,7 @@
                     "request": {
                         "name": "Server-sent stream of signature and policy activity",
                         "description": {
-                            "content": "EventSource cannot set headers, so the token may be passed as ?token= in addition to the header forms.\n",
+                            "content": "EventSource cannot set headers, so this route also takes the token as ?token=. No other route accepts it in the query.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -1818,7 +2413,23 @@
                         },
                         "method": "GET",
                         "body": {},
-                        "auth": null
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "key",
+                                    "value": "x-lobster-token"
+                                },
+                                {
+                                    "key": "value",
+                                    "value": "{{apiKey}}"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header"
+                                }
+                            ]
+                        }
                     },
                     "response": [
                         {
@@ -2706,11 +3317,11 @@
             "item": [
                 {
                     "id": "70efcd27-0d3f-4d53-b9e1-e8790979fa4a",
-                    "name": "Source chains the bridge burns USDC on",
+                    "name": "The EVM chains the bridge carries USDC between Stellar and",
                     "request": {
-                        "name": "Source chains the bridge burns USDC on",
+                        "name": "The EVM chains the bridge carries USDC between Stellar and",
                         "description": {
-                            "content": "The EVM chains Circle CCTP can bring USDC from, with the contracts a burn goes through. Stellar is CCTP domain 27.\n",
+                            "content": "The EVM chains Circle CCTP carries USDC from and back to, with the contracts each side goes through. Stellar is CCTP domain 27.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -2741,7 +3352,7 @@
                     "response": [
                         {
                             "id": "ef15d823-779e-4fc6-912d-b30cc9437a28",
-                            "name": "destinationDomain, and items with key, name, domain, chainId, usdc, tokenMessenger",
+                            "name": "destinationDomain; stellar with its domain, the forwarder a burn into Stellar names as mintRecipient and destinationCaller, Circle's USDC issuer and SAC, and the TokenMessengerMinter and MessageTransmitter a burn out of Stellar goes through; directions; items with key, name, domain, chainId, usdc, tokenMessenger, messageTransmitter",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -2815,11 +3426,11 @@
                 },
                 {
                     "id": "d7dc739e-c59f-4b2c-bbd1-496c1b84aef9",
-                    "name": "Circle's fees from a source chain to Stellar",
+                    "name": "Circle's fees, either way",
                     "request": {
-                        "name": "Circle's fees from a source chain to Stellar",
+                        "name": "Circle's fees, either way",
                         "description": {
-                            "content": "Basis points for a fast transfer and for a standard one, read live from Circle. A null fastBps means Circle offers no fast route from there.\n",
+                            "content": "Into Stellar, basis points for a fast transfer and for a standard one, read live from Circle; a null fastBps means Circle offers no fast route from there. Out of Stellar (domain 27 with a destination), what Circle charges to mint the USDC on that chain itself, in 6-decimal units. Circle keeps all of it.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -2843,10 +3454,19 @@
                                 {
                                     "disabled": false,
                                     "description": {
-                                        "content": "(Required) CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base",
+                                        "content": "(Required) CCTP domain of the chain that burns, 0 Ethereum, 3 Arbitrum, 6 Base, 27 Stellar",
                                         "type": "text/plain"
                                     },
                                     "key": "domain",
+                                    "value": "<integer>"
+                                },
+                                {
+                                    "disabled": false,
+                                    "description": {
+                                        "content": "with domain 27, the EVM chain the USDC goes to",
+                                        "type": "text/plain"
+                                    },
+                                    "key": "destination",
                                     "value": "<integer>"
                                 }
                             ],
@@ -2859,7 +3479,7 @@
                     "response": [
                         {
                             "id": "a3c1ab9d-8703-4cb9-9a6f-47ad3daf4428",
-                            "name": "fastBps and standardBps",
+                            "name": "fastBps and standardBps; with domain 27, sourceDomain, destinationDomain, forwardFee and bps",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -2882,10 +3502,19 @@
                                         {
                                             "disabled": false,
                                             "description": {
-                                                "content": "(Required) CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base",
+                                                "content": "(Required) CCTP domain of the chain that burns, 0 Ethereum, 3 Arbitrum, 6 Base, 27 Stellar",
                                                 "type": "text/plain"
                                             },
                                             "key": "domain",
+                                            "value": "<integer>"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "with domain 27, the EVM chain the USDC goes to",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "destination",
                                             "value": "<integer>"
                                         }
                                     ],
@@ -2902,7 +3531,7 @@
                         },
                         {
                             "id": "4e0802d0-d893-4cd7-b4be-12b7643d361a",
-                            "name": "not a source chain we burn from",
+                            "name": "not a chain we carry USDC from or to",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -2925,10 +3554,19 @@
                                         {
                                             "disabled": false,
                                             "description": {
-                                                "content": "(Required) CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base",
+                                                "content": "(Required) CCTP domain of the chain that burns, 0 Ethereum, 3 Arbitrum, 6 Base, 27 Stellar",
                                                 "type": "text/plain"
                                             },
                                             "key": "domain",
+                                            "value": "<integer>"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "with domain 27, the EVM chain the USDC goes to",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "destination",
                                             "value": "<integer>"
                                         }
                                     ],
@@ -2968,10 +3606,19 @@
                                         {
                                             "disabled": false,
                                             "description": {
-                                                "content": "(Required) CCTP domain of the source chain, 0 Ethereum, 3 Arbitrum, 6 Base",
+                                                "content": "(Required) CCTP domain of the chain that burns, 0 Ethereum, 3 Arbitrum, 6 Base, 27 Stellar",
                                                 "type": "text/plain"
                                             },
                                             "key": "domain",
+                                            "value": "<integer>"
+                                        },
+                                        {
+                                            "disabled": false,
+                                            "description": {
+                                                "content": "with domain 27, the EVM chain the USDC goes to",
+                                                "type": "text/plain"
+                                            },
+                                            "key": "destination",
                                             "value": "<integer>"
                                         }
                                     ],
@@ -2998,7 +3645,7 @@
                     "request": {
                         "name": "Where a burn stands, and who it pays",
                         "description": {
-                            "content": "Asks Circle for the message behind a burn and decodes it. Pending until Circle has signed. Once signed it gives the Stellar account the transfer pays, the amount burned and the amount that lands after Circle's fee, in 6-decimal units.\n",
+                            "content": "Asks Circle for the message behind a burn and decodes it. Pending until Circle has signed. Once signed it gives the account the transfer pays, a Stellar account on the way in and an EVM address on the way out, the amount burned and the amount that lands after Circle's fee, in 6-decimal units. Out of Stellar it also gives Circle's own mint, forwardState and forwardTxHash, and the message and attestation an EVM wallet submits to receiveMessage when it mints the USDC itself.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -3031,7 +3678,7 @@
                                 {
                                     "disabled": false,
                                     "description": {
-                                        "content": "(Required) the EVM burn transaction hash",
+                                        "content": "(Required) the burn transaction hash, 0x plus 64 hex on an EVM chain, 64 hex on Stellar",
                                         "type": "text/plain"
                                     },
                                     "key": "txHash",
@@ -3047,7 +3694,7 @@
                     "response": [
                         {
                             "id": "62de9f64-eb31-464d-9a8a-2eaf1c531d26",
-                            "name": "state pending with delayReason, or state attested with recipient, amount, amountToLand, feeExecuted, expirationLedger",
+                            "name": "state pending with delayReason, or state attested with recipient, amount, amountToLand, feeExecuted, expirationLedger; out of Stellar also forwardState, forwardTxHash, message and attestation",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -3079,7 +3726,7 @@
                                         {
                                             "disabled": false,
                                             "description": {
-                                                "content": "(Required) the EVM burn transaction hash",
+                                                "content": "(Required) the burn transaction hash, 0x plus 64 hex on an EVM chain, 64 hex on Stellar",
                                                 "type": "text/plain"
                                             },
                                             "key": "txHash",
@@ -3131,7 +3778,7 @@
                                         {
                                             "disabled": false,
                                             "description": {
-                                                "content": "(Required) the EVM burn transaction hash",
+                                                "content": "(Required) the burn transaction hash, 0x plus 64 hex on an EVM chain, 64 hex on Stellar",
                                                 "type": "text/plain"
                                             },
                                             "key": "txHash",
@@ -3183,7 +3830,7 @@
                                         {
                                             "disabled": false,
                                             "description": {
-                                                "content": "(Required) the EVM burn transaction hash",
+                                                "content": "(Required) the burn transaction hash, 0x plus 64 hex on an EVM chain, 64 hex on Stellar",
                                                 "type": "text/plain"
                                             },
                                             "key": "txHash",
@@ -3213,7 +3860,7 @@
                     "request": {
                         "name": "Deliver a signed transfer on Stellar and pay the fee",
                         "description": {
-                            "content": "Runs the last step for an account that does not sign from a browser. The message is never taken from the caller: the service asks Circle for it by burn hash and only submits once it pays the recipient named here, through the forwarder of the network named here. Shut unless a relay key is configured, testnet only unless mainnet is switched on separately, and capped per day.\n",
+                            "content": "Runs the last step for an account that does not sign from a browser. The message is never taken from the caller: the service asks Circle for it by burn hash and only submits once it pays the recipient named here, through the forwarder of the network named here. Shut unless a relay key is configured, testnet only unless mainnet is switched on separately, and capped per day. It spends the relay account's XLM, so it takes the operator token on top of the shared token.\n",
                             "type": "text/plain"
                         },
                         "url": {
@@ -3249,7 +3896,7 @@
                             "apikey": [
                                 {
                                     "key": "key",
-                                    "value": "x-lobster-operator-token"
+                                    "value": "x-lobster-token"
                                 },
                                 {
                                     "key": "value",
@@ -3343,7 +3990,7 @@
                         },
                         {
                             "id": "fdea198b-6f4d-4d16-a3df-dca477860c71",
-                            "name": "operator token missing or wrong",
+                            "name": "shared or operator token missing or wrong",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -3459,6 +4106,45 @@
                             "_postman_previewlanguage": "text"
                         },
                         {
+                            "id": "22c9227b-074d-4290-a39c-e40beac09ef6",
+                            "name": "over RATE_LIMIT_PER_MIN calls from this ip in a minute",
+                            "originalRequest": {
+                                "url": {
+                                    "path": [
+                                        "cctp",
+                                        "deliver"
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "query": [],
+                                    "variable": []
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"network\": \"testnet\",\n  \"sourceDomain\": \"<integer>\",\n  \"txHash\": \"<string>\",\n  \"recipient\": \"<string>\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "headerFamily": "json",
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "status": "Too Many Requests",
+                            "code": 429,
+                            "header": [],
+                            "cookie": [],
+                            "_postman_previewlanguage": "text"
+                        },
+                        {
                             "id": "65f38d62-e8f7-4f14-a9f6-0abbe6f4e866",
                             "name": "Stellar or Circle refused",
                             "originalRequest": {
@@ -3499,7 +4185,7 @@
                         },
                         {
                             "id": "876cda05-1e48-49ec-b3aa-4ddc6a03df75",
-                            "name": "relay not configured, network not enabled, daily cap reached, or Circle has paused deliveries",
+                            "name": "operator token or relay not configured, network not enabled, daily cap reached, or Circle has paused deliveries",
                             "originalRequest": {
                                 "url": {
                                     "path": [
@@ -3577,7 +4263,7 @@
         "name": "Lobster BFF",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         "description": {
-            "content": "Backend for the Lobster dashboard. It wraps the DFNS custody service and a few reads. The custody routes are gated on an API token (LOBSTER_API_TOKEN); with no token set the gate is open for local dev. The DFNS reads answer 502 when the upstream call fails or the credentials are missing, and the sign path answers 503 until its env is in place.\n",
+            "content": "Backend for the Lobster dashboard. It wraps the DFNS custody service and a few reads. The custody routes are gated on an API token (LOBSTER_API_TOKEN); with no token set the gate is open for local dev. The DFNS reads answer 502 when the upstream call fails or the credentials are missing, and the sign path answers 503 until its env is in place. Creating a wallet, deciding an approval and paying a CCTP delivery also take the operator token (LOBSTER_OPERATOR_TOKEN), and stay shut until it is set.\n",
             "type": "text/plain"
         }
     }

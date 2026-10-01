@@ -7,7 +7,9 @@ info:
     few reads. The custody routes are gated on an API token (LOBSTER_API_TOKEN);
     with no token set the gate is open for local dev. The DFNS reads answer 502
     when the upstream call fails or the credentials are missing, and the sign
-    path answers 503 until its env is in place.
+    path answers 503 until its env is in place. Creating a wallet, deciding an
+    approval and paying a CCTP delivery also take the operator token
+    (LOBSTER_OPERATOR_TOKEN), and stay shut until it is set.
 servers:
   - url: https://lobster-bff.onrender.com
     description: deployed relay
@@ -26,10 +28,18 @@ paths:
   /health:
     get:
       tags: [health]
-      summary: Liveness and version
+      summary: Liveness and service name
       security: []
       responses:
-        '200': { description: ok }
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+                  service: { type: string }
   /ttl:
     get:
       tags: [monitoring]
@@ -74,6 +84,14 @@ paths:
     post:
       tags: [dfns]
       summary: Create a Stellar custody wallet
+      description: >
+        Takes the operator token on top of the shared token, and answers 503
+        until both are set on the relay.
+      security:
+        - lobsterToken: []
+          operatorToken: []
+        - bearerAuth: []
+          operatorToken: []
       requestBody:
         required: true
         content:
@@ -86,9 +104,11 @@ paths:
                 network: { type: string, enum: [Stellar, StellarTestnet] }
       responses:
         '200': { description: created }
-        '400': { description: name or network missing or invalid }
-        '401': { description: token required and missing or wrong }
+        '400': { description: "bad json, or name or network missing or invalid" }
+        '401': { description: shared or operator token missing or wrong }
+        '429': { description: over RATE_LIMIT_PER_MIN calls from this ip in a minute }
         '502': { description: DFNS create failed or not configured }
+        '503': { description: "API token or operator token not set, so wallet creation is disabled" }
   /dfns/policies:
     get:
       tags: [dfns]
@@ -111,7 +131,13 @@ paths:
       summary: Approve or deny a pending signature
       description: >
         Fail-closed like /dfns/sign: deciding an approval authorizes a pending
-        treasury signature, so it answers 503 unless the API token is set.
+        treasury signature, so it answers 503 unless the API token is set. It
+        also takes the operator token, and answers 503 until that one is set too.
+      security:
+        - lobsterToken: []
+          operatorToken: []
+        - bearerAuth: []
+          operatorToken: []
       parameters:
         - name: id
           in: path
@@ -130,8 +156,9 @@ paths:
       responses:
         '200': { description: decision recorded }
         '400': { description: "missing id, bad json, or value not Approved/Denied" }
-        '401': { description: token required and missing or wrong }
-        '503': { description: "API token not set, so approvals are disabled" }
+        '401': { description: shared or operator token missing or wrong }
+        '429': { description: over RATE_LIMIT_PER_MIN calls from this ip in a minute }
+        '503': { description: "API token or operator token not set, so approvals are disabled" }
         '502': { description: DFNS decision call failed }
   /dfns/sign:
     post:
@@ -172,6 +199,7 @@ paths:
         '400': { description: "bad json, missing xdr, network mismatch, fee-bump or restoreFootprint envelope, or blocked by the sign guard" }
         '401': { description: token required and missing or wrong }
         '409': { description: a treasury signature is already awaiting approval; body carries pending and id }
+        '429': { description: over RATE_LIMIT_PER_MIN calls from this ip in a minute }
         '502': { description: DFNS rejected or failed the signature }
         '503': { description: "API token, wallet id, or sign guard not configured" }
   /dfns/sign/{id}/status:
@@ -182,7 +210,10 @@ paths:
         Reads the current DFNS status of a signature that /dfns/sign returned as
         pending. The multi-approver flow depends on it: the dashboard shows the
         pending state, polls here, and gets the transaction hash once a second
-        identity approves. Returns status, txHash and reason.
+        identity approves. Returns status, txHash, signedTxXdr and reason. DFNS
+        does not broadcast a Soroban tx, so once one is signed the poll hands
+        back its envelope as signedTxXdr for the caller to submit, as /dfns/sign
+        does.
       parameters:
         - name: id
           in: path
@@ -190,11 +221,63 @@ paths:
           schema: { type: string }
           description: the signature id /dfns/sign handed back with pending
       responses:
-        '200': { description: "current status, with txHash once it has broadcast" }
+        '200':
+          description: "current status, with txHash once it has broadcast, or signedTxXdr once a Soroban tx is signed"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  txHash: { type: string }
+                  signedTxXdr: { type: string, description: base64 signed transaction envelope }
+                  reason: { type: string }
         '400': { description: missing signature id }
         '401': { description: token required and missing or wrong }
+        '429': { description: over RATE_LIMIT_PER_MIN calls from this ip in a minute }
         '502': { description: DFNS read failed }
         '503': { description: DFNS_STELLAR_WALLET_ID not set }
+  /dfns/transfer:
+    post:
+      tags: [dfns]
+      summary: Pay XLM from the treasury as a DFNS transfer
+      description: >
+        DFNS builds this payment itself, which makes it the one request whose
+        amount and recipient a DFNS policy rule can read; a raw /dfns/sign
+        request is held by any such rule. The destination has to be on
+        DFNS_DESTINATION_WHITELIST and the amount within DFNS_MAX_AMOUNT_STROOPS,
+        the same bounds /dfns/sign applies. When a policy holds the payment,
+        held is true and approvalId names the approval to decide. Fail-closed
+        like /dfns/sign: 503 when the API token, the wallet id, or the guard env
+        is unset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, stroops]
+              properties:
+                to: { type: string, description: "Stellar account id the treasury pays, G plus 55 base32" }
+                stroops: { type: string, description: "amount as a positive whole number of stroops, 1 XLM = 10000000" }
+      responses:
+        '200':
+          description: "the DFNS transfer request, held for approval or already sent"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  status: { type: string }
+                  approvalId: { type: [string, 'null'] }
+                  txHash: { type: [string, 'null'] }
+                  held: { type: boolean }
+        '400': { description: "bad json, to or stroops missing, or blocked by the sign guard" }
+        '401': { description: token required and missing or wrong }
+        '429': { description: over RATE_LIMIT_PER_MIN calls from this ip in a minute }
+        '502': { description: DFNS rejected or failed the transfer }
+        '503': { description: "API token, wallet id, or sign guard not configured" }
   /dfns/audit/export:
     get:
       tags: [dfns]
@@ -202,7 +285,7 @@ paths:
       responses:
         '200': { description: audit records }
         '401': { description: token required and missing or wrong }
-        '502': { description: DFNS read failed or not configured }
+        '500': { description: "the record hash chain does not verify, so nothing is exported" }
   /webhooks/dfns:
     post:
       tags: [dfns]
@@ -213,15 +296,20 @@ paths:
         HMAC is the auth.
       security: []
       responses:
-        '200': { description: accepted }
-        '400': { description: bad payload or signature check failed }
+        '200': { description: "accepted, or acknowledged and dropped when the event was already received" }
+        '400': { description: the payload is not a DFNS event }
+        '401': { description: "signature missing or wrong, or the event was sent outside the replay window" }
   /sse:
     get:
       tags: [dfns]
       summary: Server-sent stream of signature and policy activity
       description: >
-        EventSource cannot set headers, so the token may be passed as ?token=
-        in addition to the header forms.
+        EventSource cannot set headers, so this route also takes the token as
+        ?token=. No other route accepts it in the query.
+      security:
+        - lobsterToken: []
+        - bearerAuth: []
+        - lobsterQueryToken: []
       responses:
         '200': { description: event stream }
         '401': { description: token required and missing or wrong }
@@ -424,9 +512,13 @@ paths:
         by burn hash and only submits once it pays the recipient named here,
         through the forwarder of the network named here. Shut unless a relay key
         is configured, testnet only unless mainnet is switched on separately,
-        and capped per day.
+        and capped per day. It spends the relay account's XLM, so it takes the
+        operator token on top of the shared token.
       security:
-        - operatorToken: []
+        - lobsterToken: []
+          operatorToken: []
+        - bearerAuth: []
+          operatorToken: []
       requestBody:
         required: true
         content:
@@ -442,11 +534,12 @@ paths:
       responses:
         '200': { description: "delivered with the Stellar hash and the amount, or already-delivered" }
         '400': { description: "body failed validation, or the transfer does not pay that recipient" }
-        '401': { description: operator token missing or wrong }
+        '401': { description: shared or operator token missing or wrong }
         '404': { description: Circle has not signed the burn yet }
         '409': { description: the recipient has no USDC trustline }
+        '429': { description: over RATE_LIMIT_PER_MIN calls from this ip in a minute }
         '502': { description: Stellar or Circle refused }
-        '503': { description: "relay not configured, network not enabled, daily cap reached, or Circle has paused deliveries" }
+        '503': { description: "operator token or relay not configured, network not enabled, daily cap reached, or Circle has paused deliveries" }
 components:
   securitySchemes:
     lobsterToken:
@@ -454,8 +547,15 @@ components:
       in: header
       name: x-lobster-token
       description: >
-        Shared token (LOBSTER_API_TOKEN). Also accepted as a bearer token or, for
-        the SSE stream, a ?token= query parameter. Omitted when no token is set.
+        Shared token (LOBSTER_API_TOKEN). Also accepted as a bearer token, and on
+        /sse only as a ?token= query parameter. Omitted when no token is set.
+    lobsterQueryToken:
+      type: apiKey
+      in: query
+      name: token
+      description: >
+        The shared token as a query parameter, for EventSource, which cannot set
+        headers. Only /sse takes it.
     bearerAuth:
       type: http
       scheme: bearer
