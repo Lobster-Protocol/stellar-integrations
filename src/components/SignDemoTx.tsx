@@ -4,6 +4,7 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
 import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { buildTreasuryPaymentTx } from '../integrations/dfns/demo-tx'
+import { awaitDfnsSignature } from '../integrations/dfns/await-signature'
 import { pollSignatureStatus, requestTransfer } from '../integrations/dfns/relay'
 import { readableDfnsError } from '../integrations/dfns/errors'
 import { networkPassphrase } from '../integrations/lobster/client'
@@ -87,7 +88,12 @@ export default function SignDemoTx() {
         setState({ phase: 'pending' })
         const ac = new AbortController()
         abortRef.current = ac
-        const hash = await pollSignatureStatus(pendingId, { signal: ac.signal })
+        // dfns broadcasts the classic payment itself but only signs the soroban
+        // factory call, so its envelope is submitted from here.
+        const hash =
+          kind === 'payment'
+            ? await pollSignatureStatus(pendingId, { signal: ac.signal })
+            : await awaitDfnsSignature(pendingId, network, ac.signal)
         setState({ phase: 'confirmed', txHash: hash })
         return
       }
