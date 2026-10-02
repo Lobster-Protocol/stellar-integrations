@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent as 
 import { useQueryClient } from '@tanstack/react-query'
 import { X, Check } from 'lucide-react'
 import { useAccount, useDisconnect } from 'wagmi'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { formatUnits, type Address } from 'viem'
 
 import { cn, shortenAddress, stellarExplorer } from '../utils/format'
@@ -82,6 +83,8 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   // the way out is a component of its own, which says whether it may be left
   const [outStage, setOutStage] = useState<OutStage>('form')
   const onOutStage = useCallback((s: OutStage) => setOutStage(s), [])
+  // Escape closes the wallet window on top first, not the bridge under it
+  const { connectModalOpen } = useConnectModal()
   const { address: stellarAddr, connect: connectStellar, connecting: stellarConnecting } = useWallet()
   const { mode: custodyMode, dfnsAddress, signer: custodySigner } = useCustody()
   // under DFNS custody the USDC goes to the treasury. The delivery needs no
@@ -156,11 +159,13 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !busy) onClose()
+      if (e.key === 'Escape' && !busy && !connectModalOpen) onClose()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, busy, onClose])
+    // heard on the way down, before the wallet window's own listener closes it: by the time
+    // the key got back up here, the page would already have that window down as closed
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [open, busy, onClose, connectModalOpen])
 
   // keyboard and screen reader users otherwise stay on the button behind the overlay
   const dialogRef = useRef<HTMLDivElement>(null)

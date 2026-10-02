@@ -1,12 +1,63 @@
 import { http, fallback, createConfig } from 'wagmi'
 import { mainnet, arbitrum, bsc, base, sepolia, baseSepolia, arbitrumSepolia } from 'wagmi/chains'
-import { injected } from 'wagmi/connectors'
+import { connectorsForWallets, type Wallet, type WalletList } from '@rainbow-me/rainbowkit'
+import {
+  coinbaseWallet,
+  injectedWallet,
+  ledgerWallet,
+  metaMaskWallet,
+  okxWallet,
+  rabbyWallet,
+  rainbowWallet,
+  safeWallet,
+  trustWallet,
+  walletConnectWallet,
+} from '@rainbow-me/rainbowkit/wallets'
 
 import { cctpChain, type Network } from '../../config/contracts'
 
-// injected wallets only: a wagmi walletConnect connector would start a second WC core next
-// to the Stellar kit's (same project id), and the two overwrite each other's sessions
-const connectors = [injected({ shimDisconnect: true })]
+const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined
+
+// Any wallet that speaks WalletConnect, by QR code. It is RainbowKit's own WalletConnect
+// entry, made by the same module as the other wallets so that all of them share a single
+// WalletConnect client. Under another id, RainbowKit leaves out WalletConnect's official
+// modal, a second Reown AppKit that would sit next to the Stellar kit's one and share the
+// page's custom elements and state with it.
+function anyWalletConnect(params: Parameters<typeof walletConnectWallet>[0]): Wallet {
+  return { ...walletConnectWallet(params), id: 'walletconnect-qr' }
+}
+
+// Whatever wallet the browser carries, offered only when it carries one: RainbowKit lists
+// it in any browser, and in one without a wallet picking it fails.
+function browserWallet(): Wallet {
+  const hasOne = typeof window !== 'undefined' && !!(window as { ethereum?: unknown }).ethereum
+  return { ...injectedWallet(), installed: hasOne }
+}
+
+// One window for every EVM wallet: the extensions in this browser show up on their own
+// (EIP-6963), the others connect by deep link or QR code. Without a WalletConnect project
+// id only the ones that need no WalletConnect are offered.
+const walletList: WalletList = projectId
+  ? [
+      {
+        groupName: 'Popular',
+        wallets: [metaMaskWallet, coinbaseWallet, rabbyWallet, trustWallet, ledgerWallet, rainbowWallet, okxWallet, safeWallet, anyWalletConnect, browserWallet],
+      },
+    ]
+  : [{ groupName: 'In this browser', wallets: [browserWallet, rabbyWallet, coinbaseWallet, safeWallet] }]
+
+const origin = typeof window === 'undefined' ? undefined : window.location.origin
+
+const connectors = connectorsForWallets(walletList, {
+  appName: 'Lobster Protocol',
+  appDescription: 'Lobster Protocol dashboard',
+  appUrl: origin,
+  appIcon: origin && `${origin}/lobster-icon.png`,
+  projectId: projectId ?? '',
+  // its own storage, apart from the Stellar kit's WalletConnect client: two clients on the
+  // same keys overwrite each other's sessions
+  walletConnectParameters: { customStoragePrefix: 'lobster-evm' },
+})
 
 // an override first, then the registry's public endpoint, then one that keeps
 // old receipts, each tried when the one before it fails

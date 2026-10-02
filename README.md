@@ -111,6 +111,8 @@ React 19, Vite 6, Tailwind v4, TypeScript strict.
 `@stellar/stellar-sdk` v14 for Horizon + Soroban RPC.
 `@creit-tech/stellar-wallets-kit` v2 via JSR (Freighter, xBull, Albedo,
 LOBSTR + WalletConnect).
+`wagmi` + `viem` on the EVM side, with RainbowKit's window for every EVM wallet
+(browser extensions, WalletConnect, Coinbase, Ledger, Safe).
 SDKs in the tree: `@allbridge/bridge-core-sdk`, `@stellar-broker/client`,
 `@dfns/sdk`. Soroswap is called through its on-chain router via
 `@stellar/stellar-sdk`, no dedicated SDK.

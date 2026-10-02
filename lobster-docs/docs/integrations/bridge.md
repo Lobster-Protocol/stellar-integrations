@@ -10,6 +10,15 @@ Arbitrum or Ethereum; the Stellar wallet holds it on Stellar. `/bridges` shows
 both side by side, each connected on its own, with its network, its USDC and
 what it has to pay fees with.
 
+The EVM wallet is picked in one window (RainbowKit) that lists them all: an
+extension in the browser shows up under its own name, MetaMask, Coinbase, Rabby,
+Trust, Ledger, Rainbow and OKX connect by extension, deep link or QR code, any
+other mobile wallet by WalletConnect's QR code, and a Safe from inside the Safe
+app. It connects on whatever chain it is on, and the bridge asks it to switch to
+the source chain when it sends. The EVM side runs its own WalletConnect client,
+with its own storage, next to the Stellar kit's: an EVM session and a Stellar
+session stay open side by side, and both come back after a reload.
+
 ## Into Stellar
 
 1. The Stellar account that will receive opens a USDC trustline. Without one the

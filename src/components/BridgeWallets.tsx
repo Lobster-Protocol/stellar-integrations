@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { useAccount, useDisconnect } from 'wagmi'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { ExternalLink } from 'lucide-react'
 
 import { cn, formatBalance, shortenAddress, stellarExplorer } from '../utils/format'
@@ -12,36 +13,28 @@ import {
   evmChainNote,
   fmtGas,
   fmtUsdc,
-  readableConnectError,
   stellarNetworkMismatch,
   useStellarWalletNetwork,
 } from '../integrations/cctp/wallets'
 import CopyButton from './CopyButton'
 import { InfoTip } from './InfoTip'
 
+// one button, one window listing every EVM wallet; the window says itself when a wallet
+// is missing or turns the connection down
 export function EvmConnectButtons({ small }: { small?: boolean }) {
-  const { connectors, connect, isPending, error } = useConnect()
-  // a wallet that announces itself (EIP-6963) is listed under its own name, and the
-  // generic entry would offer the same wallet again as "Injected"
-  const options = connectors.length > 1 ? connectors.filter((c) => c.id !== 'injected') : connectors
+  const { openConnectModal, connectModalOpen } = useConnectModal()
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex gap-1 flex-wrap justify-end">
-        {options.map((c) => (
-          <button
-            key={c.uid}
-            onClick={() => connect({ connector: c })}
-            disabled={isPending}
-            className={cn(
-              'rounded-md bg-primary text-white font-medium disabled:opacity-50',
-              small ? 'px-2 py-1 text-[11px]' : 'px-3 py-1.5 text-xs',
-            )}
-          >
-            {c.id === 'injected' ? 'Browser wallet' : c.name}
-          </button>
-        ))}
-      </div>
-      {error && <p className="text-[10px] text-coral">{readableConnectError(error.message)}</p>}
+    <div className="flex justify-end">
+      <button
+        onClick={() => openConnectModal?.()}
+        disabled={!openConnectModal || connectModalOpen}
+        className={cn(
+          'rounded-md bg-primary text-white font-medium disabled:opacity-50',
+          small ? 'px-2 py-1 text-[11px]' : 'px-3 py-1.5 text-xs',
+        )}
+      >
+        Connect an EVM wallet
+      </button>
     </div>
   )
 }
@@ -77,8 +70,8 @@ function EvmWalletCard({ network, chains }: { network: Network; chains: CctpSour
       {!evm.address ? (
         <>
           <p className="text-text-secondary">
-            Sends USDC from {chains.map((c) => c.name).join(', ')}, and receives it back. Connect MetaMask, Rabby or
-            any browser wallet.
+            Sends USDC from {chains.map((c) => c.name).join(', ')}, and receives it back. Any EVM wallet: one in
+            this browser, a mobile one by QR code, Coinbase, Ledger or Safe.
           </p>
           <EvmConnectButtons />
         </>

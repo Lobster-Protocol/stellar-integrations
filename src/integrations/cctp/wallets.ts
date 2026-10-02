@@ -7,6 +7,7 @@ import { CCTP_EVM_USDC_DECIMALS, cctpChainsFor, type Network } from '../../confi
 
 // wagmi's raw "Connector not found." reads like a bug in the page rather than a
 // missing wallet extension
+/** @deprecated 2026-10: the EVM wallet window (RainbowKit) shows its own connection errors */
 export function readableConnectError(message: string): string {
   if (/connector not found|no injected|provider not found|window\.ethereum/i.test(message)) {
     return 'No browser wallet answered. Install MetaMask or Rabby, then try again.'
