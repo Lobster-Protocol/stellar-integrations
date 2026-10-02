@@ -19,11 +19,13 @@ The Soroban contracts come from [Lobster-Protocol/Stellar](https://github.com/Lo
 | --- | --- |
 | Factory, admin handed to the DFNS treasury | [`CAFGQVKF...MCR5`](https://stellar.expert/explorer/public/contract/CAFGQVKFCZITN7UJUOIJPMULGZRUR7RXG6DAYJ2VBGIGFWHHFGR6MCR5) |
 | first vault, XLM/USDC, working in the Soroswap pool | [`CBEWCQWM...WGQ4`](https://stellar.expert/explorer/public/contract/CBEWCQWMKYRBHN2H6GIEYQS4UACN3DHC3KUXHX5F3AOZAKCG5VI7WGQ4) |
+| the DFNS treasury's own vault, XLM/USDC in the same pool, every step signed through DFNS MPC | [`CCRPBDXY...UXRQ`](https://stellar.expert/explorer/public/contract/CCRPBDXYKFWJ7Y7LFU3CWJOCFSP3UQ7NG6BXEQ2MXFKPN3FU7OKDUXRQ) |
 
-The dashboard reads both with no wallet:
-[the factory and its vaults](https://stellar-instit.lobster-protocol.com/audit?network=mainnet), and
-[the vault's position](https://stellar-instit.lobster-protocol.com/positions?network=mainnet&view=GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS),
-opened read-only on its owner.
+The dashboard reads all of it with no wallet:
+[the factory and its vaults](https://stellar-instit.lobster-protocol.com/audit?network=mainnet),
+[the treasury's position](https://stellar-instit.lobster-protocol.com/positions?network=mainnet&view=GCE75LSGSRWKXNZLJ2SPZ4XZS4CFSUTZBHCWQSK7RTWSMU2AJ3F36DQP) and
+[the first vault's](https://stellar-instit.lobster-protocol.com/positions?network=mainnet&view=GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS),
+each opened read-only on its owner.
 
 ### Testnet
 
@@ -62,6 +64,7 @@ vault rows on mainnet, and the bridge rows on both.
 | the Lobster factory deployed on mainnet, admin then handed to the DFNS treasury | [`43bd8748`](https://stellar.expert/explorer/public/tx/43bd8748235bf1728633265c5544cf1701fca1b70646c8cf79a6147ffdf91eb9), [`f27dd796`](https://stellar.expert/explorer/public/tx/f27dd796fc6eea4a831a7c80140e4b08cfe698d6fdb8579c48c552970cf96b54) |
 | the vault code the factory deploys per pool, and the factory code, uploaded to mainnet | [`ed5f7257`](https://stellar.expert/explorer/public/tx/ed5f7257925eae08befbdf4ec5bdb6f55d75363f15b6b3d9a7728dddb21f96d9), [`bb6b7306`](https://stellar.expert/explorer/public/tx/bb6b73068fd12b0f0c8547b5916789f2fbfe7677373f99affaeb59d72c3b6379) |
 | the first mainnet vault: created by the factory, 5 XLM and 1.09 USDC deposited, then put into the Soroswap XLM/USDC pool | [`a5dd6610`](https://stellar.expert/explorer/public/tx/a5dd6610477b103aa860df1caa2f4bd737f9ca8111fa4e07213bd00e583fd38b), [`d9936ee5`](https://stellar.expert/explorer/public/tx/d9936ee57f8719a2fff41c01eb1efe08526d775ffd85c1593bd9e47d9f96c6cb), [`e845c924`](https://stellar.expert/explorer/public/tx/e845c924538dd130f5a9a385b9bf82e9ffc893ec8a4cbd83d1a3312ba9038afc) |
+| the same three steps from the DFNS treasury, each signed by DFNS MPC and held by the treasury policy until a named approver released it: vault created, 5 XLM and 1.1077 USDC deposited, both put into the Soroswap pool | [`5d0337ad`](https://stellar.expert/explorer/public/tx/5d0337ad045dd2cca29b58ba0d5a0f9e563f6b3a2256a81934073250d448ec3e), [`c2aa374d`](https://stellar.expert/explorer/public/tx/c2aa374db4a86c49d914f6b3c8503e88ae32b72a7c018c275005d1c808f05409), [`d799bfeb`](https://stellar.expert/explorer/public/tx/d799bfebfe9746fc0cd27f0a15fc517511e2c56d2d1aa0b66f32fce238c76185) |
 | Soroban call signed by DFNS MPC, not a local key. `get_admin` on the Factory, held for an approver and released by one | [`96f4bcfe`](https://stellar.expert/explorer/testnet/tx/96f4bcfe2e72cac9a6f2ddd06946d47b55ea340664798dade7c71ff41bbb7d4a) |
 | the same Soroban call, first run | [`bd5db00a`](https://stellar.expert/explorer/testnet/tx/bd5db00a38a40327cdf906f27af94afcce39e679fd81d01a93bacf3479f3ef41) |
 | DFNS policy, cleared with no approver because the recipient is on the list. Sent from the dashboard button, not a script | [`dcd63f56`](https://stellar.expert/explorer/testnet/tx/dcd63f560a2c2e08da057dbc7ba294819875fb1043893dfe1e53a3847abb1f88) |
