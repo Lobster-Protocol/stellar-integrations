@@ -59,7 +59,10 @@ export function CustodyProvider({ children }: { children: ReactNode }) {
     () => ({
       mode,
       setMode,
-      signer: mode === 'dfns' ? dfnsSigner : walletKitSigner,
+      // dfns signs only when a dfns wallet is actually resolved. a stale 'dfns' mode left in
+      // localStorage with no dfns wallet must not send a connected wallet-kit account's tx to
+      // the dfns relay, which cannot sign for it.
+      signer: mode === 'dfns' && dfnsAddress ? dfnsSigner : walletKitSigner,
       dfnsAddress,
     }),
     [mode, dfnsAddress],
