@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Address, Networks, nativeToScVal, xdr } from '@stellar/stellar-sdk'
 
 import { networkPassphrase } from '../client'
-import { handleSendResult, TryAgainLaterError, waitForTx, buildPingTx, getLatestVaults } from '../factory'
+import { handleSendResult, TransactionRefusedError, TryAgainLaterError, waitForTx, buildPingTx, getLatestVaults } from '../factory'
 
 const simulateTransaction = vi.fn()
 const getTransaction = vi.fn()
@@ -61,6 +61,33 @@ describe('handleSendResult', () => {
     expect(() =>
       handleSendResult({ status: 'ERROR', hash: 'hx', errorResult: { e: 'malformed' } }),
     ).toThrow(/malformed/)
+  })
+  it('says in words that an expired transaction sent nothing, and keeps the code', () => {
+    const tooLate = new xdr.TransactionResult({
+      feeCharged: xdr.Int64.fromString('24095'),
+      result: xdr.TransactionResultResult.txTooLate(),
+      ext: new xdr.TransactionResultExt(0),
+    })
+    let caught: unknown
+    try {
+      handleSendResult({ status: 'ERROR', hash: 'hx', errorResult: tooLate })
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(TransactionRefusedError)
+    expect((caught as TransactionRefusedError).code).toBe('txTooLate')
+    expect((caught as Error).message).toMatch(/expired before it reached the network.*Nothing was sent/)
+    expect((caught as Error).message).not.toMatch(/_attributes|_switch/)
+  })
+  it('names a refusal it has no sentence for', () => {
+    const malformed = new xdr.TransactionResult({
+      feeCharged: xdr.Int64.fromString('100'),
+      result: xdr.TransactionResultResult.txMalformed(),
+      ext: new xdr.TransactionResultExt(0),
+    })
+    expect(() => handleSendResult({ status: 'ERROR', hash: 'hx', errorResult: malformed })).toThrow(
+      'Stellar refused the transaction (txMalformed). Nothing was sent.',
+    )
   })
   it('refuses a status it does not know instead of guessing', () => {
     expect(() => handleSendResult({ status: 'WAT', hash: 'hz' })).toThrow(/Unknown/)

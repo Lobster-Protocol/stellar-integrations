@@ -166,6 +166,34 @@ export class TryAgainLaterError extends Error {
   }
 }
 
+// Stellar turns these away before they reach a ledger, so no fee is charged and nothing
+// moves. The pages print the message as it is: it has to read as a sentence, not as the
+// result XDR.
+const REFUSED: Record<string, string> = {
+  txTooLate: 'The transaction expired before it reached the network: the signature came back too late. Nothing was sent, so try again.',
+  txBadSeq: 'Another transaction from this account went through first. Nothing was sent, so try again.',
+  txInsufficientFee: 'The network fee went up before this was sent. Nothing was sent, so try again.',
+  txInsufficientBalance: 'This account does not hold enough XLM for the fee and its reserve. Nothing was sent.',
+  txNoAccount: 'This account does not exist on the network yet. Nothing was sent.',
+}
+
+export class TransactionRefusedError extends Error {
+  readonly code: string
+  constructor(code: string, message = REFUSED[code] ?? `Stellar refused the transaction (${code}). Nothing was sent.`) {
+    super(message)
+    this.name = 'TransactionRefusedError'
+    this.code = code
+  }
+}
+
+function refusalCode(result: unknown): string | null {
+  try {
+    return (result as xdr.TransactionResult).result().switch().name
+  } catch {
+    return null
+  }
+}
+
 // exported so the unit test can hit it without rebuilding a full XDR
 export function handleSendResult(
   sent: { status: string; hash: string; errorResult?: unknown },
@@ -176,10 +204,13 @@ export function handleSendResult(
       return sent.hash
     case 'TRY_AGAIN_LATER':
       throw new TryAgainLaterError()
-    case 'ERROR':
+    case 'ERROR': {
+      const code = refusalCode(sent.errorResult)
+      if (code) throw new TransactionRefusedError(code)
       throw new Error(
         `sendTransaction rejected: ${JSON.stringify(sent.errorResult ?? sent)}`,
       )
+    }
     default:
       throw new Error(`Unknown sendTransaction status: ${String(sent.status)}`)
   }
