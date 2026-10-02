@@ -56,6 +56,8 @@ async function seedTransferOut(page: Page) {
 async function openBridge(page: Page) {
   await gotoWithWallet(page)
   await page.getByRole('button', { name: '+ Deposit' }).click()
+  // the window's code loads on that first click: keys pressed before it is up reach the page
+  await expect(page.getByRole('heading', { name: 'Bridge USDC to Stellar' })).toBeVisible()
 }
 
 test.describe('the bridge form', () => {
