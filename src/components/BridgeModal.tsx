@@ -50,6 +50,7 @@ import { elapsed, expectedDuration, useNow } from '../integrations/cctp/status'
 import { useOnScreen } from '../integrations/cctp/on-screen'
 import { EvmConnectButtons } from './BridgeWallets'
 import { StepList, type Step } from './BridgeProgress'
+import ConfirmDialog from './ConfirmDialog'
 
 interface Props {
   open: boolean
@@ -101,6 +102,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   const [tl, setTl] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null })
   // a declined signature is not an error, but landing back on the form without a word reads like nothing happened
   const [declined, setDeclined] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const tlInFlight = useRef(false)
   // a double click lands twice before the phase change disables the button, and would ask the wallet for two burns
   const bridgeInFlight = useRef(false)
@@ -159,13 +161,14 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !busy && !connectModalOpen) onClose()
+      // when the confirm is up, let it take Escape; don't close the bridge under it
+      if (e.key === 'Escape' && !busy && !connectModalOpen && !confirmOpen) onClose()
     }
     // heard on the way down, before the wallet window's own listener closes it: by the time
     // the key got back up here, the page would already have that window down as closed
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, busy, onClose, connectModalOpen])
+  }, [open, busy, onClose, connectModalOpen, confirmOpen])
 
   // keyboard and screen reader users otherwise stay on the button behind the overlay
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -247,7 +250,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
     }
   }
 
-  const handleBridge = async () => {
+  const runBridge = async () => {
     if (!chain || !receiving || !evmAddr || units === null || maxFee === null || feeSwallows) return
     if (bridgeInFlight.current) return
     bridgeInFlight.current = true
@@ -259,13 +262,6 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
       if (fresh.data !== true) {
         setPhase({ kind: 'failed', msg: 'Your Stellar account has no USDC trustline yet. Turn it on first.' })
         return
-      }
-
-      if (network === 'mainnet') {
-        const ok = window.confirm(
-          `Bridge ${amount} USDC from ${chain.name} to ${shortenAddress(receiving, 6, 4)} on mainnet.\n\nThis moves real funds. Continue?`,
-        )
-        if (!ok) return
       }
 
       try {
@@ -402,7 +398,18 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
     trustlineOk &&
     !busy
 
+  // a mainnet bridge confirms in-app first, then runs; testnet runs straight away
+  const handleBridge = () => {
+    if (!canBridge) return
+    if (network === 'mainnet') {
+      setConfirmOpen(true)
+      return
+    }
+    void runBridge()
+  }
+
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => !busy && onClose()}>
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
       <div
@@ -719,6 +726,24 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
         )}
       </div>
     </div>
+
+    <ConfirmDialog
+      open={confirmOpen}
+      title="Confirm this transfer"
+      confirmLabel={units !== null ? `Bridge ${amount} USDC` : 'Bridge'}
+      onConfirm={() => {
+        setConfirmOpen(false)
+        void runBridge()
+      }}
+      onCancel={() => setConfirmOpen(false)}
+    >
+      <p>
+        Bridge <span className="text-text font-medium">{amount} USDC</span> from {chain?.name} to{' '}
+        {shortenAddress(receiving ?? '', 6, 4)} on Stellar.
+      </p>
+      <p className="text-coral">This moves real funds on mainnet.</p>
+    </ConfirmDialog>
+    </>
   )
 }
 

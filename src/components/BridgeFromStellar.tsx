@@ -36,6 +36,7 @@ import { circleMinted, elapsed, expectedDuration, statusOf, useNow } from '../in
 import { useOnScreen } from '../integrations/cctp/on-screen'
 import { EvmConnectButtons } from './BridgeWallets'
 import { StepList, type Step } from './BridgeProgress'
+import ConfirmDialog from './ConfirmDialog'
 
 export type OutStage = 'form' | 'busy' | 'progress'
 
@@ -74,6 +75,7 @@ export default function BridgeFromStellar({
   const [delivery, setDelivery] = useState<Delivery>('circle')
   const [phase, setPhase] = useState<Phase>(() => (resume ? { kind: 'progress', transfer: resume } : { kind: 'form' }))
   const [declined, setDeclined] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   // a double click lands twice before the phase change disables the button
   const inFlight = useRef(false)
 
@@ -151,19 +153,13 @@ export default function BridgeFromStellar({
     !balances.isLoading &&
     !busy
 
-  const handleSend = async () => {
+  const runSend = async () => {
     if (!chain || !stellarAddr || !evmAddr || units === null || maxFee === null || feeSwallows) return
     if (inFlight.current) return
     inFlight.current = true
     const sent: { transfer: TrackedTransfer | null } = { transfer: null }
     try {
       setDeclined(false)
-      if (network === 'mainnet') {
-        const ok = window.confirm(
-          `Send ${amount} USDC from Stellar (${shortenAddress(stellarAddr, 6, 4)}) to ${shortenAddress(evmAddr, 6, 4)} on ${chain.name}, mainnet.\n\nThis moves real funds. Continue?`,
-        )
-        if (!ok) return
-      }
       // read now, not from a cache: a declined burn after an approval leaves an allowance to reuse
       const allowance = await readStellarAllowance(network, stellarAddr).catch(() => 0n)
       if (allowance < units) {
@@ -223,6 +219,16 @@ export default function BridgeFromStellar({
     } finally {
       inFlight.current = false
     }
+  }
+
+  // a mainnet send confirms in-app first, then runs; testnet runs straight away
+  const handleSend = () => {
+    if (!canSend) return
+    if (network === 'mainnet') {
+      setConfirmOpen(true)
+      return
+    }
+    void runSend()
   }
 
   return (
@@ -415,6 +421,24 @@ export default function BridgeFromStellar({
         Your Stellar wallet signs twice: an approval for this exact amount, then the burn.
         {delivery === 'self' && ' Your EVM wallet signs once more to receive it.'}
       </p>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Confirm this transfer"
+        confirmLabel={chain ? `Send ${amount} USDC` : 'Send'}
+        onConfirm={() => {
+          setConfirmOpen(false)
+          void runSend()
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      >
+        <p>
+          Send <span className="text-text font-medium">{amount} USDC</span> from Stellar{' '}
+          {shortenAddress(stellarAddr ?? '', 6, 4)} to {shortenAddress(evmAddr ?? '', 6, 4)} on{' '}
+          {chain?.name}.
+        </p>
+        <p className="text-coral">This moves real funds on mainnet.</p>
+      </ConfirmDialog>
     </>
   )
 }
