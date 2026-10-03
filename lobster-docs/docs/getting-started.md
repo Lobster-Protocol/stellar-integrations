@@ -21,6 +21,10 @@ approve. Your address shows up once it's connected. The toggle next to it
 switches between Testnet and Mainnet, and a link ending in `?network=mainnet`
 opens the dashboard on mainnet directly. Leave it on Testnet for the steps below.
 
+If the wallet list shows Freighter as Install while it is installed, the extension
+is asleep. Click its icon in the browser toolbar, reload the page with
+Ctrl+Shift+R, then pick it again.
+
 ## Read the Factory
 
 Open `/audit`. The Factory card shows the contract id, the admin and how many
