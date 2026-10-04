@@ -20,6 +20,7 @@ import {
   toStellarUsdcUnits,
 } from '../integrations/cctp/stellar-burn'
 import { isReceivedOnEvm, receiveOnEvm, ReceiptUnreadError, UserRejectedError } from '../integrations/cctp/evm-burn'
+import { TransactionRefusedError } from '../integrations/lobster/factory'
 import { assertAttestation, assertEvmMessageMatches, decodeCctpMessage, hexToBytes } from '../integrations/cctp/message'
 import { useAttestation, useForwardQuote, useReceivedOnEvm, useSourceBalances } from '../integrations/cctp/hooks'
 import {
@@ -27,6 +28,7 @@ import {
   markAttested,
   markDelivered,
   markSent,
+  rememberWallet,
   trackTransfer,
   useTrackedTransfers,
   type TrackedTransfer,
@@ -167,6 +169,8 @@ export default function BridgeFromStellar({
         await approveForBurn({ network, owner: stellarAddr, units, signer: walletKitSigner })
       }
       setPhase({ kind: 'burning' })
+      // searched on chain at every visit from now on, signed in or not
+      rememberWallet(network, 'stellar', stellarAddr)
       await burnFromStellar(
         {
           network,
@@ -178,9 +182,11 @@ export default function BridgeFromStellar({
           maxFee,
           signer: walletKitSigner,
         },
+        undefined,
         (hash) => {
-          // tracked the moment Stellar has it: a confirmation slow to come back must
-          // not hide a burn Circle is already reading
+          // tracked the moment the wallet has signed, before Stellar is asked: a page that
+          // goes away while it submits, or a confirmation slow to come back, must not hide
+          // a burn Circle is already reading. One Stellar never takes is dropped later
           sent.transfer = {
             id: hash,
             direction: 'from-stellar',
@@ -208,8 +214,9 @@ export default function BridgeFromStellar({
         return
       }
       const t = sent.transfer
-      // Stellar ran it and refused: nothing was burned, so nothing to follow
-      if (t && err instanceof StellarBurnError && /failed on Stellar/.test(err.message)) {
+      // Stellar ran it and refused, or turned it away before it reached a ledger: nothing
+      // was burned, so nothing to follow
+      if (t && ((err instanceof StellarBurnError && /failed on Stellar/.test(err.message)) || err instanceof TransactionRefusedError)) {
         forgetTransfer(network, t.id)
         setPhase({ kind: 'failed', msg: errorText(err) })
         return

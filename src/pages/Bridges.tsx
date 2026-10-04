@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 
 import { cn, formatBalance, shortenAddress, stellarExplorer } from '../utils/format'
@@ -8,7 +8,7 @@ import { useNetwork } from '../contexts/NetworkContext'
 import { useCustody } from '../contexts/CustodyContext'
 import { useTrustline } from '../integrations/stellar/trustline'
 import { useActivity } from '../integrations/horizon/activity'
-import { trackTransfer, useTrackedTransfers, type TrackedTransfer, type TransferDirection } from '../integrations/cctp/transfers'
+import { listTransfers, trackTransfer, useTrackedTransfers, type TrackedTransfer, type TransferDirection } from '../integrations/cctp/transfers'
 import {
   BRIDGE_FALLBACK_LINKS,
   CCTP_EVM_USDC_DECIMALS,
@@ -26,6 +26,7 @@ const BridgeModal = lazy(() => import('../components/BridgeModal'))
 const BridgeWallets = lazy(() => import('../components/BridgeWallets'))
 const InProgressRow = lazy(() => import('../components/BridgeTransfers').then((m) => ({ default: m.InProgressRow })))
 const HistoryRow = lazy(() => import('../components/BridgeTransfers').then((m) => ({ default: m.HistoryRow })))
+const SearchSummary = lazy(() => import('../components/BridgeTransfers').then((m) => ({ default: m.SearchSummary })))
 
 function Arrow() {
   return (
@@ -129,14 +130,28 @@ export default function Bridges() {
   const [resume, setResume] = useState<TrackedTransfer | null>(null)
   const [direction, setDirection] = useState<TransferDirection>('to-stellar')
 
-  // either account can finish a delivery: mint_and_forward needs no signature from the
-  // one paid. A transfer out of Stellar is listed for the browser that started it
-  const pending = tracked.filter(
-    (t) =>
-      t.stage === 'burned' &&
-      (t.direction === 'from-stellar' || !address || t.recipient === address || t.recipient === walletAddress),
-  )
+  // every transfer still on its way, whoever it pays: any wallet can finish a delivery,
+  // mint_and_forward needs no signature from the account paid, and a person who comes
+  // back with another wallet connected must still see what is waiting
+  const pending = tracked.filter((t) => t.stage === 'burned')
   const history = tracked.filter((t) => t.stage === 'delivered').slice(0, 10)
+
+  // the notice on other pages links here to finish one transfer: the bridge opens on it
+  // for as long as the link says so, and closing it drops the link. The transfer is read
+  // once: each later change to its record (Circle signing, the delivery landing) would
+  // otherwise start the window over and wipe what it shows
+  const [params, setParams] = useSearchParams()
+  const finishId = params.get('finish')
+  // read again only when the transfer first shows up, after the copy on disk is put back say
+  const finishKnown = !!finishId && tracked.some((x) => x.id === finishId)
+  const finishing = useMemo(
+    () => (finishId && finishKnown ? (listTransfers(network).find((x) => x.id === finishId) ?? null) : null),
+    [finishId, finishKnown, network],
+  )
+  const closeModal = () => {
+    setOpen(false)
+    if (finishId) setParams({}, { replace: true })
+  }
 
   let trustlineLabel: string
   let trustlineClass: string
@@ -183,7 +198,7 @@ export default function Bridges() {
   return (
     <div className="space-y-6">
       <Suspense fallback={null}>
-        <BridgeModal open={open} onClose={() => setOpen(false)} resume={resume} initialDirection={direction} />
+        <BridgeModal open={open || !!finishing} onClose={closeModal} resume={finishing ?? resume} initialDirection={direction} />
       </Suspense>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -219,6 +234,13 @@ export default function Bridges() {
         <Suspense fallback={<p className="text-xs text-text-muted">Loading wallets...</p>}>
           <BridgeWallets network={network} />
         </Suspense>
+        {pending.length === 0 && (
+          <div className="mt-4">
+            <Suspense fallback={null}>
+              <SearchSummary network={network} stellar={walletAddress} />
+            </Suspense>
+          </div>
+        )}
       </Card>
 
       {pending.length > 0 && (
@@ -234,6 +256,11 @@ export default function Bridges() {
               ))}
             </Suspense>
           </ul>
+          <div className="mt-3">
+            <Suspense fallback={null}>
+              <SearchSummary network={network} stellar={walletAddress} />
+            </Suspense>
+          </div>
         </Card>
       )}
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { elapsed, expectedDuration, statusLine, statusOf } from '../status'
+import { elapsed, expectedDuration, statusLine, statusOf, waitingOn } from '../status'
 import type { IrisAttestation } from '../iris'
 import type { TrackedTransfer } from '../transfers'
 
@@ -93,5 +93,30 @@ describe('elapsed', () => {
     expect(elapsed(0, 125_000)).toBe('2 min 05 s')
     expect(elapsed(0, 3_780_000)).toBe('1 h 03 min')
     expect(elapsed(10_000, 0)).toBe('0 s')
+  })
+})
+
+describe('what a transfer on its way waits for, from what the page recorded', () => {
+  it('waits on Circle until it has signed', () => {
+    expect(waitingOn(transfer())).toEqual({ text: '5 USDC from Base Sepolia: Circle is signing it', act: false })
+    expect(waitingOn(out()).act).toBe(false)
+  })
+
+  it('asks the person for the last signature once Circle has signed', () => {
+    expect(waitingOn(transfer({ attestedAt: 2 }))).toEqual({
+      text: '5 USDC from Base Sepolia: signed by Circle, one signature on Stellar delivers it',
+      act: true,
+    })
+    expect(waitingOn(out({ attestedAt: 2 }))).toEqual({
+      text: '5 USDC to Base Sepolia: signed by Circle, your EVM wallet receives it',
+      act: true,
+    })
+  })
+
+  it('leaves a mint Circle does for you to Circle', () => {
+    expect(waitingOn(out({ attestedAt: 2, forwarded: true }))).toEqual({
+      text: '5 USDC to Base Sepolia: Circle is minting it on Base Sepolia',
+      act: false,
+    })
   })
 })

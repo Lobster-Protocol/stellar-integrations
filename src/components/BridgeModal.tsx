@@ -27,6 +27,8 @@ import {
   approveUsdc,
   burnToStellar,
   readAllowance,
+  readBlockNumber,
+  readTxCount,
   ReceiptUnreadError,
   toEvmUsdcUnits,
   UserRejectedError,
@@ -36,11 +38,17 @@ import { checkClaim, claimOnStellar } from '../integrations/cctp/claim'
 import { useAttestation, useCctpFees, useSourceBalances } from '../integrations/cctp/hooks'
 import {
   directionOf,
+  dropIntent,
   forgetTransfer,
   markAttested,
   markDelivered,
+  newIntentId,
+  PAGE_SESSION,
+  rememberWallet,
+  saveIntent,
   trackTransfer,
   useTrackedTransfers,
+  type BurnIntent,
   type TrackedTransfer,
   type TransferDirection,
 } from '../integrations/cctp/transfers'
@@ -273,6 +281,30 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
           await approveUsdc(chain, units)
         }
         setPhase({ kind: 'burning' })
+        // saved before the wallet is asked: if the page goes away while the wallet signs or
+        // sends the burn, the next visit looks for it on chain from this block
+        const [fromBlock, txCount] = await Promise.all([
+          readBlockNumber(chain).catch(() => null),
+          readTxCount(chain, evmAddr).catch(() => undefined),
+        ])
+        rememberWallet(network, 'evm', evmAddr)
+        const intent: BurnIntent = {
+          id: newIntentId(),
+          network,
+          chainKey: chain.key,
+          chainName: chain.name,
+          amount,
+          units: units.toString(),
+          from: evmAddr,
+          recipient: receiving,
+          finality,
+          startedAt: Date.now(),
+          session: PAGE_SESSION,
+          fromBlock: fromBlock?.toString(),
+          txCount,
+        }
+        // on disk before the wallet is asked: the wallet may send it after the PC is off
+        await saveIntent(intent)
         // tracked the moment the burn leaves the wallet: when its receipt is slow to come back,
         // the transfer must not vanish from the page while Circle is already on it
         const sent: { transfer: TrackedTransfer | null } = { transfer: null }
@@ -300,9 +332,19 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
                 stage: 'burned',
               }
               trackTransfer(sent.transfer)
+              dropIntent(network, intent.id)
             },
           )
         } catch (err) {
+          if (!sent.transfer) {
+            // no hash came back: a decline sent nothing, and neither did a wallet whose count
+            // of sent transactions has not moved. Anything else stays to be looked for
+            if (err instanceof UserRejectedError) dropIntent(network, intent.id)
+            else {
+              const count = await readTxCount(chain, evmAddr).catch(() => null)
+              if (count !== null && txCount !== undefined && count <= txCount) dropIntent(network, intent.id)
+            }
+          }
           // a receipt nobody could read is not a failed burn: Circle's signature settles it
           if (!(err instanceof ReceiptUnreadError) || !sent.transfer) {
             // a burn reverted on chain moved nothing; stop tracking it

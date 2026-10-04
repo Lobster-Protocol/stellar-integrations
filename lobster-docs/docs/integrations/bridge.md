@@ -124,24 +124,70 @@ transfer window shows how long it has run against how long that kind usually
 takes, with a link to every transaction on its explorer.
 
 While a transfer is out, the dashboard keeps looking on every page and says so
-once when Circle has signed or when the USDC has landed. It also notices a
+once when Circle has signed or when the USDC has landed. A notice sits above
+every page, and a count next to Bridges, until it arrives. It also notices a
 transfer finished somewhere else, by another tab, by the relay or by Circle's
-own mint, by reading the spent nonce on the destination chain. Finished
-transfers stay listed with both of their transactions.
+own mint, by reading the spent nonce on the destination chain, and asks again
+every half minute once Circle has signed. Finished transfers stay listed with
+both of their transactions.
 
 The note holds hashes and addresses, never a key, and losing it loses nothing:
 the burn is on chain and Circle will still sign it. A fast transfer's message
 into Stellar expires after roughly a day of Stellar ledgers; past that it needs
 a fresh signature from Circle before it can be delivered.
 
-A burn sent from somewhere else, another device or straight from a custody
-platform, left no note in this browser. Its hash is enough: paste it under
-"Finish a transfer started elsewhere" on `/bridges`, with the chain it was burned
-on. For an EVM burn the dashboard reads the amount and the Stellar recipient from
-its `DepositForBurn` log, which also covers a burn made through a smart account.
-For a Stellar burn it reads Circle's signed message, which names the EVM chain,
-the wallet it pays and whether Circle mints it. Anything that is not a CCTP burn
-the bridge can finish is refused before it is tracked.
+### When the page goes away mid-transfer
+
+A PC that switches off, a closed tab or another device must not leave a burn
+nobody follows. Four things cover it:
+
+- Before an EVM wallet is asked to sign a burn, the dashboard notes the chain,
+  the wallet, the amount, the recipient and the current block, and waits until
+  that note is on disk. An EVM wallet sends by itself, a phone even after the
+  page is gone, so if the hash never came back the next visit looks for that
+  burn in the chain's logs from that block, and lists it, even with the EVM
+  wallet still locked. If the wallet sent nothing in the half hour after it was
+  asked, the note is dropped and the page says nothing moved.
+- A burn out of Stellar is noted from its signature, before Stellar is asked.
+  One Stellar never took is dropped once its three minutes to land have run out,
+  and the page says nothing moved.
+- On any device, the dashboard reads the chain for the burns of the connected
+  wallets that never arrived: the Stellar account's own history for the last 30
+  days, and the EVM wallet's `DepositForBurn` logs on each chain for about the
+  last day, as far as the public endpoints serve old blocks. Each burn is
+  checked against the destination, and the unfinished ones are listed. Each
+  wallet and chain is searched on its own, on load and again half a minute
+  later, when a wallet connects, every ten minutes and when the tab comes back,
+  and `/bridges` says what it has read and what it is still reading. A burn
+  Circle could not be asked about is not listed as waiting: the search says it
+  is unfinished and runs again two minutes later. A transfer into Stellar is
+  found from the EVM wallet that sent it, so on a new device that is the wallet
+  to connect.
+- The browser also remembers the wallets it bridged with, an EVM wallet from the
+  moment it connects and a Stellar account from its first burn, for 30 days.
+  They are searched at every visit even when they are not connected, since an
+  EVM wallet locks itself when the browser restarts.
+
+A burn tracked before its chain confirmed it and that failed there, an EVM burn
+that reverted or a Stellar one the ledger refused, moved nothing: it is dropped
+and the page says so.
+
+The notes and the remembered wallets sit in localStorage, and in two copies on
+disk: IndexedDB with strict durability, and Cache Storage. Chrome holds a busy
+page's localStorage writes in memory for minutes before it writes them out, so a
+PC that loses power after a burn can come back without what localStorage was
+told; a completed write to either copy on disk survives it, and the two live
+apart, so one damaged by the power cut leaves the other. When the page loads,
+the newest copy wins.
+
+A burn older than that, or sent from a wallet not connected here, a custody
+platform for example, is finished from its hash: paste it under "Finish a
+transfer started elsewhere" on `/bridges`, with the chain it was burned on. For
+an EVM burn the dashboard reads the amount and the Stellar recipient from its
+`DepositForBurn` log, which also covers a burn made through a smart account. For
+a Stellar burn it reads Circle's signed message, which names the EVM chain, the
+wallet it pays and whether Circle mints it. Anything that is not a CCTP burn the
+bridge can finish is refused before it is tracked.
 
 ## Into a DFNS treasury
 
@@ -184,7 +230,8 @@ instead of pretending.
 
 `src/integrations/cctp/` holds the hook encoding, the message decoder, the EVM
 burn and mint, the Stellar burn, the attestation client, the Stellar delivery,
-the status of a transfer and the local record of transfers. The window is
+the status of a transfer, the local record of transfers with its copy on disk,
+and the search for transfers a page lost track of. The window is
 `src/components/BridgeModal.tsx`, with the way out in `BridgeFromStellar.tsx`;
 the page is `src/pages/Bridges.tsx`, with the two wallets in
 `BridgeWallets.tsx`; `BridgeWatcher.tsx` follows transfers in the background, and

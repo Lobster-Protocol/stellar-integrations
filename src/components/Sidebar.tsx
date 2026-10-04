@@ -1,7 +1,16 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, TrendingUp, Activity, PieChart, ArrowLeftRight, Box, ShieldCheck } from 'lucide-react'
 import { cn } from '../utils/format'
+import { useNetwork } from '../contexts/NetworkContext'
+import { orphanIntents, useBurnIntents, useTrackedTransfers } from '../integrations/cctp/transfers'
 import lobsterLogo from '../assets/lobster-logo.png'
+
+// bridge transfers still on their way, counted next to Bridges on every page
+function usePendingCount(): number {
+  const { network } = useNetwork()
+  const pending = useTrackedTransfers(network).filter((t) => t.stage === 'burned').length
+  return pending + orphanIntents(useBurnIntents(network)).length
+}
 
 // custody closes the list: it is the account-settings page, everything above it
 // is something you look at.
@@ -16,6 +25,7 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const pending = usePendingCount()
   return (
     <div className="flex flex-col h-full">
       <div className="p-5 pb-8 hidden lg:block">
@@ -38,6 +48,15 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           >
             <item.icon size={18} />
             {item.label}
+            {item.to === '/bridges' && pending > 0 && (
+              // the link keeps its name; the notice above the page says the same in words
+              <span
+                aria-hidden
+                className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-primary text-white text-[10px] font-semibold flex items-center justify-center"
+              >
+                {pending}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

@@ -11,6 +11,8 @@ import {
 import {
   getAccount,
   getBalance,
+  getBlockNumber,
+  getTransactionCount,
   getTransactionReceipt,
   readContract,
   switchChain,
@@ -144,6 +146,16 @@ export async function readUsdcBalance(chain: CctpSourceChain, owner: Address): P
 export async function readGasBalance(chain: CctpSourceChain, owner: Address): Promise<bigint> {
   const b = await getBalance(wagmiConfig, { chainId: chainIdOf(chain), address: owner })
   return b.value
+}
+
+// where a later search for the wallet's burn starts, and whether the wallet sent anything since
+export async function readBlockNumber(chain: CctpSourceChain): Promise<bigint> {
+  return getBlockNumber(wagmiConfig, { chainId: chainIdOf(chain) })
+}
+
+// counting what the node holds unmined too: a burn stuck in the mempool was still sent
+export async function readTxCount(chain: CctpSourceChain, owner: Address): Promise<number> {
+  return getTransactionCount(wagmiConfig, { chainId: chainIdOf(chain), address: owner, blockTag: 'pending' })
 }
 
 export async function readAllowance(chain: CctpSourceChain, owner: Address): Promise<bigint> {
@@ -322,7 +334,7 @@ export async function receiveOnEvm(
 
 // reading the burn from this log rather than the call input also covers a burn
 // made from a smart account (a Safe, a custody platform), where it is an internal call
-const DEPOSIT_FOR_BURN_EVENT = [
+export const DEPOSIT_FOR_BURN_EVENT = [
   {
     type: 'event',
     name: 'DepositForBurn',

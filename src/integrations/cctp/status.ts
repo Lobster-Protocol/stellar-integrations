@@ -57,6 +57,17 @@ export function statusLine(t: TrackedTransfer, s: TransferStatus): { text: strin
   }
 }
 
+// what a transfer still on its way waits for, from what the page has recorded without
+// asking Circle, and whether that is a move for the person rather than for Circle
+export function waitingOn(t: TrackedTransfer): { text: string; act: boolean } {
+  const out = directionOf(t) === 'from-stellar'
+  const what = out ? `${t.amount} USDC to ${t.chainName}` : `${t.amount} USDC from ${t.chainName}`
+  if (!t.attestedAt) return { text: `${what}: Circle is signing it`, act: false }
+  if (!out) return { text: `${what}: signed by Circle, one signature on Stellar delivers it`, act: true }
+  if (t.forwarded) return { text: `${what}: Circle is minting it on ${t.chainName}`, act: false }
+  return { text: `${what}: signed by Circle, your EVM wallet receives it`, act: true }
+}
+
 // how long each kind of transfer usually takes, for the "expected" line
 export function expectedDuration(t: TrackedTransfer): string {
   if (directionOf(t) === 'from-stellar') {

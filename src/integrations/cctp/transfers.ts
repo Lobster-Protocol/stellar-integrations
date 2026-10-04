@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react'
+import { StrKey } from '@stellar/stellar-sdk'
 
 import type { CctpFinality, Network } from '../../config/contracts'
+import { restoreNotes, writeDurable, writeLocal, writtenAt } from './durable'
 
 export type TransferStage = 'burned' | 'delivered'
 
@@ -69,18 +71,28 @@ export function listTransfers(network: Network): TrackedTransfer[] {
 }
 
 function write(network: Network, list: TrackedTransfer[]): void {
+  const value = JSON.stringify(list)
+  let written = Date.now()
   try {
-    localStorage.setItem(key(network), JSON.stringify(list))
+    written = writeLocal(key(network), value)
   } catch {
-    // private mode or a full quota: the transfer still works, only resume is lost
+    // private mode or a full quota: the copy on disk still keeps it for the next visit
   }
+  void writeDurable(key(network), value, written)
   cache.delete(network)
   window.dispatchEvent(new Event(EVENT))
 }
 
+// the history shown is short; a transfer still on its way is never the one dropped
+const HISTORY_KEPT = 50
+
 export function trackTransfer(t: TrackedTransfer): void {
-  const list = listTransfers(t.network).filter((x) => x.id !== t.id)
-  write(t.network, [t, ...list].slice(0, 50))
+  const list = [t, ...listTransfers(t.network).filter((x) => x.id !== t.id)]
+  let finished = 0
+  write(
+    t.network,
+    list.filter((x) => x.stage !== 'delivered' || ++finished <= HISTORY_KEPT),
+  )
 }
 
 function update(network: Network, id: string, change: (t: TrackedTransfer) => TrackedTransfer): void {
@@ -115,9 +127,227 @@ export function forgetTransfer(network: Network, id: string): void {
   write(network, listTransfers(network).filter((t) => t.id !== id))
 }
 
+// An EVM burn the wallet is asked to sign, saved before it is asked. The wallet sends it
+// by itself, a phone even after the page is gone, so if the page goes away first the hash
+// never comes back to be tracked; the next visit finds this and looks for the burn on chain.
+export interface BurnIntent {
+  id: string
+  network: Network
+  chainKey: string
+  chainName: string
+  amount: string
+  // what the burn moves, 6 decimals, as text
+  units: string
+  // the EVM wallet asked to sign, and the Stellar account the USDC is for
+  from: string
+  recipient: string
+  finality: CctpFinality
+  startedAt: number
+  // the page load that asked: while it is still open it settles its own intent, and only
+  // one left by a page that went away is looked for on chain
+  session: string
+  // on the way in, the EVM chain's block just before the wallet was asked, and how many
+  // transactions the wallet had sent by then: the same count later means it sent none
+  fromBlock?: string
+  txCount?: number
+}
+
+function intentsKey(network: Network): string {
+  return `lob_cctp_intents_${network}`
+}
+
+const intentCache = new Map<Network, BurnIntent[]>()
+
+export function listIntents(network: Network): BurnIntent[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(intentsKey(network)) ?? '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (i): i is BurnIntent =>
+        !!i && typeof i === 'object' && (i as BurnIntent).network === network && typeof (i as BurnIntent).id === 'string',
+    )
+  } catch {
+    return []
+  }
+}
+
+// resolves once the note is on disk, or once it is clear it cannot be
+function writeIntents(network: Network, list: BurnIntent[]): Promise<void> {
+  const value = JSON.stringify(list)
+  let written = Date.now()
+  try {
+    written = writeLocal(intentsKey(network), value)
+  } catch {
+    // the copy on disk still keeps it; without either, the burn is found again by the wallet's address
+  }
+  intentCache.delete(network)
+  window.dispatchEvent(new Event(EVENT))
+  return writeDurable(intentsKey(network), value, written)
+}
+
+export function saveIntent(i: BurnIntent): Promise<void> {
+  return writeIntents(i.network, [i, ...listIntents(i.network).filter((x) => x.id !== i.id)])
+}
+
+export function dropIntent(network: Network, id: string): Promise<void> {
+  return writeIntents(network, listIntents(network).filter((x) => x.id !== id))
+}
+
+export function newIntentId(): string {
+  return `intent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+export const PAGE_SESSION = Math.random().toString(36).slice(2, 10)
+
+// intents this page load did not make: left by a tab or a PC that went away mid-signature
+export function orphanIntents(list: BurnIntent[]): BurnIntent[] {
+  return list.filter((i) => i.session !== PAGE_SESSION)
+}
+
+// burns a search already found arrived, so the next one does not ask Circle about them again
+const SETTLED_KEPT = 500
+
+function settledKey(network: Network): string {
+  return `lob_cctp_settled_${network}`
+}
+
+function listSettled(network: Network): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(settledKey(network)) ?? '[]')
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export function isSettled(network: Network, id: string): boolean {
+  return listSettled(network).includes(id)
+}
+
+export function markSettled(network: Network, ids: string[]): void {
+  if (ids.length === 0) return
+  const next = [...new Set([...ids, ...listSettled(network)])].slice(0, SETTLED_KEPT)
+  try {
+    localStorage.setItem(settledKey(network), JSON.stringify(next))
+  } catch {
+    // only costs a few repeat questions to Circle on the next search
+  }
+}
+
+// The wallets this browser bridged with, searched on chain at every visit whether they are
+// connected or not: an EVM wallet locks itself when the browser restarts, and a note written
+// shortly before a power cut can be lost. A wallet is noted when it connects, before it signs
+export interface BridgeWallet {
+  kind: 'evm' | 'stellar'
+  address: string
+  // the last time it was seen
+  at: number
+}
+
+const WALLETS_KEPT = 6
+const WALLET_KEPT_FOR_MS = 30 * 24 * 3600_000
+// seen again within this long, the note is left as it is
+const WALLET_SEEN_MS = 3600_000
+
+function walletsKey(network: Network): string {
+  return `lob_cctp_wallets_${network}`
+}
+
+function validWallet(w: unknown): w is BridgeWallet {
+  if (!w || typeof w !== 'object') return false
+  const { kind, address, at } = w as BridgeWallet
+  if (typeof at !== 'number' || typeof address !== 'string') return false
+  if (kind === 'evm') return /^0x[0-9a-fA-F]{40}$/.test(address)
+  return kind === 'stellar' && StrKey.isValidEd25519PublicKey(address)
+}
+
+export function listWallets(network: Network): BridgeWallet[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(walletsKey(network)) ?? '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((w): w is BridgeWallet => validWallet(w) && Date.now() - w.at < WALLET_KEPT_FOR_MS)
+  } catch {
+    return []
+  }
+}
+
+const isWallet = (w: BridgeWallet, kind: BridgeWallet['kind'], address: string) =>
+  w.kind === kind && w.address.toLowerCase() === address.toLowerCase()
+
+export function rememberWallet(network: Network, kind: BridgeWallet['kind'], address: string): void {
+  const list = listWallets(network)
+  const seen = list.find((w) => isWallet(w, kind, address))
+  if (seen && Date.now() - seen.at < WALLET_SEEN_MS) return
+  const next = [{ kind, address, at: Date.now() }, ...list.filter((w) => !isWallet(w, kind, address))]
+  const value = JSON.stringify(next.filter(validWallet).slice(0, WALLETS_KEPT))
+  let written = Date.now()
+  try {
+    written = writeLocal(walletsKey(network), value)
+  } catch {
+    // the copy on disk still keeps it
+  }
+  void writeDurable(walletsKey(network), value, written)
+}
+
+// what a search covers: the wallets connected now and the ones this browser bridged with
+// lately, each once
+export function walletsToSearch(
+  network: Network,
+  stellar: string | null | undefined,
+  evm: string | null | undefined,
+): { stellar: string[]; evm: string[] } {
+  const remembered = listWallets(network)
+  const once = (xs: string[]) => xs.filter((x, i) => xs.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i)
+  return {
+    stellar: once([...(stellar ? [stellar] : []), ...remembered.filter((w) => w.kind === 'stellar').map((w) => w.address)]),
+    evm: once([...(evm ? [evm] : []), ...remembered.filter((w) => w.kind === 'evm').map((w) => w.address)]),
+  }
+}
+
+// the Bridges page asks the background search to run now through this event
+export const SEARCH_EVENT = 'lob:cctp-search'
+
+// What the last search for unfinished transfers covered, per wallet and chain: shown on
+// the Bridges page, and where the next search picks up
+export interface SearchRecord {
+  at: number
+  // the newest block (or ledger) looked at, and the oldest one the search reached
+  head?: string
+  reachedFrom?: string
+  complete: boolean
+  error?: string
+}
+
+function searchKey(network: Network): string {
+  return `lob_cctp_search_${network}`
+}
+
+const searchCache = new Map<Network, Record<string, SearchRecord>>()
+
+export function listSearches(network: Network): Record<string, SearchRecord> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(searchKey(network)) ?? '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, SearchRecord>) : {}
+  } catch {
+    return {}
+  }
+}
+
+export function recordSearch(network: Network, key: string, rec: SearchRecord): void {
+  try {
+    localStorage.setItem(searchKey(network), JSON.stringify({ ...listSearches(network), [key]: rec }))
+  } catch {
+    // the search still ran; only its summary is not kept
+  }
+  searchCache.delete(network)
+  window.dispatchEvent(new Event(EVENT))
+}
+
 function subscribe(onChange: () => void): () => void {
   const handler = () => {
     cache.clear()
+    intentCache.clear()
+    searchCache.clear()
     onChange()
   }
   window.addEventListener(EVENT, handler)
@@ -144,3 +374,59 @@ export function useTrackedTransfers(network: Network): TrackedTransfer[] {
     () => EMPTY,
   )
 }
+
+const NO_SEARCHES: Record<string, SearchRecord> = {}
+
+export function useSearches(network: Network): Record<string, SearchRecord> {
+  return useSyncExternalStore(
+    subscribe,
+    () => {
+      const hit = searchCache.get(network)
+      if (hit) return hit
+      const fresh = listSearches(network)
+      searchCache.set(network, fresh)
+      return fresh
+    },
+    () => NO_SEARCHES,
+  )
+}
+
+const NO_INTENTS: BurnIntent[] = []
+
+export function useBurnIntents(network: Network): BurnIntent[] {
+  return useSyncExternalStore(
+    subscribe,
+    () => {
+      const hit = intentCache.get(network)
+      if (hit) return hit
+      const fresh = listIntents(network)
+      intentCache.set(network, fresh)
+      return fresh
+    },
+    () => NO_INTENTS,
+  )
+}
+
+// The transfers, the burn notes and the wallets, put back from their copy on disk when the
+// page loads if a power cut kept that copy and not localStorage's
+const NOTES = (['testnet', 'mainnet'] as const).flatMap((n) => [key(n), intentsKey(n), walletsKey(n)])
+
+export function restoreFromDisk(): Promise<void> {
+  let atLoad: Record<string, number> = {}
+  try {
+    atLoad = Object.fromEntries(NOTES.map((k) => [k, writtenAt(k)]))
+  } catch {
+    return Promise.resolve()
+  }
+  return restoreNotes(NOTES, atLoad).then(
+    (back) => {
+      if (back.length === 0) return
+      cache.clear()
+      intentCache.clear()
+      window.dispatchEvent(new Event(EVENT))
+    },
+    () => {},
+  )
+}
+
+void restoreFromDisk()

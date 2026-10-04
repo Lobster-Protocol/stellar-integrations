@@ -63,7 +63,22 @@ export function irisTxHash(sourceDomain: number, txHash: string): string {
   return txHash
 }
 
+// Circle shuts a caller out for five minutes once it goes over 35 requests a second, every
+// route counted, and answers it in a way the browser cannot even read: the whole bridge then
+// goes blind. Every request from this page waits its turn, ten a second at most, so a busy
+// page, or a few tabs, stay well under
+const IRIS_EVERY_MS = 100
+let irisNext = 0
+
+function irisTurn(): Promise<void> {
+  const now = Date.now()
+  const at = Math.max(now, irisNext)
+  irisNext = at + IRIS_EVERY_MS
+  return at > now ? new Promise((r) => setTimeout(r, at - now)) : Promise.resolve()
+}
+
 async function getJson(url: string, timeoutMs: number): Promise<{ status: number; body: unknown }> {
+  await irisTurn()
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {

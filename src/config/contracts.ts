@@ -203,6 +203,12 @@ export interface CctpSourceChain {
   // hours old on Base and Arbitrum mainnet, and a burn finished later is one
   rpcArchive: string
   explorerTx: (hash: string) => string
+  // Looking for a wallet's burns again, after the page that sent them went away: the
+  // most blocks one log query asks for that the endpoints above answer (mainnet.base.org
+  // stops at 2,000, sepolia.base.org at 1,000, publicnode at 10,000 and only for recent
+  // blocks on mainnet), and how far back such a search goes, about a day of blocks
+  logsSpan: number
+  searchBlocks: number
 }
 
 // Circle deploys V2 at the same address on every chain of a network
@@ -224,6 +230,8 @@ const cctpMainnetChains: CctpSourceChain[] = [
     rpcFallback: 'https://base-rpc.publicnode.com',
     rpcArchive: 'https://mainnet.base.org',
     explorerTx: (h) => `https://basescan.org/tx/${h}`,
+    logsSpan: 2_000,
+    searchBlocks: 43_200,
   },
   {
     key: 'ARB',
@@ -236,6 +244,9 @@ const cctpMainnetChains: CctpSourceChain[] = [
     rpcFallback: 'https://arbitrum-one-rpc.publicnode.com',
     rpcArchive: 'https://arb1.arbitrum.io/rpc',
     explorerTx: (h) => `https://arbiscan.io/tx/${h}`,
+    // publicnode serves no old logs here; arb1 answers a million blocks in one query
+    logsSpan: 1_000_000,
+    searchBlocks: 345_600,
   },
   {
     key: 'ETH',
@@ -248,6 +259,8 @@ const cctpMainnetChains: CctpSourceChain[] = [
     rpcFallback: 'https://ethereum-rpc.publicnode.com',
     rpcArchive: 'https://eth.drpc.org',
     explorerTx: (h) => `https://etherscan.io/tx/${h}`,
+    logsSpan: 7_200,
+    searchBlocks: 7_200,
   },
 ]
 
@@ -264,6 +277,8 @@ const cctpTestnetChains: CctpSourceChain[] = [
     rpcFallback: 'https://base-sepolia-rpc.publicnode.com',
     rpcArchive: 'https://sepolia.base.org',
     explorerTx: (h) => `https://sepolia.basescan.org/tx/${h}`,
+    logsSpan: 10_000,
+    searchBlocks: 43_200,
   },
   {
     key: 'ARB',
@@ -276,6 +291,8 @@ const cctpTestnetChains: CctpSourceChain[] = [
     rpcFallback: 'https://arbitrum-sepolia-rpc.publicnode.com',
     rpcArchive: 'https://sepolia-rollup.arbitrum.io/rpc',
     explorerTx: (h) => `https://sepolia.arbiscan.io/tx/${h}`,
+    logsSpan: 1_000_000,
+    searchBlocks: 345_600,
   },
   {
     key: 'ETH',
@@ -288,6 +305,8 @@ const cctpTestnetChains: CctpSourceChain[] = [
     rpcFallback: 'https://ethereum-sepolia-rpc.publicnode.com',
     rpcArchive: 'https://1rpc.io/sepolia',
     explorerTx: (h) => `https://sepolia.etherscan.io/tx/${h}`,
+    logsSpan: 7_200,
+    searchBlocks: 7_200,
   },
 ]
 

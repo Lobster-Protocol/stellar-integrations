@@ -205,3 +205,25 @@ describe('maxFeeFor', () => {
     expect(maxFeeFor(1_000_000n, 0)).toBe(0n)
   })
 })
+
+describe('the pace of requests to Circle', () => {
+  it('sends ten a second at most, whoever asks, so Circle never shuts the page out', async () => {
+    const sent: number[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        sent.push(Date.now())
+        return { status: 404, json: async () => ({}) } as unknown as Response
+      }),
+    )
+    await Promise.all([
+      fetchAttestation('testnet', 6, TX),
+      fetchFees('testnet', 6).catch(() => null),
+      fetchAttestation('testnet', 3, TX),
+      fetchFees('testnet', 3).catch(() => null),
+    ])
+    const gaps = sent.slice(1).map((t, i) => t - sent[i])
+    expect(gaps).toHaveLength(3)
+    expect(gaps.every((g) => g >= 90)).toBe(true)
+  })
+})

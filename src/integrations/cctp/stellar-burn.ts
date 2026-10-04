@@ -81,6 +81,7 @@ async function invokeSigned(
   what: string,
   op: xdr.Operation,
   onSent?: (hash: string) => void,
+  onSigned?: (hash: string) => void,
 ): Promise<string> {
   const server = getSorobanServer(network)
   const source = await loadFunded(server, owner, network)
@@ -101,6 +102,9 @@ async function invokeSigned(
     throw err
   }
   if (!signed.signedTxXdr) throw new StellarBurnError('The wallet did not return a signed transaction')
+  // the hash is known from the signed envelope, before Stellar is asked: a page that goes
+  // away while it submits still left the burn behind to be found
+  onSigned?.(TransactionBuilder.fromXDR(signed.signedTxXdr, networkPassphrase(network)).hash().toString('hex'))
   const hash = await submitSignedXdr(network, signed.signedTxXdr)
   onSent?.(hash)
   const res = await waitForTx(network, hash)
@@ -196,10 +200,12 @@ export function stellarBurnArgs(req: StellarBurnRequest): xdr.ScVal[] {
   return args
 }
 
-// onSent hears the hash the moment the burn is submitted, before Stellar confirms it
+// onSigned hears the hash once the wallet has signed, before Stellar is asked; onSent once
+// Stellar has taken it, before it confirms
 export async function burnFromStellar(
   req: StellarBurnRequest & { signer: Signer },
   onSent?: (hash: string) => void,
+  onSigned?: (hash: string) => void,
 ): Promise<string> {
   if (req.maxFee >= req.units) throw new StellarBurnError("Circle's fee would swallow the whole amount")
   const { tokenMessengerMinter } = CONTRACTS[req.network].cctp
@@ -207,5 +213,5 @@ export async function burnFromStellar(
     req.forward ? 'deposit_for_burn_with_hook' : 'deposit_for_burn',
     ...stellarBurnArgs(req),
   )
-  return invokeSigned(req.network, req.owner, req.signer, 'burn', op, onSent)
+  return invokeSigned(req.network, req.owner, req.signer, 'burn', op, onSent, onSigned)
 }

@@ -1,9 +1,10 @@
 import { ExternalLink } from 'lucide-react'
+import { useAccount } from 'wagmi'
 
 import { cn, shortenAddress, stellarExplorer } from '../utils/format'
 import { STELLAR_CCTP_DOMAIN, cctpChainsFor, type Network } from '../config/contracts'
 import { useAttestation } from '../integrations/cctp/hooks'
-import { directionOf, forgetTransfer, type TrackedTransfer } from '../integrations/cctp/transfers'
+import { directionOf, forgetTransfer, SEARCH_EVENT, useSearches, walletsToSearch, type TrackedTransfer } from '../integrations/cctp/transfers'
 import { elapsed, statusLine, statusOf, useNow, type Tone } from '../integrations/cctp/status'
 
 const TONE_CLASS: Record<Tone, string> = {
@@ -42,6 +43,7 @@ export function InProgressRow({
       <span className="flex flex-col gap-1 min-w-0">
         <span className="text-text">
           {t.amount} USDC {out ? 'to' : 'from'} {t.chainName}
+          <span className="text-text-secondary">, for {shortenAddress(t.recipient, 6, 4)}</span>
           <span className="text-text-muted ml-2">{new Date(t.createdAt).toLocaleString('en-GB')}</span>
         </span>
         <span className="flex items-center gap-2 flex-wrap">
@@ -68,6 +70,62 @@ export function InProgressRow({
         </button>
       </span>
     </li>
+  )
+}
+
+// what the page looked at on chain for transfers that never arrived, and when: shown so a
+// person back on another device knows the list is not only this browser's memory
+export function SearchSummary({ network, stellar }: { network: Network; stellar: string | null }) {
+  const connectedEvm = useAccount().address
+  const searches = useSearches(network)
+  const now = useNow(true, 30_000)
+  const chains = cctpChainsFor(network)
+  const wallets = walletsToSearch(network, stellar, connectedEvm)
+  if (wallets.stellar.length === 0 && wallets.evm.length === 0) {
+    return (
+      <p className="text-[11px] text-text-muted">
+        Connect the wallets you bridged with: the page then looks on chain for any transfer of theirs that has not arrived.
+      </p>
+    )
+  }
+  const stellarRecs = wallets.stellar.map((a) => ({ a, r: searches[`stellar:${a}`] }))
+  const evmRecs = wallets.evm.flatMap((a) => chains.map((c) => ({ a, c, r: searches[`evm:${c.key}:${a.toLowerCase()}`] })))
+  const last = Math.max(0, ...[...stellarRecs, ...evmRecs].map((x) => x.r?.at ?? 0))
+  const names = (xs: string[]) => xs.map((a) => shortenAddress(a, 6, 4)).join(', ')
+  const once = (xs: string[]) => [...new Set(xs)]
+  // only what has been read so far; the rest is said to be under way
+  const stellarRead = stellarRecs.filter((x) => x.r).map((x) => x.a)
+  const evmRead = evmRecs.filter((x) => x.r)
+  const parts = [
+    stellarRead.length ? `burns out of ${names(stellarRead)} over the last 30 days` : null,
+    evmRead.length
+      ? `burns from ${names(once(evmRead.map((x) => x.a)))} on ${once(evmRead.map((x) => x.c.name)).join(', ')} over about the last day`
+      : null,
+  ].filter(Boolean)
+  const reading = once([...stellarRecs.filter((x) => !x.r).map(() => 'Stellar'), ...evmRecs.filter((x) => !x.r).map((x) => x.c.name)])
+  const partial = once([
+    ...stellarRecs.filter((x) => x.r && !x.r.complete).map(() => 'Stellar'),
+    ...evmRecs.filter((x) => x.r && !x.r.complete).map((x) => x.c.name),
+  ])
+  const notConnected = wallets.evm.some((a) => a.toLowerCase() !== connectedEvm?.toLowerCase()) || wallets.stellar.some((a) => a !== stellar)
+  return (
+    <div className="flex items-start justify-between gap-3 flex-wrap text-[11px] text-text-muted">
+      <p className="min-w-0 max-w-2xl">
+        {parts.length > 0 && `Looked on chain ${elapsed(last, now)} ago for ${parts.join(', and for ')}.`}
+        {reading.length > 0 && `${parts.length > 0 ? ' ' : ''}Reading ${reading.join(', ')} for transfers that have not arrived.`}
+        {partial.length > 0 &&
+          ` ${partial.join(', ')} could not be read in full just now; an older transfer is finished from its burn hash below.`}
+        {notConnected && ' A wallet that bridged from this browser is searched even when it is not connected.'}
+        {wallets.evm.length === 0 && ' A transfer into Stellar shows up once the EVM wallet that sent it is connected.'}
+      </p>
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event(SEARCH_EVENT))}
+        className="shrink-0 text-primary hover:underline"
+      >
+        Search again
+      </button>
+    </div>
   )
 }
 
