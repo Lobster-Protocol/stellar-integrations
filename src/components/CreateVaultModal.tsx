@@ -10,10 +10,9 @@ import type { Network } from '../integrations/lobster/types'
 import { stellarExplorer } from '../utils/format'
 import { useAccountSigning } from '../integrations/stellar/use-account-signing'
 import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
+import { overWalletConnect, validitySecs } from '../integrations/signer/validity'
+import { useWallet } from '../contexts/WalletContext'
 import CoSignPanel from './CoSignPanel'
-
-// widened for a multisig owner so a quorum has time to sign the frozen envelope.
-const MULTISIG_TIMEOUT_SECS = 3600
 
 type Phase =
   | { k: 'form' }
@@ -40,6 +39,9 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
   const inFlight = useRef(false)
   const signingQ = useAccountSigning(network, caller)
   const multi = signingQ.data ? isMultisig(signingQ.data) : false
+  // a DFNS treasury reached over WalletConnect holds the signature for its own approval
+  const { walletId } = useWallet()
+  const overWc = overWalletConnect(walletId)
 
   useEffect(() => {
     if (!open) {
@@ -67,7 +69,7 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
     inFlight.current = true
     try {
       setPhase({ k: 'building' })
-      const built = await buildCreatePoolTx(network, caller, sac0, sac1, multi ? MULTISIG_TIMEOUT_SECS : 60)
+      const built = await buildCreatePoolTx(network, caller, sac0, sac1, validitySecs({ quorum: multi, walletId }))
       if (!built.xdr) {
         setPhase({ k: 'failed', msg: 'The Factory storage has expired on-chain and needs restoring first.' })
         return
@@ -177,6 +179,12 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
             {multi && signingQ.data && (
               <div className="rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-[11px]">
                 This account uses shared control. Creating a vault needs {requiredWeight(signingQ.data, 'med')} signatures.
+              </div>
+            )}
+            {overWc && (
+              <div className="rounded-2xl bg-primary/5 text-primary px-3 py-2.5 text-[11px]">
+                If your wallet holds this for an approval, approve it within five minutes:
+                WalletConnect stops waiting for the answer after that.
               </div>
             )}
             <div className="flex gap-2">

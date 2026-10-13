@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 
 import { useCustody } from '../contexts/CustodyContext'
+import { useWallet } from '../contexts/WalletContext'
 import { awaitDfnsSignature } from '../integrations/dfns/await-signature'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { buildVaultActionTx, submitSignedXdr, waitForTx, type VaultAction } from '../integrations/lobster/vault-tx'
@@ -13,12 +14,12 @@ import { stroopsToDecimal } from '../integrations/stellar/amount'
 import { stellarExplorer, formatBalance, cn } from '../utils/format'
 import { useAccountSigning } from '../integrations/stellar/use-account-signing'
 import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
+import { overWalletConnect, validitySecs } from '../integrations/signer/validity'
 import CoSignPanel from './CoSignPanel'
 import TokenRef from './TokenRef'
 
 // a quorum call has to gather signatures across people, so its envelope needs a
 // timebound wide enough to survive that instead of the 60s single-sig default.
-const MULTISIG_TIMEOUT_SECS = 3600
 
 type Phase =
   | { k: 'form' }
@@ -53,6 +54,9 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   const source = isDfns ? (dfnsAddress as string) : caller
   const signingQ = useAccountSigning(network, source)
   const multi = !isDfns && signingQ.data ? isMultisig(signingQ.data) : false
+  // a DFNS treasury reached over WalletConnect holds the signature for its own approval
+  const { walletId } = useWallet()
+  const overWc = !isDfns && overWalletConnect(walletId)
 
   // SAC balance() covers XLM and USDC alike, and the dfns treasury too. deposit
   // only, since a withdraw caps against the vault's idle holdings instead.
@@ -112,7 +116,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         source,
         amount0 || '0',
         amount1 || '0',
-        multi || isDfns ? MULTISIG_TIMEOUT_SECS : 60,
+        validitySecs({ quorum: multi || isDfns, walletId }),
       )
       if (!built.xdr) {
         setPhase({ k: 'failed', msg: "This vault's storage has expired on-chain and needs restoring before this call." })
@@ -251,6 +255,12 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
             {isDfns && (
               <div className="rounded-2xl bg-primary/5 text-primary px-3 py-2.5 text-[11px]">
                 Your DFNS treasury signs this move, held for approval in your DFNS console.
+              </div>
+            )}
+            {overWc && (
+              <div className="rounded-2xl bg-primary/5 text-primary px-3 py-2.5 text-[11px]">
+                If your wallet holds this move for an approval, approve it within five minutes:
+                WalletConnect stops waiting for the answer after that.
               </div>
             )}
             {[0, 1].map((i) => {

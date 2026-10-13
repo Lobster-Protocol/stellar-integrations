@@ -70,11 +70,17 @@ export function irisTxHash(sourceDomain: number, txHash: string): string {
 const IRIS_EVERY_MS = 100
 let irisNext = 0
 
-function irisTurn(): Promise<void> {
-  const now = Date.now()
-  const at = Math.max(now, irisNext)
-  irisNext = at + IRIS_EVERY_MS
-  return at > now ? new Promise((r) => setTimeout(r, at - now)) : Promise.resolve()
+// the next turn counts from when a request really leaves: a timer that fired late must not
+// let the one after it go sooner
+async function irisTurn(): Promise<void> {
+  for (;;) {
+    const now = Date.now()
+    if (now >= irisNext) {
+      irisNext = now + IRIS_EVERY_MS
+      return
+    }
+    await new Promise((r) => setTimeout(r, irisNext - now))
+  }
 }
 
 async function getJson(url: string, timeoutMs: number): Promise<{ status: number; body: unknown }> {
