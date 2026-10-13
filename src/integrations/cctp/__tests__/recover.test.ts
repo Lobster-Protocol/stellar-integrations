@@ -113,6 +113,14 @@ describe('an endpoint refusing a log query', () => {
     expect(refusedForSize(new Error('Unknown state. First available state is 1'))).toBe(false)
     expect(refusedForSize(new Error('fetch failed'))).toBe(false)
   })
+
+  it('never takes a 403 or a 429 for a range too big, even when the text says limit', () => {
+    expect(refusedForSize({ status: 429, details: 'over rate limit' })).toBe(false)
+    expect(refusedForSize({ status: 403, shortMessage: 'HTTP request failed.' })).toBe(false)
+    expect(refusedForSize({ message: 'request failed', cause: { status: 429 } })).toBe(false)
+    expect(refusedForSize(new Error('Too Many Requests'))).toBe(false)
+    expect(refusedForSize(new Error('rate limit exceeded'))).toBe(false)
+  })
 })
 
 describe('searching a wallet for its burns', () => {
@@ -134,6 +142,13 @@ describe('searching a wallet for its burns', () => {
     expect(r.complete).toBe(true)
     expect(getLogsMock.mock.calls[1][0]).toMatchObject({ fromBlock: 20_001n, toBlock: 25_000n })
     expect(r.burns).toHaveLength(1)
+  })
+
+  it('stops at the first throttled answer instead of splitting the piece', async () => {
+    getLogsMock.mockRejectedValue(Object.assign(new Error('HTTP request failed.'), { status: 429, details: 'over rate limit' }))
+    const r = await findEvmBurnsToStellar(chain, DEPOSITOR, 0n, 25_000n, FORWARDER)
+    expect(r.complete).toBe(false)
+    expect(getLogsMock).toHaveBeenCalledTimes(1)
   })
 
   it('stops where the endpoints no longer serve the blocks, and says how far it got', async () => {

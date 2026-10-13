@@ -125,11 +125,25 @@ function errorText(err: unknown): string {
   return `${e?.details ?? ''} ${e?.shortMessage ?? ''} ${e?.message ?? ''}`
 }
 
+// viem keeps the HTTP status on the error it throws, or on one it wraps
+function httpStatus(err: unknown): number | undefined {
+  let e = err as { status?: unknown; cause?: unknown } | undefined
+  for (let i = 0; e && i < 5; i++) {
+    if (typeof e.status === 'number') return e.status
+    e = e.cause as typeof e
+  }
+  return undefined
+}
+
 // "limited to a 2,000 range", "exceed maximum block range": the piece was too big. An
-// archive or state error is about the blocks' age, which a smaller piece does not cure
+// archive or state error is about the blocks' age, which a smaller piece does not cure.
+// A 403 or a 429 is the endpoint turning us away; "rate limit" and "too many requests"
+// read like a size refusal, and splitting on them only sent more requests
 export function refusedForSize(err: unknown): boolean {
+  const status = httpStatus(err)
+  if (status === 403 || status === 429) return false
   const text = errorText(err)
-  if (/archive|state|pruned|missing trie/i.test(text)) return false
+  if (/archive|state|pruned|missing trie|rate.?limit|too many requests|forbidden/i.test(text)) return false
   return /range|limit|exceed|too (large|many|big)|block span|maximum/i.test(text)
 }
 

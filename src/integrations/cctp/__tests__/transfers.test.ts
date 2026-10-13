@@ -15,6 +15,8 @@ import {
   PAGE_SESSION,
   recordSearch,
   saveIntent,
+  SEARCH_FAILURE_PAUSE_MS,
+  searchPaused,
   trackTransfer,
   markDelivered,
   markSent,
@@ -197,6 +199,16 @@ describe('what a search already knows', () => {
       'stellar:GAMNA': { at: 2, complete: false, error: 'Horizon did not answer' },
     })
     expect(listSearches('mainnet')).toEqual({})
+  })
+
+  it('leaves a search that just failed alone for a while, and only that one', () => {
+    const now = 10 * SEARCH_FAILURE_PAUSE_MS
+    const failed = { at: now - 60_000, complete: false, error: 'HTTP request failed. Status: 429' }
+    expect(searchPaused(failed, now)).toBe(true)
+    expect(searchPaused({ ...failed, at: now - SEARCH_FAILURE_PAUSE_MS - 1 }, now)).toBe(false)
+    expect(searchPaused({ at: now - 60_000, complete: true, head: '200' }, now)).toBe(false)
+    expect(searchPaused({ at: now - 60_000, complete: false }, now)).toBe(false)
+    expect(searchPaused(undefined, now)).toBe(false)
   })
 })
 

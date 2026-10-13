@@ -26,6 +26,7 @@ import {
   recordSearch,
   rememberWallet,
   SEARCH_EVENT,
+  searchPaused,
   trackTransfer,
   useBurnIntents,
   useTrackedTransfers,
@@ -200,6 +201,7 @@ function Recovery({ network }: { network: Network }) {
     for (const depositor of wallets.evm) {
       for (const chain of cctpChainsFor(network)) {
         const key = `evm:${chain.key}:${depositor.toLowerCase()}`
+        if (searchPaused(listSearches(network)[key])) continue
         void run(key, async (known) => {
           const prev = listSearches(network)[key]
           // once a full pass is done, only the blocks since it

@@ -343,6 +343,14 @@ export function recordSearch(network: Network, key: string, rec: SearchRecord): 
   window.dispatchEvent(new Event(EVENT))
 }
 
+// A search that failed (an endpoint refused or throttled it) is not asked again for this
+// long, whichever trigger fires: re-asking on every one turned a refusal into a flood
+export const SEARCH_FAILURE_PAUSE_MS = 15 * 60_000
+
+export function searchPaused(rec: SearchRecord | undefined, now = Date.now()): boolean {
+  return !!rec && !rec.complete && !!rec.error && now - rec.at < SEARCH_FAILURE_PAUSE_MS
+}
+
 function subscribe(onChange: () => void): () => void {
   const handler = () => {
     cache.clear()
