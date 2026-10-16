@@ -105,8 +105,12 @@ test.describe('activity search', () => {
     await expect(page).toHaveURL(/q=zznothinghere/)
     await expect(page.getByRole('button', { name: 'Clear the filters' })).toBeVisible()
 
-    // a reload rebuilds the same filtered view from the url alone
+    // a reload rebuilds the same filtered view from the url alone. the filters only
+    // render once the history is back from horizon, so wait for it like above
     await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('button', { name: /^Everything \d+$/ })).toBeVisible({
+      timeout: 20000,
+    })
     await expect(page.getByRole('searchbox', { name: /Search this account/ })).toHaveValue(
       'zznothinghere',
     )
@@ -216,7 +220,7 @@ test.describe('activity date range', () => {
     await gotoWithWallet(page, '/activity?from=2026-06-01&to=2026-06-30')
     await expect(page.getByText('Selected dates')).toBeVisible({ timeout: 20000 })
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await expect(START(page)).toHaveValue('2026-06-01')
+    await expect(START(page)).toHaveValue('2026-06-01', { timeout: 20000 })
     await expect(END(page)).toHaveValue('2026-06-30')
   })
 })
