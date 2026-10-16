@@ -1,9 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
-  hasFeeReserve, formatMetrics, rpcLedgerClose, horizonLedgerClose, type ScanResult,
+  hasFeeReserve, formatMetrics, rpcLedgerClose, horizonLedgerClose, evmBlockFresh, confirmed, type ScanResult,
 } from '../probe/index'
 import { accountTargets, httpTargets } from '../probe/targets'
-import { STELLAR_CCTP_DOMAIN } from '../../src/config/contracts'
+import { CCTP_SOURCE_CHAINS, STELLAR_CCTP_DOMAIN } from '../../src/config/contracts'
 
 describe('hasFeeReserve', () => {
   it('holds the native balance against the reserve', () => {
@@ -89,10 +89,10 @@ describe('ledger close time', () => {
 
 describe('httpTargets', () => {
   it('asks Circle for the bridge fee quote on both networks', () => {
-    const cctp = httpTargets().filter((t) => t.area === 'bridge')
+    const cctp = httpTargets().filter((t) => t.probe === 'cctp')
     expect(cctp.map((t) => t.name).sort()).toEqual(['circle-cctp-mainnet', 'circle-cctp-testnet'])
     for (const t of cctp) {
-      expect(t.probe).toBe('cctp')
+      expect(t.area).toBe('bridge')
       expect(t.url).toMatch(new RegExp(`^https://iris-api(-sandbox)?\\.circle\\.com/v2/burn/USDC/fees/\\d+/${STELLAR_CCTP_DOMAIN}$`))
     }
   })
@@ -161,3 +161,53 @@ describe('accountTargets', () => {
     else process.env.MONITOR_TTL_EXTENDER_ADDRESS = OLD
   })
 })
+
+describe('evm chains', () => {
+  it('watches every chain the bridge reads, through the same two endpoints as the app', () => {
+    const evm = httpTargets().filter((t) => t.probe === 'evm')
+    const expected = (['mainnet', 'testnet'] as const).flatMap((network) =>
+      CCTP_SOURCE_CHAINS[network].map((c) => ({
+        name: `evm-${c.key.toLowerCase()}-${network}`,
+        area: 'bridge',
+        url: c.rpcFallback,
+        fallbackUrl: c.rpcArchive,
+        probe: 'evm',
+      })),
+    )
+    expect(evm).toEqual(expected)
+  })
+
+  it('counts an endpoint as up only while its latest block is recent', () => {
+    const now = 1_800_000_000
+    const at = (seconds: number) => ({ result: { timestamp: `0x${seconds.toString(16)}` } })
+    expect(evmBlockFresh(at(now - 30), now)).toBe(true)
+    expect(evmBlockFresh(at(now - 3600), now)).toBe(false)
+    expect(evmBlockFresh({ result: null }, now)).toBe(false)
+    expect(evmBlockFresh({}, now)).toBe(false)
+  })
+})
+
+describe('confirmed', () => {
+  it('tries a failed check once more and keeps what the second try says', async () => {
+    const answers = [{ up: false, n: 1 }, { up: true, n: 2 }]
+    const check = vi.fn(async () => answers.shift()!)
+    expect(await confirmed(check, 0)).toEqual({ up: true, n: 2 })
+    expect(check).toHaveBeenCalledTimes(2)
+  })
+
+  it('takes a passing check at its word, and a check with nothing to watch as it is', async () => {
+    const up = vi.fn(async () => ({ up: true }))
+    expect(await confirmed(up, 0)).toEqual({ up: true })
+    expect(up).toHaveBeenCalledTimes(1)
+    const none = vi.fn(async () => null)
+    expect(await confirmed(none, 0)).toBeNull()
+    expect(none).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports down when the second try fails too', async () => {
+    const down = vi.fn(async () => ({ up: false }))
+    expect(await confirmed(down, 0)).toEqual({ up: false })
+    expect(down).toHaveBeenCalledTimes(2)
+  })
+})
+

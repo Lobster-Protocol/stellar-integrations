@@ -9,8 +9,11 @@ export interface HttpTarget {
   area: 'bridge' | 'frontend' | 'swap' | 'custody' | 'mainnet' | 'shared'
   url: string
   // rpc and horizon also say how old their latest ledger is. cctp has to hand
-  // back a fee table and a page has to load, answering is not enough.
-  probe: 'rpc' | 'horizon' | 'cctp' | 'page' | 'http'
+  // back a fee table, a page has to load and an evm endpoint has to serve a
+  // recent block; answering is not enough.
+  probe: 'rpc' | 'horizon' | 'cctp' | 'page' | 'http' | 'evm'
+  // evm only: where the app reads the chain when the first endpoint fails
+  fallbackUrl?: string
 }
 
 export interface AccountTarget {
@@ -54,6 +57,19 @@ export function httpTargets(): HttpTarget[] {
   const bff = env.VITE_LOBSTER_API_URL || env.MONITOR_BFF_URL
   if (bff && !bff.includes('localhost')) {
     list.push({ name: 'bff-relay', area: 'custody', url: bff, probe: 'http' })
+  }
+  // the evm chains the bridge burns on and mints to, from the list the app reads
+  // them through, so the watch follows any change to it
+  for (const network of ['mainnet', 'testnet'] as const) {
+    for (const chain of CCTP_SOURCE_CHAINS[network]) {
+      list.push({
+        name: `evm-${chain.key.toLowerCase()}-${network}`,
+        area: 'bridge',
+        url: chain.rpcFallback,
+        fallbackUrl: chain.rpcArchive,
+        probe: 'evm',
+      })
+    }
   }
   // the public status board: the free grafana instance behind it stops serving
   // pages after a quiet spell and greets the next visitor with a loading notice.

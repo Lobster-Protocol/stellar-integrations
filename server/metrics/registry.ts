@@ -17,10 +17,11 @@ export const httpDuration = new Histogram({
 })
 
 // every treasury signature is held for approval, so approvals by status track the
-// signing flow. refreshed by dfns-signing.ts.
+// signing flow. pending_expired is held for approval but its transaction has
+// run past its time bounds. refreshed by dfns-signing.ts.
 export const dfnsApprovals = new Gauge({
   name: 'lobster_dfns_approvals',
-  help: 'DFNS policy approvals by status',
+  help: 'DFNS policy approvals by status; pending_expired is still held but its transaction can no longer land',
   labelNames: ['status'],
   registers: [registry],
 })

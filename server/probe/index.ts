@@ -33,6 +33,15 @@ export interface ScanResult {
 }
 
 const TIMEOUT_MS = 10_000
+// two evm endpoints are tried in turn, so each gets half the time
+const EVM_TIMEOUT_MS = 5_000
+// an evm endpoint serving a block older than this has stopped following the
+// chain, and the bridge would miss the burns and mints after it
+const EVM_STALE_SECONDS = 600
+// a failed check is tried once more after this pause before it counts. the free
+// status page answers an error for a second every few hours and public endpoints
+// drop the odd request; a user who reloads never sees either.
+const CONFIRM_AFTER_MS = 2_000
 
 async function timed<T>(fn: () => Promise<T>): Promise<{ ok: boolean; value?: T; seconds: number }> {
   const start = Date.now()
@@ -56,6 +65,33 @@ export function horizonLedgerClose(body: { history_latest_ledger_closed_at?: str
   return Number.isFinite(t) ? t / 1000 : undefined
 }
 
+// eth_getBlockByNumber hands the block time back as hex seconds
+export function evmBlockFresh(body: { result?: { timestamp?: string } | null }, nowSeconds: number): boolean {
+  const ts = Number.parseInt(body.result?.timestamp ?? '', 16)
+  return Number.isFinite(ts) && nowSeconds - ts < EVM_STALE_SECONDS
+}
+
+async function evmServesRecentBlock(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBlockByNumber', params: ['latest', false] }),
+      signal: AbortSignal.timeout(EVM_TIMEOUT_MS),
+    })
+    return res.ok && evmBlockFresh((await res.json()) as Parameters<typeof evmBlockFresh>[0], Date.now() / 1000)
+  } catch {
+    return false
+  }
+}
+
+export async function confirmed<T extends { up: boolean } | null>(check: () => Promise<T>, pauseMs = CONFIRM_AFTER_MS): Promise<T> {
+  const first = await check()
+  if (first === null || first.up) return first
+  await new Promise((resolve) => setTimeout(resolve, pauseMs))
+  return check()
+}
+
 interface Reading {
   up: boolean
   closedAt?: number
@@ -64,6 +100,14 @@ interface Reading {
 
 async function probeOne(t: HttpTarget): Promise<ProbeResult> {
   const r = await timed(async (): Promise<Reading> => {
+    if (t.probe === 'evm') {
+      // the app falls back to the second endpoint, so the chain is readable when
+      // either serves a recent block
+      for (const url of [t.url, t.fallbackUrl]) {
+        if (url && (await evmServesRecentBlock(url))) return { up: true }
+      }
+      return { up: false }
+    }
     if (t.probe === 'rpc') {
       const res = await fetch(t.url, {
         method: 'POST',
@@ -164,9 +208,9 @@ async function readAccount(a: AccountTarget): Promise<AccountReading | null> {
 
 export async function scan(): Promise<ScanResult> {
   const [probes, accounts, soroswap, vendors] = await Promise.all([
-    Promise.all(httpTargets().map(probeOne)),
+    Promise.all(httpTargets().map((t) => confirmed(() => probeOne(t)))),
     Promise.all(accountTargets().map(readAccount)),
-    probeSoroswap(),
+    confirmed(probeSoroswap),
     vendorStatus(),
   ])
   return {
