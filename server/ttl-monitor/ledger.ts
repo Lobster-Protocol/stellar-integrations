@@ -30,13 +30,13 @@ export function readTtl(
   latestLedger: number,
 ): TtlReading {
   // an entry the rpc does not return is archived or never existed; either way
-  // it carries no runway.
-  if (liveUntilLedgerSeq === undefined) {
+  // it carries no runway. one evicted to the archive comes back with 0.
+  if (!liveUntilLedgerSeq) {
     return { remainingLedgers: 0, remainingSeconds: 0, level: 'archived' }
   }
   // latestLedger has to come from the same rpc response; a cached one reads a
   // dead entry as live.
-  const remainingLedgers = liveUntilLedgerSeq - latestLedger
+  const remainingLedgers = Math.max(0, liveUntilLedgerSeq - latestLedger)
   const remainingSeconds = remainingLedgers * LEDGER_SECONDS
   let level: TtlLevel = 'ok'
   if (remainingLedgers <= 0) level = 'archived'

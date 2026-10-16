@@ -6,7 +6,7 @@ export interface LedgerEntriesReader {
   getLedgerEntries(
     ...keys: xdr.LedgerKey[]
   ): Promise<{
-    entries: Array<{ key: xdr.LedgerKey; liveUntilLedgerSeq?: number }>
+    entries: Array<{ key: xdr.LedgerKey; liveUntilLedgerSeq?: number; val?: xdr.LedgerEntryData }>
     latestLedger: number
   }>
 }

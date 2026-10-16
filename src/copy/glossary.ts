@@ -27,7 +27,7 @@ export const GLOSSARY: Record<GlossaryKey, string> = {
   custody: 'Who controls the keys that can move the money.',
   policy: 'A rule checked before anything gets signed. For example: a person has to approve first.',
   approval: "A person signing off on a transaction before it's allowed through.",
-  ttl: 'Soroban contracts pay rent for their on-chain storage. When the lease gets low it has to be topped up, or the data is archived and the contract stops working until it is restored.',
+  ttl: 'Soroban contracts pay rent for their on-chain storage. When the lease gets low it has to be topped up, or the data is archived and the next transaction that needs it pays to restore it first.',
   storageRent:
     "XLM a contract prepays to keep its data alive on-chain. It's a network cost, not a fee paid to us.",
   vault: 'A smart contract that holds a liquidity position for you and keeps track of your share of it.',

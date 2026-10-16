@@ -173,6 +173,7 @@ app.get('/ttl', async (c) => {
     latestLedger: scan.latestLedger,
     statuses: scan.statuses.map((s) => ({
       key: s.keyXdr,
+      kind: s.kind,
       remainingLedgers: s.reading.remainingLedgers,
       remainingSeconds: s.reading.remainingSeconds,
       level: s.reading.level,

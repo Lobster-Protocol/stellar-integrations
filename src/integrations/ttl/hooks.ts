@@ -5,6 +5,8 @@ export type TtlLevel = 'ok' | 'warn' | 'crit' | 'archived'
 
 export interface TtlKeyStatus {
   key: string
+  // instance, factory-code or vault-code, as the relay names what it watches
+  kind?: string
   remainingLedgers: number
   remainingSeconds: number
   level: TtlLevel

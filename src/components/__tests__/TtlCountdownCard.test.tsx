@@ -35,17 +35,24 @@ afterEach(() => {
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', ORIG_API)
 })
 
+const row = (key: string, kind?: string) => ({ key, kind, remainingLedgers: 3_070_625, remainingSeconds: 15_353_125, level: 'ok' })
+
 describe('TtlCountdownCard', () => {
-  it('names the vault code apart from the factory code', () => {
-    const row = (key: string) => ({ key, remainingLedgers: 3_070_625, remainingSeconds: 15_353_125, level: 'ok' })
+  it('names each entry the way the relay does, the vault code apart from the factory code', () => {
     ttlState.data = {
       network: 'mainnet',
       latestLedger: 64_717_078,
-      statuses: [row(FACTORY_INSTANCE), row(FACTORY_CODE), row(VAULT_CODE)],
+      statuses: [row(FACTORY_INSTANCE, 'instance'), row(FACTORY_CODE, 'factory-code'), row(VAULT_CODE, 'vault-code')],
     }
     render(<NetworkProvider><TtlCountdownCard /></NetworkProvider>)
-    expect(screen.getByText('Contract instance')).toBeInTheDocument()
-    expect(screen.getByText('Contract code')).toBeInTheDocument()
+    expect(screen.getByText('Factory instance')).toBeInTheDocument()
+    expect(screen.getByText('Factory code')).toBeInTheDocument()
     expect(screen.getByText('Vault code')).toBeInTheDocument()
+  })
+
+  it('falls back to a plain name for an entry the relay does not name', () => {
+    ttlState.data = { network: 'mainnet', latestLedger: 64_717_078, statuses: [row(FACTORY_INSTANCE)] }
+    render(<NetworkProvider><TtlCountdownCard /></NetworkProvider>)
+    expect(screen.getByText('Storage entry')).toBeInTheDocument()
   })
 })

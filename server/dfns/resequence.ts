@@ -1,5 +1,6 @@
-import { TransactionBuilder, Horizon, Networks, type Transaction, type Account } from '@stellar/stellar-sdk'
+import { TransactionBuilder, Networks, type Transaction, type Account } from '@stellar/stellar-sdk'
 import { STELLAR_RPC_FALLBACK, type Network } from '../../src/config/contracts'
+import { horizonServer } from '../stellar-client'
 
 // dfns signs and broadcasts a kind:Transaction envelope verbatim, with the
 // sequence baked in at build time, and only after an approval hold that can run
@@ -39,7 +40,6 @@ export async function reSequence(tx: Transaction, passphrase: string): Promise<T
   const url =
     (network === 'mainnet' ? process.env.HORIZON_MAINNET : process.env.HORIZON_TESTNET) ||
     STELLAR_RPC_FALLBACK[network].horizon
-  const server = new Horizon.Server(url, { allowHttp: url.startsWith('http://') })
-  const account = await server.loadAccount(tx.source)
+  const account = await horizonServer(url).loadAccount(tx.source)
   return rebuildWithSequence(tx, account, passphrase)
 }

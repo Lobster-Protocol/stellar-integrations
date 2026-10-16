@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   readTtl,
   WARN_LEDGERS,
@@ -7,7 +7,9 @@ import {
 } from '../ttl-monitor/ledger'
 import { buildExtendTtlTx, clampExtendTo } from '../ttl-monitor/extend'
 import { scanTtl, keysNeedingExtend } from '../ttl-monitor/monitor'
-import { readConfigs, executableCodeKey, dueForExtend, formatMetrics } from '../ttl-monitor/index'
+import {
+  readConfigs, executableCodeKey, storedCodeKey, scanFactoryRecords, dueForExtend, formatMetrics,
+} from '../ttl-monitor/index'
 import { xdr, Address, Account, Networks, StrKey } from '@stellar/stellar-sdk'
 import { CONTRACTS, INCLUSION_FEE_STROOPS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
 
@@ -34,6 +36,11 @@ describe('readTtl', () => {
   it('flags archived once the runway is gone', () => {
     expect(readTtl(1_000_000, 1_000_000).level).toBe('archived')
     expect(readTtl(999_999, 1_000_000).level).toBe('archived')
+  })
+
+  it('gives an entry back from the archive no runway rather than a negative one', () => {
+    expect(readTtl(0, 1_000_000)).toEqual({ remainingLedgers: 0, remainingSeconds: 0, level: 'archived' })
+    expect(readTtl(999_000, 1_000_000).remainingLedgers).toBe(0)
   })
 })
 
@@ -169,5 +176,131 @@ describe('executableCodeKey', () => {
 
   it('returns nothing without an entry', () => {
     expect(executableCodeKey(undefined)).toBeNull()
+  })
+})
+
+describe('storedCodeKey', () => {
+  const stored = (val: xdr.ScVal) =>
+    xdr.LedgerEntryData.contractData(
+      new xdr.ContractDataEntry({
+        ext: new xdr.ExtensionPoint(0),
+        contract: Address.fromString(CONTRACTS.testnet.lobster.factory).toScAddress(),
+        key: xdr.ScVal.scvSymbol('lob_hash'),
+        durability: xdr.ContractDataDurability.persistent(),
+        val,
+      }),
+    )
+
+  it('reads the vault code the factory deploys from', () => {
+    const hash = Buffer.alloc(32, 9)
+    expect(storedCodeKey(stored(xdr.ScVal.scvBytes(hash)))?.contractCode().hash().equals(hash)).toBe(true)
+  })
+
+  it('wants 32 bytes and nothing else', () => {
+    expect(storedCodeKey(stored(xdr.ScVal.scvBytes(Buffer.alloc(31, 9))))).toBeNull()
+    expect(storedCodeKey(stored(xdr.ScVal.scvU32(7)))).toBeNull()
+    expect(storedCodeKey(undefined)).toBeNull()
+  })
+})
+
+describe('scanFactoryRecords', () => {
+  const FACTORY = StrKey.encodeContract(Buffer.alloc(32, 1))
+  const VAULTS = [StrKey.encodeContract(Buffer.alloc(32, 2)), StrKey.encodeContract(Buffer.alloc(32, 3))]
+  const OWNER = StrKey.encodeEd25519PublicKey(Buffer.alloc(32, 4))
+  const [T0, T1] = [StrKey.encodeContract(Buffer.alloc(32, 5)), StrKey.encodeContract(Buffer.alloc(32, 6))]
+  const sym = (v: string) => xdr.ScVal.scvSymbol(v)
+  const addr = (a: string) => Address.fromString(a).toScVal()
+  // the keys as the factory's code writes them, spelled out here so a change to
+  // the scan's encoding can't pass unnoticed
+  const rec = (key: xdr.ScVal) =>
+    xdr.LedgerKey.contractData(
+      new xdr.LedgerKeyContractData({
+        contract: Address.fromString(FACTORY).toScAddress(),
+        key,
+        durability: xdr.ContractDataDurability.persistent(),
+      }),
+    )
+  const pool = (vault: string) =>
+    xdr.ScVal.scvMap(
+      [['lobster_address', vault], ['owner', OWNER], ['token0', T0], ['token1', T1]].map(
+        ([k, v]) => new xdr.ScMapEntry({ key: sym(k), val: addr(v) }),
+      ),
+    )
+  const id = (n: number) => rec(xdr.ScVal.scvVec([sym('lob_pl_id'), xdr.ScVal.scvU64(new xdr.Uint64(BigInt(n)))]))
+  const LATEST = 1_000_000
+
+  // two vaults of one owner on one pair; no fee change pending
+  function ledger(): { getLedgerEntries: (...keys: xdr.LedgerKey[]) => Promise<never> } {
+    const stored: Array<[xdr.LedgerKey, number, xdr.ScVal]> = [
+      [rec(sym('admin')), LATEST + 3_000_000, addr(OWNER)],
+      [rec(sym('SW_ROUTER')), LATEST + 3_000_000, addr(T0)],
+      [rec(sym('lob_count')), LATEST + 3_000_000, xdr.ScVal.scvU64(new xdr.Uint64(2n))],
+      [rec(sym('lob_hash')), LATEST + 3_000_000, xdr.ScVal.scvBytes(Buffer.alloc(32, 7))],
+      [rec(sym('FEES')), LATEST + 3_000_000, xdr.ScVal.scvU32(1000)],
+      [id(1), LATEST + 2_000_000, pool(VAULTS[0])],
+      [id(2), LATEST + 2_000_000, pool(VAULTS[1])],
+      [rec(xdr.ScVal.scvVec([sym('lob_pl_ad'), addr(VAULTS[0])])), LATEST + 2_000_000, pool(VAULTS[0])],
+      [rec(xdr.ScVal.scvVec([sym('lob_pl_ad'), addr(VAULTS[1])])), LATEST + 2_000_000, pool(VAULTS[1])],
+      [rec(xdr.ScVal.scvVec([sym('lob_adr'), addr(OWNER)])), LATEST + 1_500_000, xdr.ScVal.scvVec([pool(VAULTS[0]), pool(VAULTS[1])])],
+      [rec(xdr.ScVal.scvVec([sym('lob_token'), addr(T0), addr(T1)])), LATEST + 200_000, xdr.ScVal.scvVec([pool(VAULTS[0]), pool(VAULTS[1])])],
+    ]
+    const byKey = new Map(
+      stored.map(([key, live, val]) => [
+        key.toXDR('base64'),
+        {
+          key,
+          liveUntilLedgerSeq: live,
+          val: xdr.LedgerEntryData.contractData(
+            new xdr.ContractDataEntry({
+              ext: new xdr.ExtensionPoint(0),
+              contract: key.contractData().contract(),
+              key: key.contractData().key(),
+              durability: xdr.ContractDataDurability.persistent(),
+              val,
+            }),
+          ),
+        },
+      ]),
+    )
+    return {
+      getLedgerEntries: async (...keys: xdr.LedgerKey[]) =>
+        ({ latestLedger: LATEST, entries: keys.flatMap((k) => byKey.get(k.toXDR('base64')) ?? []) }) as never,
+    }
+  }
+
+  it('watches the settings the factory wrote and the whole index of each vault, once per key', async () => {
+    const scan = await scanFactoryRecords(FACTORY, ledger())
+    const count = (kind: string) => scan.statuses.filter((s) => s.kind === kind).length
+    // admin, router, count, hash and fee; no PEND_FEE since nothing was announced
+    expect(count('factory-settings')).toBe(5)
+    // two ids, two vault addresses, the owner's list once, the pair's list once
+    expect(count('factory-index')).toBe(6)
+    expect(scan.statuses.every((s) => s.reading.level !== 'archived')).toBe(true)
+    const pair = rec(xdr.ScVal.scvVec([sym('lob_token'), addr(T0), addr(T1)])).toXDR('base64')
+    expect(scan.statuses.find((s) => s.keyXdr === pair)?.reading.remainingLedgers).toBe(200_000)
+  })
+
+  it('stops at the vault limit and says so', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const scan = await scanFactoryRecords(FACTORY, ledger(), 1)
+      // the first vault's id, its address, the owner's list and the pair's list
+      expect(scan.statuses.filter((s) => s.kind === 'factory-index')).toHaveLength(4)
+      expect(scan.statuses.some((s) => s.keyXdr === id(2).toXDR('base64'))).toBe(false)
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('first 1'))
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it('sends grafana one floor per kind, with no key that names a vault or its owner', async () => {
+    const records = await scanFactoryRecords(FACTORY, ledger())
+    const own = { keyXdr: 'FACTORYINSTANCE', kind: 'instance', reading: readTtl(LATEST + 2_500_000, LATEST) }
+    const out = formatMetrics({ latestLedger: LATEST, statuses: [own, ...records.statuses] }, 'mainnet', true)
+    expect(out).toContain('lobster_ttl_remaining_ledgers{network="mainnet",kind="instance",key="FACTORYINSTANCE"} 2500000')
+    expect(out).toContain('lobster_ttl_remaining_ledgers{network="mainnet",kind="factory-index"} 200000')
+    expect(out).toContain('lobster_ttl_remaining_ledgers{network="mainnet",kind="factory-settings"} 3000000')
+    expect(out.match(/kind="factory-index"/g)).toHaveLength(2)
+    for (const s of records.statuses) expect(out).not.toContain(s.keyXdr)
   })
 })

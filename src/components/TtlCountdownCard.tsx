@@ -1,4 +1,3 @@
-import { xdr } from '@stellar/stellar-sdk'
 import { AlertTriangle, Archive, CheckCircle2, OctagonAlert, type LucideIcon } from 'lucide-react'
 
 import { CONTRACTS } from '../config/contracts'
@@ -17,24 +16,12 @@ const LEVEL_STYLE: Record<TtlLevel, { text: string; label: string; icon: LucideI
   archived: { text: 'text-text-muted', label: 'archived', icon: Archive },
 }
 
-// the feed returns each watched entry as a base64 ledger key. decode the key
-// type so a reader sees "Contract instance" instead of opaque base64. the code the
-// factory deploys per vault gets its own name, or two rows would read the same.
-function keyLabel(keyXdr: string, vaultWasmHash: string): string {
-  try {
-    const k = xdr.LedgerKey.fromXDR(keyXdr, 'base64')
-    if (k.switch().name === 'contractCode') {
-      return k.contractCode().hash().toString('hex') === vaultWasmHash ? 'Vault code' : 'Contract code'
-    }
-    if (k.switch().name === 'contractData') {
-      const cd = k.contractData()
-      if (cd.key().switch().name === 'scvLedgerKeyContractInstance') return 'Contract instance'
-      return cd.durability().name === 'persistent' ? 'Persistent storage' : 'Temporary storage'
-    }
-    return 'Storage entry'
-  } catch {
-    return 'Storage entry'
-  }
+// the relay names what each watched entry is. the configured wasm hash can't tell
+// the two code entries apart: on testnet it is the factory's own code.
+const KIND_LABEL: Record<string, string> = {
+  instance: 'Factory instance',
+  'factory-code': 'Factory code',
+  'vault-code': 'Vault code',
 }
 
 // no thresholds here; the bands that drive the colour are decided server-side
@@ -91,7 +78,7 @@ export default function TtlCountdownCard() {
         </div>
       </div>
       <p className="text-xs text-text-secondary mb-3">
-        Time left before each of the Factory's on-chain storage entries expires. Once it does, the contract stops responding until the entry is restored.
+        Time left before each of the Factory's on-chain storage entries is archived. The contract keeps working after that, but the next transaction that needs an archived entry pays to restore it first.
       </p>
 
       {!deployed ? (
@@ -128,7 +115,7 @@ export default function TtlCountdownCard() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <Icon size={13} className={`shrink-0 ${style.text}`} aria-hidden />
-                  <span className="text-text truncate" title={s.key}>{keyLabel(s.key, CONTRACTS[network].lobster.wasmHash)}</span>
+                  <span className="text-text truncate" title={s.key}>{KIND_LABEL[s.kind ?? ''] ?? 'Storage entry'}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`text-[10px] ${style.text}`}>{style.label}</span>
