@@ -5,6 +5,7 @@ import { EyeOff } from 'lucide-react'
 import { VENUE_LABEL, type VaultPosition } from '../integrations/lobster/position'
 import { useVaultDetail } from '../integrations/lobster/vault-detail'
 import { useVaultFlows, vaultFlowSeries } from '../integrations/lobster/vault-flows'
+import { vaultSplit, type VaultSplit } from '../integrations/lobster/vault-split'
 import type { VaultAction } from '../integrations/lobster/vault-tx'
 import { tokenLabel } from '../integrations/stellar/token-registry'
 import type { Network } from '../config/contracts'
@@ -15,6 +16,12 @@ import TokenRef from './TokenRef'
 import VaultFlowChart from './VaultFlowChart'
 import { Card, Disclosure } from './ui'
 import { InfoTip } from './InfoTip'
+
+const SPLIT_LINE: Record<VaultSplit, string> = {
+  pool: 'Most of that is in the pool, not in the vault itself.',
+  vault: 'Most of that sits in the vault itself, not in the pool.',
+  both: 'Part of that is in the pool and part sits in the vault itself.',
+}
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -84,12 +91,12 @@ export default function VaultCard({
     [flowsQ.data, v.address, v.token0, v.token1, network],
   )
 
-  // a working vault holds its tokens in the pool, not in itself, so the headline
-  // per token is the two added together
+  // a working vault holds tokens in the pool and can keep some in itself, so the
+  // headline per token is the two added together
   const total = (idle: string, pooled: string | null) => Number(idle) + Number(pooled ?? 0)
   const held0 = total(v.amount0, v.pooled0)
   const held1 = total(v.amount1, v.pooled1)
-  const working = v.pooled0 !== null || v.pooled1 !== null
+  const split = vaultSplit(v, priceOf)
 
   const legValue = (id: string, amount: number): number | null => {
     const price = priceOf(id)
@@ -163,9 +170,9 @@ export default function VaultCard({
         </div>
       </div>
 
-      {working && (
+      {split && (
         <p className="mt-3 text-xs text-text-secondary">
-          Most of that is in the pool, not in the vault itself. The split is in the details below.
+          {SPLIT_LINE[split]} The split is in the details below.
         </p>
       )}
 
