@@ -6,6 +6,9 @@ async function gotoNoWallet(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' })
 }
 
+// the overview links to performance from its chart too, so these go through the sidebar
+const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Main' })
+
 test.describe('Cross-page navigation', () => {
   test('opens on the portfolio', async ({ page }) => {
     await gotoWithWallet(page)
@@ -14,7 +17,7 @@ test.describe('Cross-page navigation', () => {
 
   test('performance comes back with a plotted series', async ({ page }) => {
     await gotoWithWallet(page)
-    await page.getByRole('link', { name: /Performance/ }).click()
+    await sidebar(page).getByRole('link', { name: 'Performance' }).click()
     await expect(page).toHaveURL(/\/performance$/)
     // the card frame renders either way; only the plotted series shows the history came back
     await expect(page.getByRole('heading', { name: 'Wallet balance over time' })).toBeVisible()
@@ -68,7 +71,7 @@ test.describe('Cross-page navigation', () => {
 
   test('browser back restores the previous route', async ({ page }) => {
     await gotoWithWallet(page)
-    await page.getByRole('link', { name: /Performance/ }).click()
+    await sidebar(page).getByRole('link', { name: 'Performance' }).click()
     await page.getByRole('link', { name: /^Activity$/ }).click()
     await page.goBack()
     await expect(page).toHaveURL(/\/performance$/)
@@ -76,7 +79,7 @@ test.describe('Cross-page navigation', () => {
 
   test('browser forward re-applies the navigation', async ({ page }) => {
     await gotoWithWallet(page)
-    await page.getByRole('link', { name: /Performance/ }).click()
+    await sidebar(page).getByRole('link', { name: 'Performance' }).click()
     await page.getByRole('link', { name: /^Activity$/ }).click()
     await page.goBack()
     await page.goForward()
@@ -85,8 +88,8 @@ test.describe('Cross-page navigation', () => {
 
   test('the sidebar marks the page you are actually on', async ({ page }) => {
     await gotoWithWallet(page)
-    await page.getByRole('link', { name: /Performance/ }).click()
-    const active = page.getByRole('link', { name: /Performance/ })
+    await sidebar(page).getByRole('link', { name: 'Performance' }).click()
+    const active = sidebar(page).getByRole('link', { name: 'Performance' })
     await expect(active).toHaveClass(/bg-primary/)
   })
 })
