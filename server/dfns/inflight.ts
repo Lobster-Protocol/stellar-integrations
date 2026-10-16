@@ -3,20 +3,20 @@
 const pending = new Map<string, string>()
 
 // a stale entry, from a client that never polled, clears here on the next attempt.
-// statusOf and isTerminal are injected to keep this free of the dfns client.
-export async function unresolvedSignature(
+// statusOf and released are injected to keep this free of the dfns client.
+export async function unresolvedSignature<S extends { status: string }>(
   walletId: string,
-  statusOf: (walletId: string, id: string) => Promise<{ status: string }>,
-  isTerminal: (status: string) => boolean,
-): Promise<string | null> {
+  statusOf: (walletId: string, id: string) => Promise<S>,
+  released: (s: S) => boolean,
+): Promise<{ id: string; status: string } | null> {
   const id = pending.get(walletId)
   if (!id) return null
-  const { status } = await statusOf(walletId, id)
-  if (isTerminal(status)) {
+  const s = await statusOf(walletId, id)
+  if (released(s)) {
     pending.delete(walletId)
     return null
   }
-  return id
+  return { id, status: s.status }
 }
 
 export function trackPending(walletId: string, id: string): void {

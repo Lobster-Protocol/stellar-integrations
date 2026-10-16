@@ -64,3 +64,28 @@ export function envelopeFromSignedData(
   const b64 = Buffer.from(clean, 'hex').toString('base64')
   return TransactionBuilder.fromXDR(b64, networkPassphrase) as Transaction | FeeBumpTransaction
 }
+
+// a transaction whose upper time bound has passed can never land
+export function pastTimeBounds(tx: Transaction | FeeBumpTransaction, nowMs: number): boolean {
+  // a fee bump carries no bounds of its own, its inner transaction does
+  const bounded = 'innerTransaction' in tx ? tx.innerTransaction : tx
+  const maxTime = Number(bounded.timeBounds?.maxTime ?? 0)
+  return maxTime > 0 && maxTime * 1000 < nowMs
+}
+
+// whether a signature has let go of the treasury's next sequence. a soroban tx
+// stops at Signed: dfns signs it and leaves the submit to whoever holds the
+// envelope, so it can still land until its time bounds pass.
+export function signatureReleased(
+  s: DfnsSignatureResponse,
+  networkPassphrase: string,
+  nowMs = Date.now(),
+): boolean {
+  if (isTerminal(s.status)) return true
+  if (s.status !== 'Signed' || !s.signedData) return false
+  try {
+    return pastTimeBounds(envelopeFromSignedData(s.signedData, networkPassphrase), nowMs)
+  } catch {
+    return false
+  }
+}

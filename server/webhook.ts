@@ -12,7 +12,9 @@ import { DfnsWebhookEventSchema, type DfnsWebhookEvent } from './dfns/types'
 import { listPolicies } from './dfns/policies'
 import { listWallets, createStellarWallet } from './dfns/wallets'
 import { DfnsStellarNetworkSchema } from './dfns/types'
-import { broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData, isTerminal, getSignatureStatus } from './dfns/sign'
+import {
+  broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData, isTerminal, getSignatureStatus, signatureReleased,
+} from './dfns/sign'
 import { inspectSignXdr, readSignGuardConfig, SignGuardRejected } from './dfns/sign-guard'
 import { transferNative } from './dfns/transfer'
 import { reSequence } from './dfns/resequence'
@@ -381,12 +383,15 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     }
     // one treasury signature at a time: a second tx built while one is held for
     // approval reuses the same sequence and would tx_bad_seq on broadcast.
-    const busy = await unresolvedSignature(walletId, getSignatureStatus, isTerminal)
+    const busy = await unresolvedSignature(walletId, getSignatureStatus, (s) => signatureReleased(s, passphrase))
     if (busy) {
-      return c.json(
-        { error: 'a treasury signature is already awaiting approval; approve or deny it in the dfns console first', pending: true, id: busy },
-        409,
-      )
+      // a signed envelope nobody submitted needs nothing from the console; it lets
+      // go of the sequence by itself once it can no longer land
+      const error =
+        busy.status === 'Signed'
+          ? 'the last treasury signature is signed but not submitted yet; the treasury frees up once its time bounds pass'
+          : 'a treasury signature is already awaiting approval; approve or deny it in the dfns console first'
+      return c.json({ error, pending: true, id: busy.id }, 409)
     }
     const initial = await broadcastStellarTx(walletId, fresh)
     const final = await waitForSignatureTerminal(walletId, initial.id, PENDING_POLL_MS)

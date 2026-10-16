@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 
 import { unresolvedSignature, trackPending, clearPending, peekPending } from '../dfns/inflight'
 
-const isTerminal = (s: string) => s === 'Confirmed' || s === 'Failed' || s === 'Rejected'
+const isTerminal = (s: { status: string }) => s.status === 'Confirmed' || s.status === 'Failed' || s.status === 'Rejected'
 const W = 'wa-test-treasury'
 
 beforeEach(() => clearPending(W))
@@ -17,7 +17,7 @@ describe('single-in-flight treasury signatures', () => {
   it('a tracked signature still pending blocks the next one', async () => {
     trackPending(W, 'sig-1')
     const busy = await unresolvedSignature(W, async () => ({ status: 'Pending' }), isTerminal)
-    expect(busy).toBe('sig-1')
+    expect(busy).toEqual({ id: 'sig-1', status: 'Pending' })
   })
 
   it('a tracked signature that has gone terminal self-heals and frees the wallet', async () => {
@@ -38,7 +38,15 @@ describe('single-in-flight treasury signatures', () => {
     const other = 'wa-other'
     clearPending(other)
     expect(await unresolvedSignature(other, async () => ({ status: 'Pending' }), isTerminal)).toBeNull()
-    expect(await unresolvedSignature(W, async () => ({ status: 'Pending' }), isTerminal)).toBe('sig-1')
+    expect(await unresolvedSignature(W, async () => ({ status: 'Pending' }), isTerminal)).toEqual({ id: 'sig-1', status: 'Pending' })
+  })
+
+  it('lets the caller decide what releases, from the whole status', async () => {
+    trackPending(W, 'sig-1')
+    const signed = async () => ({ status: 'Signed', signedData: '0xab' })
+    expect(await unresolvedSignature(W, signed, () => false)).toEqual({ id: 'sig-1', status: 'Signed' })
+    expect(await unresolvedSignature(W, signed, (s) => s.signedData === '0xab')).toBeNull()
+    expect(peekPending(W)).toBeNull()
   })
 
   it('peekPending exposes the tracked id so a status read can match before clearing', () => {

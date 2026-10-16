@@ -1,6 +1,7 @@
 import { Networks, TransactionBuilder } from '@stellar/stellar-sdk'
 import { dfnsApprovals, dfnsApprovalsReadAt } from './registry'
 import { getDfnsClient } from '../dfns/client'
+import { pastTimeBounds } from '../dfns/sign'
 
 type Client = Pick<ReturnType<typeof getDfnsClient>, 'policies'>
 type Status = 'Pending' | 'Approved' | 'Denied' | 'Expired'
@@ -25,11 +26,7 @@ export function heldPastItsBounds(approval: HeldRequest, nowMs: number): boolean
   try {
     const envelope = raw.startsWith('0x') ? Buffer.from(raw.slice(2), 'hex').toString('base64') : raw
     const passphrase = request?.network === 'Stellar' ? Networks.PUBLIC : Networks.TESTNET
-    const tx = TransactionBuilder.fromXDR(envelope, passphrase)
-    // a fee bump carries no bounds of its own, its inner transaction does
-    const bounded = 'innerTransaction' in tx ? tx.innerTransaction : tx
-    const maxTime = Number(bounded.timeBounds?.maxTime ?? 0)
-    return maxTime > 0 && maxTime * 1000 < nowMs
+    return pastTimeBounds(TransactionBuilder.fromXDR(envelope, passphrase), nowMs)
   } catch {
     return false
   }

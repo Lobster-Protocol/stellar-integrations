@@ -29,12 +29,14 @@ vi.mock('../dfns/wallets', () => ({
   listWallets: listWalletsMock,
   createStellarWallet: createWalletMock,
 }))
-vi.mock('../dfns/sign', () => ({
+vi.mock('../dfns/sign', async (importOriginal) => ({
   broadcastStellarTx: broadcastMock,
   waitForSignatureTerminal: waitMock,
   getSignatureStatus: statusMock,
   isTerminal: (s: string) => s === 'Confirmed' || s === 'Failed' || s === 'Rejected',
   envelopeFromSignedData: (hex: string) => ({ toXDR: () => `XDR-from-${hex}` }),
+  // the real one: it decodes the envelope dfns hands back to read its time bounds
+  signatureReleased: (await importOriginal<typeof import('../dfns/sign')>()).signatureReleased,
 }))
 vi.mock('../dfns/approvals', () => ({
   listPendingApprovals: vi.fn(),
@@ -53,7 +55,8 @@ vi.mock('../dfns/resequence', async (importOriginal) => {
 })
 
 import { app } from '../webhook'
-import { TransactionBuilder, Networks, Account, BASE_FEE, Operation, Asset } from '@stellar/stellar-sdk'
+import { clearPending } from '../dfns/inflight'
+import { TransactionBuilder, Networks, Account, BASE_FEE, Operation, Asset, Keypair } from '@stellar/stellar-sdk'
 
 function sampleXdr(): string {
   const src = new Account('GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU', '12345')
@@ -268,6 +271,37 @@ describe('POST /dfns/sign', () => {
     const body = (await res.json()) as { pending: boolean; id: string }
     expect(body.pending).toBe(true)
     expect(body.id).toBe('sig-9')
+  })
+
+  it('holds the treasury while an approved soroban envelope can still land, then lets go', async () => {
+    clearPending('wa-test-1')
+    broadcastMock.mockResolvedValueOnce({ id: 'sig-held', status: 'Pending' })
+    waitMock.mockResolvedValueOnce({ id: 'sig-held', status: 'Pending' })
+    expect((await app.fetch(signRequest({ xdr: sampleXdr() }))).status).toBe(200)
+
+    // approved and signed while nobody polled: dfns does not submit a soroban tx
+    const envelope = (maxTime: number) => {
+      const tx = new TransactionBuilder(new Account(Keypair.random().publicKey(), '1'), {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(Operation.bumpSequence({ bumpTo: '2' }))
+        .setTimebounds(0, maxTime)
+        .build()
+      return `0x${tx.toEnvelope().toXDR('hex')}`
+    }
+    const now = Math.floor(Date.now() / 1000)
+    statusMock.mockResolvedValueOnce({ id: 'sig-held', status: 'Signed', signedData: envelope(now + 600) })
+    const held = await app.fetch(signRequest({ xdr: sampleXdr() }))
+    expect(held.status).toBe(409)
+    expect(((await held.json()) as { error: string }).error).toMatch(/signed but not submitted/)
+
+    statusMock.mockResolvedValueOnce({ id: 'sig-held', status: 'Signed', signedData: envelope(now - 60) })
+    broadcastMock.mockResolvedValueOnce({ id: 'sig-next', status: 'Pending' })
+    waitMock.mockResolvedValueOnce({ id: 'sig-next', status: 'Confirmed', txHash: 'cafe' })
+    const next = await app.fetch(signRequest({ xdr: sampleXdr() }))
+    expect(next.status).toBe(200)
+    expect(((await next.json()) as { txHash: string }).txHash).toBe('cafe')
   })
 })
 
