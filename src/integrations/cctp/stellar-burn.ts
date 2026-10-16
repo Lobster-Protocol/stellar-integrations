@@ -81,13 +81,14 @@ async function invokeSigned(
   what: string,
   op: xdr.Operation,
   onSent?: (hash: string) => void,
-  onSigned?: (hash: string) => void,
+  onSigned?: (hash: string, validUntil: number | undefined) => void,
+  validitySecs = 180,
 ): Promise<string> {
   const server = getSorobanServer(network)
   const source = await loadFunded(server, owner, network)
   const tx = new TransactionBuilder(source, { fee: INCLUSION_FEE_STROOPS, networkPassphrase: networkPassphrase(network) })
     .addOperation(op)
-    .setTimeout(180)
+    .setTimeout(validitySecs)
     .build()
   const sim = await server.simulateTransaction(tx)
   if (rpc.Api.isSimulationError(sim)) {
@@ -103,8 +104,11 @@ async function invokeSigned(
   }
   if (!signed.signedTxXdr) throw new StellarBurnError('The wallet did not return a signed transaction')
   // the hash is known from the signed envelope, before Stellar is asked: a page that goes
-  // away while it submits still left the burn behind to be found
-  onSigned?.(TransactionBuilder.fromXDR(signed.signedTxXdr, networkPassphrase(network)).hash().toString('hex'))
+  // away while it submits still left the burn behind to be found, and until when Stellar
+  // could still take it
+  const envelope = TransactionBuilder.fromXDR(signed.signedTxXdr, networkPassphrase(network))
+  const maxTime = Number('timeBounds' in envelope ? envelope.timeBounds?.maxTime : undefined)
+  onSigned?.(envelope.hash().toString('hex'), maxTime > 0 ? maxTime * 1000 : undefined)
   const hash = await submitSignedXdr(network, signed.signedTxXdr)
   onSent?.(hash)
   const res = await waitForTx(network, hash)
@@ -152,6 +156,7 @@ export async function approveForBurn(opts: {
   owner: string
   units: bigint
   signer: Signer
+  validitySecs?: number
 }): Promise<string> {
   const { network, owner, units, signer } = opts
   const { usdcSac, tokenMessengerMinter } = CONTRACTS[network].cctp
@@ -163,7 +168,7 @@ export async function approveForBurn(opts: {
     nativeToScVal(units, { type: 'i128' }),
     nativeToScVal(latest.sequence + APPROVAL_LEDGERS, { type: 'u32' }),
   )
-  return invokeSigned(network, owner, signer, 'approval', op)
+  return invokeSigned(network, owner, signer, 'approval', op, undefined, undefined, opts.validitySecs)
 }
 
 export interface StellarBurnRequest {
@@ -200,12 +205,12 @@ export function stellarBurnArgs(req: StellarBurnRequest): xdr.ScVal[] {
   return args
 }
 
-// onSigned hears the hash once the wallet has signed, before Stellar is asked; onSent once
-// Stellar has taken it, before it confirms
+// onSigned hears the hash once the wallet has signed, before Stellar is asked, with the time
+// after which Stellar can no longer take it; onSent once Stellar has taken it, before it confirms
 export async function burnFromStellar(
-  req: StellarBurnRequest & { signer: Signer },
+  req: StellarBurnRequest & { signer: Signer; validitySecs?: number },
   onSent?: (hash: string) => void,
-  onSigned?: (hash: string) => void,
+  onSigned?: (hash: string, validUntil: number | undefined) => void,
 ): Promise<string> {
   if (req.maxFee >= req.units) throw new StellarBurnError("Circle's fee would swallow the whole amount")
   const { tokenMessengerMinter } = CONTRACTS[req.network].cctp
@@ -213,5 +218,5 @@ export async function burnFromStellar(
     req.forward ? 'deposit_for_burn_with_hook' : 'deposit_for_burn',
     ...stellarBurnArgs(req),
   )
-  return invokeSigned(req.network, req.owner, req.signer, 'burn', op, onSent, onSigned)
+  return invokeSigned(req.network, req.owner, req.signer, 'burn', op, onSent, onSigned, req.validitySecs)
 }

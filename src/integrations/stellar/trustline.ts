@@ -33,6 +33,8 @@ export async function buildTrustlineXdr(
   assetCode: string,
   assetIssuer: string,
   network: Network,
+  // longer when the wallet may hold the signature for an approval (signer/validity.ts)
+  validitySecs = 180,
 ): Promise<string> {
   const server = getHorizonServer(network)
   let account
@@ -51,7 +53,7 @@ export async function buildTrustlineXdr(
     networkPassphrase: networkPassphrase(network),
   })
     .addOperation(Operation.changeTrust({ asset: new Asset(assetCode, assetIssuer) }))
-    .setTimeout(180)
+    .setTimeout(validitySecs)
     .build()
     .toXDR()
 }

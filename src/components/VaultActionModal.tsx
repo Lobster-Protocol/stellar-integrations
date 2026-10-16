@@ -15,6 +15,7 @@ import { stellarExplorer, formatBalance, cn } from '../utils/format'
 import { useAccountSigning } from '../integrations/stellar/use-account-signing'
 import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
 import { overWalletConnect, validitySecs } from '../integrations/signer/validity'
+import { walletAnswerText } from '../integrations/signer/wallet-errors'
 import CoSignPanel from './CoSignPanel'
 import TokenRef from './TokenRef'
 
@@ -165,7 +166,8 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         setPhase({ k: 'form' })
         return
       }
-      const msg = err instanceof Error ? err.message.split('\n')[0].slice(0, 180) : 'Something went wrong'
+      const raw = err instanceof Error ? err.message.split('\n')[0].slice(0, 180) : 'Something went wrong'
+      const msg = walletAnswerText(raw) ?? raw
       setPhase({ k: 'failed', msg })
     } finally {
       inFlight.current = false

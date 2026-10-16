@@ -14,6 +14,8 @@ import { awaitDfnsSignature } from '../integrations/dfns/await-signature'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { buildTrustlineXdr, submitTrustlineTx, useTrustline } from '../integrations/stellar/trustline'
+import { windowSecs } from '../integrations/signer/validity'
+import { walletAnswerText } from '../integrations/signer/wallet-errors'
 import {
   BRIDGE_FALLBACK_LINKS,
   CCTP_EVM_USDC_DECIMALS,
@@ -82,8 +84,9 @@ const USDC = 'USDC'
 const INCLUSION_FEE_XLM = Number(INCLUSION_FEE_STROOPS) / 10_000_000
 
 function errorText(err: unknown): string {
-  if (err instanceof Error) return err.message.split('\n')[0].slice(0, 300)
-  return 'Something went wrong'
+  if (!(err instanceof Error)) return 'Something went wrong'
+  const text = err.message.split('\n')[0].slice(0, 300)
+  return walletAnswerText(text) ?? text
 }
 
 export default function BridgeModal({ open, onClose, resume, initialDirection = 'to-stellar' }: Props) {
@@ -94,7 +97,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   const onOutStage = useCallback((s: OutStage) => setOutStage(s), [])
   // Escape closes the wallet window on top first, not the bridge under it
   const { connectModalOpen } = useConnectModal()
-  const { address: stellarAddr, connect: connectStellar, connecting: stellarConnecting } = useWallet()
+  const { address: stellarAddr, connect: connectStellar, connecting: stellarConnecting, walletId } = useWallet()
   const { mode: custodyMode, dfnsAddress, signer: custodySigner } = useCustody()
   // under DFNS custody the USDC goes to the treasury. The delivery needs no
   // signature from it, so a connected browser wallet pays that fee instead
@@ -236,7 +239,8 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
     tlInFlight.current = true
     setTl({ busy: true, error: null })
     try {
-      const xdr = await buildTrustlineXdr(receiving, USDC, usdcIssuer, network)
+      // the DFNS treasury, through the relay, waits for its approver like any other signature
+      const xdr = await buildTrustlineXdr(receiving, USDC, usdcIssuer, network, windowSecs({ quorum: !!treasury, walletId, base: 180 }))
       const signed = await (treasury ? custodySigner : walletKitSigner).signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
         address: receiving,
@@ -405,6 +409,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
           signer: walletKitSigner,
           messageHex: att.message,
           attestationHex: att.attestation,
+          validitySecs: windowSecs({ quorum: false, walletId, base: 180 }),
         })
         markDelivered(network, t.id, res.hash)
         refreshRecipient(t.recipient)

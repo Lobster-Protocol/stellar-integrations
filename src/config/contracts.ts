@@ -209,6 +209,11 @@ export interface CctpSourceChain {
   // blocks on mainnet), and how far back such a search goes, about a day of blocks
   logsSpan: number
   searchBlocks: number
+  // Where those searches go, in order, when the endpoints above would turn old blocks away:
+  // on mainnet publicnode answers only the last hours (403 "archive" past that), and
+  // mainnet.base.org limits a page that asks for a day of pieces (429). Left out, the
+  // searches use the endpoints above
+  logsRpc?: string[]
 }
 
 // Circle deploys V2 at the same address on every chain of a network
@@ -228,10 +233,13 @@ const cctpMainnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_MAINNET,
     messageTransmitter: CCTP_MT_MAINNET,
     rpcFallback: 'https://base-rpc.publicnode.com',
-    rpcArchive: 'https://mainnet.base.org',
+    // keeps old receipts and old blocks; mainnet.base.org turned a busy page away (429)
+    rpcArchive: 'https://base.gateway.tenderly.co',
     explorerTx: (h) => `https://basescan.org/tx/${h}`,
-    logsSpan: 2_000,
+    // Tenderly's public gateway answers 1,000 blocks a query, a day in 44 pieces
+    logsSpan: 1_000,
     searchBlocks: 43_200,
+    logsRpc: ['https://base.gateway.tenderly.co'],
   },
   {
     key: 'ARB',
@@ -247,6 +255,7 @@ const cctpMainnetChains: CctpSourceChain[] = [
     // publicnode serves no old logs here; arb1 answers a million blocks in one query
     logsSpan: 1_000_000,
     searchBlocks: 345_600,
+    logsRpc: ['https://arb1.arbitrum.io/rpc'],
   },
   {
     key: 'ETH',
@@ -257,10 +266,13 @@ const cctpMainnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_MAINNET,
     messageTransmitter: CCTP_MT_MAINNET,
     rpcFallback: 'https://ethereum-rpc.publicnode.com',
-    rpcArchive: 'https://eth.drpc.org',
+    // eth.drpc.org refuses log queries on its free plan; Tenderly keeps old blocks
+    rpcArchive: 'https://mainnet.gateway.tenderly.co',
     explorerTx: (h) => `https://etherscan.io/tx/${h}`,
+    // a day of Ethereum blocks, still recent enough for publicnode
     logsSpan: 7_200,
     searchBlocks: 7_200,
+    logsRpc: ['https://ethereum-rpc.publicnode.com', 'https://mainnet.gateway.tenderly.co'],
   },
 ]
 

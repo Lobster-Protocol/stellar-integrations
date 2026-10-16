@@ -1,8 +1,8 @@
 import { NotFoundError, rpc, scValToNative, xdr, Address as StellarAddress } from '@stellar/stellar-sdk'
-import { formatUnits, getAddress, TransactionReceiptNotFoundError, type Address } from 'viem'
+import { createPublicClient, fallback, formatUnits, getAddress, http, TransactionReceiptNotFoundError, type Address } from 'viem'
 import { getBlock, getPublicClient, getTransactionReceipt } from 'wagmi/actions'
 
-import { wagmiConfig, isConfiguredChainId } from '../evm/config'
+import { wagmiConfig, isConfiguredChainId, type WagmiChainIdAny } from '../evm/config'
 import { getHorizonServer } from '../horizon/client'
 import { getSorobanServer } from '../lobster/client'
 import {
@@ -35,6 +35,24 @@ const ZERO_32 = `0x${'00'.repeat(32)}`
 const HOUR = 3600_000
 // a piece of blocks this small is never refused for its size
 const SMALLEST_PIECE = 500n
+// a pause between two pieces of one search, so a day of them never reads as a flood
+const PIECE_GAP_MS = 100
+
+// Log searches go straight to the endpoints that keep old blocks when the registry names
+// them: through the page's usual transport, a recent-only endpoint was asked first and
+// turned every older piece away (403) before the right one answered
+const logClients = new Map<number, Pick<ReturnType<typeof createPublicClient>, 'getLogs'>>()
+
+function logsClient(chain: CctpSourceChain, chainId: WagmiChainIdAny): Pick<ReturnType<typeof createPublicClient>, 'getLogs'> {
+  if (!chain.logsRpc?.length) return getPublicClient(wagmiConfig, { chainId })
+  let client = logClients.get(chainId)
+  if (!client) {
+    const viemChain = wagmiConfig.chains.find((c) => c.id === chainId)
+    client = createPublicClient({ chain: viemChain, transport: fallback(chain.logsRpc.map((u) => http(u))) })
+    logClients.set(chainId, client)
+  }
+  return client
+}
 // a day of Base blocks at 2,000 a piece, with room to split a few
 const MOST_PIECES = 60
 // how far back the Stellar account's own history is read for burns out of it, and how many
@@ -120,9 +138,16 @@ export interface LogSearch {
   error?: string
 }
 
+// every message along the error and the ones it wraps, the JSON-RPC error's data included:
+// Tenderly says "invalid params" and puts "Block range too large" in the data
 function errorText(err: unknown): string {
-  const e = err as { details?: string; shortMessage?: string; message?: string }
-  return `${e?.details ?? ''} ${e?.shortMessage ?? ''} ${e?.message ?? ''}`
+  const parts: string[] = []
+  let e = err as { details?: unknown; shortMessage?: unknown; message?: unknown; data?: unknown; cause?: unknown } | undefined
+  for (let i = 0; e && i < 5; i++) {
+    for (const v of [e.details, e.shortMessage, e.message, e.data]) if (typeof v === 'string') parts.push(v)
+    e = e.cause as typeof e
+  }
+  return parts.join(' ')
 }
 
 // viem keeps the HTTP status on the error it throws, or on one it wraps
@@ -158,7 +183,7 @@ export async function findEvmBurnsToStellar(
   forwarder: string,
 ): Promise<LogSearch> {
   if (!isConfiguredChainId(chain.chainId)) return { burns: [], reachedFrom: to + 1n, complete: false, error: 'chain not set up' }
-  const client = getPublicClient(wagmiConfig, { chainId: chain.chainId })
+  const client = logsClient(chain, chain.chainId)
   const burns: EvmBurn[] = []
   let span = BigInt(chain.logsSpan)
   let end = to
@@ -179,6 +204,7 @@ export async function findEvmBurnsToStellar(
         if (b) burns.push(b)
       }
       end = start - 1n
+      if (end >= from) await new Promise((r) => setTimeout(r, PIECE_GAP_MS))
     } catch (err) {
       if (refusedForSize(err) && span > SMALLEST_PIECE) {
         span /= 2n

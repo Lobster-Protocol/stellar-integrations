@@ -49,7 +49,7 @@ import { markSettled } from '../transfers'
 import { contractToBytes32, encodeForwardHook, toHex } from '../forward-hook'
 import { evmAddressToBytes32 } from '../stellar-burn'
 import type { BurnIntent } from '../transfers'
-import { CONTRACTS, cctpChain } from '../../../config/contracts'
+import { CCTP_SOURCE_CHAINS, CONTRACTS, cctpChain } from '../../../config/contracts'
 
 const chain = cctpChain('testnet', 'BASE')
 const FORWARDER = CONTRACTS.testnet.cctp.forwarder
@@ -106,6 +106,18 @@ describe('a burn read from its log', () => {
 })
 
 describe('an endpoint refusing a log query', () => {
+  it('reads a refusal for size tucked in the error data of an error it wraps', () => {
+    const tenderly = { shortMessage: 'Invalid parameters were provided to the RPC method.', cause: { message: 'invalid params', data: 'Block range too large for public access: maximum 1000 blocks.' } }
+    expect(refusedForSize(tenderly)).toBe(true)
+    expect(refusedForSize({ message: 'invalid params', cause: { data: 'Archive requests require a personal token' } })).toBe(false)
+  })
+
+  it('sends mainnet log searches to endpoints that keep old blocks, in pieces they take', () => {
+    for (const c of CCTP_SOURCE_CHAINS.mainnet) expect(c.logsRpc?.length, c.key).toBeGreaterThan(0)
+    expect(cctpChain('mainnet', 'BASE').logsSpan).toBeLessThanOrEqual(1_000)
+    expect(Math.ceil(cctpChain('mainnet', 'BASE').searchBlocks / cctpChain('mainnet', 'BASE').logsSpan)).toBeLessThanOrEqual(60)
+  })
+
   it('tells a range too big from blocks too old', () => {
     expect(refusedForSize(new Error('eth_getLogs is limited to a 2,000 range'))).toBe(true)
     expect(refusedForSize({ details: 'exceed maximum block range: 50000' })).toBe(true)

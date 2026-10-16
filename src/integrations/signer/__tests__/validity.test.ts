@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
 
-import { overWalletConnect, validitySecs } from '../validity'
+import { overWalletConnect, validitySecs, windowSecs } from '../validity'
 
 describe('how long a transaction stays valid', () => {
   it('gives a quorum, or the DFNS relay, an hour to collect its approvals', () => {
@@ -20,3 +20,15 @@ describe('how long a transaction stays valid', () => {
     expect(overWalletConnect('freighter')).toBe(false)
   })
 })
+
+describe('the window of a flow that has its own', () => {
+  it('keeps a swap or a bridge step at its own window when the wallet signs at once', () => {
+    expect(windowSecs({ quorum: false, walletId: 'freighter', base: 180 })).toBe(180)
+  })
+
+  it('widens it over WalletConnect, and to an hour through the relay', () => {
+    expect(windowSecs({ quorum: false, walletId: WALLET_CONNECT_ID, base: 180 })).toBe(600)
+    expect(windowSecs({ quorum: true, walletId: 'freighter', base: 180 })).toBe(3600)
+  })
+})
+

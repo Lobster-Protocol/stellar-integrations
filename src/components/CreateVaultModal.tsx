@@ -11,6 +11,7 @@ import { stellarExplorer } from '../utils/format'
 import { useAccountSigning } from '../integrations/stellar/use-account-signing'
 import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
 import { overWalletConnect, validitySecs } from '../integrations/signer/validity'
+import { walletAnswerText } from '../integrations/signer/wallet-errors'
 import { useWallet } from '../contexts/WalletContext'
 import CoSignPanel from './CoSignPanel'
 
@@ -103,7 +104,7 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
           ? 'You already have a vault for this exact pair. Open it from the list instead.'
           : /InvalidPoolTokens|same token/i.test(msg)
             ? 'Pick two different tokens.'
-            : msg.split('\n')[0].slice(0, 180),
+            : walletAnswerText(msg) ?? msg.split('\n')[0].slice(0, 180),
       })
     } finally {
       inFlight.current = false

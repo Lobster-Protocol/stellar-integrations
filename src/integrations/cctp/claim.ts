@@ -93,6 +93,8 @@ export async function claimOnStellar(opts: {
   signer: Signer
   messageHex: string
   attestationHex: string
+  // longer when the wallet may hold the signature for an approval (signer/validity.ts)
+  validitySecs?: number
 }) {
   const { network, payer } = opts
   const server = getSorobanServer(network)
@@ -108,7 +110,7 @@ export async function claimOnStellar(opts: {
         nativeToScVal(Buffer.from(hexToBytes(opts.attestationHex)), { type: 'bytes' }),
       ),
     )
-    .setTimeout(180)
+    .setTimeout(opts.validitySecs ?? 180)
     .build()
 
   const sim = await server.simulateTransaction(tx)

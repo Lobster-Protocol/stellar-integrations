@@ -39,6 +39,8 @@ import { useOnScreen } from '../integrations/cctp/on-screen'
 import { EvmConnectButtons } from './BridgeWallets'
 import { StepList, type Step } from './BridgeProgress'
 import ConfirmDialog from './ConfirmDialog'
+import { windowSecs } from '../integrations/signer/validity'
+import { walletAnswerText } from '../integrations/signer/wallet-errors'
 
 export type OutStage = 'form' | 'busy' | 'progress'
 
@@ -52,8 +54,9 @@ type Phase =
 type Delivery = 'circle' | 'self'
 
 function errorText(err: unknown): string {
-  if (err instanceof Error) return err.message.split('\n')[0].slice(0, 300)
-  return 'Something went wrong'
+  if (!(err instanceof Error)) return 'Something went wrong'
+  const text = err.message.split('\n')[0].slice(0, 300)
+  return walletAnswerText(text) ?? text
 }
 
 // past this with Circle's mint still pending, the wallet may take over; sooner
@@ -69,7 +72,9 @@ export default function BridgeFromStellar({
   resume: TrackedTransfer | null
   onStage: (stage: OutStage) => void
 }) {
-  const { address: stellarAddr, connect: connectStellar, connecting } = useWallet()
+  const { address: stellarAddr, connect: connectStellar, connecting, walletId } = useWallet()
+  // three minutes when the wallet signs at once, longer when it may hold the signature for an approval
+  const stellarWindow = windowSecs({ quorum: false, walletId, base: 180 })
   const { mode: custodyMode } = useCustody()
   const chains = cctpChainsFor(network)
   const [chainKey, setChainKey] = useState(chains[0]?.key ?? '')
@@ -166,7 +171,7 @@ export default function BridgeFromStellar({
       const allowance = await readStellarAllowance(network, stellarAddr).catch(() => 0n)
       if (allowance < units) {
         setPhase({ kind: 'approving' })
-        await approveForBurn({ network, owner: stellarAddr, units, signer: walletKitSigner })
+        await approveForBurn({ network, owner: stellarAddr, units, signer: walletKitSigner, validitySecs: stellarWindow })
       }
       setPhase({ kind: 'burning' })
       // searched on chain at every visit from now on, signed in or not
@@ -181,9 +186,10 @@ export default function BridgeFromStellar({
           forward: delivery === 'circle',
           maxFee,
           signer: walletKitSigner,
+          validitySecs: stellarWindow,
         },
         undefined,
-        (hash) => {
+        (hash, validUntil) => {
           // tracked the moment the wallet has signed, before Stellar is asked: a page that
           // goes away while it submits, or a confirmation slow to come back, must not hide
           // a burn Circle is already reading. One Stellar never takes is dropped later
@@ -200,6 +206,7 @@ export default function BridgeFromStellar({
             forwarded: delivery === 'circle',
             createdAt: Date.now(),
             stage: 'burned',
+            validUntil,
           }
           trackTransfer(sent.transfer)
         },

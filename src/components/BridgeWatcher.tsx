@@ -77,6 +77,8 @@ export default function BridgeWatcher() {
   )
 }
 
+type SearchJob = (known: Set<string>) => Promise<{ found: TrackedTransfer[]; unfinished: boolean }>
+
 function shortError(err: unknown): string {
   return (err instanceof Error ? err.message : String(err)).split('\n')[0].slice(0, 120)
 }
@@ -93,6 +95,7 @@ function Recovery({ network }: { network: Network }) {
   const intents = orphanIntents(useBurnIntents(network))
   const tracked = useTrackedTransfers(network)
   const busy = useRef(new Set<string>())
+  const queued = useRef(new Map<string, SearchJob>())
   const again = useRef<ReturnType<typeof setTimeout> | null>(null)
   const landed = useRef(new Set<string>())
   const now = useNow(true, 60_000)
@@ -145,32 +148,41 @@ function Recovery({ network }: { network: Network }) {
   // Stellar account's history is still being read is searched at once, not ten minutes on.
   // A search already running for the same wallet is left to finish
   const run = useCallback(
-    async (key: string, job: (known: Set<string>) => Promise<{ found: TrackedTransfer[]; unfinished: boolean }>) => {
+    async (key: string, job: SearchJob) => {
       const busyKey = `${network}|${key}`
-      if (busy.current.has(busyKey)) return
+      // asked again while it runs (the look half a minute after load on a fresh device, a
+      // wallet that connects, Search again): run once more when it ends, not dropped
+      if (busy.current.has(busyKey)) {
+        queued.current.set(busyKey, job)
+        return
+      }
       busy.current.add(busyKey)
       try {
-        const { found, unfinished } = await job(new Set(listTransfers(network).map((t) => t.id)))
-        if (unfinished && !again.current) {
-          again.current = setTimeout(() => {
-            again.current = null
-            window.dispatchEvent(new Event(SEARCH_EVENT))
-          }, SEARCH_AGAIN_MS)
-        }
-        for (const t of found) {
-          if (listTransfers(network).some((x) => x.id === t.id)) continue
-          trackTransfer(t)
-          const out = directionOf(t) === 'from-stellar'
-          announceOnce(t.id, 'found', () =>
-            toast.info(
-              out
-                ? `Found ${t.amount} USDC sent out of Stellar to ${t.chainName} that has not arrived yet. It is waiting on the Bridges page.`
-                : `Found ${t.amount} USDC from ${t.chainName} that has not reached Stellar yet. It is waiting on the Bridges page.`,
-            ),
-          )
+        for (let next: SearchJob | undefined = job; next; next = queued.current.get(busyKey)) {
+          queued.current.delete(busyKey)
+          const { found, unfinished } = await next(new Set(listTransfers(network).map((t) => t.id)))
+          if (unfinished && !again.current) {
+            again.current = setTimeout(() => {
+              again.current = null
+              window.dispatchEvent(new Event(SEARCH_EVENT))
+            }, SEARCH_AGAIN_MS)
+          }
+          for (const t of found) {
+            if (listTransfers(network).some((x) => x.id === t.id)) continue
+            trackTransfer(t)
+            const out = directionOf(t) === 'from-stellar'
+            announceOnce(t.id, 'found', () =>
+              toast.info(
+                out
+                  ? `Found ${t.amount} USDC sent out of Stellar to ${t.chainName} that has not arrived yet. It is waiting on the Bridges page.`
+                  : `Found ${t.amount} USDC from ${t.chainName} that has not reached Stellar yet. It is waiting on the Bridges page.`,
+              ),
+            )
+          }
         }
       } finally {
         busy.current.delete(busyKey)
+        queued.current.delete(busyKey)
       }
     },
     [network, toast],
@@ -253,8 +265,9 @@ function Recovery({ network }: { network: Network }) {
   const doubtful = tracked.filter((t) => {
     if (t.stage !== 'burned' || t.attestedAt || landed.current.has(t.id)) return false
     const age = now - t.createdAt
+    // a signed burn Stellar could still take is not missing yet, however long it has waited
     return directionOf(t) === 'from-stellar'
-      ? age > UNSEEN_AFTER_MS && age < UNSEEN_UNTIL_MS
+      ? age > UNSEEN_AFTER_MS && age < UNSEEN_UNTIL_MS && (!t.validUntil || now > t.validUntil + 60_000)
       : age > UNSIGNED_AFTER_MS && age < WATCH_FOR_MS
   })
   const doubtfulKey = doubtful.map((t) => t.id).join(',')

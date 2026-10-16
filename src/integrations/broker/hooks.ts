@@ -12,7 +12,7 @@ import type { BrokerQuoteParams } from './types'
 // exported so the swap panel shows the figure actually enforced.
 export const SOROSWAP_SLIPPAGE = 0.01
 // 3 minute swap deadline. avoids stale auth in slow signing flows.
-const SOROSWAP_DEADLINE_SEC = 180
+export const SOROSWAP_DEADLINE_SEC = 180
 
 export function useBrokerConfirm() {
   return useMutation({
@@ -45,6 +45,8 @@ export interface SoroswapConfirmArgs {
   params: BrokerQuoteParams
   buyingStroops: bigint
   signer: Signer
+  // widened when the wallet may hold the signature for an approval (signer/validity.ts)
+  windowSecs?: number
 }
 
 // kept apart from the mutation so a multisig owner can gather a quorum on one
@@ -80,7 +82,7 @@ export async function buildSoroswapConfirmTx(
 export function useSoroswapConfirm() {
   return useMutation({
     mutationFn: async (args: SoroswapConfirmArgs): Promise<string> => {
-      const xdr = await buildSoroswapConfirmTx(args)
+      const xdr = await buildSoroswapConfirmTx(args, args.windowSecs)
       const { signedTxXdr } = await args.signer.signTransaction(xdr, {
         networkPassphrase: args.networkPassphrase,
         address: args.account,

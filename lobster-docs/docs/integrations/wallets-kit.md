@@ -25,6 +25,14 @@ RPC and polls for inclusion. The "Sign a testnet transaction" panel on `/audit`
 is the reference round trip, and its button reads "Call the Factory with"
 followed by the connected wallet's name.
 
+A transaction is built to stay valid a minute for a vault action, three minutes
+for a swap or a bridge step, when the wallet signs at once. A wallet reached over
+WalletConnect gets ten: WalletConnect waits five minutes for its answer, and a
+DFNS wallet holds a signature until its approver acts. The window says to approve
+within five minutes, and if no answer comes, that nothing was signed or sent. A
+DFNS policy whose only approver is the person who started the signature can never
+approve it; it needs a second approver.
+
 ## One signer interface
 
 Execution code calls `signTransaction` and never asks what is behind it. The kit

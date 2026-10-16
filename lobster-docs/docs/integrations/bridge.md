@@ -149,8 +149,9 @@ nobody follows. Four things cover it:
   wallet still locked. If the wallet sent nothing in the half hour after it was
   asked, the note is dropped and the page says nothing moved.
 - A burn out of Stellar is noted from its signature, before Stellar is asked.
-  One Stellar never took is dropped once its three minutes to land have run out,
-  and the page says nothing moved.
+  One Stellar never took is dropped once the time it had to land has run out,
+  three minutes or ten for a wallet reached over WalletConnect, and the page says
+  nothing moved.
 - On any device, the dashboard reads the chain for the burns of the connected
   wallets that never arrived: the Stellar account's own history for the last 30
   days, and the EVM wallet's `DepositForBurn` logs on each chain for about the

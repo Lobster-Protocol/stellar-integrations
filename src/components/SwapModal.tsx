@@ -10,7 +10,9 @@ import { stroopsToDecimal } from '../integrations/stellar/amount'
 import { isContractId } from '../integrations/stellar/strkey-guards'
 import { walletKitSigner } from '../integrations/signer/wallet-kit-signer'
 import { getWalletNetworkPassphrase } from '../integrations/signer/wallet-network'
-import { useSoroswapConfirm, buildSoroswapConfirmTx, SOROSWAP_SLIPPAGE } from '../integrations/broker/hooks'
+import { useSoroswapConfirm, buildSoroswapConfirmTx, SOROSWAP_DEADLINE_SEC, SOROSWAP_SLIPPAGE } from '../integrations/broker/hooks'
+import { windowSecs } from '../integrations/signer/validity'
+import { walletAnswerText } from '../integrations/signer/wallet-errors'
 import { useSwapRoute } from '../integrations/routing/hooks'
 import { swapTokensFor } from '../config/contracts'
 import { networkPassphrase } from '../integrations/lobster/client'
@@ -35,6 +37,8 @@ interface Props {
 // a soroban sim error comes back as a wall of diagnostic events. pull out the
 // cases a trader can actually act on and drop the raw trace.
 function readableSwapError(message: string): string {
+  const unanswered = walletAnswerText(message)
+  if (unanswered) return unanswered
   // wallets refuse to sign when their own network toggle does not match the tx
   // network (Freighter: "set to Main Net ... not possible at the moment").
   if (/set to (main|test)\s?net|not possible at the moment|different network|network mismatch/i.test(message)) {
@@ -53,7 +57,7 @@ function readableSwapError(message: string): string {
 }
 
 export default function SwapModal({ open, onClose }: Props) {
-  const { address } = useWallet()
+  const { address, walletId } = useWallet()
   const { network } = useNetwork()
 
   const [sellingCode, setSellingCode] = useState('XLM')
@@ -220,6 +224,7 @@ export default function SwapModal({ open, onClose }: Props) {
         params,
         buyingStroops: soroswap.buyingStroops,
         signer: walletKitSigner,
+        windowSecs: windowSecs({ quorum: false, walletId, base: SOROSWAP_DEADLINE_SEC }),
       })
       appendRoutingEntry({
         ts: Date.now(),

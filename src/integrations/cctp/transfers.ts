@@ -38,6 +38,9 @@ export interface TrackedTransfer {
   // a mint our EVM wallet sent: kept from the moment the wallet returns it, so a node
   // that fails to answer for its receipt does not lose the link to it
   sentHash?: string
+  // a burn out of Stellar tracked from its signature: after this time Stellar can no
+  // longer take it, so only then may its absence from the ledger mean it never went out
+  validUntil?: number
 }
 
 export function directionOf(t: TrackedTransfer): TransferDirection {
