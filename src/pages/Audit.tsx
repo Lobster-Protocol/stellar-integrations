@@ -4,12 +4,13 @@ import {
   useDfnsPendingApprovals,
   RelayError,
 } from '../integrations/dfns/hooks'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
-import { useFactoryInfo, useLatestVaults } from '../integrations/lobster/hooks'
+import { useFactoryInfo, useLatestVaults, useVaultsHolding } from '../integrations/lobster/hooks'
 import { CONTRACTS } from '../config/contracts'
 import { shortenAddress, stellarExplorer } from '../utils/format'
 import CustodyModeToggle from '../components/CustodyModeToggle'
@@ -49,6 +50,13 @@ export default function Audit() {
   const navigate = useNavigate()
   const factoryInfo = useFactoryInfo(network)
   const vaults = useLatestVaults(network, factoryInfo.data?.poolCount)
+  // vaults that hold nothing (often a test that was emptied) go below a toggle, so the
+  // list opens on the ones worth reading; until the reads land, every vault shows
+  const holding = useVaultsHolding(network, vaults.data)
+  const [showEmpty, setShowEmpty] = useState(false)
+  const listed = vaults.data ?? []
+  const fullVaults = listed.filter((v) => holding.data?.[v.lobsterAddress] !== false)
+  const emptyVaults = listed.filter((v) => holding.data?.[v.lobsterAddress] === false)
   const factoryId = CONTRACTS[network].lobster.factory
   const factoryExplorer = factoryId ? stellarExplorer(network, 'contract', factoryId) : null
 
@@ -204,16 +212,17 @@ export default function Audit() {
           </div>
         ) : null}
 
-        {vaults.data && vaults.data.length > 0 && (
+        {listed.length > 0 && (
           <div className="mt-4">
             <p className="text-[11px] text-text-muted mb-1">
-              {factoryInfo.data && factoryInfo.data.poolCount > vaults.data.length
-                ? `Latest ${vaults.data.length} vaults`
+              {factoryInfo.data && factoryInfo.data.poolCount > listed.length
+                ? `Latest ${listed.length} vaults`
                 : 'Vaults'}
-              , newest first. Opening one shows its owner's positions read-only, no wallet needed.
+              , newest first{emptyVaults.length > 0 ? ', the empty ones folded below' : ''}. Opening
+              one shows its owner's positions read-only, no wallet needed.
             </p>
             <ul className="divide-y divide-text-muted/10">
-              {vaults.data.map((v) => (
+              {[...fullVaults, ...(showEmpty ? emptyVaults : [])].map((v) => (
                 <li
                   key={v.lobsterAddress}
                   className="py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs"
@@ -222,6 +231,9 @@ export default function Audit() {
                     <TokenRef id={v.token0} />
                     <span className="text-text-muted">/</span>
                     <TokenRef id={v.token1} />
+                    {holding.data?.[v.lobsterAddress] === false && (
+                      <span className="ml-1 text-text-muted">empty</span>
+                    )}
                   </span>
                   <a
                     href={stellarExplorer(network, 'contract', v.lobsterAddress)}
@@ -246,6 +258,17 @@ export default function Audit() {
                 </li>
               ))}
             </ul>
+            {emptyVaults.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowEmpty((s) => !s)}
+                className="mt-1 text-[11px] text-primary hover:underline"
+              >
+                {showEmpty
+                  ? 'Hide the empty vaults'
+                  : `Show the ${emptyVaults.length} empty ${emptyVaults.length === 1 ? 'vault' : 'vaults'}`}
+              </button>
+            )}
           </div>
         )}
       </Card>

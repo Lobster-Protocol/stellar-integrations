@@ -10,6 +10,8 @@ interface Truth {
   // the newest vault, the one the Factory card lists first
   vault: string
   owner: string
+  // whether the newest vault holds anything; an empty one is folded below the list
+  newestHolds: boolean
   // the newest vault whose tokens sit in Soroswap; a fresh vault can be empty
   placed: { vault: string; owner: string }
 }
@@ -41,6 +43,12 @@ async function readFactory(): Promise<Truth> {
     read(MAINNET_FACTORY, 'get_pool_count'),
   ])
   const newest = await vaultById(Number(poolCount))
+  // 5 is the vault's own "not in a pool" mark
+  const [newestProtocol, newestIdle] = await Promise.all([
+    read(String(newest.lobster_address), 'get_active_protocol'),
+    read(String(newest.lobster_address), 'get_amounts_tokens'),
+  ])
+  const newestHolds = Number(newestProtocol) !== 5 || (newestIdle as bigint[]).some((a) => BigInt(a) > 0n)
   let placed = null
   // protocol 0 is Soroswap, the same read the positions page makes
   for (let id = Number(poolCount); id >= 1 && !placed; id--) {
@@ -53,6 +61,7 @@ async function readFactory(): Promise<Truth> {
     poolCount: Number(poolCount),
     vault: String(newest.lobster_address),
     owner: String(newest.owner),
+    newestHolds,
     placed: { vault: String(placed.lobster_address), owner: String(placed.owner) },
   }
 }
@@ -106,14 +115,24 @@ test.describe('Live mainnet Factory reads match the /audit DOM', () => {
     )
   })
 
-  test('lists the newest vault with no wallet, and opens its owner read-only', async ({ page }) => {
+  test('lists the vaults with no wallet, folds the empty ones, and opens an owner read-only', async ({ page }) => {
     await openCustodyOnMainnet(page)
     const card = factoryCard(page)
-    await expect(card.locator(`a[href$="/contract/${truth.vault}"]`)).toBeVisible({ timeout: 30_000 })
-    await card.getByRole('button', { name: new RegExp(`Owner ${truth.owner.slice(0, 4)}`) }).first().click()
+    await expect(card.locator(`a[href$="/contract/${truth.placed.vault}"]`)).toBeVisible({ timeout: 30_000 })
+    const newest = card.locator(`a[href$="/contract/${truth.vault}"]`)
+    if (truth.newestHolds) {
+      await expect(newest).toBeVisible()
+    } else {
+      const fold = card.getByRole('button', { name: /^Show the \d+ empty vaults?$/ })
+      await expect(fold).toBeVisible({ timeout: 30_000 })
+      await expect(newest).toHaveCount(0)
+      await fold.click()
+      await expect(newest).toBeVisible()
+    }
+    await card.getByRole('button', { name: new RegExp(`Owner ${truth.placed.owner.slice(0, 4)}`) }).first().click()
     await expect(page).toHaveURL(/\/positions/)
     await expect(page.getByRole('button', { name: 'Leave the read-only view' })).toBeVisible()
-    await expect(page.locator(`a[href$="/contract/${truth.vault}"]`).first()).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator(`a[href$="/contract/${truth.placed.vault}"]`).first()).toBeVisible({ timeout: 30_000 })
   })
 
   test('a link opens mainnet on an account, read-only', async ({ page }) => {

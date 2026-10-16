@@ -178,6 +178,21 @@ export function isVaultEmpty(p: VaultPosition): boolean {
   return vaultLegs(p).every(([, amount]) => Number(amount) === 0)
 }
 
+// The same question for a list of other people's vaults, in two reads instead of a full
+// position: a vault in a pool, or with anything idle, holds something. A read that fails
+// counts as holding, so a vault is never tucked away on a bad answer.
+export async function vaultHolds(network: Network, source: string, vault: string): Promise<boolean> {
+  try {
+    const [protocol, amounts] = await Promise.all([
+      simulateRead<bigint>(network, source, vault, 'get_active_protocol'),
+      simulateRead<[bigint, bigint]>(network, source, vault, 'get_amounts_tokens'),
+    ])
+    return (VENUE[Number(protocol)] ?? 'idle') !== 'idle' || amounts.some((a) => BigInt(a) > 0n)
+  } catch {
+    return true
+  }
+}
+
 // a vault missing from the map had no move in the operations loaded so far,
 // which is not the same as never, so callers show nothing for it.
 export function lastMoveByVault(

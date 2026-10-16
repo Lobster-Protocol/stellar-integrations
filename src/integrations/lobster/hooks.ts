@@ -1,7 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { rpc } from '@stellar/stellar-sdk'
 
+import { CONTRACTS } from '../../config/contracts'
 import { getFactoryInfo, getLatestVaults, getPoolsByUser, buildPingTx, submitSignedXdr, waitForTx } from './factory'
+import { vaultHolds } from './position'
 import type { FactoryInfo, LobsterPool, Network } from './types'
 
 // both networks carry a read source, so the factory reads without any wallet
@@ -21,6 +23,21 @@ export function useLatestVaults(network: Network, poolCount: number | undefined,
     enabled: !!poolCount,
     staleTime: 60_000,
     retry: 1,
+  })
+}
+
+// which of the listed vaults hold something, by address; absent while it loads
+export function useVaultsHolding(network: Network, vaults: LobsterPool[] | undefined) {
+  const ids = vaults?.map((v) => v.lobsterAddress) ?? []
+  return useQuery<Record<string, boolean>>({
+    queryKey: ['lobster', 'vaults-holding', network, ids.join(',')],
+    queryFn: async () => {
+      const source = CONTRACTS[network].lobster.readSource
+      const flags = await Promise.all(ids.map((id) => vaultHolds(network, source, id)))
+      return Object.fromEntries(ids.map((id, i) => [id, flags[i]]))
+    },
+    enabled: ids.length > 0,
+    staleTime: 60_000,
   })
 }
 
