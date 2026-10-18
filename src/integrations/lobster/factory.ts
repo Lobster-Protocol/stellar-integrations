@@ -228,12 +228,27 @@ export async function submitSignedXdr(
 }
 
 export async function waitForTx(network: Network, hash: string): Promise<rpc.Api.GetTransactionResponse> {
-  const server = getSorobanServer(network)
+  // the transaction is already sent here. a poll that drops or gets turned away
+  // says nothing about it, so it must not end the wait: an error at this point
+  // reads as "failed" and invites sending it a second time
+  const server = getSorobanServer(network, 'read')
   const start = Date.now()
+  let lost = false
   while (Date.now() - start < POLL_TIMEOUT_MS) {
-    const res = await server.getTransaction(hash)
-    if (res.status !== 'NOT_FOUND') return res
+    try {
+      const res = await server.getTransaction(hash)
+      if (res.status !== 'NOT_FOUND') return res
+      lost = false
+    } catch {
+      lost = true
+    }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+  }
+  if (lost) {
+    throw new Error(
+      `Lost the network while waiting for ${hash}. It may still have landed, so check ` +
+        'the explorer before sending it again.',
+    )
   }
   throw new Error(
     `No result for ${hash} after ${Math.round(POLL_TIMEOUT_MS / 1000)}s. It has most likely ` +

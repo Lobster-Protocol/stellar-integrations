@@ -49,7 +49,7 @@ export async function quoteSoroswapDirect(
     return null
   }
 
-  const server = getSorobanServer(params.network)
+  const server = getSorobanServer(params.network, 'read')
   // read-only sim: a quote moves nothing, so a fabricated source lets an
   // unfunded (not-yet-created) caller still get a price.
   const sourceAccount = new Account(params.callerAccount, '0')

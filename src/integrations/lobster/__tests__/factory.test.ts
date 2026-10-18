@@ -193,4 +193,27 @@ describe('waitForTx', () => {
     await vi.advanceTimersByTimeAsync(3_000)
     await expect(p).resolves.toEqual({ status: 'SUCCESS', hash: 'hash1' })
   })
+
+  it('keeps polling through a poll that drops, the transaction can still land', async () => {
+    getTransaction
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValueOnce({ status: 'SUCCESS', hash: 'hash1' })
+    const p = waitForTx('testnet', 'hash1')
+    await vi.advanceTimersByTimeAsync(3_000)
+    await expect(p).resolves.toEqual({ status: 'SUCCESS', hash: 'hash1' })
+  })
+
+  it('says the outcome is unknown when the network never comes back', async () => {
+    getTransaction.mockRejectedValue(new Error('Network Error'))
+    const seen = expect(waitForTx('testnet', 'hash1')).rejects.toThrow(/may still have landed/)
+    await vi.advanceTimersByTimeAsync(200_000)
+    await seen
+  })
+
+  it('still calls it expired when the last answers were not found', async () => {
+    getTransaction.mockResolvedValue({ status: 'NOT_FOUND' })
+    const seen = expect(waitForTx('testnet', 'hash1')).rejects.toThrow(/expired without running/)
+    await vi.advanceTimersByTimeAsync(200_000)
+    await seen
+  })
 })
