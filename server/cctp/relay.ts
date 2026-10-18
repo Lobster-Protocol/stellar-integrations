@@ -172,8 +172,7 @@ export async function deliver(req: ClaimRequest): Promise<ClaimOutcome> {
   const kp = relayKeypair(network)
   takeDailySlot()
 
-  // past takeDailySlot a stalled read would keep a slot it never used, so every call here has
-  // the client's deadline, and the send is settled by its hash below
+  // after takeDailySlot a hung read would burn the slot, hence the client deadline
   const server = rpcServer(sorobanUrl(network))
   const source = await server.getAccount(kp.publicKey())
   const tx = new TransactionBuilder(source, { fee: INCLUSION_FEE_STROOPS, networkPassphrase: passphrase(network) })

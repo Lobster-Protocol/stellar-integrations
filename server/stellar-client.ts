@@ -1,9 +1,7 @@
 import { Horizon, rpc } from '@stellar/stellar-sdk'
 
-// rpc.Server accepts a timeout option and drops it (14.6.1 hands only the headers
-// to its http client) and Horizon.Server sets no deadline at all, so a stuck
-// endpoint holds the request open until the socket dies. the deadline goes on the
-// http client itself.
+// rpc.Server ignores its timeout option (sdk 14.6.1 only passes headers to the
+// http client) and Horizon.Server has none, so set it on the client
 export const STELLAR_TIMEOUT_MS = 15_000
 
 export function rpcServer(url: string, timeoutMs = STELLAR_TIMEOUT_MS): rpc.Server {

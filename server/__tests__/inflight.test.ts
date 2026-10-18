@@ -41,7 +41,7 @@ describe('single-in-flight treasury signatures', () => {
     expect(await unresolvedSignature(W, async () => ({ status: 'Pending' }), isTerminal)).toEqual({ id: 'sig-1', status: 'Pending' })
   })
 
-  it('lets the caller decide what releases, from the whole status', async () => {
+  it('passes the whole status to the release check', async () => {
     trackPending(W, 'sig-1')
     const signed = async () => ({ status: 'Signed', signedData: '0xab' })
     expect(await unresolvedSignature(W, signed, () => false)).toEqual({ id: 'sig-1', status: 'Signed' })

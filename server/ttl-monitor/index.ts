@@ -7,7 +7,6 @@ import { EXTEND_TARGET_LEDGERS, chunk, readTtl } from './ledger'
 import { otlpEnabled, pushExposition } from '../metrics/otlp'
 import { rpcServer } from '../stellar-client'
 
-// ledgers that can pass between the extend applying and the read-back
 const READBACK_SLACK_LEDGERS = 100
 
 interface MonitorConfig {
@@ -23,13 +22,11 @@ const DEFAULT_INTERVAL_MS = 300_000
 // last day back to 30: about 10.4 XLM on mainnet in october 2026. the cap leaves
 // room for rent to climb, not for a runaway estimate near the ttl ceiling.
 const DEFAULT_FEE_CAP_XLM = 20
-// an extend gives back two weeks or more, so a key that still reads due a day
-// after one landed points at a fault. paying again every pass would only drain
-// the account that pays the rent.
+// a key still due a day after its extend landed points at a fault, and paying
+// again every pass would just drain the rent account
 const EXTEND_COOLDOWN_MS = 24 * 3600 * 1000
 
-// an http failure is told in one line; the client's error would print its whole
-// request config. anything else keeps its stack
+// axios errors print their whole request config, the message is enough
 export function why(err: unknown): unknown {
   return (err as { isAxiosError?: boolean } | null)?.isAxiosError ? (err as Error).message : err
 }
@@ -54,9 +51,8 @@ function readConfig(env: NodeJS.ProcessEnv = process.env): MonitorConfig {
   }
 }
 
-// TTL_MONITOR_NETWORK names one network or a list, "testnet,mainnet". each gets
-// its own loop so a failing network never holds the other up; anything else
-// falls back to testnet, same as readConfig.
+// TTL_MONITOR_NETWORK is one network or a list ("testnet,mainnet"), one loop each
+// so a failing network never holds up the other
 export function readConfigs(env: NodeJS.ProcessEnv = process.env): MonitorConfig[] {
   const asked = (env.TTL_MONITOR_NETWORK ?? '').split(',').map((s) => s.trim())
   const networks = (['testnet', 'mainnet'] as const).filter((n) => asked.includes(n))
@@ -68,8 +64,7 @@ export function readConfigs(env: NodeJS.ProcessEnv = process.env): MonitorConfig
   }))
 }
 
-// the code key a contract instance runs on. the factory's own hash lives only
-// in its instance entry on chain, so it is read from there, never configured.
+// the factory's own wasm hash is only on chain, in its instance entry
 export function executableCodeKey(entry?: xdr.LedgerEntryData): xdr.LedgerKey | null {
   if (entry?.switch().name !== 'contractData') return null
   const val = entry.contractData().val()
@@ -79,7 +74,6 @@ export function executableCodeKey(entry?: xdr.LedgerEntryData): xdr.LedgerKey | 
   return xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: exec.wasmHash() }))
 }
 
-// an entry of the factory's persistent storage, under the key its own code writes
 function factoryRecord(factory: string, key: xdr.ScVal): xdr.LedgerKey {
   return xdr.LedgerKey.contractData(
     new xdr.LedgerKeyContractData({
@@ -91,7 +85,7 @@ function factoryRecord(factory: string, key: xdr.ScVal): xdr.LedgerKey {
 }
 const sym = (s: string) => xdr.ScVal.scvSymbol(s)
 
-// the code key the factory deploys vaults from, as it keeps it under lob_hash
+// vault wasm the factory deploys from, stored under lob_hash
 export function storedCodeKey(entry?: xdr.LedgerEntryData): xdr.LedgerKey | null {
   if (entry?.switch().name !== 'contractData') return null
   const val = entry.contractData().val()
@@ -99,10 +93,8 @@ export function storedCodeKey(entry?: xdr.LedgerEntryData): xdr.LedgerKey | null
   return xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: val.bytes() }))
 }
 
-// one-shot scan a route or test can call without the daemon loop. throws when
-// the factory isn't deployed on the network, which the caller turns into a 503.
+// throws when the factory isn't deployed there; /ttl turns that into a 503
 export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network)): Promise<ScanResult> {
-  // with a deadline, so a stuck endpoint can't pin the daemon pass or hold /ttl open
   const server = rpcServer(rpcUrl)
   const { factory, wasmHash } = CONTRACTS[network].lobster
   if (!factory || !wasmHash) {
@@ -110,10 +102,8 @@ export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network))
   }
   const wasm = Buffer.from(wasmHash, 'hex')
   if (wasm.length !== 32) throw new Error(`factory wasm hash for ${network} is not 32 bytes`)
-  // the factory instance, its code and the vault code it deploys each archive on
-  // their own clock (CAP-53). wasmHash names the vault code on mainnet but the
-  // factory's own code on testnet, where the vault code is only known from what
-  // the factory stores. a key already watched isn't added twice.
+  // instance, factory code and vault code archive separately (CAP-53). on testnet
+  // wasmHash is the factory's own code, the vault code only shows up via lob_hash
   const instanceKey = new Contract(factory).getFootprint()
   const storedHashKey = factoryRecord(factory, sym('lob_hash'))
   const configuredKey = xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: wasm }))
@@ -144,13 +134,11 @@ export async function scanNetwork(network: Network, rpcUrl = rpcUrlFor(network))
   return scan
 }
 
-// the factory's records: its settings, and the index create_pool writes for each
-// vault. create_pool bumps the settings and a vault's own calls bump its storage,
-// but nothing touches an index entry again once it is written.
+// create_pool bumps the factory settings, but the per-vault index it writes is
+// never touched again, so we keep both alive from here
 const FACTORY_SETTINGS = ['admin', 'SW_ROUTER', 'lob_count', 'lob_hash', 'FEES', 'PEND_FEE']
 export const RECORD_KINDS = ['factory-settings', 'factory-index'] as const
-// the index costs rent for every vault and anyone can create one, so past this
-// many the newest wait for the limit to be raised instead of growing the bill
+// anyone can create a vault and each one adds index rent, so cap it
 export const MAX_INDEXED_VAULTS = 100
 
 interface PoolRecord {
@@ -173,8 +161,7 @@ export async function scanFactoryRecords(
     return vals
   }
   const kinds = new Map<string, string>()
-  // a setting the factory never wrote, like a fee change nobody announced, is
-  // left out rather than read as archived
+  // PEND_FEE only exists while a fee change is pending: missing keys are skipped, not archived
   const settings = await present(FACTORY_SETTINGS.map((s) => factoryRecord(factory, sym(s))))
   for (const k of settings.keys()) kinds.set(k, 'factory-settings')
   const counted = settings.get(factoryRecord(factory, sym('lob_count')).toXDR('base64'))
@@ -201,8 +188,7 @@ export async function scanFactoryRecords(
 }
 
 // the latest-ledger gauge makes a stale push visible instead of silently trusted.
-// the records go out as one floor per kind: an index key holds a vault and its
-// owner, and nothing that names a client goes to grafana.
+// index keys hold a vault and its owner, so records only go out as the min per kind
 export function formatMetrics(scan: ScanResult, network: Network, autoExtend = false): string {
   const records = new Set<string>(RECORD_KINDS)
   const floors = RECORD_KINDS.flatMap((kind) => {
@@ -244,7 +230,6 @@ async function pushMetrics(url: string, body: string): Promise<void> {
   if (!res.ok) throw new Error(`pushgateway answered ${res.status}`)
 }
 
-// with no signer wired, a pass only reports the keys that need extending.
 export interface ExtendSigner {
   sourceAddress: string
   // asserted against the pass so a mainnet daemon can't drive a testnet-wired
@@ -253,9 +238,7 @@ export interface ExtendSigner {
   sign(xdrBase64: string, networkPassphrase: string): Promise<string>
 }
 
-// the fee cap stops a runaway rent estimate near the ceiling from signing an
-// arbitrary amount. one bad key logs and moves on rather than stranding the rest.
-// returns the keys whose extend landed, which is when the rent got paid.
+// one bad key logs and moves on. returns the keys whose extend landed
 export async function extendKeys(
   server: rpc.Server,
   keys: KeyStatus[],
@@ -309,8 +292,7 @@ export async function extendKeys(
           console.error(`[ttl-monitor:${network}] extend tx ${sent.hash} landed but ${s.keyXdr} only has ${left} ledgers left`)
         }
       } else {
-        // a failed extend means the entry keeps marching to archival; log it
-        // loud so a structural cause (underfunded source, fee) gets seen
+        // log it loud, or an underfunded source or a fee problem goes unnoticed
         console.error(`[ttl-monitor:${network}] extend did not land for ${s.keyXdr}: tx ${sent.hash} ${res.status}`)
       }
     } catch (err) {
@@ -320,13 +302,11 @@ export async function extendKeys(
   return landed
 }
 
-// the due keys not extended inside the cooldown
 export function dueForExtend(due: KeyStatus[], extendedAt: Map<string, number>, now: number): KeyStatus[] {
   return due.filter((s) => now - (extendedAt.get(s.keyXdr) ?? -Infinity) >= EXTEND_COOLDOWN_MS)
 }
 
-// a failed read costs the records one pass of report and extends, never the
-// factory's own entries
+// a failed records read shouldn't sink the factory's own entries
 async function recordsOrNone(config: MonitorConfig): Promise<KeyStatus[]> {
   try {
     return (await scanFactoryRecords(CONTRACTS[config.network].lobster.factory, rpcServer(config.rpcUrl))).statuses
@@ -340,8 +320,7 @@ async function recordsOrNone(config: MonitorConfig): Promise<KeyStatus[]> {
 // alerts from the same pass.
 async function runOnce(config: MonitorConfig, signer?: ExtendSigner, extendedAt = new Map<string, number>()): Promise<void> {
   const scan = await scanNetwork(config.network, config.rpcUrl)
-  // the records are watched only where this daemon pays their rent; on a network
-  // extended by hand they would only page the team
+  // only where we pay the rent; on testnet these would just page us
   if (signer) scan.statuses.push(...(await recordsOrNone(config)))
 
   for (const a of scan.statuses.filter((s) => s.reading.level !== 'ok')) {

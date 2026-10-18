@@ -273,7 +273,7 @@ describe('POST /dfns/sign', () => {
     expect(body.id).toBe('sig-9')
   })
 
-  it('holds the treasury while an approved soroban envelope can still land, then lets go', async () => {
+  it('keeps the lock on a signed soroban tx until its time bounds pass', async () => {
     clearPending('wa-test-1')
     broadcastMock.mockResolvedValueOnce({ id: 'sig-held', status: 'Pending' })
     waitMock.mockResolvedValueOnce({ id: 'sig-held', status: 'Pending' })

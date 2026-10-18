@@ -14,7 +14,7 @@ function clock() {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('scanCache', () => {
-  it('scans once, then answers from that scan inside the window', async () => {
+  it('serves the cached scan inside the window', async () => {
     const c = clock()
     const scan = vi.fn(async () => at(1))
     const read = scanCache(scan, { now: c.now })
@@ -24,7 +24,7 @@ describe('scanCache', () => {
     expect(scan).toHaveBeenCalledTimes(1)
   })
 
-  it('answers past the window at once and refreshes behind the answer, once', async () => {
+  it('serves the old scan past the window and refreshes once in the background', async () => {
     const c = clock()
     const scan = vi.fn(async () => at(1))
     const read = scanCache(scan, { now: c.now })
@@ -41,7 +41,7 @@ describe('scanCache', () => {
     expect((await read('mainnet')).latestLedger).toBe(2)
   })
 
-  it('waits for a fresh scan once the last one is too old to show', async () => {
+  it('waits for a fresh scan once the cached one is too old', async () => {
     const c = clock()
     const scan = vi.fn(async () => at(1))
     const read = scanCache(scan, { now: c.now })
@@ -51,7 +51,7 @@ describe('scanCache', () => {
     expect((await read('mainnet')).latestLedger).toBe(2)
   })
 
-  it('keeps the last good scan when a refresh fails, and waits a full window to try again', async () => {
+  it('keeps the last scan when a refresh fails, retries a window later', async () => {
     const c = clock()
     const scan = vi.fn(async () => at(1))
     const read = scanCache(scan, { now: c.now })
@@ -64,7 +64,7 @@ describe('scanCache', () => {
     expect(scan).toHaveBeenCalledTimes(2)
   })
 
-  it('fails while there has never been a scan, and tries again on the next read', async () => {
+  it('throws until a first scan works', async () => {
     const c = clock()
     const scan = vi.fn(async () => at(1))
     scan.mockRejectedValueOnce(new Error('no factory'))

@@ -149,8 +149,7 @@ registerAllbridgeRoutes(app)
 registerCctpRoutes(app, { rateLimit, tokenGuard, operatorGuard })
 
 // public: it only reads ledger state. 503 until a first scan works (no factory on
-// that network, or rpc down). ttls move one ledger at a time and an open route must
-// not cost an rpc call per request, nor make a reader wait on one.
+// that network, or rpc down)
 const ttlScans = scanCache(scanNetwork)
 
 app.get('/ttl', async (c) => {
@@ -379,8 +378,7 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     // approval reuses the same sequence and would tx_bad_seq on broadcast.
     const busy = await unresolvedSignature(walletId, getSignatureStatus, (s) => signatureReleased(s, passphrase))
     if (busy) {
-      // a signed envelope nobody submitted needs nothing from the console; it lets
-      // go of the sequence by itself once it can no longer land
+      // signed but never submitted: nothing to do in the console, it frees up on its own
       const error =
         busy.status === 'Signed'
           ? 'the last treasury signature is signed but not submitted yet; the treasury frees up once its time bounds pass'

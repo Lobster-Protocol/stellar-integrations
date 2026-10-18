@@ -163,7 +163,7 @@ describe('accountTargets', () => {
 })
 
 describe('evm chains', () => {
-  it('watches every chain the bridge reads, through the same two endpoints as the app', () => {
+  it('probes every bridge chain on the same two endpoints as the app', () => {
     const evm = httpTargets().filter((t) => t.probe === 'evm')
     const expected = (['mainnet', 'testnet'] as const).flatMap((network) =>
       CCTP_SOURCE_CHAINS[network].map((c) => ({
@@ -188,14 +188,14 @@ describe('evm chains', () => {
 })
 
 describe('confirmed', () => {
-  it('tries a failed check once more and keeps what the second try says', async () => {
+  it('retries a failed check once and keeps the second result', async () => {
     const answers = [{ up: false, n: 1 }, { up: true, n: 2 }]
     const check = vi.fn(async () => answers.shift()!)
     expect(await confirmed(check, 0)).toEqual({ up: true, n: 2 })
     expect(check).toHaveBeenCalledTimes(2)
   })
 
-  it('takes a passing check at its word, and a check with nothing to watch as it is', async () => {
+  it('does not retry a passing check or a null one', async () => {
     const up = vi.fn(async () => ({ up: true }))
     expect(await confirmed(up, 0)).toEqual({ up: true })
     expect(up).toHaveBeenCalledTimes(1)
@@ -204,7 +204,7 @@ describe('confirmed', () => {
     expect(none).toHaveBeenCalledTimes(1)
   })
 
-  it('waits longer before trying the status page again than any other check', () => {
+  it('waits 15 s before retrying the status page', () => {
     expect(confirmPause({ probe: 'page' })).toBe(15_000)
     for (const probe of ['rpc', 'horizon', 'cctp', 'http', 'evm'] as const) expect(confirmPause({ probe })).toBe(2_000)
   })

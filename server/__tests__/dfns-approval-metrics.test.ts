@@ -45,7 +45,7 @@ describe('refreshDfnsApprovalMetrics', () => {
     expect(await value('lobster_dfns_approvals_read_timestamp_seconds')).toBe(at / 1000)
   })
 
-  it('counts a held transaction past its time bounds apart from the ones that can still land', async () => {
+  it('counts held txs past their time bounds as pending_expired', async () => {
     const at = later(60 * MIN)
     const c = client([heldTx(at / 1000 - 60), heldTx(at / 1000 + 600), { id: 'transfer-request' }])
     await refreshDfnsApprovalMetrics(c as never, at)
@@ -53,7 +53,7 @@ describe('refreshDfnsApprovalMetrics', () => {
     expect(await value('lobster_dfns_approvals', 'pending_expired')).toBe(1)
   })
 
-  it('reads pending every pass and the totals once a quarter of an hour', async () => {
+  it('reads pending every pass, the totals every 15 min', async () => {
     const c = client()
     await refreshDfnsApprovalMetrics(c as never, later(60 * MIN))
     expect(c.listApprovals).toHaveBeenCalledTimes(4)
@@ -63,7 +63,7 @@ describe('refreshDfnsApprovalMetrics', () => {
     expect(c.listApprovals).toHaveBeenCalledTimes(9)
   })
 
-  it('leaves the stamp where it was when a read fails, so the gap shows', async () => {
+  it('keeps the old read time when a read fails', async () => {
     await refreshDfnsApprovalMetrics(client([{ id: 'ap-1' }]) as never, later(60 * MIN))
     const stamped = await value('lobster_dfns_approvals_read_timestamp_seconds')
     const failing = { policies: { listApprovals: async () => { throw new Error('dfns down') } } }
@@ -82,7 +82,7 @@ describe('heldPastItsBounds', () => {
     expect(heldPastItsBounds(heldTx(at / 1000 + 1), at)).toBe(false)
   })
 
-  it('leaves a request it cannot read, or one with no upper bound, as waiting', () => {
+  it('treats an unreadable or unbounded tx as still waiting', () => {
     expect(heldPastItsBounds({}, at)).toBe(false)
     expect(heldPastItsBounds({ activity: { transactionRequest: { network: 'Stellar', requestBody: { transaction: '0xzz' } } } }, at)).toBe(false)
     expect(heldPastItsBounds(heldTx(0), at)).toBe(false)

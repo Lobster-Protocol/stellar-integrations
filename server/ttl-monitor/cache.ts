@@ -1,10 +1,9 @@
 import type { Network } from '../../src/config/contracts'
 import type { ScanResult } from './monitor'
 
-// the last scan per network for an open route. one past the window is served at
-// once and refreshed behind the answer, so a reader only waits on the rpc for the
-// first scan or after a long quiet spell, when the last one is too old to show.
-// a failed refresh keeps the last good scan and waits a full window to try again.
+// serve the last scan and refresh it in the background once it's past the window,
+// so /ttl only waits on the rpc for the first scan or one that's gone too stale.
+// a failed refresh keeps the old scan for another window
 export function scanCache(
   scan: (network: Network) => Promise<ScanResult>,
   { windowMs = 60_000, maxAgeMs = 5 * 60_000, now = Date.now } = {},

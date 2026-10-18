@@ -11,8 +11,7 @@ export interface LedgerEntriesReader {
   }>
 }
 
-// a key the rpc omits is archived, so it lands as a status rather than vanishing
-// from the report.
+// a key the rpc omits is archived: report it as such instead of dropping it
 export async function scanTtl(
   keys: xdr.LedgerKey[],
   reader: LedgerEntriesReader,

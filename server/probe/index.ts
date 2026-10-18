@@ -34,16 +34,12 @@ export interface ScanResult {
 }
 
 const TIMEOUT_MS = 10_000
-// two evm endpoints are tried in turn, so each gets half the time
+// two evm endpoints are tried in turn, each gets half
 const EVM_TIMEOUT_MS = 5_000
-// an evm endpoint serving a block older than this has stopped following the
-// chain, and the bridge would miss the burns and mints after it
 const EVM_STALE_SECONDS = 600
-// a failed check is tried once more after this pause before it counts. public
-// endpoints drop the odd request, and a user who reloads never sees it.
+// one retry before a check counts as down, public endpoints drop the odd request.
+// the free grafana page errors for longer than 2 s every few hours, so it waits more
 const CONFIRM_AFTER_MS = 2_000
-// the free status page turns the relay away with a fast error for longer than
-// that, every few hours. what its check is for is a page that stays down.
 const PAGE_CONFIRM_AFTER_MS = 15_000
 
 export function confirmPause(t: Pick<HttpTarget, 'probe'>): number {
@@ -108,8 +104,7 @@ interface Reading {
 async function probeOne(t: HttpTarget): Promise<ProbeResult> {
   const r = await timed(async (): Promise<Reading> => {
     if (t.probe === 'evm') {
-      // the app falls back to the second endpoint, so the chain is readable when
-      // either serves a recent block
+      // the app falls back to the second endpoint, so either one will do
       for (const url of [t.url, t.fallbackUrl]) {
         if (url && (await evmServesRecentBlock(url))) return { up: true }
       }

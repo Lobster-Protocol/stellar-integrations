@@ -38,7 +38,7 @@ describe('readTtl', () => {
     expect(readTtl(999_999, 1_000_000).level).toBe('archived')
   })
 
-  it('gives an entry back from the archive no runway rather than a negative one', () => {
+  it('reads liveUntil 0 as archived, not negative', () => {
     expect(readTtl(0, 1_000_000)).toEqual({ remainingLedgers: 0, remainingSeconds: 0, level: 'archived' })
     expect(readTtl(999_000, 1_000_000).remainingLedgers).toBe(0)
   })
@@ -210,8 +210,7 @@ describe('scanFactoryRecords', () => {
   const [T0, T1] = [StrKey.encodeContract(Buffer.alloc(32, 5)), StrKey.encodeContract(Buffer.alloc(32, 6))]
   const sym = (v: string) => xdr.ScVal.scvSymbol(v)
   const addr = (a: string) => Address.fromString(a).toScVal()
-  // the keys as the factory's code writes them, spelled out here so a change to
-  // the scan's encoding can't pass unnoticed
+  // built by hand so a change in the scan's key encoding gets caught
   const rec = (key: xdr.ScVal) =>
     xdr.LedgerKey.contractData(
       new xdr.LedgerKeyContractData({
@@ -268,7 +267,7 @@ describe('scanFactoryRecords', () => {
     }
   }
 
-  it('watches the settings the factory wrote and the whole index of each vault, once per key', async () => {
+  it('covers the settings that exist and each index key once', async () => {
     const scan = await scanFactoryRecords(FACTORY, ledger())
     const count = (kind: string) => scan.statuses.filter((s) => s.kind === kind).length
     // admin, router, count, hash and fee; no PEND_FEE since nothing was announced
@@ -293,7 +292,7 @@ describe('scanFactoryRecords', () => {
     }
   })
 
-  it('sends grafana one floor per kind, with no key that names a vault or its owner', async () => {
+  it('pushes records as one min per kind, without keys', async () => {
     const records = await scanFactoryRecords(FACTORY, ledger())
     const own = { keyXdr: 'FACTORYINSTANCE', kind: 'instance', reading: readTtl(LATEST + 2_500_000, LATEST) }
     const out = formatMetrics({ latestLedger: LATEST, statuses: [own, ...records.statuses] }, 'mainnet', true)
@@ -306,7 +305,7 @@ describe('scanFactoryRecords', () => {
 })
 
 describe('why', () => {
-  it('tells an http failure in one line and keeps anything else whole', () => {
+  it('keeps only the message of an axios error', () => {
     const http = Object.assign(new Error('timeout of 15000ms exceeded'), { isAxiosError: true, config: { url: 'https://rpc.example' } })
     expect(why(http)).toBe('timeout of 15000ms exceeded')
     const bug = new TypeError('x is undefined')

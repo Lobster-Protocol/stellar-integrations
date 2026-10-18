@@ -8,9 +8,8 @@ export interface HttpTarget {
   name: string
   area: 'bridge' | 'frontend' | 'swap' | 'custody' | 'mainnet' | 'shared'
   url: string
-  // rpc and horizon also say how old their latest ledger is. cctp has to hand
-  // back a fee table, a page has to load and an evm endpoint has to serve a
-  // recent block; answering is not enough.
+  // rpc and horizon also report ledger age. answering isn't enough for the others:
+  // cctp needs a fee table, a page has to load, an evm node a recent block
   probe: 'rpc' | 'horizon' | 'cctp' | 'page' | 'http' | 'evm'
   // evm only: where the app reads the chain when the first endpoint fails
   fallbackUrl?: string
@@ -58,8 +57,7 @@ export function httpTargets(): HttpTarget[] {
   if (bff && !bff.includes('localhost')) {
     list.push({ name: 'bff-relay', area: 'custody', url: bff, probe: 'http' })
   }
-  // the evm chains the bridge burns on and mints to, from the list the app reads
-  // them through, so the watch follows any change to it
+  // same chains and endpoints as the bridge
   for (const network of ['mainnet', 'testnet'] as const) {
     for (const chain of CCTP_SOURCE_CHAINS[network]) {
       list.push({

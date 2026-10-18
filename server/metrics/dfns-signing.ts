@@ -6,9 +6,8 @@ import { pastTimeBounds } from '../dfns/sign'
 type Client = Pick<ReturnType<typeof getDfnsClient>, 'policies'>
 type Status = 'Pending' | 'Approved' | 'Denied' | 'Expired'
 
-// pending is what someone has to act on, so it is read on every pass; the totals
-// only say how the flow went and are read every quarter of an hour. dfns rate
-// limits the whole org, and these reads share that budget with signing.
+// pending every pass, the totals every 15 min: dfns rate limits the whole org and
+// these reads share that budget with signing
 const TOTALS: Status[] = ['Approved', 'Denied', 'Expired']
 const TOTALS_EVERY_MS = 15 * 60_000
 let totalsReadAt = Number.NEGATIVE_INFINITY
@@ -17,8 +16,7 @@ interface HeldRequest {
   activity?: { transactionRequest?: { network?: string; requestBody?: { transaction?: string } } }
 }
 
-// a held stellar transaction whose time bounds have run out can no longer land,
-// so approving it does nothing. it is counted apart from the ones still waiting.
+// approving a held tx past its time bounds does nothing, so those are counted apart
 export function heldPastItsBounds(approval: HeldRequest, nowMs: number): boolean {
   const request = approval.activity?.transactionRequest
   const raw = request?.requestBody?.transaction
