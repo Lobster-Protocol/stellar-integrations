@@ -87,7 +87,7 @@ describe('valueBalances', () => {
     expect(usdTotal).toBe(312.5)
   })
 
-  it('still counts Soroswap test USDC at par on testnet', () => {
+  it('counts Soroswap test USDC at par on testnet too', () => {
     const { lines } = valueBalances([line({ issuer: CONTRACTS.testnet.tokens.usdcSac })], null, 'testnet')
     expect(lines[0].usd).toBe(312.5)
   })

@@ -10,7 +10,7 @@ function vault(amount0: string, amount1: string, pooled0: string | null, pooled1
   return { token0: XLM, token1: USDC, amount0, amount1, pooled0, pooled1 }
 }
 
-describe('where a vault keeps its value', () => {
+describe('vaultSplit', () => {
   it('says nothing until the pool has answered', () => {
     expect(vaultSplit(vault('5', '1', null, null), prices)).toBeNull()
   })

@@ -43,7 +43,7 @@ describe('burnArgs', () => {
     expect(domain).toBe(STELLAR_CCTP_DOMAIN)
   })
 
-  it('mints to the forwarder and never to the user, since a mint recipient is read as a contract', () => {
+  it('mints to the forwarder: Stellar reads the mint recipient as a contract', () => {
     expect(bytes32ToContract(hexToBytes(mintRecipient))).toBe(forwarder)
   })
 

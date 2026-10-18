@@ -96,7 +96,7 @@ describe('accumulated signing weight', () => {
 })
 
 describe('combining independent signatures', () => {
-  it('merges each signer signed the same base into one envelope', () => {
+  it('merges signatures made on the same base into one envelope', () => {
     const base = buildTx()
     const signedA = coSign(base, kpA)
     const signedB = coSign(base, kpB)

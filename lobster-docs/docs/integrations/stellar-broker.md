@@ -29,8 +29,8 @@ in both `vite.config.ts` and `vitest.config.ts`.
 
 The dashboard does not confirm through the broker. `confirmQuote`
 needs a quote set over the broker trading socket, and a keyless quote never sets
-one, so the confirm always failed and the leg was taken out. The broker answer is
-a live price reference; the signable route is the direct Soroswap one below.
+one, so there is nothing to confirm. The broker answer is a live price reference;
+the signable route is the direct Soroswap one below.
 
 ## Single ledger, multiple DEXs
 
@@ -65,7 +65,7 @@ USDC, each with a Soroswap pool that actually fills. So the direct route
 executes on either network, and on testnet routing goes straight to it. Aquarius
 has no testnet deployment and stays empty there.
 
-## Where it lives
+## Code
 
 The client, quote, swap, asset mapping, chain guard and Soroswap fallback are all
 under `src/integrations/broker/`. One directory over, `src/integrations/routing/`

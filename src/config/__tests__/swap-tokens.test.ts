@@ -36,8 +36,7 @@ describe('swapTokensFor', () => {
     }
   })
 
-  // every token the selector offers must resolve to a real SAC through the
-  // routing layer, or it would render as a dead pair.
+  // a token that doesn't map would show as a dead pair
   it('every token resolves to a valid SAC via the routing mapping', () => {
     for (const network of ['testnet', 'mainnet'] as const) {
       for (const t of swapTokensFor(network)) {

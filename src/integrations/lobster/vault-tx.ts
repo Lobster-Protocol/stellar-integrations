@@ -28,8 +28,7 @@ export async function buildVaultActionTx(
   caller: string,
   amount0: string,
   amount1: string,
-  // multisig callers widen this well past 60s: a quorum takes longer to collect and
-  // the envelope would expire (tx_too_late) before the second signature arrives
+  // multisig owners pass more so the quorum signs before tx_too_late
   timeoutSecs = 60,
 ): Promise<{ xdr: string; restorePreamble?: SorobanRestorePreamble }> {
   const server = getSorobanServer(network)
@@ -50,12 +49,11 @@ export async function buildVaultActionTx(
     .setTimeout(timeoutSecs)
     .build()
 
+  // caller == owner, so the one envelope signature covers the token auth too
   const sim = await server.simulateTransaction(tx)
   if (rpc.Api.isSimulationError(sim)) {
     throw new Error(sim.error)
   }
-  // archived vault storage hands back the preamble; the caller restores first.
-  // caller == owner, so the single envelope signature covers the token auth.
   if (rpc.Api.isSimulationRestore(sim)) {
     return { xdr: '', restorePreamble: sim.restorePreamble }
   }

@@ -1,18 +1,15 @@
 import { WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
 
-// How long a transaction stays valid once built. An on-chain quorum, or the DFNS relay, collect
-// approvals for up to an hour. A wallet reached over WalletConnect (a DFNS treasury first) may
-// hold the signature for an approval of its own, and WalletConnect waits five minutes for the
-// answer: built for a minute, the envelope expired before the approval came back. Any other
-// wallet signs at once
+// a quorum or the DFNS relay can take up to an hour to collect approvals; WalletConnect
+// waits five minutes on a wallet that may hold the signature for its own approval, others
+// sign at once
 export const QUORUM_VALIDITY_SECS = 3600
 export const WALLETCONNECT_VALIDITY_SECS = 600
 export const DIRECT_VALIDITY_SECS = 60
 
 export const overWalletConnect = (walletId: string | null | undefined) => walletId === WALLET_CONNECT_ID
 
-// the same rule for a flow that has a window of its own when signed at once: a swap's
-// deadline, the three minutes of a bridge step
+// same rule for a flow that has its own window when signed at once (swap deadline, bridge step)
 export function windowSecs({ quorum, walletId, base }: { quorum: boolean; walletId: string | null | undefined; base: number }): number {
   if (quorum) return QUORUM_VALIDITY_SECS
   if (overWalletConnect(walletId)) return Math.max(base, WALLETCONNECT_VALIDITY_SECS)

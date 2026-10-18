@@ -65,9 +65,8 @@ export function useBridgeSend() {
   return useMutation({
     mutationFn: async (req: BridgeRequest) => {
       const sdk = getAllbridgeSdk()
-      // bridged USDC lands as a payment, and Stellar bounces a payment to an
-      // account that is not created yet, so refuse before anything is spent on
-      // the source chain rather than let the funds leave and never arrive.
+      // stellar bounces a payment to an account that doesn't exist yet, so refuse
+      // here, before anything is spent on the source chain.
       try {
         await getHorizonServer('mainnet').loadAccount(req.toAddress)
       } catch (err) {

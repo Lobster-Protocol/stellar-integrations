@@ -44,7 +44,7 @@ export async function readAccountSigning(network: Network, accountId: string): P
 }
 
 // a threshold of 0 means one signer of any weight clears the op, so read it as 1.
-// invokeHostFunction and payment are medium-threshold ops, hence the med default.
+// med by default: invokeHostFunction and payment are medium-threshold ops.
 export function requiredWeight(a: AccountSigning, tier: Tier = 'med'): number {
   const t = a.thresholds[tier]
   return t > 0 ? t : 1
@@ -124,15 +124,14 @@ export interface MultisigSetup {
   threshold?: number
 }
 
-// a set_options op adds one signer, so each gets its own op and the weights and
-// thresholds ride on the last one, all in a single atomic tx.
+// a set_options op adds one signer, so each gets its own op; weights and thresholds
+// go on the last one, all in one atomic tx.
 export async function buildSetOptionsTx(
   network: Network,
   accountId: string,
   setup: MultisigSetup,
 ): Promise<string> {
-  // the ui validates these, but this builds a signing request for real money, so
-  // do not trust the caller: a malformed key here would build a bricking change.
+  // the ui checks these too, but a malformed key here would brick the account
   assertAccountId(accountId)
   for (const s of setup.addSigners ?? []) assertAccountId(s.key)
   const server = getHorizonServer(network)
@@ -173,8 +172,7 @@ export async function buildSetOptionsTx(
       builder.addOperation(Operation.setOptions(opts))
     })
   }
-  // an hour: turning shared control off waits on another person's signature, and
-  // a tight window kept expiring mid-revert.
+  // an hour: turning shared control off waits on another signer
   return builder.setTimeout(3600).build().toXDR()
 }
 

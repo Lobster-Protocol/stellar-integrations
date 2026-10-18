@@ -153,7 +153,7 @@ describe('decoding a CCTP V2 message', () => {
   })
 })
 
-describe('guarding a claim against a message it was not asked for', () => {
+describe('assertMessageMatches', () => {
   const msg = decodeCctpMessage(hexToBytes(REAL_MESSAGE))
   const good = {
     destinationDomain: STELLAR_CCTP_DOMAIN,
@@ -232,7 +232,7 @@ describe('a message out of Stellar', () => {
     expect(amountToLand(msg)).toBe(4_836_324n)
   })
 
-  it('passes when it pays the wallet expected on the chain expected, whatever the case', () => {
+  it('passes for the expected wallet and chain, in any letter case', () => {
     expect(() =>
       assertEvmMessageMatches(msg, { sourceDomain: 27, destinationDomain: 3, recipient: WALLET }),
     ).not.toThrow()

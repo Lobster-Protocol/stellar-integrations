@@ -109,8 +109,7 @@ export async function getLatestVaults(network: Network, poolCount: number, limit
 
 export async function getPoolsByUser(network: Network, user: string): Promise<LobsterPool[]> {
   assertAccountId(user)
-  // the sim runs from a fabricated source, so an unfunded wallet reads fine and
-  // just comes back with no pools - no getAccount probe, no 404 in the console.
+  // no getAccount probe: an unfunded wallet reads fine here and gets no pools
   const source = readSource(network, user)
   const raw = await readContract<RawPool[]>(network, source, 'get_pools_by_user', [
     new Address(user).toScVal(),
@@ -151,8 +150,6 @@ export async function buildPingTx(
   if (rpc.Api.isSimulationError(sim)) {
     throw new Error(`Ping tx simulation failed: ${sim.error}`)
   }
-  // archived storage hands back the preamble so the caller restores first.
-  // the restore path is a branch, not an exception (protocol 23).
   if (rpc.Api.isSimulationRestore(sim)) {
     return { xdr: '', restorePreamble: sim.restorePreamble }
   }
@@ -167,9 +164,8 @@ export class TryAgainLaterError extends Error {
   }
 }
 
-// Stellar turns these away before they reach a ledger, so no fee is charged and nothing
-// moves. The pages print the message as it is: it has to read as a sentence, not as the
-// result XDR.
+// Refused before any ledger: no fee, nothing moves. Pages print the message as is,
+// so it has to read as a sentence.
 const REFUSED: Record<string, string> = {
   txTooLate: 'The transaction expired before it reached the network: the signature came back too late. Nothing was sent, so try again.',
   txBadSeq: 'Another transaction from this account went through first. Nothing was sent, so try again.',
@@ -195,7 +191,6 @@ function refusalCode(result: unknown): string | null {
   }
 }
 
-// exported so the unit test can hit it without rebuilding a full XDR
 export function handleSendResult(
   sent: { status: string; hash: string; errorResult?: unknown },
 ): string {
@@ -229,9 +224,8 @@ export async function submitSignedXdr(
 }
 
 export async function waitForTx(network: Network, hash: string): Promise<rpc.Api.GetTransactionResponse> {
-  // the transaction is already sent here. a poll that drops or gets turned away
-  // says nothing about it, so it must not end the wait: an error at this point
-  // reads as "failed" and invites sending it a second time
+  // already sent: a failed poll says nothing about the tx, so it must not end the
+  // wait. an error here reads as "failed" and invites a second send.
   const server = getSorobanServer(network, 'read')
   const start = Date.now()
   let lost = false

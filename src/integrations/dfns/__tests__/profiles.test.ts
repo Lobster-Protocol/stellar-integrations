@@ -26,7 +26,6 @@ const conn = { label: 'Acme DFNS', relayBaseUrl: 'https://relay.acme.test', apiT
 describe('dfns profiles', () => {
   it('starts with no client profiles and nothing active', () => {
     expect(clientProfiles()).toEqual([])
-    // the demo exists, but it is not the default: nothing resolves until picked.
     expect(listProfiles().some((p) => p.id === DEMO_PROFILE_ID)).toBe(true)
     expect(activeProfileId()).toBeNull()
     expect(activeProfile()).toBeNull()
@@ -89,7 +88,7 @@ describe('dfns profiles', () => {
   })
 })
 
-describe('assertRelayUrl (the money-token destination guard)', () => {
+describe('assertRelayUrl', () => {
   it('accepts a public https url', () => {
     expect(assertRelayUrl('https://relay.acme.example', 'client')).toBe('https://relay.acme.example')
   })
@@ -128,13 +127,13 @@ describe('assertRelayUrl (the money-token destination guard)', () => {
   })
 })
 
-describe('selectedWallet (which of a client org wallets acts as custody)', () => {
+describe('selectedWallet', () => {
   it('remembers a pick per profile and per network', () => {
     const p = addClientProfile(conn)
     expect(selectedWallet(p.id, 'StellarTestnet')).toBeNull()
     setSelectedWallet(p.id, { walletId: 'wa-1', address: 'GABC', network: 'StellarTestnet' })
     expect(selectedWallet(p.id, 'StellarTestnet')?.address).toBe('GABC')
-    // a different network keeps its own pick, independent of testnet
+    // mainnet keeps its own pick
     expect(selectedWallet(p.id, 'Stellar')).toBeNull()
   })
 

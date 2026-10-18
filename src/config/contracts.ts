@@ -199,20 +199,14 @@ export interface CctpSourceChain {
   tokenMessenger: `0x${string}`
   messageTransmitter: `0x${string}`
   rpcFallback: string
-  // tried when rpcFallback fails; publicnode turns away receipts more than a few
-  // hours old on Base and Arbitrum mainnet, and a burn finished later is one
+  // tried when rpcFallback fails: publicnode refuses receipts more than a few hours
+  // old on Base and Arbitrum mainnet
   rpcArchive: string
   explorerTx: (hash: string) => string
-  // Looking for a wallet's burns again, after the page that sent them went away: the
-  // most blocks one log query asks for that the endpoints above answer (mainnet.base.org
-  // stops at 2,000, sepolia.base.org at 1,000, publicnode at 10,000 and only for recent
-  // blocks on mainnet), and how far back such a search goes, about a day of blocks
+  // burn search: blocks per log query, and how far back it goes (about a day)
   logsSpan: number
   searchBlocks: number
-  // Where those searches go, in order, when the endpoints above would turn old blocks away:
-  // on mainnet publicnode answers only the last hours (403 "archive" past that), and
-  // mainnet.base.org limits a page that asks for a day of pieces (429). Left out, the
-  // searches use the endpoints above
+  // for those log queries when the endpoints above refuse old blocks
   logsRpc?: string[]
 }
 
@@ -233,7 +227,7 @@ const cctpMainnetChains: CctpSourceChain[] = [
     tokenMessenger: CCTP_TM_MAINNET,
     messageTransmitter: CCTP_MT_MAINNET,
     rpcFallback: 'https://base-rpc.publicnode.com',
-    // keeps old receipts and old blocks; mainnet.base.org turned a busy page away (429)
+    // keeps old receipts; mainnet.base.org rate-limits too early (429)
     rpcArchive: 'https://base.gateway.tenderly.co',
     explorerTx: (h) => `https://basescan.org/tx/${h}`,
     // Tenderly's public gateway answers 1,000 blocks a query, a day in 44 pieces
@@ -353,9 +347,9 @@ export const BRIDGE_FALLBACK_LINKS = {
   stellarAnchors: 'https://anchors.stellar.org',
 } as const
 
-// inclusion bid, before soroban resource fees. Stellar charges the lowest bid that
-// got in, so a high ceiling costs nothing on a quiet ledger; the SDK's 100 stroops
-// timed swaps out on mainnet
+// inclusion bid ceiling, before soroban resource fees. Stellar charges the lowest
+// bid that got in, so it costs nothing extra on a quiet ledger; the SDK's 100
+// stroops is too low for mainnet swaps
 export const INCLUSION_FEE_STROOPS = '1000000'
 
 export const STELLAR_RPC_FALLBACK: Record<Network, { soroban: string; horizon: string }> = {

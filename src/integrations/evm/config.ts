@@ -18,25 +18,20 @@ import { cctpChain, type Network } from '../../config/contracts'
 
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined
 
-// Any wallet that speaks WalletConnect, by QR code. It is RainbowKit's own WalletConnect
-// entry, made by the same module as the other wallets so that all of them share a single
-// WalletConnect client. Under another id, RainbowKit leaves out WalletConnect's official
-// modal, a second Reown AppKit that would sit next to the Stellar kit's one and share the
-// page's custom elements and state with it.
+// any WalletConnect wallet, by QR, on the client the other wallets share. Under its own id
+// RainbowKit skips the official WalletConnect modal, a second Reown AppKit that would share
+// custom elements and state with the Stellar kit's
 function anyWalletConnect(params: Parameters<typeof walletConnectWallet>[0]): Wallet {
   return { ...walletConnectWallet(params), id: 'walletconnect-qr' }
 }
 
-// Whatever wallet the browser carries, offered only when it carries one: RainbowKit lists
-// it in any browser, and in one without a wallet picking it fails.
+// RainbowKit lists the injected wallet even in a browser without one, and picking it then fails
 function browserWallet(): Wallet {
   const hasOne = typeof window !== 'undefined' && !!(window as { ethereum?: unknown }).ethereum
   return { ...injectedWallet(), installed: hasOne }
 }
 
-// One window for every EVM wallet: the extensions in this browser show up on their own
-// (EIP-6963), the others connect by deep link or QR code. Without a WalletConnect project
-// id only the ones that need no WalletConnect are offered.
+// installed extensions show up on their own (EIP-6963)
 const walletList: WalletList = projectId
   ? [
       {
@@ -59,16 +54,14 @@ const connectors = connectorsForWallets(walletList, {
   walletConnectParameters: { customStoragePrefix: 'lobster-evm' },
 })
 
-// an override first, then the registry's public endpoint, then one that keeps
-// old receipts, each tried when the one before it fails
+// override, then the registry's public endpoint, then one that keeps old receipts
 function sourceChainTransport(override: string | undefined, network: Network, key: string) {
   const { rpcFallback, rpcArchive } = cctpChain(network, key)
   const urls = [override, rpcFallback, rpcArchive].filter((u): u is string => !!u)
   return fallback(urls.map((u) => http(u)))
 }
 
-// wagmi only switches to chains listed here, so every CCTP source chain is,
-// Sepolia testnets included
+// wagmi only switches to chains listed here, so every CCTP source chain is
 export const wagmiConfig = createConfig({
   chains: [mainnet, arbitrum, bsc, base, sepolia, baseSepolia, arbitrumSepolia],
   connectors,

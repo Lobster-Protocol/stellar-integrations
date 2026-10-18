@@ -70,7 +70,7 @@ describe('valueAtCurrentPrice', () => {
     expect(valueAtCurrentPrice(point, { XLM: 0.2 })).toBe(20)
   })
 
-  it('a look-alike token under a different issuer gets no price', () => {
+  it('gives a look-alike token under another issuer no price', () => {
     const point = { ts: 0, held: { 'USDC|GFAKE': 1_000_000 } }
     expect(valueAtCurrentPrice(point, { 'USDC|GREAL': 1 })).toBe(0)
   })

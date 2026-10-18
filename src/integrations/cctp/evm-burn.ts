@@ -56,7 +56,7 @@ export class EvmBurnError extends Error {
   }
 }
 
-// A signature the user declined is not a failure and must not read like one.
+// a declined signature isn't a failure and shouldn't read like one
 export class UserRejectedError extends Error {
   constructor() {
     super('You declined the request in your wallet. Nothing was sent.')
@@ -148,7 +148,7 @@ export async function readGasBalance(chain: CctpSourceChain, owner: Address): Pr
   return b.value
 }
 
-// where a later search for the wallet's burn starts, and whether the wallet sent anything since
+// the block a later search for the wallet's burn starts from
 export async function readBlockNumber(chain: CctpSourceChain): Promise<bigint> {
   return getBlockNumber(wagmiConfig, { chainId: chainIdOf(chain) })
 }
@@ -168,8 +168,8 @@ export async function readAllowance(chain: CctpSourceChain, owner: Address): Pro
   })
 }
 
-// one transaction from the connected wallet: on the right chain, a decline told
-// apart from a failure, and a sent one never lost for want of a receipt
+// one transaction from the connected wallet. A decline and an unread receipt get their
+// own errors: neither means the transaction failed
 export async function sendEvmTx(
   chain: CctpSourceChain,
   what: string,
@@ -198,7 +198,7 @@ export async function sendEvmTx(
 
 // Base hands out a receipt from a preconfirmed block before `latest` includes
 // it, and the wallet estimates the burn against `latest`: sent right away, that
-// estimate fails for want of an allowance. Past the deadline the wallet decides.
+// estimate fails because the allowance isn't there yet. Past the deadline the wallet decides.
 async function untilAllowanceVisible(chain: CctpSourceChain, units: bigint, timeoutMs = 60_000): Promise<void> {
   const owner = getAccount(wagmiConfig).address
   if (!owner) return
@@ -258,7 +258,7 @@ export function burnArgs(req: BurnRequest) {
   ] as const
 }
 
-// onSent hears the hash the moment the burn leaves the wallet, before any receipt
+// onSent gets the hash as soon as the wallet sends the burn, before any receipt
 export async function burnToStellar(req: BurnRequest, onSent?: (hash: `0x${string}`) => void): Promise<`0x${string}`> {
   if (req.maxFee >= req.units) throw new EvmBurnError('The fee would swallow the whole amount')
   const args = burnArgs(req)

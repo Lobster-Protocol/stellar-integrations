@@ -14,7 +14,7 @@ const MAX_PAGES = 100
 
 export interface FullHistory {
   events: ActivityEvent[]
-  // false when the page budget ran out before the window was fully read
+  // false when the page budget ran out first, or Horizon has no such account
   complete: boolean
 }
 
@@ -53,8 +53,7 @@ export async function fetchAllActivity(
     try {
       records = (await call.call()).records
     } catch (err) {
-      // an account Horizon has never seen is not on-chain, so there is no history
-      // to read: mark the export incomplete rather than asserting a confirmed zero.
+      // unknown to Horizon: incomplete, rather than a confirmed empty history
       if (err instanceof NotFoundError) return done(false)
       throw err
     }
@@ -91,9 +90,8 @@ export const ACTIVITY_COLUMNS = [
   'Explorer',
 ]
 
-// one row per asset moved, with a signed amount so the Amount column sums
-// straight away; an operation that moved nothing still gets a row to match the
-// count on screen
+// one row per asset moved, signed so the Amount column sums; an operation that
+// moved nothing still gets a row, to match the count on screen
 export function activityRows(
   events: ActivityEvent[],
   network: Network,

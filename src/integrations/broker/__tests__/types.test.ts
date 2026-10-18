@@ -22,7 +22,7 @@ describe('BrokerQuoteParamsSchema', () => {
     expect(() => BrokerQuoteParamsSchema.parse({ ...ok, buyingAsset: '' })).toThrow()
   })
 
-  it('rejects slippage outside 0..1', () => {
+  it('rejects slippage outside 0..0.5', () => {
     expect(() => BrokerQuoteParamsSchema.parse({ ...ok, slippageTolerance: -0.01 })).toThrow()
     expect(() => BrokerQuoteParamsSchema.parse({ ...ok, slippageTolerance: 1.5 })).toThrow()
   })

@@ -63,10 +63,8 @@ export function irisTxHash(sourceDomain: number, txHash: string): string {
   return txHash
 }
 
-// Circle shuts a caller out for five minutes once it goes over 35 requests a second, every
-// route counted, and answers it in a way the browser cannot even read: the whole bridge then
-// goes blind. Every request from this page waits its turn, ten a second at most, so a busy
-// page, or a few tabs, stay well under
+// Circle locks a caller out for five minutes above 35 requests a second across all routes,
+// and the browser cannot read the lockout response. Ten a second per page keeps a few tabs under
 const IRIS_EVERY_MS = 100
 let irisNext = 0
 
@@ -99,9 +97,8 @@ async function getJson(url: string, timeoutMs: number): Promise<{ status: number
   }
 }
 
-// iris answers with CORS *, so the browser asks it directly. on a fast transfer the
-// attester fills in the fee, so submit Circle's message, not the EVM log; no loop
-// here, the caller polls so an unmounted component stops asking
+// iris answers with CORS *, so the browser asks it directly. Submit Circle's message, not
+// the EVM log: on a fast transfer the attester fills in the fee. One request; callers poll
 export async function fetchAttestation(
   network: Network,
   sourceDomain: number,
@@ -126,7 +123,7 @@ export async function fetchAttestation(
   if (!parsed.success) throw new IrisError('Circle sent an answer we do not recognise')
 
   // we burn once per tx; if Circle lists several, take the one whose destination
-  // domain (bytes 8..11) is ours. A pending entry is still 0x, hence the fallback
+  // domain (bytes 8..11) is ours. A pending entry's message is still 0x, so fall back to the first
   const ours = parsed.data.messages.find(
     (m) =>
       destinationDomain !== null &&
@@ -195,7 +192,7 @@ export async function fetchForwardQuote(
     parsed.data.find((f) => f.finalityThreshold === CCTP_FINALITY.standard) ??
     parsed.data.find((f) => f.finalityThreshold === CCTP_FINALITY.fast)
   if (!tier?.forwardFee) throw new IrisError('Circle does not deliver to that chain for you')
-  // the top of Circle's range: what goes over the real cost buys priority, it is not lost to a stall
+  // top of Circle's range: anything over the real cost buys priority, so the mint doesn't stall
   return { fee: BigInt(Math.ceil(tier.forwardFee.high)), bps: tier.minimumFee }
 }
 

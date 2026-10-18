@@ -66,8 +66,7 @@ export async function checkClaim(
   return { ok: true, msg }
 }
 
-// a spent nonce means the USDC landed, whoever delivered it: another tab, the relay,
-// a custody platform
+// true once the nonce is spent, by any submitter
 export async function isDeliveredOnStellar(network: Network, messageHex: string): Promise<boolean> {
   const msg = decodeCctpMessage(hexToBytes(messageHex))
   const nonce = nativeToScVal(Buffer.from(hexToBytes(msg.nonce)), { type: 'bytes' })

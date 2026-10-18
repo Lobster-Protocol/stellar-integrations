@@ -35,11 +35,10 @@ export interface VaultPosition {
   token0: string
   token1: string
   venue: Venue
-  // sitting in the vault itself, waiting to be put to work
+  // idle in the vault, not in a pool
   amount0: string
   amount1: string
-  // what the vault's share of the pool represents, null while it holds no
-  // position or when the pool would not answer
+  // the vault's share of the pool; null with no position or when the pool won't answer
   pooled0: string | null
   pooled1: string | null
   poolAddress: string | null
@@ -126,8 +125,7 @@ export async function getVaultPositions(
   const pools = await getPoolsByUser(network, user)
   if (pools.length === 0) return []
   const source = user || CONTRACTS[network].lobster.readSource
-  // one vault whose storage TTL expired, or a transient rpc error, must not hide
-  // the healthy ones, so each read settles on its own and a failure is flagged.
+  // a vault with expired storage or a flaky read must not hide the others; it gets flagged
   const settled = await Promise.allSettled(pools.map((p) => readVault(network, source, p)))
   return settled.map((r, i) =>
     r.status === 'fulfilled'
@@ -150,8 +148,7 @@ export async function getVaultPositions(
 }
 
 export function useVaultPositions(network: Network, user: string | null) {
-  // an unfunded wallet is not on-chain and owns no vaults, so skip the read
-  // until balances confirm the account exists rather than 404 for nothing.
+  // an unfunded wallet owns no vaults, so wait until the account is known to exist
   const exists = useAccountExists(network, user) === 'live'
   return useQuery({
     queryKey: ['lobster', 'vaults', network, user],
@@ -162,8 +159,7 @@ export function useVaultPositions(network: Network, user: string | null) {
   })
 }
 
-// a working vault holds almost nothing directly, so leaving out the pooled legs
-// would report a live position as empty.
+// pooled legs included: a working vault holds almost nothing directly
 export function vaultLegs(p: VaultPosition): Array<[string, string]> {
   const legs: Array<[string, string]> = [
     [p.token0, p.amount0],
@@ -178,9 +174,8 @@ export function isVaultEmpty(p: VaultPosition): boolean {
   return vaultLegs(p).every(([, amount]) => Number(amount) === 0)
 }
 
-// The same question for a list of other people's vaults, in two reads instead of a full
-// position: a vault in a pool, or with anything idle, holds something. A read that fails
-// counts as holding, so a vault is never tucked away on a bad answer.
+// Two-read check for other people's vaults: in a pool or anything idle means it holds
+// something. A failed read counts as holding, so a bad answer never hides a vault.
 export async function vaultHolds(network: Network, source: string, vault: string): Promise<boolean> {
   try {
     const [protocol, amounts] = await Promise.all([
@@ -193,8 +188,7 @@ export async function vaultHolds(network: Network, source: string, vault: string
   }
 }
 
-// a vault missing from the map had no move in the operations loaded so far,
-// which is not the same as never, so callers show nothing for it.
+// absent = no move in the operations loaded so far, which isn't the same as never
 export function lastMoveByVault(
   events: Array<{ at: string; contractId?: string; moves: Array<{ counterparty?: string }> }>,
 ): Map<string, string> {
@@ -211,8 +205,7 @@ export function lastMoveByVault(
   return seen
 }
 
-// an unpriced leg, or a working vault whose pool would not answer, leaves the
-// total short, so the result is flagged partial rather than quoted as whole.
+// partial when an unpriced leg holds something or a working vault's pool didn't answer
 export function valueVault(
   p: VaultPosition,
   priceOf: (tokenId: string) => number | null,

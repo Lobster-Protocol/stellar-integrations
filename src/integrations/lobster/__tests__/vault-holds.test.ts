@@ -8,7 +8,7 @@ vi.mock('../../stellar/read', async (importOriginal) => ({
 
 import { vaultHolds } from '../position'
 
-// get_active_protocol answers first, get_amounts_tokens second
+// fakes get_active_protocol and get_amounts_tokens, by method name
 function reads(protocol: number, amounts: [bigint, bigint]) {
   simulateRead.mockImplementation(async (_n, _s, _c, method: string) =>
     method === 'get_active_protocol' ? BigInt(protocol) : amounts,

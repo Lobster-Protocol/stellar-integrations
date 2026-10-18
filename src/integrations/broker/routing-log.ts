@@ -42,8 +42,7 @@ export function appendRoutingEntry(entry: RoutingEntry): RoutingEntry[] {
   return next
 }
 
-// asset ids come in three shapes: 'xlm', 'CODE-ISSUER' on mainnet, and a bare
-// SAC contract id on testnet where the broker is skipped
+// three shapes: 'xlm', 'CODE-ISSUER' on mainnet, a bare SAC id on testnet
 export function assetCode(asset: string, network: RoutingEntry['network']): string {
   if (!asset) return '?'
   if (asset.includes('-')) return asset.split('-')[0].toUpperCase()

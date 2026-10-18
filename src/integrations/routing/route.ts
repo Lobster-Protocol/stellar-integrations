@@ -22,9 +22,8 @@ export async function routeSwap(
 ): Promise<RouteResult> {
   const health = getRoutingHealth(ctx.network)
 
-  // the broker quote rides along as a best-execution reference next to the soroswap
-  // leg. the swap panel cannot sign a broker route, so the quote never becomes the
-  // route, partner key or not: otherwise no mainnet pair could be swapped at all.
+  // the broker quote is only a best-execution reference: the swap panel can't sign
+  // a broker route, so soroswap is always the route.
   let broker: BrokerQuoteResult | undefined
   if (health.brokerQuoteEnabled) {
     try {
@@ -33,8 +32,7 @@ export async function routeSwap(
         broker = quote
       }
     } catch {
-      // an unsupported pair, a sub-minimum amount or a down endpoint must not sink
-      // the route: fall through to the soroswap leg rather than blank the swap modal
+      // a broker failure must not sink the route, the soroswap leg still quotes
     }
   }
 

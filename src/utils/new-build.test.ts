@@ -11,7 +11,7 @@ describe('reloadForNewBuild', () => {
     expect(newBuildState()).toBe('reloading')
   })
 
-  it('does not reload twice within a minute, so a build missing a file cannot loop', () => {
+  it('does not reload twice within a minute', () => {
     const reload = vi.fn()
     reloadForNewBuild(reload, 1_000_000)
     expect(reloadForNewBuild(reload, 1_000_000 + 59_000)).toBe(false)
@@ -26,7 +26,7 @@ describe('reloadForNewBuild', () => {
     expect(reload).toHaveBeenCalledTimes(2)
   })
 
-  it('does not reload offline, where the file is only out of reach', () => {
+  it('does not reload while offline', () => {
     const reload = vi.fn()
     const online = vi.spyOn(Navigator.prototype, 'onLine', 'get').mockReturnValue(false)
     expect(reloadForNewBuild(reload, 1_000_000)).toBe(false)

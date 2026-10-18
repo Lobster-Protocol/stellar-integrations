@@ -3317,9 +3317,9 @@
             "item": [
                 {
                     "id": "70efcd27-0d3f-4d53-b9e1-e8790979fa4a",
-                    "name": "The EVM chains the bridge carries USDC between Stellar and",
+                    "name": "EVM chains the bridge connects to Stellar",
                     "request": {
-                        "name": "The EVM chains the bridge carries USDC between Stellar and",
+                        "name": "EVM chains the bridge connects to Stellar",
                         "description": {
                             "content": "The EVM chains Circle CCTP carries USDC from and back to, with the contracts each side goes through. Stellar is CCTP domain 27.\n",
                             "type": "text/plain"

@@ -1,6 +1,6 @@
 import type { Network } from '../config/contracts'
 
-// stellar.expert uses 'public' for mainnet, 'testnet' for testnet
+// stellar.expert calls mainnet 'public'
 export function stellarExplorer(
   network: Network,
   kind: 'tx' | 'contract' | 'account',

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-// transfers the bridge window shows right now: it says it there, a toast on top would repeat it
+// transfers the bridge window is showing: their status is already on screen, so no toast for them
 const onScreen = new Map<string, number>()
 
 export function useOnScreen(id: string | null): void {

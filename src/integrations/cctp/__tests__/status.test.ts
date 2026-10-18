@@ -46,12 +46,12 @@ describe('where a transfer stands', () => {
     expect(statusOf(transfer(), signed()).kind).toBe('ready-deliver')
   })
 
-  it('on the way out, lets Circle mint when asked to, and calls it arrived when Circle has', () => {
+  it('on the way out, lets Circle mint when asked, then marks it delivered', () => {
     expect(statusOf(out({ forwarded: true }), signed({ forwardState: 'PENDING' })).kind).toBe('circle-minting')
     expect(statusOf(out({ forwarded: true }), signed({ forwardState: 'COMPLETE' })).kind).toBe('delivered')
   })
 
-  it("counts Circle's mint as arrived once Circle says it is confirmed, not only complete", () => {
+  it('treats a CONFIRMED forward as delivered and a SENT one as still minting', () => {
     expect(statusOf(out({ forwarded: true }), signed({ forwardState: 'SENT' })).kind).toBe('circle-minting')
     expect(statusOf(out({ forwarded: true }), signed({ forwardState: 'CONFIRMED' })).kind).toBe('delivered')
   })
@@ -96,7 +96,7 @@ describe('elapsed', () => {
   })
 })
 
-describe('what a transfer on its way waits for, from what the page recorded', () => {
+describe('waitingOn', () => {
   it('waits on Circle until it has signed', () => {
     expect(waitingOn(transfer())).toEqual({ text: '5 USDC from Base Sepolia: Circle is signing it', act: false })
     expect(waitingOn(out()).act).toBe(false)

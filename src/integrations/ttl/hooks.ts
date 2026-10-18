@@ -18,8 +18,7 @@ export interface TtlReport {
   statuses: TtlKeyStatus[]
 }
 
-// the front never calls getLedgerEntries itself; it reads the bff, which runs
-// the same scan the daemon does.
+// the bff runs the daemon's own scan; the front never calls getLedgerEntries
 export function useTtlStatus(network: Network) {
   return useQuery<TtlReport>({
     queryKey: ['ttl', network],
@@ -28,8 +27,7 @@ export function useTtlStatus(network: Network) {
       if (!base) throw new Error('VITE_LOBSTER_API_URL not set')
       const res = await fetch(`${base}/ttl?network=${network}`)
       if (!res.ok) {
-        // the relay says why it cannot answer (no factory on this network, rpc
-        // down). keep its sentence so the card shows the reason, not a code.
+        // keep the relay's sentence (no factory here, rpc down) so the card shows a reason
         const body = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(body?.error ?? `The storage feed answered ${res.status}.`)
       }

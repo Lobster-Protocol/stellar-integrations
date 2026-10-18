@@ -128,8 +128,7 @@ export function valueHistoryCsv(
   return toCsv(valueHistoryColumns(assetKeys), valueHistoryRows(points, assetKeys, priceByKey, unit))
 }
 
-// The JSON side also carries the reconciliation: the lines that explain why a
-// falling curve is not a loss.
+// the JSON also carries the XLM reconciliation (see XlmFlows)
 export function performanceJson(
   args: {
     account: string

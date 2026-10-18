@@ -82,7 +82,7 @@ describe('validateSoroswapQuote', () => {
   })
 
   it('passes a cheap token that pays out hundreds of units per unit in', () => {
-    // AQUA-like: ~400 units out per XLM in. legitimate, must not be rejected.
+    // AQUA-like: ~400 units out per XLM in
     expect(
       validateSoroswapQuote({ ...okIn, buyingStroops: okIn.sellingStroops * 400n }).ok,
     ).toBe(true)

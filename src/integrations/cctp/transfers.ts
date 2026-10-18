@@ -14,13 +14,13 @@ export type TransferDirection = 'to-stellar' | 'from-stellar'
 export interface TrackedTransfer {
   // the burn hash, unique per transfer: 0x-prefixed on an EVM chain, bare hex on Stellar
   id: string
-  // entries saved before the way back existed have none, and were all bound for Stellar
+  // absent means to-stellar
   direction?: TransferDirection
   network: Network
   // the EVM chain at the other end, where the burn happened or where the USDC is minted
   chainKey: string
   chainName: string
-  // Circle's number for the chain that burned: the EVM chain's, or Stellar's
+  // CCTP domain of the chain that burned
   sourceDomain: number
   // what the person typed, for display
   amount: string
@@ -35,8 +35,8 @@ export interface TrackedTransfer {
   attestedAt?: number
   deliveredAt?: number
   deliveredHash?: string
-  // a mint our EVM wallet sent: kept from the moment the wallet returns it, so a node
-  // that fails to answer for its receipt does not lose the link to it
+  // the mint the EVM wallet sent, saved as soon as the wallet returns it so an unread
+  // receipt does not lose it
   sentHash?: string
   // a burn out of Stellar tracked from its signature: after this time Stellar can no
   // longer take it, so only then may its absence from the ledger mean it never went out
@@ -116,7 +116,7 @@ export function markSent(network: Network, id: string, hash: string): void {
   update(network, id, (t) => ({ ...t, sentHash: hash || undefined }))
 }
 
-// with no hash given, a mint our wallet sent stands as the delivery once the chain has it
+// with no hash given, the mint the wallet sent counts as the delivery once the chain has it
 export function markDelivered(network: Network, id: string, deliveredHash: string): void {
   update(network, id, (t) => ({
     ...t,
@@ -130,9 +130,9 @@ export function forgetTransfer(network: Network, id: string): void {
   write(network, listTransfers(network).filter((t) => t.id !== id))
 }
 
-// An EVM burn the wallet is asked to sign, saved before it is asked. The wallet sends it
-// by itself, a phone even after the page is gone, so if the page goes away first the hash
-// never comes back to be tracked; the next visit finds this and looks for the burn on chain.
+// Saved before the EVM wallet is asked to sign a burn. The wallet broadcasts on its own (a
+// phone even after the page is gone), so the hash may never reach us; the next visit
+// looks for the burn on chain from this.
 export interface BurnIntent {
   id: string
   network: Network
@@ -146,8 +146,8 @@ export interface BurnIntent {
   recipient: string
   finality: CctpFinality
   startedAt: number
-  // the page load that asked: while it is still open it settles its own intent, and only
-  // one left by a page that went away is looked for on chain
+  // the page load that asked; it settles its own intents, and only other sessions' are
+  // looked for on chain
   session: string
   // on the way in, the EVM chain's block just before the wallet was asked, and how many
   // transactions the wallet had sent by then: the same count later means it sent none
@@ -174,7 +174,7 @@ export function listIntents(network: Network): BurnIntent[] {
   }
 }
 
-// resolves once the note is on disk, or once it is clear it cannot be
+// resolves when the disk copy is written or given up on
 function writeIntents(network: Network, list: BurnIntent[]): Promise<void> {
   const value = JSON.stringify(list)
   let written = Date.now()
@@ -202,7 +202,7 @@ export function newIntentId(): string {
 
 export const PAGE_SESSION = Math.random().toString(36).slice(2, 10)
 
-// intents this page load did not make: left by a tab or a PC that went away mid-signature
+// intents another page load made, which may have gone away mid-signature
 export function orphanIntents(list: BurnIntent[]): BurnIntent[] {
   return list.filter((i) => i.session !== PAGE_SESSION)
 }
@@ -237,9 +237,8 @@ export function markSettled(network: Network, ids: string[]): void {
   }
 }
 
-// The wallets this browser bridged with, searched on chain at every visit whether they are
-// connected or not: an EVM wallet locks itself when the browser restarts, and a note written
-// shortly before a power cut can be lost. A wallet is noted when it connects, before it signs
+// Wallets this browser bridged with, searched at every visit whether connected or not (an
+// EVM wallet locks itself on browser restart). Noted on connect, before anything is signed
 export interface BridgeWallet {
   kind: 'evm' | 'stellar'
   address: string
@@ -346,8 +345,8 @@ export function recordSearch(network: Network, key: string, rec: SearchRecord): 
   window.dispatchEvent(new Event(EVENT))
 }
 
-// A search that failed (an endpoint refused or throttled it) is not asked again for this
-// long, whichever trigger fires: re-asking on every one turned a refusal into a flood
+// after a failed search (an endpoint refused or throttled it), no trigger re-runs it for
+// this long: retrying on each one turns a refusal into a flood
 export const SEARCH_FAILURE_PAUSE_MS = 15 * 60_000
 
 export function searchPaused(rec: SearchRecord | undefined, now = Date.now()): boolean {
@@ -418,8 +417,7 @@ export function useBurnIntents(network: Network): BurnIntent[] {
   )
 }
 
-// The transfers, the burn notes and the wallets, put back from their copy on disk when the
-// page loads if a power cut kept that copy and not localStorage's
+// transfers, intents and wallets, restored at load from the disk copy when it is newer
 const NOTES = (['testnet', 'mainnet'] as const).flatMap((n) => [key(n), intentsKey(n), walletsKey(n)])
 
 export function restoreFromDisk(): Promise<void> {

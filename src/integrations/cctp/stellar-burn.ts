@@ -103,9 +103,8 @@ async function invokeSigned(
     throw err
   }
   if (!signed.signedTxXdr) throw new StellarBurnError('The wallet did not return a signed transaction')
-  // the hash is known from the signed envelope, before Stellar is asked: a page that goes
-  // away while it submits still left the burn behind to be found, and until when Stellar
-  // could still take it
+  // hand over the hash and maxTime before submitting: a page that dies mid-submit has
+  // already tracked the burn, with the time after which it cannot land
   const envelope = TransactionBuilder.fromXDR(signed.signedTxXdr, networkPassphrase(network))
   const maxTime = Number('timeBounds' in envelope ? envelope.timeBounds?.maxTime : undefined)
   onSigned?.(envelope.hash().toString('hex'), maxTime > 0 ? maxTime * 1000 : undefined)
@@ -186,7 +185,7 @@ export interface StellarBurnRequest {
   maxFee: bigint
 }
 
-// split out so where the money goes can be tested without a wallet
+// kept apart from the call so the args can be tested without a wallet
 export function stellarBurnArgs(req: StellarBurnRequest): xdr.ScVal[] {
   const { usdcSac } = CONTRACTS[req.network].cctp
   const args = [
@@ -205,8 +204,8 @@ export function stellarBurnArgs(req: StellarBurnRequest): xdr.ScVal[] {
   return args
 }
 
-// onSigned hears the hash once the wallet has signed, before Stellar is asked, with the time
-// after which Stellar can no longer take it; onSent once Stellar has taken it, before it confirms
+// onSigned gets the hash and the tx's maxTime once the wallet signs, before submit; onSent
+// once Stellar accepts it, before it confirms
 export async function burnFromStellar(
   req: StellarBurnRequest & { signer: Signer; validitySecs?: number },
   onSent?: (hash: string) => void,

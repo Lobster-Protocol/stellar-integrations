@@ -7,7 +7,7 @@ import { CCTP_EVM_USDC_DECIMALS, cctpChainsFor, type Network } from '../../confi
 
 // wagmi's raw "Connector not found." reads like a bug in the page rather than a
 // missing wallet extension
-/** @deprecated 2026-10: the EVM wallet window (RainbowKit) shows its own connection errors */
+/** @deprecated the EVM wallet window shows its own connection errors */
 export function readableConnectError(message: string): string {
   if (/connector not found|no injected|provider not found|window\.ethereum/i.test(message)) {
     return 'No browser wallet answered. Install MetaMask or Rabby, then try again.'
@@ -30,7 +30,7 @@ export function fmtGas(wei: bigint): string {
   return n === 0 ? '0' : n.toLocaleString('en-US', { maximumSignificantDigits: 3 })
 }
 
-// the EVM wallet's own chain, said in terms of this page's network
+// a hint when the EVM wallet is on a chain this page's network doesn't use
 export function evmChainNote(network: Network, chainId: number | undefined, chainName: string | undefined): string | null {
   if (!chainId) return null
   if (cctpChainsFor(network).some((c) => c.chainId === chainId)) return null

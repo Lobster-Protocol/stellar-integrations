@@ -31,7 +31,7 @@ function write(store: Store) {
   try {
     localStorage.setItem(KEY, JSON.stringify(store))
   } catch {
-    // nothing to do; the list simply stays as it was for this session
+    // storage full or off: the list stays as it was
   }
 }
 
@@ -57,8 +57,7 @@ export function showAllVaults(network: Network, account: string) {
   write(store)
 }
 
-// Splits a list into what to render and what the reader chose to put away, so
-// the page can always say how many are hidden rather than silently dropping them.
+// returns the hidden ones too, so the page can show a count
 export function partitionHidden<T>(
   items: T[],
   hidden: string[],

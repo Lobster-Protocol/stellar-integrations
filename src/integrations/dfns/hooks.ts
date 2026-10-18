@@ -8,8 +8,7 @@ import type { DfnsNetwork } from './profiles'
 const NS = 'dfns'
 const STALE = 60_000
 
-// The status matters to the caller: a 401 means the relay answered and turned
-// the read down, which is a different story from a relay nobody can reach.
+// keeps the status: a 401 is a relay that answered and refused, not one that is down.
 export class RelayError extends Error {
   readonly status: number
 
@@ -55,8 +54,7 @@ export interface DfnsWalletSummary {
   network: string
 }
 
-// reads key on the active profile id so a switch never serves one client's data
-// from another's cache, and stay off until a profile is selected.
+// keyed on the profile id so a switch never serves another client's cached data.
 export function useDfnsPolicies() {
   const p = useActiveProfile()
   return useQuery<{ items: DfnsPolicySummary[] }>({

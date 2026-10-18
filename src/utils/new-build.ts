@@ -1,8 +1,5 @@
-// A deploy replaces the files behind every page, and the host only keeps the new ones. A tab
-// opened before still asks for an old file when it opens a page or a window it has not shown
-// yet, and gets the site's HTML back instead. Loading the page again picks up the new version.
-// Once a minute at most, so a build that really lacks a file shows its error instead of
-// reloading for ever
+// The host only serves the latest build, so a tab opened before a deploy can ask for a chunk
+// that is gone. Reload once, at most once a minute so a broken build cannot loop.
 const KEY = 'lob_new_build_reload'
 const AT_MOST_EVERY_MS = 60_000
 
@@ -10,7 +7,7 @@ let state: 'reloading' | 'stale' | null = null
 export const newBuildState = () => state
 
 export function reloadForNewBuild(reload: () => void = () => window.location.reload(), now = Date.now()): boolean {
-  // offline the file is not gone, and loading again would only bring the browser's own error
+  // offline the chunk isn't gone, a reload would only show the browser's error page
   if (!navigator.onLine) return false
   state = 'stale'
   try {
@@ -26,7 +23,7 @@ export function reloadForNewBuild(reload: () => void = () => window.location.rel
   return true
 }
 
-// Vite raises this when a file it loads on demand, or one it preloads with it, fails to load
+// Vite fires this when a lazy chunk or one of its preloads fails to load
 export function watchForNewBuild() {
   window.addEventListener('vite:preloadError', () => {
     reloadForNewBuild()

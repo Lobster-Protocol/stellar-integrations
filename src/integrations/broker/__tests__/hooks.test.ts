@@ -3,8 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { BrokerQuoteParams } from '../types'
 import type { Signer } from '../../signer/types'
 
-// buildSoroswapSwapTx talks to the chain, so a spy takes its place and records the
-// minAmountOut; asset-mapping is stubbed so the confirm path needs no network.
+// buildSoroswapSwapTx talks to the chain; a spy takes its place and records minAmountOut
 const { buildSpy } = vi.hoisted(() => ({ buildSpy: vi.fn(() => Promise.resolve('PREPARED_XDR')) }))
 vi.mock('../soroswap-fallback', () => ({ buildSoroswapSwapTx: buildSpy }))
 vi.mock('../asset-mapping', () => ({
@@ -31,9 +30,7 @@ const args = (buyingStroops: bigint) => ({
 })
 
 describe('SOROSWAP_SLIPPAGE', () => {
-  it('is 1% - the single figure the swap panel shows and the leg enforces', () => {
-    // the panel renders SOROSWAP_SLIPPAGE * 100 and the confirm path derives
-    // minAmountOut from the same constant, so display and enforcement can't drift.
+  it('is 1%, the figure the swap panel shows and the leg enforces', () => {
     expect(SOROSWAP_SLIPPAGE).toBe(0.01)
     expect(SOROSWAP_SLIPPAGE * 100).toBe(1)
   })
@@ -44,7 +41,7 @@ describe('buildSoroswapConfirmTx minAmountOut', () => {
     const buying = 1_000_000_000n
     await buildSoroswapConfirmTx(args(buying))
     const passed = (buildSpy.mock.calls[0] as unknown as [{ minAmountOut: bigint }])[0]
-    // 1% off 100.0000000 XLM = 99.0000000
+    // 1% off 100.0000000 = 99.0000000
     expect(passed.minAmountOut).toBe(990_000_000n)
     expect(passed.minAmountOut).toBe((buying * 9900n) / 10000n)
   })
@@ -54,7 +51,6 @@ describe('buildSoroswapConfirmTx minAmountOut', () => {
     await buildSoroswapConfirmTx(args(buying))
     const passed = (buildSpy.mock.calls[0] as unknown as [{ minAmountOut: bigint }])[0]
     expect(passed.minAmountOut).toBeLessThan(buying)
-    // exactly the constant-derived floor, so the number shown stays the number enforced
     expect(passed.minAmountOut).toBe(
       (buying * BigInt(Math.floor((1 - SOROSWAP_SLIPPAGE) * 10_000))) / 10_000n,
     )

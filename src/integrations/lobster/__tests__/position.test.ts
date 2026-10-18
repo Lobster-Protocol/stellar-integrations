@@ -60,8 +60,7 @@ describe('valueVault', () => {
   })
 
   it('does not report a working vault as empty', () => {
-    // get_amounts_tokens is the balance held outside any pool, so a deployed
-    // vault reads near zero there even though its position is worth something
+    // get_amounts_tokens leaves out what sits in the pool
     const working = vault({
       venue: 'soroswap',
       amount0: '0',
@@ -103,7 +102,7 @@ describe('buildPortfolio with a working vault', () => {
     expect(p.total).toBe(1000)
   })
 
-  it('gives the venue its weight rather than leaving it at zero', () => {
+  it('counts a working vault under its venue', () => {
     const p = buildPortfolio([], [working], priceOf, 'testnet')
     expect(p.byVenue).toEqual([{ name: 'Soroswap', value: 1000 }])
   })

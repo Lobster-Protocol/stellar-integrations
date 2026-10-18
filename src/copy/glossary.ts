@@ -1,5 +1,4 @@
-// Plain-language copy for the protocol terms the dashboard has to put on screen.
-// Kept in one place so a term reads the same wherever it shows up.
+// Plain-language copy for protocol terms, in one place so each reads the same everywhere.
 
 export type GlossaryKey =
   | 'trustline'
@@ -35,7 +34,7 @@ export const GLOSSARY: Record<GlossaryKey, string> = {
     'The worst price you will accept. If the market moves past it before the swap settles, the swap is cancelled instead of filling at a bad price.',
   stroop: 'The smallest slice of XLM: one ten-millionth, 0.0000001 XLM.',
   factory: 'The Lobster contract that creates vaults and keeps the list of them.',
-  contractId: "A smart contract's on-chain address, the C... string it lives at.",
+  contractId: "A smart contract's on-chain address, the string that starts with C.",
   operation: 'A single step inside a transaction: one payment, one swap, one trustline change. One transaction can bundle several.',
   admin: 'The account allowed to manage this contract, for example to change its settings.',
   lpShares: 'Your slice of a liquidity pool. Redeem them to take back your share of the two tokens in it.',

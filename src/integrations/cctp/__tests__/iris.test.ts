@@ -207,7 +207,7 @@ describe('maxFeeFor', () => {
 })
 
 describe('the pace of requests to Circle', () => {
-  it('sends ten a second at most, whoever asks, so Circle never shuts the page out', async () => {
+  it('sends at most ten requests a second, from any caller', async () => {
     const sent: number[] = []
     vi.stubGlobal(
       'fetch',

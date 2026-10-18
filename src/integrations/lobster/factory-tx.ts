@@ -4,15 +4,13 @@ import { getSorobanServer, networkPassphrase, loadFunded } from './client'
 import { submitSignedXdr, waitForTx, type SorobanRestorePreamble } from './factory'
 import { INCLUSION_FEE_STROOPS, CONTRACTS, type Network } from '../../config/contracts'
 
-// create_pool deploys a fresh vault owned by the caller for a token pair. It runs
-// caller.require_auth and takes no other trusted address.
+// create_pool runs caller.require_auth and takes no other trusted address
 export async function buildCreatePoolTx(
   network: Network,
   caller: string,
   token0Sac: string,
   token1Sac: string,
-  // widened for a multisig owner so a quorum has time to sign the same envelope,
-  // the same reason vault-tx takes this, past the 60s single-sig default.
+  // a multisig owner passes more, so the quorum signs before the envelope expires
   timeoutSecs = 60,
 ): Promise<{ xdr: string; restorePreamble?: SorobanRestorePreamble }> {
   const factoryId = CONTRACTS[network].lobster.factory

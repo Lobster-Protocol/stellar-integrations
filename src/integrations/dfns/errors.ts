@@ -15,8 +15,8 @@ export function readableDfnsError(message: string): string {
   if (m.includes('rejected') || m.includes('denied')) {
     return 'An approval policy in DFNS declined this request.'
   }
-  // demo-tx already throws a clear, actionable sentence for an unfunded wallet
+  // demo-tx already throws a user-facing message for an unfunded wallet
   if (m.includes('not funded') || m.includes('friendbot')) return message
-  // a JSON blob or a stack: keep the first line only, trimmed
+  // a JSON blob or a stack: first line only, length-capped
   return message.split('\n')[0].slice(0, 180)
 }

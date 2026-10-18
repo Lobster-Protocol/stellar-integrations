@@ -4,8 +4,7 @@ import { INCLUSION_FEE_STROOPS, type Network } from '../../config/contracts'
 import { getHorizonServer } from '../horizon/client'
 import { networkPassphrase } from '../lobster/client'
 
-// a quorum approval is a human step, so the tx must still be valid when dfns
-// broadcasts it minutes later, so the window is deliberately wide.
+// dfns broadcasts only once the quorum approves, which can be many minutes later.
 const APPROVAL_WINDOW_SECONDS = 3600
 
 // the treasury pays itself: no value leaves, but it is a real payment op the

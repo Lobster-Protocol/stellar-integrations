@@ -4,15 +4,12 @@ import { isContractId, isAccountId } from '../stellar/strkey-guards'
 import { networkPassphrase } from '../lobster/client'
 import { decimalToStroops } from '../stellar/amount'
 
-// broker asset format: 'xlm' for native, 'CODE-ISSUER' for classic, C... for
-// soroban tokens. soroswap and our analytics need the SAC contract id, so we
-// map per network.
+// broker asset format: 'xlm' for native, 'CODE-ISSUER' for classic, C... for soroban tokens
 export function brokerAssetToSac(asset: string, network: Network): string | null {
   const c = CONTRACTS[network]
   if (asset === 'xlm') return isContractId(c.tokens.xlmSac) ? c.tokens.xlmSac : null
   if (asset.startsWith('C')) return isContractId(asset) ? asset : null
-  // a classic asset's SAC is deterministic from code, issuer and network
-  // passphrase, so derive it rather than keep a table of contract ids.
+  // a classic SAC id derives from code, issuer and passphrase, no table needed
   const dash = asset.indexOf('-')
   if (dash > 0) {
     const issuer = asset.slice(dash + 1)
@@ -26,8 +23,7 @@ export function brokerAssetToSac(asset: string, network: Network): string | null
   return null
 }
 
-// null-returning wrapper over decimalToStroops: zero, negative, over-precise or
-// missing input all fold to null so call sites share one guard path.
+// zero, negative, over-precise or missing input all give null, so callers need one check
 export function toStroops(decimal: string | undefined): bigint | null {
   if (!decimal) return null
   try {

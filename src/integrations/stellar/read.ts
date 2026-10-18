@@ -20,8 +20,7 @@ export class ContractReadError extends Error {
   }
 }
 
-// a contract view is read by simulating the call from an account that never
-// signs, so a fabricated source works and the source need not exist on-chain.
+// a view is only simulated, never signed, so the source need not exist on-chain
 export async function simulateRead<T>(
   network: Network,
   source: string,

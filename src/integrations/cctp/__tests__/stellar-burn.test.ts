@@ -107,7 +107,7 @@ describe('what the burn asks of Circle', () => {
   })
 })
 
-describe("Circle's refusals, in words", () => {
+describe('explainBurnFailure', () => {
   it('names the ones a person can fix', () => {
     expect(explainBurnFailure('HostError: Error(Contract, #10)')).toMatch(/does not hold that much USDC/)
     expect(explainBurnFailure('HostError: Error(Contract, #9)\nmore')).toMatch(/allowance/)

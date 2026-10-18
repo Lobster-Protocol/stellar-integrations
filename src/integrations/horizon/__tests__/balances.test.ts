@@ -10,8 +10,7 @@ vi.mock('../client', () => ({
   }),
 }))
 
-// the soroban USDC read is exercised on its own in token-balance.test.ts;
-// here we stub it so the balance mapping stays the unit under test.
+// covered in token-balance.test.ts; stubbed so the mapping stays the unit under test
 const sorobanTokenBalance = vi.fn()
 vi.mock('../../stellar/token-balance', () => ({
   getSorobanTokenBalance: (...args: unknown[]) => sorobanTokenBalance(...args),
@@ -22,7 +21,7 @@ const { getAccountBalances } = await import('../account')
 describe('getAccountBalances', () => {
   beforeEach(() => {
     loadAccount.mockReset()
-    // default: no soroban USDC, so the classic mapping tests are unaffected.
+    // no soroban USDC unless a test says otherwise
     sorobanTokenBalance.mockReset()
     sorobanTokenBalance.mockResolvedValue(null)
   })

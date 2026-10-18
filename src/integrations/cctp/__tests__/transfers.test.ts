@@ -76,14 +76,14 @@ describe('tracked transfers', () => {
     expect(listTransfers('testnet')).toEqual([])
   })
 
-  it('survives storage that was edited into nonsense', () => {
+  it('returns nothing for garbage in storage', () => {
     localStorage.setItem('lob_cctp_transfers_testnet', '{not json')
     expect(listTransfers('testnet')).toEqual([])
     localStorage.setItem('lob_cctp_transfers_testnet', JSON.stringify([{ id: 1 }, null, 'x']))
     expect(listTransfers('testnet')).toEqual([])
   })
 
-  it('reads an entry saved before the way back existed as a transfer into Stellar', () => {
+  it('reads an entry with no direction as a transfer into Stellar', () => {
     trackTransfer(transfer())
     expect(directionOf(listTransfers('testnet')[0])).toBe('to-stellar')
     expect(directionOf(transfer({ direction: 'from-stellar' }))).toBe('from-stellar')
@@ -104,7 +104,7 @@ describe('tracked transfers', () => {
     expect(typeof t.deliveredAt).toBe('number')
   })
 
-  it('keeps a mint sent before its receipt was read, as the delivery once the chain has it', () => {
+  it('keeps a sent mint as burned, then delivers it under the sent hash', () => {
     trackTransfer(transfer({ direction: 'from-stellar' }))
     markSent('testnet', transfer().id, '0xsent')
     expect(listTransfers('testnet')[0]).toMatchObject({ stage: 'burned', sentHash: '0xsent' })
@@ -131,7 +131,7 @@ describe('tracked transfers', () => {
     expect(listTransfers('testnet')[0].stage).toBe('burned')
   })
 
-  it('lets old finished transfers go past the history it keeps, never one still on its way', () => {
+  it('trims old finished transfers past the cap, never one still on its way', () => {
     trackTransfer(transfer({ id: 'on-its-way', createdAt: 0 }))
     for (let i = 0; i < 60; i++) trackTransfer(transfer({ id: `done-${i}`, stage: 'delivered', createdAt: i + 1 }))
     const list = listTransfers('testnet')
@@ -175,7 +175,7 @@ describe('burn intents', () => {
     expect(orphanIntents(listIntents('testnet')).map((i) => i.id)).toEqual(['left-behind'])
   })
 
-  it('never shows a testnet intent on mainnet, and survives storage edited into nonsense', () => {
+  it('keeps testnet intents off mainnet and survives garbage in storage', () => {
     saveIntent(intent())
     expect(listIntents('mainnet')).toEqual([])
     localStorage.setItem('lob_cctp_intents_testnet', '{nope')
@@ -227,7 +227,7 @@ describe('the wallets this browser bridged with', () => {
     expect(listWallets('mainnet')).toEqual([])
   })
 
-  it('keeps the six last ones, forgets one unseen for a month, and ignores what is not an address', () => {
+  it('keeps the last six, drops one unseen for a month and skips non-addresses', () => {
     for (let i = 0; i < 8; i++) rememberWallet('testnet', 'evm', `0x${String(i).repeat(40)}`)
     expect(listWallets('testnet')).toHaveLength(6)
     localStorage.setItem(

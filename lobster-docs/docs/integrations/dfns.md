@@ -81,8 +81,8 @@ request waits for an approver before anything broadcasts. The identity that
 starts a request is excluded from approving it, so the initiating leg and the
 approving leg are always two separate DFNS users, whatever the limit is set to.
 
-The limits themselves are configuration, not code. They live in the env that
-`scripts/setup-dfns-policies.mts` reads, so this page does not quote a number
+The limits themselves are configuration, not code. They're set in the env that
+`scripts/setup-dfns-policies.mts` reads, so this page doesn't quote a number
 that would rot. Ours are set so the approval path is the normal one rather than
 the exception.
 
@@ -115,7 +115,7 @@ identities, never leaves the server. Wallet transaction and transfer events
 export as a MiCA-shaped audit log, chained record to record so the export
 verifies end to end.
 
-## Where it lives
+## Code
 
 `server/dfns/` holds the client, signing, policies, approvals and the sign guard.
 The routes, the HMAC check and the SSE stream are in `server/webhook.ts`. On the

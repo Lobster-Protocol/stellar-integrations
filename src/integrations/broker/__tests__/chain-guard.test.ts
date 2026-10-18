@@ -167,7 +167,7 @@ describe('inspectBrokerTx', () => {
     expect(() => inspectBrokerTx('X', ACCOUNT, PASSPHRASE)).not.toThrow()
   })
 
-  it('refuses a non-trader destination even with no cap set (keyless path)', () => {
+  it('refuses a non-trader destination even with no cap set', () => {
     fromXDRMock.mockReturnValueOnce({
       source: ACCOUNT,
       operations: [{ type: 'pathPaymentStrictSend', sendAmount: '10', destination: OTHER }],
@@ -184,7 +184,7 @@ describe('inspectBrokerTx', () => {
     expect(() => inspectBrokerTx('X', ACCOUNT, PASSPHRASE)).toThrow(/not the trader/i)
   })
 
-  it('refuses a fee-bump whose bump fee is over the ceiling and funded by the trader', () => {
+  it('refuses a trader-funded fee-bump over the fee ceiling', () => {
     fromXDRMock.mockReturnValueOnce({
       innerTransaction: {
         source: ACCOUNT,

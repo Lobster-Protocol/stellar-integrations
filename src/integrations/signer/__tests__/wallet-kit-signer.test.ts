@@ -66,7 +66,7 @@ describe('walletKitSigner', () => {
     expect(r).toEqual({ signedTxXdr: 'SIGNED' })
   })
 
-  it('refuses to reach the wallet while a read-only view is open, and signs again once it is left', async () => {
+  it('refuses to sign during a read-only view, and signs once it is left', async () => {
     const VIEWED = 'GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS'
     setViewingAddress(VIEWED)
     await expect(

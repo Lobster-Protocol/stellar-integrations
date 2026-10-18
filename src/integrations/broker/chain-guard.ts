@@ -10,16 +10,14 @@ import {
 import { CONTRACTS, type Network } from '../../config/contracts'
 import { decimalToStroops } from '../stellar/amount'
 
-// a swap settles via path payments or the router contract; a bare payment or a
-// DEX offer is out because its outflow escapes the spend cap below.
+// no bare payment or DEX offer: their outflow escapes the spend cap below.
 const ALLOWED_OP_TYPES = new Set([
   'pathPaymentStrictReceive',
   'pathPaymentStrictSend',
   'invokeHostFunction',
 ])
 
-// 1 XLM. a real swap fee is a few thousand stroops; this only exists to stop a
-// broker xdr from draining xlm through an inflated fee the spend cap can't see.
+// 1 XLM. the spend cap doesn't count fees, so an inflated one could drain xlm.
 const MAX_FEE_STROOPS = 10_000_000n
 
 export class BrokerTxRejected extends Error {
@@ -40,8 +38,7 @@ function invokedContractId(op: Operation.InvokeHostFunction): string | null {
   }
 }
 
-// runs before the wallet kit ever sees the envelope. maxSpendStroops, when set,
-// caps the total outflow against the amount the trader agreed to in the quote.
+// maxSpendStroops, when set, caps total outflow at what the trader agreed to in the quote.
 export function inspectBrokerTx(
   xdr: string,
   traderAccount: string,
@@ -62,8 +59,7 @@ export function inspectBrokerTx(
     )
   }
 
-  // bound the fee directly; on a fee-bump the trader also pays the outer leg, so
-  // bound that when it funds the bump.
+  // a fee-bump's outer fee is the trader's money too when the trader is its fee source.
   if (inner.fee !== undefined && BigInt(inner.fee) > MAX_FEE_STROOPS) {
     throw new BrokerTxRejected(`tx fee ${inner.fee} stroops is over the ${MAX_FEE_STROOPS} ceiling`)
   }
@@ -95,9 +91,8 @@ export function inspectBrokerTx(
         `op type ${op.type} sources ${op.source}, not the trader ${traderAccount}`,
       )
     }
-    // the proceeds must land back with the trader, or a broker xdr could spend
-    // within the cap and credit its own wallet. a muxed destination never
-    // string-matches the trader's G address, so it fails closed.
+    // destination must be the trader, or an xdr could stay under the cap and pay
+    // the broker. a muxed address never equals the G address, so it fails closed.
     if (op.type === 'pathPaymentStrictSend' || op.type === 'pathPaymentStrictReceive') {
       const dest = (op as { destination?: string }).destination
       if (dest !== traderAccount) {
@@ -116,14 +111,13 @@ export function inspectBrokerTx(
           `broker invoked contract ${contractId}, not in the network allowlist`,
         )
       }
-      // a soroban call's spend hides in opaque contract args the cap can't sum, so
-      // refuse it under a cap; the broker can route the same trade via path payments.
+      // the cap can't sum a spend hidden in contract args, so a capped trade has to
+      // go through path payments.
       if (maxSpendStroops !== undefined) {
         throw new BrokerTxRejected('a soroban invoke is not bound by the spend cap; route through path payments')
       }
     }
-    // sendAmount is the fixed spend on a strict-send, sendMax the ceiling on a
-    // strict-receive. either one bounds what leaves the trader's account.
+    // sendMax is a ceiling, so a strict-receive counts at its worst case.
     if (maxSpendStroops !== undefined) {
       if (op.type === 'pathPaymentStrictSend') {
         spent += decimalToStroops((op as { sendAmount: string }).sendAmount)

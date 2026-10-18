@@ -62,7 +62,7 @@ describe('handleSendResult', () => {
       handleSendResult({ status: 'ERROR', hash: 'hx', errorResult: { e: 'malformed' } }),
     ).toThrow(/malformed/)
   })
-  it('says in words that an expired transaction sent nothing, and keeps the code', () => {
+  it('maps txTooLate to a readable message and keeps the code', () => {
     const tooLate = new xdr.TransactionResult({
       feeCharged: xdr.Int64.fromString('24095'),
       result: xdr.TransactionResultResult.txTooLate(),
@@ -79,7 +79,7 @@ describe('handleSendResult', () => {
     expect((caught as Error).message).toMatch(/expired before it reached the network.*Nothing was sent/)
     expect((caught as Error).message).not.toMatch(/_attributes|_switch/)
   })
-  it('names a refusal it has no sentence for', () => {
+  it('falls back to the raw code for an unmapped refusal', () => {
     const malformed = new xdr.TransactionResult({
       feeCharged: xdr.Int64.fromString('100'),
       result: xdr.TransactionResultResult.txMalformed(),

@@ -90,7 +90,6 @@ describe('quoteBridge', () => {
     await expect(quoteBridge(sdk as never, VALID_REQ, false)).rejects.toThrow(/no longer carries USDC into Stellar/i)
   })
 
-  // the live api returns the stellar token with no pool and a feeShare of "0"
   it('refuses the route when allbridge lists no stellar pool, even at a zero fee', async () => {
     sdk.tokensByChain.mockImplementation(async (chain: string) => [
       chain === 'SRB' ? ({ ...TOKENS.SRB, poolAddress: null, feeShare: '0' } as never) : TOKENS[chain as keyof typeof TOKENS],
@@ -149,7 +148,7 @@ describe('quoteBridge', () => {
 })
 
 describe('buildBridgeTx', () => {
-  it('uses Messenger.ALLBRIDGE and the resolved tokens', async () => {
+  it('passes the request and the resolved tokens to the send builder', async () => {
     await buildBridgeTx(sdk as never, VALID_REQ)
     const args = sdk.bridge.rawTxBuilder.send.mock.calls[0][0]
     expect(args.amount).toBe('50')

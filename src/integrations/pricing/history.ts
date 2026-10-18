@@ -6,8 +6,7 @@ import { getHorizonServer } from '../horizon/client'
 import { getAccountBalances, useAccountExists } from '../horizon/account'
 import { decimalToStroops, stroopsToDecimal } from '../stellar/amount'
 
-// Horizon's own ceiling per page, and how many pages we are willing to walk
-// before saying the series is clipped rather than quietly showing half a history.
+// Horizon's page ceiling, and the page budget before the series is flagged clipped
 const PAGE = 200
 const MAX_PAGES = 3
 
@@ -214,14 +213,13 @@ export async function getBalanceHistory(
 
   const { deltas, complete, created, flows } = await collectDeltas(network, account)
 
-  // the flows only mean anything if they land on the live balance
+  // the flows only mean anything if they add up to the live balance
   const liveNative = balances.find((b) => b.isNative)?.balance ?? '0'
   flows.reconciles = complete && flows.heldNow === stroopsToDecimal(decimalToStroops(liveNative))
 
   if (deltas.length === 0) return { points: [], complete, reachesAccountCreation: created, flows }
 
-  // Horizon only reports classic balances, so a soroban-only token (testnet
-  // USDC) has no effect trail to walk. Track the assets we can actually replay.
+  // only assets with an effect trail are replayed; a soroban-only token has none
   const tracked = new Set(deltas.map((d) => d.key))
   const running = new Map<AssetKey, bigint>()
   for (const b of balances) {
@@ -235,8 +233,7 @@ export async function getBalanceHistory(
     held: Object.fromEntries([...running].map(([k, v]) => [k, Number(stroopsToDecimal(v))])),
   })
 
-  // newest first, so walking the list undoes each move and lands on the balance
-  // that stood just before it
+  // newest first, so undoing each move in turn gives the balance just before it
   deltas.sort((a, b) => b.ts - a.ts)
   const points: BalancePoint[] = [snapshot(Date.now())]
   for (let i = 0; i < deltas.length; i++) {
@@ -285,8 +282,7 @@ export function densify(points: BalancePoint[], target = 320): BalancePoint[] {
 }
 
 export function useBalanceHistory(network: Network, account: string | null) {
-  // a wallet with no funds has no history and is not on-chain, so skip the
-  // ledger replay until balances confirm the account exists.
+  // skip the replay until balances show the account on-chain
   const exists = useAccountExists(network, account) === 'live'
   return useQuery<BalanceHistory>({
     queryKey: ['balance-history', network, account],

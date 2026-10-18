@@ -20,7 +20,6 @@ beforeEach(() => {
 
 describe('awaitDfnsSignature', () => {
   it('returns the broadcast hash for a classic tx, without submitting', async () => {
-    // dfns broadcast the classic tx itself, so the hash is the whole artifact
     pollSignatureResult.mockResolvedValueOnce({ txHash: 'HASH123' })
     const hash = await awaitDfnsSignature('sig-1', 'testnet')
     expect(hash).toBe('HASH123')
@@ -28,7 +27,6 @@ describe('awaitDfnsSignature', () => {
   })
 
   it('submits the signed envelope for a soroban tx and returns the settled hash', async () => {
-    // dfns only signed the soroban tx; this submits it through rpc
     pollSignatureResult.mockResolvedValueOnce({ signedTxXdr: 'ENV_XDR' })
     submitSignedXdr.mockResolvedValueOnce('SUBMITTED_HASH')
     waitForTx.mockResolvedValueOnce({ status: 'SUCCESS' })

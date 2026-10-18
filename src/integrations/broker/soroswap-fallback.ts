@@ -30,9 +30,8 @@ function swapPath(sellingTokenId: string, buyingTokenId: string) {
   ])
 }
 
-// direct soroswap quote for when the broker has none. the last element of the
-// returned Vec<i128> is the expected output. without a pair the simulation
-// fails and this returns null.
+// the last element of the returned Vec<i128> is the expected output. without a
+// pair the simulation fails and this returns null.
 export async function quoteSoroswapDirect(
   params: SoroswapQuoteParams,
 ): Promise<bigint | null> {
@@ -50,8 +49,7 @@ export async function quoteSoroswapDirect(
   }
 
   const server = getSorobanServer(params.network, 'read')
-  // read-only sim: a quote moves nothing, so a fabricated source lets an
-  // unfunded (not-yet-created) caller still get a price.
+  // a quote moves nothing, so a fabricated source lets an unfunded caller get a price
   const sourceAccount = new Account(params.callerAccount, '0')
 
   const router = new Contract(routerId)
@@ -77,9 +75,8 @@ export async function quoteSoroswapDirect(
 export interface SoroswapBuildParams extends SoroswapQuoteParams {
   minAmountOut: bigint
   deadlineUnix: number
-  // tx timebound in seconds. widened for a multisig owner so the envelope does
-  // not expire (tx_too_late) while a quorum signs it. must move together with
-  // deadlineUnix, which is the separate in-contract deadline.
+  // tx timebound in seconds, widened so a quorum can sign before tx_too_late.
+  // moves together with deadlineUnix, the separate in-contract deadline.
   timeoutSecs?: number
 }
 
@@ -90,8 +87,7 @@ export async function buildSoroswapSwapTx(params: SoroswapBuildParams): Promise<
   assertContractId(params.sellingTokenId)
   assertContractId(params.buyingTokenId)
   assertAccountId(params.callerAccount)
-  // a zero min_out would let the pool fill us at any price. dust quotes
-  // can floor to 0 after the slippage haircut, so refuse them here.
+  // min_out 0 fills at any price, and a dust quote can floor to 0 after the haircut
   if (params.minAmountOut <= 0n) throw new Error('soroswap swap needs a positive min amount out')
 
   const server = getSorobanServer(params.network)

@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-// transfers.ts, which the power cut test loads twice, brings the Stellar SDK with it. Loaded
-// cold inside the test it can take more than the 5 s a test gets on a busy machine, so it
-// loads here, before the clock starts
+// imported up front so its cold load doesn't count against the power cut test's 5 s timeout
 import '@stellar/stellar-sdk'
 
 // just what durable.ts uses of IndexedDB, in memory; answers come back on a later tick
@@ -44,7 +42,6 @@ function fakeIndexedDB() {
   return { factory, notes, durability }
 }
 
-// Cache Storage, in memory
 function fakeCaches() {
   const entries = new Map<string, string>()
   const api = {
@@ -71,8 +68,8 @@ afterEach(() => vi.unstubAllGlobals())
 
 const K = 'lob_cctp_intents_testnet'
 
-describe('the copy on disk of the bridge notes', () => {
-  it('stamps each write with a time that only goes up, and keeps the copy with strict durability', async () => {
+describe('durable notes', () => {
+  it('stamps writes with a rising time and asks for strict durability', async () => {
     const { writeLocal, writeDurable, writtenAt } = await import('../durable')
     const first = writeLocal(K, '["a"]')
     const second = writeLocal(K, '["b"]')
@@ -112,7 +109,7 @@ describe('the copy on disk of the bridge notes', () => {
     expect(idb.notes.get(K)).toEqual({ value: '["local"]', written: 300 })
   })
 
-  it('keeps the note in Cache Storage too, which brings it back when IndexedDB is lost', async () => {
+  it('also keeps the note in Cache Storage, for when IndexedDB is lost', async () => {
     const { writeDurable } = await import('../durable')
     await writeDurable(K, '["kept"]', 200)
     expect(JSON.parse([...cache.entries.values()][0])).toEqual({ value: '["kept"]', written: 200 })
@@ -144,7 +141,7 @@ describe('the copy on disk of the bridge notes', () => {
     expect(localStorage.getItem(K)).toBe('["local"]')
   })
 
-  it('has a burn note on disk by the time saving it resolves, and transfers back after a power cut', async () => {
+  it('holds the intent once saveIntent resolves, and both lists survive a power cut', async () => {
     const t = await import('../transfers')
     await t.saveIntent({
       id: 'intent-a',

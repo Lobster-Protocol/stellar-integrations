@@ -100,7 +100,7 @@ export function matchesQuery(e: ActivityEvent, raw: string): boolean {
 }
 
 // horizon hands a soroban call back as base64 ScVals: the target contract first, the
-// method name in the first Sym, then the arguments, which are only read for a swap
+// method name in the first Sym, then the arguments, only searched for a swap path
 function decodeCall(params: { value: string; type: string }[]) {
   let contractId: string | undefined
   let fn: string | undefined
@@ -160,8 +160,8 @@ function moveFrom(c: BalanceChange, account: string): AssetMove | null {
   }
 }
 
-// Horizon puts the protocol 22 name on the wire while the SDK union still
-// carries the pre-rename one, so neither string alone catches every rent op.
+// Horizon sends the renamed op type while the SDK union carries the old name,
+// so neither string alone catches every rent op
 const RENT_OPS = new Set(['extend_footprint_ttl', 'bump_footprint_expiration', 'restore_footprint'])
 
 export function toActivityEvent(op: OpRecord, account: string): ActivityEvent {
@@ -224,8 +224,7 @@ export function toActivityEvent(op: OpRecord, account: string): ActivityEvent {
 const PAGE = 30
 
 export function useActivity(network: Network, account: string | null) {
-  // a wallet with no funds is not on-chain yet, so it has no operations and
-  // asking Horizon just 404s. wait until balances confirm the account exists.
+  // Horizon 404s on an unfunded account, so wait until balances show it live
   const exists = useAccountExists(network, account) === 'live'
   return useInfiniteQuery({
     queryKey: ['activity', network, account],

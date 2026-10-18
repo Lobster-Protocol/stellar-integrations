@@ -9,7 +9,7 @@ describe('explainClaimFailure', () => {
   })
 
   it('points at the attestation when a signature does not verify', () => {
-    // 6013 is what a malformed signature produces, seen on a mainnet simulation
+    // 6013 is what a malformed signature produces
     expect(explainClaimFailure('HostError: Error(Contract, #6013)\nEvent log...')).toMatch(
       /attestation again/,
     )
@@ -24,7 +24,7 @@ describe('explainClaimFailure', () => {
 })
 
 describe('checkClaim', () => {
-  // the head of a real Base to Stellar message, with a body too short to be a burn
+  // just the head of a real Base to Stellar message
   it('throws on a message too short to be a transfer', async () => {
     await expect(
       checkClaim('testnet', '0x00000001000000060000001b', '0x' + 'ab'.repeat(130), 'G'),

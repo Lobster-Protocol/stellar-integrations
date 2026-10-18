@@ -7,8 +7,7 @@ import { toActivityEvent, type ActivityEvent } from '../horizon/activity'
 import { useAccountExists } from '../horizon/account'
 import { decimalToStroops, stroopsToDecimal } from '../stellar/amount'
 
-// Horizon's ceiling per page, and how far back we walk before calling the trail
-// clipped rather than quietly counting from halfway through.
+// Horizon's largest page
 const PAGE = 200
 const MAX_PAGES = 3
 
@@ -40,7 +39,7 @@ export function movesFromEvents(events: ActivityEvent[]): VaultMove[] {
       try {
         size = decimalToStroops(m.amount)
       } catch {
-        // an amount we cannot read exactly is one we will not put in a total
+        // can't parse it exactly, so keep it out of the totals
         continue
       }
       if (size === 0n) continue
@@ -83,7 +82,7 @@ export async function getVaultFlows(network: Network, account: string): Promise<
   return { moves: movesFromEvents(events), complete }
 }
 
-// one per moment something moved; codes that sat still carry their last total
+// one per timestamp; a code that didn't move keeps its last total
 export interface FlowPoint {
   ts: number
   net: Record<string, number>
@@ -100,9 +99,8 @@ export interface VaultFlowSeries {
   count: number
 }
 
-// null when nothing moved with this vault, so callers show an empty state rather
-// than a flat line at zero. `prefer` is the vault's pair, so panels keep the card's
-// order, and any other code falls in behind it, busiest first
+// null when nothing moved with this vault (empty state, not a flat zero line).
+// `prefer` is the vault's pair; other codes follow it, busiest first.
 export function vaultFlowSeries(
   moves: VaultMove[],
   vault: string,
@@ -160,8 +158,7 @@ export function vaultFlowSeries(
 export function useVaultFlows(network: Network, account: string | null) {
   // an unfunded wallet has no operations to walk, and asking Horizon just 404s
   const exists = useAccountExists(network, account) === 'live'
-  // one key for the whole page: a wallet with six vaults renders six cards, and
-  // they all read the same operation list, so react-query serves one request
+  // one key per wallet: every vault card reads the same operation list in one request
   return useQuery<VaultFlows>({
     queryKey: ['lobster', 'vault-flows', network, account],
     queryFn: () => getVaultFlows(network, account!),

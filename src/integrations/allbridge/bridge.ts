@@ -37,9 +37,8 @@ export async function resolveUsdc(
   return usdc
 }
 
-// the stellar usdc token comes back with no pool address and a feeShare of "0",
-// and without a pool the sdk dies on a division by zero. a parked pool shows as
-// a feeShare near 1, so that is refused too.
+// the stellar usdc token comes back with no pool and a feeShare of "0", and the sdk
+// then divides by zero. a parked pool shows a feeShare near 1. both are refused.
 export function assertStellarRoute(stellarUsdc: TokenWithChainDetails): void {
   const pool = (stellarUsdc as { poolAddress?: string | null }).poolAddress
   const fee = Number((stellarUsdc as { feeShare?: number | string }).feeShare)
@@ -64,8 +63,7 @@ export async function quoteBridge(
   assertStellarRoute(stellarUsdc)
 
   const messenger = Messenger.ALLBRIDGE
-  // the token list ships an empty poolInfo, so the plain getAmountToBeReceived
-  // underflows to zero. read the live pool state from chain.
+  // the token list's poolInfo is empty, so plain getAmountToBeReceived underflows to zero
   const amountOutFloat = await sdk.getAmountToBeReceivedFromChain(
     req.amount,
     sourceUsdc,
@@ -75,7 +73,7 @@ export async function quoteBridge(
   const gasFee = await sdk.getGasFeeOptions(sourceUsdc, stellarUsdc, messenger)
 
   // transferTime is in ms and some corridors omit it. a value already in seconds
-  // lands under the 10s floor, so it reads as null too.
+  // falls under the 10s floor, so it reads as null too.
   const rawMs = sourceUsdc.transferTime?.[ChainSymbol.SRB]?.[messenger]
   const secs = typeof rawMs === 'number' ? Math.round(rawMs / 1000) : NaN
   const estimatedTimeSeconds = secs >= 10 && secs <= 86_400 ? secs : null
@@ -137,7 +135,7 @@ export async function buildBridgeApproveTx(
   })) as RawEvmTx
 }
 
-// allbridge contract address on `chain`. needed to read the erc-20 allowance.
+// needed to read the erc-20 allowance
 export async function getBridgeSpender(
   sdk: AllbridgeCoreSdk,
   chain: EvmSourceChain,

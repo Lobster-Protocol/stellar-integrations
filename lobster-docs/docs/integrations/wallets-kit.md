@@ -13,7 +13,7 @@ WalletConnect wallets once a project id is set.
 ## Connecting
 
 The kit opens a modal to pick a wallet. The chosen address, the wallet name and
-the kit's id for that wallet go into React context and are mirrored to
+the kit's id for that wallet go into React context and are copied to
 localStorage so a reload stays connected. Only those three are stored, never a
 key or a signed payload.
 
@@ -35,11 +35,11 @@ approve it; it needs a second approver.
 
 ## One signer interface
 
-Execution code calls `signTransaction` and never asks what is behind it. The kit
+Execution code calls `signTransaction` without knowing which signer answers. The kit
 and DFNS implement the same `Signer` interface, and the custody mode decides
 which one answers; the wallet / DFNS switch on the sign panel sets it. A desk on
 a browser extension and a desk on an MPC treasury end up running the same path.
 
-The wallet context and the kit wiring live in `src/contexts`, the signing demo in
+The wallet context and the kit setup are in `src/contexts`, the signing panel in
 `src/components/SignDemoTx.tsx`, and the shared signer interface in
 `src/integrations/signer/`.

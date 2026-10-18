@@ -24,23 +24,19 @@ import { circleMinted } from './status'
 import { stellarToEvmUnits } from './stellar-burn'
 import { isSettled, markSettled, type BurnIntent, type TrackedTransfer } from './transfers'
 
-// Finding transfers again after the page that started them went away: the PC switched
-// off, the tab closed, another device, a browser that lost its storage. Two ways in: an
-// EVM burn the wallet was asked for whose hash never came back (an intent saved before the
-// signature; an EVM wallet sends by itself, a phone even after the page is gone), and
-// every burn of the connected wallets that has not arrived yet. A Stellar burn needs no
-// intent: the page sends it, so a page gone before that sends nothing.
+// transfers a closed page left unfinished: EVM burns whose hash never came back (found from
+// the intents saved before signing) and any burn of a known wallet that hasn't arrived.
+// stellar burns need no intent, the page submits them itself
 
 const ZERO_32 = `0x${'00'.repeat(32)}`
 const HOUR = 3600_000
 // a piece of blocks this small is never refused for its size
 const SMALLEST_PIECE = 500n
-// a pause between two pieces of one search, so a day of them never reads as a flood
+// between pieces, so a day of blocks is not one burst of requests
 const PIECE_GAP_MS = 100
 
-// Log searches go straight to the endpoints that keep old blocks when the registry names
-// them: through the page's usual transport, a recent-only endpoint was asked first and
-// turned every older piece away (403) before the right one answered
+// log searches use the chain's archive endpoints (logsRpc) when it has any: the usual
+// transport may ask a recent-only endpoint first, and that one 403s every older piece
 const logClients = new Map<number, Pick<ReturnType<typeof createPublicClient>, 'getLogs'>>()
 
 function logsClient(chain: CctpSourceChain, chainId: WagmiChainIdAny): Pick<ReturnType<typeof createPublicClient>, 'getLogs'> {
@@ -59,16 +55,13 @@ const MOST_PIECES = 60
 // pages of 200 operations at most: a busy account's month
 const STELLAR_LOOKBACK_MS = 30 * 24 * HOUR
 const STELLAR_PAGES = 20
-// Every burn not yet known to have arrived is checked, two at a time and at the pace every
-// request to Circle keeps (iris.ts). Past this many in one search the rest waits for the
-// next one
+// burns checked per search, two at a time at iris.ts's pace; the rest wait for the next one
 const MOST_LOOKUPS = 400
 const LOOKUPS_AT_ONCE = 2
 
-// Asks whether each burn arrived, at most `n` at once, each answer kept at its burn's place.
-// The first check that fails ends the asking: Circle answers a caller it shuts out with an
-// error the browser cannot even read, and asking on would only keep it shut. What was not
-// asked stays null, to be asked by the next search
+// At most `n` checks at once, answers kept in order. The first failure stops the run: a
+// Circle lockout looks like any failed fetch, and more requests only extend it. Items not
+// asked stay null for the next search
 async function checkInTurn<T>(items: T[], n: number, check: (item: T) => Promise<boolean | null>): Promise<(boolean | null)[]> {
   const out: (boolean | null)[] = new Array(items.length).fill(null)
   let next = 0
@@ -160,10 +153,9 @@ function httpStatus(err: unknown): number | undefined {
   return undefined
 }
 
-// "limited to a 2,000 range", "exceed maximum block range": the piece was too big. An
-// archive or state error is about the blocks' age, which a smaller piece does not cure.
-// A 403 or a 429 is the endpoint turning us away; "rate limit" and "too many requests"
-// read like a size refusal, and splitting on them only sent more requests
+// "limited to a 2,000 range", "exceed maximum block range": the piece was too big. Archive
+// or state errors are about the blocks' age, which a smaller piece does not fix. A 403, a
+// 429 or rate-limit wording is the endpoint refusing us, and splitting only adds requests
 export function refusedForSize(err: unknown): boolean {
   const status = httpStatus(err)
   if (status === 403 || status === 429) return false
@@ -172,9 +164,8 @@ export function refusedForSize(err: unknown): boolean {
   return /range|limit|exceed|too (large|many|big)|block span|maximum/i.test(text)
 }
 
-// One wallet's burns to Stellar between two blocks, newest first, in pieces the endpoints
-// answer: a piece refused for its size is split, and blocks the endpoints no longer serve
-// end the search there, the caller learning how far back it got
+// One wallet's burns to Stellar between two blocks, newest first. A piece refused for its
+// size is halved; any other error ends the search, and reachedFrom says how far it got
 export async function findEvmBurnsToStellar(
   chain: CctpSourceChain,
   depositor: Address,
@@ -242,8 +233,7 @@ function transferFromEvmBurn(network: Network, chain: CctpSourceChain, b: EvmBur
   }
 }
 
-// 'arrived' once the Stellar nonce is spent, whoever delivered it; a read that fails is
-// left for the page's watcher, which settles it when it can
+// true once the Stellar nonce is spent, whoever delivered it; null when it could not be read
 async function arrivedOnStellar(network: Network, chain: CctpSourceChain, hash: string): Promise<boolean | null> {
   try {
     const att = await fetchAttestation(network, chain.domain, hash, 10_000, STELLAR_CCTP_DOMAIN)
@@ -258,7 +248,7 @@ export interface EvmSearchResult {
   found: TrackedTransfer[]
   head: bigint
   search: LogSearch
-  // burns past the most one search checks, left for the next
+  // burns this search did not get to or could not check, left for the next
   unchecked: number
 }
 
@@ -282,8 +272,8 @@ export async function searchEvmWallet(
   let unchecked = unknown.length - todo.length
   const answers = await checkInTurn(todo, LOOKUPS_AT_ONCE, (b) => arrivedOnStellar(network, chain, b.hash))
   for (const [i, b] of todo.entries()) {
-    // a burn that could not be checked is not listed: it may well have arrived long ago, and
-    // a list of transfers that are not on their way would bury the one that is
+    // an unchecked burn is not listed: it may have arrived long ago, and stale entries
+    // would bury the one actually on its way
     if (answers[i] === null) unchecked++
     else if (answers[i]) settled.push(b.hash)
     else found.push(transferFromEvmBurn(network, chain, b, await blockTime(chain, b.blockNumber)))
@@ -433,7 +423,7 @@ export type IntentOutcome =
   | { kind: 'unreadable' }
   | { kind: 'open' }
 
-// a burn the wallet was asked for on an EVM chain, looked for from the block it was asked at
+// looks for the burn from the block the wallet was asked at
 export async function resolveEvmIntent(intent: BurnIntent, known: Set<string>): Promise<IntentOutcome> {
   const chain = cctpChainsFor(intent.network).find((c) => c.key === intent.chainKey)
   if (!chain) return { kind: 'none' }
@@ -461,8 +451,7 @@ export async function resolveEvmIntent(intent: BurnIntent, known: Set<string>): 
   return { kind: 'open' }
 }
 
-// What became of a burn tracked before its chain confirmed it: on the ledger, there but
-// failed (nothing moved), not there, or null when that could not be read
+// a burn tracked before its chain confirmed it; null when that couldn't be read
 export type BurnFate = 'landed' | 'failed' | 'missing' | null
 
 // A burn out of Stellar is tracked from its signature, before Stellar has it. Horizon can

@@ -1,8 +1,7 @@
 import type { VaultPosition } from './position'
 
-// Where the value of a vault sits once the pool has answered. A working vault can still
-// keep most of its tokens idle (a deposit the engine has not allocated yet), so the two
-// sides are compared by value.
+// A working vault can still hold most of its value idle (a deposit not allocated
+// yet), so the two sides are compared by value, not by venue.
 export type VaultSplit = 'pool' | 'vault' | 'both'
 
 export function vaultSplit(

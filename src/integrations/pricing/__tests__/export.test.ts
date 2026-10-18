@@ -129,7 +129,7 @@ describe('valueHistoryRows', () => {
     expect(rows[0].at(-1)).toBe('USD')
   })
 
-  it('stamps each row with the moment it came from', () => {
+  it('stamps each row with its UTC timestamp and date', () => {
     const rows = valueHistoryRows([{ ts: Date.UTC(2026, 7, 20, 9, 30), held: {} }], [], {}, 'USD')
     expect(rows[0][0]).toBe('2026-08-20T09:30:00.000Z')
     expect(rows[0][1]).toBe('2026-08-20')

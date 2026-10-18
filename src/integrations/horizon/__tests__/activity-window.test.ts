@@ -78,7 +78,7 @@ describe('inWindow', () => {
     expect(inWindow(at('2026-06-15T10:00:00Z'), { ...f, query: 'phoenix' })).toBe(false)
   })
 
-  it('narrows to one vault by its contract id, dropping other contracts and plain ops', () => {
+  it('narrows to one vault by contract id, dropping other contracts and plain ops', () => {
     const f = filters({ vault: 'CVAULT_A' })
     expect(inWindow({ ...at('2026-06-15T10:00:00Z'), contractId: 'CVAULT_A' }, f)).toBe(true)
     expect(inWindow({ ...at('2026-06-15T10:00:00Z'), contractId: 'CVAULT_B' }, f)).toBe(false)
@@ -98,7 +98,7 @@ describe('inWindow', () => {
 })
 
 describe('describeWindow', () => {
-  it('names the period the same way everywhere it is reported', () => {
+  it('phrases the window for both bounds, one bound or none', () => {
     expect(describeWindow({ from: '2026-06-01', to: '2026-06-30' })).toBe(
       'between 1 Jun 2026 and 30 Jun 2026 (UTC)',
     )

@@ -3,8 +3,7 @@ import type { BrokerQuoteResult } from './types'
 const MAX_SLIPPAGE = 0.05
 // implausibly large profit usually means a thin pool or stale quote
 const MAX_ABSOLUTE_PROFIT = 0.5
-// a broker output well above the direct-trade estimate on the same path reads as
-// a stale or gamed number, not a better route
+// broker output this far above the direct trade reads as stale or gamed, not a better route
 const MAX_BROKER_DIRECT_RATIO = 3
 
 export type ValidationResult = { ok: true } | { ok: false; reason: string }
@@ -33,8 +32,6 @@ export function validateBrokerQuote(q: BrokerQuoteResult): ValidationResult {
 // token unit prices span orders of magnitude, so this only backstops a garbage
 // or overflowed quote. the on-chain minAmountOut is what caps slippage.
 const SOROSWAP_MAX_RATIO = 1_000_000_000n
-// how far the pool rate may sit from an external reference before the quote
-// reads as stale
 const MAX_REFERENCE_DRIFT = 0.5
 
 export interface SoroswapQuoteCheck {

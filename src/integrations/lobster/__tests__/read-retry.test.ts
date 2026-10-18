@@ -4,8 +4,7 @@ import { retryRefusedReads } from '../client'
 
 type Outcome = 'ok' | 'network' | 'timeout' | number
 
-// plays the axios side: a failed send goes back through the rejection handler
-// with the config it was sent with, the way an interceptor sees it
+// fake axios: a failed send goes through the rejection handler with its config
 function rpcClient(outcomes: Outcome[]) {
   let onError: (err: unknown) => unknown = (err) => {
     throw err
@@ -44,7 +43,7 @@ describe('retryRefusedReads', () => {
     expect(post).toHaveBeenCalledTimes(1)
   })
 
-  it('rides out a refusal that lasts a few tries', async () => {
+  it('retries through 429, 503 and a network error', async () => {
     const { post, read } = rpcClient([429, 503, 'network', 'ok'])
     await expect(read()).resolves.toMatchObject({ status: 200 })
     expect(post).toHaveBeenCalledTimes(3)

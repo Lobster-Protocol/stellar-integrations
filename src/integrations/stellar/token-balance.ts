@@ -11,8 +11,8 @@ import type { Network } from '../../config/contracts'
 import { getSorobanServer, networkPassphrase } from '../lobster/client'
 import { isContractId, isAccountId } from './strkey-guards'
 
-// null on any failure (never held it, bad id, rpc down) so callers can append it
-// without ever breaking the classic balance list.
+// null on a zero balance or any failure (bad id, rpc down), so callers can append it
+// without breaking the classic balance list.
 export async function getSorobanTokenBalance(
   network: Network,
   tokenId: string,

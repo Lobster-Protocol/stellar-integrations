@@ -53,8 +53,8 @@ of your wallet: "Sign now with DFNS MPC, no approver needed" clears on its own,
 while "Call the Factory (DFNS MPC)" is held by the approval policy and released
 by the demo relay.
 
-That build, sign, submit, confirm loop is what a strategy uses underneath. What
-sits on top of it is split across the integration pages. The
+A strategy runs on that same build, sign, submit, confirm loop. The integration
+pages cover the rest. The
 [bridge page](integrations/bridge.md) covers how USDC gets in from an EVM chain, and Stellar Broker is what prices the swap
 across venues. The Wallets Kit page covers the connection you just made. DFNS is
 the other signing path, for a desk that has to keep its keys in MPC custody

@@ -2,16 +2,16 @@
 
 [![CI](https://github.com/Lobster-Protocol/stellar-integrations/actions/workflows/ci.yml/badge.svg)](https://github.com/Lobster-Protocol/stellar-integrations/actions/workflows/ci.yml)
 
-React frontend that talks to our Soroban contracts on Stellar. Wires up
-the wallets, the bridge, the swap routing and the DFNS custody backend
-around the analytics engine.
+React frontend for our Soroban contracts on Stellar. It connects the
+wallets, the bridge, the swap routing and the DFNS custody backend to the
+analytics engine.
 
 Live: https://stellar-instit.lobster-protocol.com
 
 ## Contracts
 
-The Soroban contracts come from [Lobster-Protocol/Stellar](https://github.com/Lobster-Protocol/Stellar)
-(our 2025 Build Award), whose source rebuilds the mainnet wasm byte for byte.
+The Soroban contracts come from [Lobster-Protocol/Stellar](https://github.com/Lobster-Protocol/Stellar).
+Its source rebuilds the mainnet wasm byte for byte.
 
 ### Mainnet
 
@@ -58,7 +58,7 @@ vault rows on mainnet, and the bridge rows on both.
 | what | link |
 | --- | --- |
 | live swap on Soroswap testnet, XLM to USDC, the route the swap modal runs | [`23112a47`](https://stellar.expert/explorer/testnet/tx/23112a4791f2c364874395900401421ec4985bc5b47676bd1947efe7801b7533) |
-| a broker route our decoder reads, one Soroswap pool and two Aquarius pools in a single ledger. **not our transaction**, it is a live broker route on mainnet we decode to show what the broker bundles | [`f5a3533f`](https://stellar.expert/explorer/public/tx/f5a3533f2b92a3159d7eedcb443806f6ef998159b39e8556c65fed73d7b4bea6) |
+| a mainnet broker route our decoder reads, one Soroswap pool and two Aquarius pools in a single ledger. Not our transaction, it shows what the broker bundles | [`f5a3533f`](https://stellar.expert/explorer/public/tx/f5a3533f2b92a3159d7eedcb443806f6ef998159b39e8556c65fed73d7b4bea6) |
 | fallback straight to the Soroswap router, no broker in the path | [`766cd060`](https://stellar.expert/explorer/public/tx/766cd0602dfb2f59f812397331dac4121480c84b6a1104c3462541fb786096e6) |
 | Soroswap swap signed by DFNS MPC on mainnet, no broker in the path | [`056593f3`](https://stellar.expert/explorer/public/tx/056593f3a49c5c6011af6732f95b9f5f928ba0707024547a6e4d09f61f336fa5) |
 | the Lobster factory deployed on mainnet, admin then handed to the DFNS treasury | [`43bd8748`](https://stellar.expert/explorer/public/tx/43bd8748235bf1728633265c5544cf1701fca1b70646c8cf79a6147ffdf91eb9), [`f27dd796`](https://stellar.expert/explorer/public/tx/f27dd796fc6eea4a831a7c80140e4b08cfe698d6fdb8579c48c552970cf96b54) |
@@ -66,10 +66,10 @@ vault rows on mainnet, and the bridge rows on both.
 | the first mainnet vault: created by the factory, 5 XLM and 1.09 USDC deposited, then put into the Soroswap XLM/USDC pool | [`a5dd6610`](https://stellar.expert/explorer/public/tx/a5dd6610477b103aa860df1caa2f4bd737f9ca8111fa4e07213bd00e583fd38b), [`d9936ee5`](https://stellar.expert/explorer/public/tx/d9936ee57f8719a2fff41c01eb1efe08526d775ffd85c1593bd9e47d9f96c6cb), [`e845c924`](https://stellar.expert/explorer/public/tx/e845c924538dd130f5a9a385b9bf82e9ffc893ec8a4cbd83d1a3312ba9038afc) |
 | the same three steps from the DFNS treasury, each signed by DFNS MPC and held by the treasury policy until a named approver released it: vault created, 5 XLM and 1.1077 USDC deposited, both put into the Soroswap pool | [`5d0337ad`](https://stellar.expert/explorer/public/tx/5d0337ad045dd2cca29b58ba0d5a0f9e563f6b3a2256a81934073250d448ec3e), [`c2aa374d`](https://stellar.expert/explorer/public/tx/c2aa374db4a86c49d914f6b3c8503e88ae32b72a7c018c275005d1c808f05409), [`d799bfeb`](https://stellar.expert/explorer/public/tx/d799bfebfe9746fc0cd27f0a15fc517511e2c56d2d1aa0b66f32fce238c76185) |
 | Soroban call signed by DFNS MPC, not a local key. `get_admin` on the Factory, held for an approver and released by one | [`96f4bcfe`](https://stellar.expert/explorer/testnet/tx/96f4bcfe2e72cac9a6f2ddd06946d47b55ea340664798dade7c71ff41bbb7d4a) |
-| the same Soroban call, first run | [`bd5db00a`](https://stellar.expert/explorer/testnet/tx/bd5db00a38a40327cdf906f27af94afcce39e679fd81d01a93bacf3479f3ef41) |
-| DFNS policy, cleared with no approver because the recipient is on the list. Sent from the dashboard button, not a script | [`dcd63f56`](https://stellar.expert/explorer/testnet/tx/dcd63f560a2c2e08da057dbc7ba294819875fb1043893dfe1e53a3847abb1f88) |
+| the same Soroban call, an earlier run | [`bd5db00a`](https://stellar.expert/explorer/testnet/tx/bd5db00a38a40327cdf906f27af94afcce39e679fd81d01a93bacf3479f3ef41) |
+| DFNS policy, cleared with no approver because the recipient is on the list, sent from the dashboard button | [`dcd63f56`](https://stellar.expert/explorer/testnet/tx/dcd63f560a2c2e08da057dbc7ba294819875fb1043893dfe1e53a3847abb1f88) |
 | DFNS policy, cleared only after a second approver | [`67d46c3f`](https://stellar.expert/explorer/testnet/tx/67d46c3f1d65fe654d2d0e9b9dd141a28052eb3679841fe831e899cb14ca8958) |
-| DFNS policy, cleared only after a second approver, first run | [`90023887`](https://stellar.expert/explorer/testnet/tx/90023887d0980bba1a48309d1236b28e6884a944de0d65cf561dd94e457d2f74) |
+| DFNS policy, cleared only after a second approver, an earlier run | [`90023887`](https://stellar.expert/explorer/testnet/tx/90023887d0980bba1a48309d1236b28e6884a944de0d65cf561dd94e457d2f74) |
 | an earlier treasury payment, signed before any approval policy existed on the account | [`e379a0d3`](https://stellar.expert/explorer/testnet/tx/e379a0d33452495abefce7277fa17324be1d44b506df36203ea2ba8eaa62fc5a) |
 | USDC bridged in from Base Sepolia with Circle CCTP, started from the dashboard: the burn | [`0xeb55104a`](https://sepolia.basescan.org/tx/0xeb55104ab1c068141de1677f6e96d2ca6fef09956c29be3f0ef9fb31e31b31cd) |
 | the same transfer delivered on Stellar, `mint_and_forward` signed by the receiving wallet | [`d0a761b9`](https://stellar.expert/explorer/testnet/tx/d0a761b9bcf05802c832f5abb7b4b148328c0bfe172149ad04415aee8fa91b4c) |
@@ -78,31 +78,29 @@ vault rows on mainnet, and the bridge rows on both.
 | mainnet, USDC burned on Base and delivered into the DFNS treasury from the dashboard's finish-by-hash form: burn, then delivery | [`0xae5683b0`](https://basescan.org/tx/0xae5683b030dae869d9f0110e4d5ea7abb1d6860ceef6dbeeaf66de8ce8e4b4cc), [`c1c40432`](https://stellar.expert/explorer/public/tx/c1c404321298c6be0692ad699be092a324af0c401dab8783de07f5eb3fc37482) |
 | mainnet, USDC out of Stellar from the bridge test account: the burn on Stellar, then the mint Circle sent on Arbitrum | [`a1c5776a`](https://stellar.expert/explorer/public/tx/a1c5776a6eb373dc54409f1de75c4ba0484b779db43ced4d3bfc85270801e774), [`0x534ab68e`](https://arbiscan.io/tx/0x534ab68eee614244af2497a0978fe01edcd9c1209d6f4ae0128be2a42091e9ae) |
 
-Every hash above except `f5a3533f` is sourced from a wallet we control: the DFNS
+Every hash above except `f5a3533f` comes from a wallet we control: the DFNS
 treasury `GCWEI7HV...2OPB` on testnet, `GCE75LSG...6DQP` on mainnet, the deployer
-`GA2PK7ZW...4MBU` on testnet and `GA3FDPNG...OXCS` on mainnet, the demo wallet
+`GA2PK7ZW...4MBU` on testnet and `GA3FDPNG...OXCS` on mainnet, the swap test wallet
 `GCVFDROZ...RVQA` behind the Soroswap swap, the browser test wallet
 `GC6QPGCO...JKDY` behind the Freighter and xBull rows, or the bridge test wallets
 `0xDCD5...1a37` and `GCC5G4...HA74`.
-`f5a3533f` is somebody else's broker route, kept because it is what our decoder
-reads. The row says so instead of counting it as our own execution.
 
 ### How the two approval paths differ
 
 The testnet treasury runs one rule: a payment to an address on its list clears on
 its own, a payment anywhere else waits for a named approver. The approval group
-names the approver and excludes whoever asked, so the dashboard cannot release
+names the approver and excludes whoever asked, so the dashboard can't release
 its own request. `dcd63f56` went to the treasury itself and settled with no
 approval recorded against it, straight off the dashboard button.
 `67d46c3f` went through a second person.
 
 DFNS reads a policy against a transfer request, where it builds the payment and
-knows the asset and the recipient. It cannot read one against a raw signing
+knows the asset and the recipient. It can't read one against a raw signing
 request: ask it to evaluate an amount and it answers "only supported on a
 transfer request", ask it for a recipient and it answers "recipient address not
 specified". Either way the rule fails closed and holds the signature. Amount
 rules have a second problem on testnet, where DFNS has no market price for
-testXLM and says so. That is why the rule here is written on the recipient
+testXLM and says so. That's why the rule here is written on the recipient
 rather than on a dollar figure.
 
 ## Stack

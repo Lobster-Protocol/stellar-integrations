@@ -5,8 +5,7 @@ import { getHorizonServer } from '../client'
 
 vi.mock('../client', () => ({ getHorizonServer: vi.fn() }))
 
-// Horizon's page ceiling, mirrored from the module under test so the fixtures
-// exercise the same boundary the real reader hits.
+// same as PAGE in export.ts, Horizon's page ceiling
 const PAGE = 200
 const DAY = 86_400_000
 // records are served newest first, one day apart, so index n is n days old
@@ -78,7 +77,7 @@ describe('fetchAllActivity', () => {
     expect(h.events.length).toBe(PAGE * 100)
   })
 
-  it('reports progress as each page lands', async () => {
+  it('reports progress after each page', async () => {
     servePages([PAGE, 3])
     const seen: number[] = []
     await fetchAllActivity('testnet', 'GACCOUNT', { onProgress: (n) => seen.push(n) })
@@ -97,7 +96,7 @@ describe('fetchAllActivity over a date window', () => {
     expect(fake.served()).toBe(1)
   })
 
-  it('calls a window it read to the end of complete', async () => {
+  it('marks a window read to its end as complete', async () => {
     servePages([PAGE, PAGE])
     const h = await fetchAllActivity('testnet', 'GACCOUNT', { since: NEWEST - 5 * DAY })
     expect(h.complete).toBe(true)

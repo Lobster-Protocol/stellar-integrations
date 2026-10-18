@@ -32,11 +32,10 @@ export const dfnsSigner: Signer = {
       id?: string
       error?: string
     }
-    // held for approval: the relay hands back the signature id to poll.
     if (body.pending && body.id) return { pendingId: body.id }
     // classic tx: the relay reports the hash dfns already broadcast.
     if (body.txHash) return { broadcastHash: body.txHash }
-    // soroban tx: the relay hands back the signed envelope to submit.
+    // soroban tx: the caller submits the signed envelope.
     if (body.signedTxXdr) return { signedTxXdr: body.signedTxXdr }
     throw new Error(body.error ?? 'dfns sign returned neither a hash nor an envelope')
   },

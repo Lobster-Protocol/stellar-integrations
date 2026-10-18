@@ -42,7 +42,7 @@ beforeEach(() => {
   localStorage.clear()
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_TOKEN', '')
-  // the stream follows the active profile and the demo is opt-in, so select it.
+  // the stream follows the active profile
   setActiveProfile(DEMO_PROFILE_ID)
 })
 
@@ -65,7 +65,7 @@ describe('useDfnsSignatureStream', () => {
     const es = MockEventSource.lastInstance
     expect(es).not.toBeNull()
     expect(es!.url).toBe('http://localhost:8787/sse')
-    // no ambient cookies: the token rides in the query, not a cookie session
+    // no ambient cookies: the token goes in the query, not a cookie session
     expect(es!.withCredentials).toBe(false)
   })
 
@@ -76,7 +76,7 @@ describe('useDfnsSignatureStream', () => {
     expect(es!.url).toContain('?token=token-32-chars')
   })
 
-  it('subscribes to every signature, transaction and approval event', () => {
+  it('listens for each subscribed event kind', () => {
     renderHook(() => useDfnsSignatureStream())
     const es = MockEventSource.lastInstance!
     for (const kind of [
@@ -93,7 +93,7 @@ describe('useDfnsSignatureStream', () => {
     }
   })
 
-  it('accumulates events newest-first and caps at MAX_EVENTS', () => {
+  it('keeps events newest-first', () => {
     const { result } = renderHook(() => useDfnsSignatureStream())
     const es = MockEventSource.lastInstance!
     act(() => {

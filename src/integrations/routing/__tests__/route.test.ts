@@ -48,7 +48,7 @@ beforeEach(() => {
 })
 
 describe('routeSwap', () => {
-  it('keeps a valid broker quote as the reference and still routes through soroswap when the build has a partner key', async () => {
+  it('keeps a valid broker quote as reference, routes through soroswap', async () => {
     quoteBrokerMock.mockResolvedValueOnce({
       ts: new Date(),
       status: 'success',
@@ -61,7 +61,6 @@ describe('routeSwap', () => {
     })
     quoteSoroswapMock.mockResolvedValueOnce(234_500_000n)
     const r = await routeSwap(VALID_PARAMS, CTX)
-    // the swap panel can only sign the soroswap leg, so that is the route
     expect(r.source).toBe('soroswap-fallback')
     expect(r.soroswap?.buyingStroops).toBe(234_500_000n)
     expect(r.broker?.status).toBe('success')
@@ -91,7 +90,7 @@ describe('routeSwap', () => {
     expect(r.source).toBe('soroswap-fallback')
   })
 
-  it('falls through to soroswap when the broker quote throws (it must not sink the route)', async () => {
+  it('falls through to soroswap when the broker quote throws', async () => {
     quoteBrokerMock.mockRejectedValueOnce(new Error('broker rejected: pair not supported'))
     quoteSoroswapMock.mockResolvedValueOnce(234_500_000n)
     const r = await routeSwap(VALID_PARAMS, CTX)
@@ -99,7 +98,7 @@ describe('routeSwap', () => {
     expect(r.broker).toBeUndefined()
   })
 
-  it('reports none with a reason when the broker throws and there is no fallback router', async () => {
+  it('reports none with a reason when the broker throws and no router is set', async () => {
     quoteBrokerMock.mockRejectedValueOnce(new Error('broker rejected: pair not supported'))
     const r = await routeSwap(VALID_PARAMS, { ...CTX, network: 'testnet' })
     expect(r.source).toBe('none')
@@ -113,7 +112,7 @@ describe('routeSwap', () => {
     expect(r.source).toBe('none')
   })
 
-  it('keeps a keyless broker reference quote but settles on soroswap when the partner key is missing', async () => {
+  it('keeps the broker reference without a partner key, still settles on soroswap', async () => {
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', '')
     quoteBrokerMock.mockResolvedValueOnce({
       ts: new Date(),
@@ -129,7 +128,6 @@ describe('routeSwap', () => {
     const r = await routeSwap(VALID_PARAMS, CTX)
     expect(quoteBrokerMock).toHaveBeenCalled()
     expect(r.source).toBe('soroswap-fallback')
-    // the broker quote rides along as a best-execution reference
     expect(r.broker?.status).toBe('success')
   })
 

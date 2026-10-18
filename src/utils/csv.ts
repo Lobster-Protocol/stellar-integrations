@@ -1,6 +1,5 @@
-// Fields a spreadsheet treats as a formula rather than as text. A cell that
-// opens with one of these runs when the file is opened, so anything that isn't
-// a plain number gets quoted out of harm's way.
+// a spreadsheet runs a cell starting with one of these as a formula; anything
+// but a plain number gets a leading quote
 const FORMULA_START = /^[=+\-@\t\r]/
 
 function cell(value: string | number): string {
@@ -10,16 +9,14 @@ function cell(value: string | number): string {
   return s
 }
 
-// RFC 4180 line endings, and a byte order mark so Excel reads the file as UTF-8
-// instead of falling back to the machine's local codepage.
+// CRLF per RFC 4180. Without the BOM Excel falls back to the local codepage.
 export function toCsv(columns: string[], rows: Array<Array<string | number>>): string {
   const lines = [columns.map(cell).join(',')]
   for (const row of rows) lines.push(row.map(cell).join(','))
   return '\ufeff' + lines.join('\r\n') + '\r\n'
 }
 
-// Filenames carry the account and the network they came from: two exports of the
-// same page are only comparable if you can tell which wallet each one is.
+// account and network go in the name, or two exports of the same page can't be told apart
 export function exportName(
   base: string,
   parts: { account?: string | null; network: string; at?: Date },

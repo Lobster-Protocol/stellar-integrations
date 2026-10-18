@@ -110,8 +110,7 @@ function opDetail(op: AnyOp): string {
   }
 }
 
-// spell out which controls a set_options changes, so a seizure (master weight to 0,
-// a new signer, a threshold rewrite) does not pass as a generic settings change.
+// name the controls a set_options touches, so a takeover doesn't read as a settings tweak
 function setOptionsDetail(op: AnyOp): string {
   const parts: string[] = []
   const signer = op.signer as { ed25519PublicKey?: string; weight?: number } | undefined
@@ -169,8 +168,7 @@ function summarizeTxObject(tx: Transaction, accountUnderReview: string): TxSumma
 
 export function summarizeTx(xdrStr: string, network: Network, accountUnderReview: string): TxSummary {
   const parsed = TransactionBuilder.fromXDR(xdrStr, networkPassphrase(network))
-  // a fee bump is refused before signing elsewhere, but summarize the inner tx
-  // rather than hide it, so a wrapped op can never pass unseen.
+  // fee bumps are refused elsewhere before signing; show the inner tx so no wrapped op goes unseen
   const tx = 'innerTransaction' in parsed ? parsed.innerTransaction : parsed
   return summarizeTxObject(tx, accountUnderReview)
 }

@@ -4,7 +4,7 @@ import { CONTRACTS, type Network } from '../../config/contracts'
 import { simulateRead } from '../stellar/read'
 import type { VaultPosition } from './position'
 
-// only read once the detail opens. null means the vault would not say
+// only read once the detail opens. null = the read failed
 export interface VaultDetail {
   router: string | null
   shareToken: string | null
@@ -20,8 +20,7 @@ async function readOrNull<T>(
   try {
     return await simulateRead<T>(network, source, contract, method)
   } catch {
-    // an idle vault has no router or share token to name, and says so by
-    // failing the call rather than returning an empty address
+    // an unset address fails the call instead of returning ''
     return null
   }
 }

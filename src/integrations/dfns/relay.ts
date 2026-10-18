@@ -13,8 +13,8 @@ export function relayFetch(path: string, init: RequestInit = {}, bound?: ActiveR
   return fetch(`${relay.baseUrl}${path}`, { ...init, headers })
 }
 
-// approval is a human step in the dfns console, so the window is wide, but a bad
-// token/id or a dead endpoint fails fast instead of looking like a missing approval.
+// a person approves in the dfns console, so the window is wide, but a bad token/id
+// or a dead endpoint fails fast instead of looking like an approval still pending.
 export async function pollSignatureStatus(
   id: string,
   opts: { intervalMs?: number; timeoutMs?: number; signal?: AbortSignal } = {},
@@ -22,8 +22,6 @@ export async function pollSignatureStatus(
   const interval = opts.intervalMs ?? 4_000
   const timeout = opts.timeoutMs ?? 30 * 60_000
   const start = Date.now()
-  // bind the relay at the start so a profile switch mid-poll cannot send the id to
-  // a different relay.
   const bound = activeRelay() ?? undefined
   let hardErrors = 0
   for (;;) {
@@ -75,7 +73,6 @@ export async function pollSignatureResult(
         if (body.txHash) return { txHash: body.txHash }
         throw new Error('dfns confirmed the signature but returned no tx hash')
       }
-      // a soroban tx ends here: signed, with an envelope to submit.
       if (body.signedTxXdr) return { signedTxXdr: body.signedTxXdr }
       if (body.status === 'Failed' || body.status === 'Rejected') {
         throw new Error(`dfns ${body.status}${body.reason ? `: ${body.reason}` : ''}`)

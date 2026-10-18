@@ -41,8 +41,8 @@ export function valueBalances(
   return { lines, usdTotal: anyPriced ? total : null }
 }
 
-// a price is one XLM in the network's USDC; on testnet that USDC is not money,
-// so the unit is named rather than dressed up as dollars
+// a price is one XLM in the network's USDC; on testnet that USDC isn't money,
+// so it's labelled USDC there, not USD
 export type PriceUnit = 'USD' | 'USDC'
 
 export function priceUnit(network: Network): PriceUnit {
@@ -50,11 +50,11 @@ export function priceUnit(network: Network): PriceUnit {
 }
 
 // the broker won't quote a trade under a dollar, so probe with a size it will
-// price and divide; the unit price moves 0.1% between 8 and 1000 XLM
+// price and divide; at 100 XLM the price impact is negligible
 const MAINNET_PROBE_XLM = 100
 
-// testnet has no broker, so it reads Soroswap's XLM/USDC pool instead; null when
-// nothing answers, so callers show native units rather than invent a figure
+// testnet has no broker and reads Soroswap's XLM/USDC pool instead; null when
+// nothing answers, and callers show native units rather than invent a figure
 export async function fetchXlmPrice(network: Network): Promise<number | null> {
   if (network === 'mainnet') {
     const issuer = CONTRACTS.mainnet.tokens.usdcIssuer

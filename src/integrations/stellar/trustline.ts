@@ -67,11 +67,9 @@ export async function submitTrustlineTx(signedXdr: string, network: Network): Pr
   return res.hash
 }
 
-// An account that is not on the ledger yet has no trustline, and that needs no request
-// to say. Until Horizon has said whether the account exists, the query waits and stays
-// pending; a waiting query is not "loading" in TanStack v5, so callers check isPending
-// and show "checking" there. When Horizon fails instead, the query asks on its own, so
-// the failure shows as an error and never as a missing trustline.
+// missing account = no trustline, no request. until Horizon answers, the query is disabled
+// (TanStack v5 calls that isPending). if Horizon fails the query runs anyway, so the outage
+// shows as an error
 export function useTrustline(
   accountId: string | null,
   assetCode: string,

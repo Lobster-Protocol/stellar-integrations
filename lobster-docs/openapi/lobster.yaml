@@ -428,7 +428,7 @@ paths:
   /cctp/chains:
     get:
       tags: [cctp]
-      summary: The EVM chains the bridge carries USDC between Stellar and
+      summary: EVM chains the bridge connects to Stellar
       description: >
         The EVM chains Circle CCTP carries USDC from and back to, with the
         contracts each side goes through. Stellar is CCTP domain 27.

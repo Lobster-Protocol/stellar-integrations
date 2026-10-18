@@ -39,7 +39,7 @@ describe('transaction summary for a co-signer', () => {
     expect(s.dangers).toHaveLength(0)
   })
 
-  it('flags a payment sourced from a DIFFERENT account (the hijack)', () => {
+  it('flags a payment sourced from another account', () => {
     const s = summarizeTx(
       build([Operation.payment({ source: P, destination: Z, asset: Asset.native(), amount: '9000' })]),
       'testnet',
@@ -50,7 +50,7 @@ describe('transaction summary for a co-signer', () => {
     expect(s.dangers.some((d) => /sends from/.test(d))).toBe(true)
   })
 
-  it('flags a hidden off-account payment buried behind a normal-looking call', () => {
+  it('flags an off-account payment placed after a normal call', () => {
     const s = summarizeTx(
       build([
         new Contract(CONTRACT).call('deposit'),

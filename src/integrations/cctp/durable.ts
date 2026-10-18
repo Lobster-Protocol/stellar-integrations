@@ -1,15 +1,12 @@
-// Copies on disk of the bridge's own notes. Chrome holds a busy page's localStorage writes in
-// memory for minutes before it writes them out, so a PC that loses power after a burn was
-// noted comes back without the note. IndexedDB asked for strict durability, and Cache
-// Storage, keep a write that has completed; they live apart, so one damaged by the power cut
-// leaves the other. Each note carries the time it was written, and when the page loads the
-// newest of the copies wins.
+// chrome can keep a busy page's localStorage writes in memory for minutes, so a power cut
+// right after a burn loses the note. each note also goes to IndexedDB (strict durability)
+// and Cache Storage, timestamped, in case one gets damaged; newest wins at load
 
 const DB = 'lobster-bridge'
 const STORE = 'notes'
 const CACHE = 'lobster-bridge'
 const WRITTEN = ':written'
-// a disk that does not answer must not hold up a bridge
+// a disk that doesn't answer mustn't hold up a bridge
 const MOST_WAIT_MS = 1_500
 
 interface Copy {
@@ -124,11 +121,9 @@ export function writeDurable(key: string, value: string, written: number): Promi
   )
 }
 
-// When the page loads: the newest copy on disk, if written after localStorage's, is what a
-// power cut kept, and goes back into localStorage. One this page already wrote over since it
-// loaded is left alone, the page having moved on. A copy that is missing, or older than the
-// newest, is written again. Nothing waits on this, so a disk slow to open is waited for
-// rather than given up on. Resolves to the keys put back.
+// at load a disk copy newer than localStorage's goes back in, unless this page wrote the key
+// since; stale or missing copies get rewritten. no timeout, nothing waits on this. returns the
+// keys put back
 export async function restoreNotes(keys: string[], atLoad: Record<string, number>): Promise<string[]> {
   const haveIdb = (await db()) !== null
   const haveCache = typeof caches !== 'undefined'
@@ -152,7 +147,7 @@ export async function restoreNotes(keys: string[], atLoad: Record<string, number
         void writeDurable(key, local, written)
       }
     } catch {
-      // a full or blocked localStorage: this note stays as it is, the others go on
+      // full or blocked localStorage: skip this note, carry on with the others
     }
   }
   return back

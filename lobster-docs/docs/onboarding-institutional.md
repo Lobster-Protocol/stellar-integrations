@@ -18,9 +18,6 @@ change-trust op targets the classic USDC issuer, not the Soroban contract. A
 fresh account on mainnet that 404s on lookup is read as "no trustline yet", not
 as an error.
 
-Any team bridging a non-native asset to Stellar needs this guard. It's the
-difference between funds arriving and funds stuck halfway.
-
 ## Getting the capital across
 
 Capital on Ethereum, Base or Arbitrum can't reach Stellar directly. Lobster
@@ -36,20 +33,18 @@ a browser can still receive: whoever pays the network fee can submit it. A fast
 transfer costs a few basis points and arrives in about a minute. A standard one is
 free and waits for the source chain to finalise.
 
-This leg was first built on Allbridge Core. Allbridge has since removed its
-pools, the Stellar one included, and lists no route into Stellar, so that
-integration stays in the code but out of the path. The
-[bridge page](integrations/bridge.md) has the detail.
+Allbridge Core, the other bridge in the code, has no pool and no route into
+Stellar, so it stays out of the path. The [bridge page](integrations/bridge.md)
+has the detail.
 
-The part of this worth copying is the bookkeeping. From the burn until the
-delivery the money sits in neither account, and neither chain will remind
-anyone. Keep a note of every burn until its delivery lands.
+From the burn until the delivery the money is in neither account, so keep a
+note of every burn until it's delivered.
 
 ## MPC custody for regulated capital
 
 A single private key is a non-starter under MiCA or any institutional risk
 policy. DFNS holds the keys as threshold shares, so no node ever has the whole
-key, and signing sits behind an approval policy.
+key, and signing is gated by an approval policy.
 
 Every signature the treasury makes goes through that layer, and the policy is
 what decides when a human has to step in. Below a configured amount a transfer

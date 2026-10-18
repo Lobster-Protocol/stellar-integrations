@@ -8,7 +8,7 @@ import { isContractId } from './strkey-guards'
 import { simulateRead } from './read'
 
 // every Stellar Asset Contract answers symbol(), so a token missing from config
-// can still name itself. one that does not answer keeps its short id.
+// still gets a label. if it doesn't answer, it keeps its short id.
 export async function fetchTokenSymbol(
   network: Network,
   source: string,

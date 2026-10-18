@@ -80,7 +80,6 @@ export function expectedDuration(t: TrackedTransfer): string {
     : `a standard transfer waits for ${t.chainName} to finalise, usually 15 to 30 minutes`
 }
 
-// a clock that moves, for elapsed times
 export function useNow(active = true, everyMs = 1_000): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {

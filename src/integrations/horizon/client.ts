@@ -12,9 +12,8 @@ export function getHorizonServer(network: Network): Horizon.Server {
   const override = network === 'mainnet' ? env.VITE_HORIZON_MAINNET : env.VITE_HORIZON_TESTNET
   const url = override || STELLAR_RPC_FALLBACK[network].horizon
   const server = new Horizon.Server(url)
-  // a read that hangs ends on an error instead of "Loading..." for good.
-  // submitTransaction sends its own 60 s per request, which wins over this
-  // default, so a send is never cut shorter than before
+  // a hung read ends on an error instead of loading forever; submitTransaction
+  // passes its own 60 s per request, which overrides this default
   server.httpClient.defaults.timeout = READ_TIMEOUT_MS
   servers.set(network, server)
   return server

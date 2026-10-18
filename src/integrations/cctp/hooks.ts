@@ -17,7 +17,6 @@ export function useCctpFees(network: Network, chain: CctpSourceChain | null) {
   })
 }
 
-// what Circle charges to mint a Stellar burn on `chain` for you
 export function useForwardQuote(network: Network, chain: CctpSourceChain | null) {
   return useQuery({
     queryKey: [NS, 'forward-quote', network, chain?.domain ?? null],
@@ -97,8 +96,7 @@ export function useAttestation(
   })
 }
 
-// the destination chain's own word on whether a message was received, by anyone: Circle's
-// mint, another tab, a custody platform. Asked until it says yes
+// anyone's mint counts, not only this page's
 export function useReceivedOnEvm(chain: CctpSourceChain | null, nonce: `0x${string}` | null) {
   return useQuery({
     queryKey: [NS, 'received', chain?.chainId ?? null, nonce],

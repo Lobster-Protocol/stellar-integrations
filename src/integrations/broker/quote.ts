@@ -8,7 +8,7 @@ import {
 } from './types'
 
 // StellarBrokerError leaves .name as 'Error', so match the no-quote codes: 11 not
-// set, 12 expired, 13 no liquidity or a failed fetch (estimateSwap throws 13, not 11).
+// set, 12 expired, 13 no liquidity or a failed fetch (the one estimateSwap throws).
 const NO_QUOTE_CODES = new Set([11, 12, 13])
 
 export async function quoteBroker(

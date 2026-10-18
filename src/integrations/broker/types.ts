@@ -2,14 +2,12 @@ import { z } from 'zod'
 
 export const BrokerQuoteStatusSchema = z.enum(['unfeasible', 'rejected', 'success'])
 
-// asset format: 'xlm' for native, otherwise CODE-ISSUER with a G... issuer
-// (the broker has no soroban token support, a bare C... address is refused)
+// 'xlm' or CODE-ISSUER; the broker has no soroban token support and refuses a bare C...
 export const BrokerQuoteParamsSchema = z.object({
   sellingAsset: z.string().min(1),
   buyingAsset: z.string().min(1),
   sellingAmount: z.string().optional(),
-  // the broker caps tolerance at 0.5, mirror it here instead of admitting a
-  // value that only blows up once it reaches the sdk
+  // the broker caps tolerance at 0.5; fail here, not deep in the sdk
   slippageTolerance: z.number().min(0).max(0.5).optional(),
 })
 export type BrokerQuoteParams = z.infer<typeof BrokerQuoteParamsSchema>

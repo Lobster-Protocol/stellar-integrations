@@ -13,7 +13,7 @@ describe('getRoutingHealth', () => {
     expect(getRoutingHealth('mainnet').fallbackEnabled).toBe(true)
   })
 
-  it('reports fallback enabled on testnet (soroswap router wired there too)', () => {
+  it('reports fallback enabled on testnet (soroswap router configured there too)', () => {
     expect(getRoutingHealth('testnet').fallbackEnabled).toBe(true)
   })
 

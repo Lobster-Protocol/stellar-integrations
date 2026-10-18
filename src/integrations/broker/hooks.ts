@@ -9,9 +9,9 @@ import type { Signer } from '../signer/types'
 import type { BrokerQuoteParams } from './types'
 
 // the direct router quotes tighter than the broker's 2% default, so ask for less.
-// exported so the swap panel shows the figure actually enforced.
+// the swap panel displays this same value.
 export const SOROSWAP_SLIPPAGE = 0.01
-// 3 minute swap deadline. avoids stale auth in slow signing flows.
+// 3 minutes: room for a slow signer before the auth goes stale
 export const SOROSWAP_DEADLINE_SEC = 180
 
 export function useBrokerConfirm() {
@@ -22,8 +22,7 @@ export function useBrokerConfirm() {
       params: BrokerQuoteParams
       signer: Signer
       onHash?: (hash: string) => void
-      // the quote's selling amount, in stroops. caps what the broker xdr can
-      // spend so a leg can't push more than the trader agreed to.
+      // the quote's selling amount, in stroops
       maxSpendStroops?: bigint
     }) => {
       await confirmBrokerTrade(
@@ -49,9 +48,8 @@ export interface SoroswapConfirmArgs {
   windowSecs?: number
 }
 
-// kept apart from the mutation so a multisig owner can gather a quorum on one
-// frozen envelope. windowSecs widens both the tx timebound and the in-contract
-// deadline; below the frozen minAmountOut the swap is declined on-chain.
+// separate from the mutation so a multisig owner can gather a quorum on one frozen
+// envelope. if the pool pays less than the frozen minAmountOut, the swap fails on-chain.
 export async function buildSoroswapConfirmTx(
   args: SoroswapConfirmArgs,
   windowSecs = SOROSWAP_DEADLINE_SEC,
@@ -87,7 +85,6 @@ export function useSoroswapConfirm() {
         networkPassphrase: args.networkPassphrase,
         address: args.account,
       })
-      // a soroban swap always comes back as a signed envelope to submit.
       if (!signedTxXdr) throw new Error('swap signer did not return a signed transaction')
       const hash = await submitSignedXdr(args.network, signedTxXdr)
       const final = await waitForTx(args.network, hash)

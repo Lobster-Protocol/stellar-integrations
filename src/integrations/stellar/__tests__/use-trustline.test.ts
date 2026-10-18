@@ -46,7 +46,7 @@ describe('useTrustline', () => {
     expect(loadAccount).toHaveBeenCalledTimes(4)
   })
 
-  it('reads an account that is not on the ledger as no trustline, without asking again', async () => {
+  it('reads an account missing from the ledger as no trustline, in one request', async () => {
     loadAccount.mockRejectedValue(new NotFoundError('Not Found', {}))
     const { result } = render()
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

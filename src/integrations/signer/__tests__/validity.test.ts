@@ -3,13 +3,13 @@ import { WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/walle
 
 import { overWalletConnect, validitySecs, windowSecs } from '../validity'
 
-describe('how long a transaction stays valid', () => {
+describe('validitySecs', () => {
   it('gives a quorum, or the DFNS relay, an hour to collect its approvals', () => {
     expect(validitySecs({ quorum: true, walletId: 'freighter' })).toBe(3600)
     expect(validitySecs({ quorum: true, walletId: WALLET_CONNECT_ID })).toBe(3600)
   })
 
-  it('outlives the five minutes WalletConnect waits for a wallet that holds it for an approval', () => {
+  it('outlasts the five minutes WalletConnect waits for an answer', () => {
     expect(validitySecs({ quorum: false, walletId: WALLET_CONNECT_ID })).toBeGreaterThan(5 * 60)
     expect(overWalletConnect(WALLET_CONNECT_ID)).toBe(true)
   })
@@ -21,7 +21,7 @@ describe('how long a transaction stays valid', () => {
   })
 })
 
-describe('the window of a flow that has its own', () => {
+describe('windowSecs', () => {
   it('keeps a swap or a bridge step at its own window when the wallet signs at once', () => {
     expect(windowSecs({ quorum: false, walletId: 'freighter', base: 180 })).toBe(180)
   })

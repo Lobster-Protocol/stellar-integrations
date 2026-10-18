@@ -106,13 +106,13 @@ describe('a burn read from its log', () => {
 })
 
 describe('an endpoint refusing a log query', () => {
-  it('reads a refusal for size tucked in the error data of an error it wraps', () => {
+  it('finds a size refusal in the data of a wrapped error', () => {
     const tenderly = { shortMessage: 'Invalid parameters were provided to the RPC method.', cause: { message: 'invalid params', data: 'Block range too large for public access: maximum 1000 blocks.' } }
     expect(refusedForSize(tenderly)).toBe(true)
     expect(refusedForSize({ message: 'invalid params', cause: { data: 'Archive requests require a personal token' } })).toBe(false)
   })
 
-  it('sends mainnet log searches to endpoints that keep old blocks, in pieces they take', () => {
+  it('sends mainnet log searches to archive endpoints, in pieces they take', () => {
     for (const c of CCTP_SOURCE_CHAINS.mainnet) expect(c.logsRpc?.length, c.key).toBeGreaterThan(0)
     expect(cctpChain('mainnet', 'BASE').logsSpan).toBeLessThanOrEqual(1_000)
     expect(Math.ceil(cctpChain('mainnet', 'BASE').searchBlocks / cctpChain('mainnet', 'BASE').logsSpan)).toBeLessThanOrEqual(60)
@@ -163,7 +163,7 @@ describe('searching a wallet for its burns', () => {
     expect(getLogsMock).toHaveBeenCalledTimes(1)
   })
 
-  it('stops where the endpoints no longer serve the blocks, and says how far it got', async () => {
+  it('stops where the endpoints stop serving blocks, and says how far it got', async () => {
     getLogsMock.mockResolvedValueOnce([log()]).mockRejectedValue(new Error('Archive requests require a personal token'))
     const r = await findEvmBurnsToStellar(chain, DEPOSITOR, 0n, 25_000n, FORWARDER)
     expect(r.complete).toBe(false)
@@ -234,8 +234,8 @@ function intent(over: Partial<BurnIntent> = {}): BurnIntent {
   }
 }
 
-describe('a burn a closed page asked a wallet for', () => {
-  it('is found from the block it was asked at, with the time its block was made', async () => {
+describe('resolveEvmIntent', () => {
+  it('finds the burn from the block the wallet was asked at, dated by that block', async () => {
     blockNumberMock.mockResolvedValue(2_000n)
     getLogsMock.mockResolvedValue([log()])
     const r = await resolveEvmIntent(intent(), new Set())
@@ -246,7 +246,7 @@ describe('a burn a closed page asked a wallet for', () => {
     expect(getLogsMock.mock.calls[0][0]).toMatchObject({ fromBlock: 998n, toBlock: 2_000n })
   })
 
-  it('is not mistaken for another burn of the wallet', async () => {
+  it('never takes another burn of the wallet for it', async () => {
     blockNumberMock.mockResolvedValue(2_000n)
     getLogsMock.mockResolvedValue([log({}, { amount: 7_000_000n })])
     expect((await resolveEvmIntent(intent(), new Set())).kind).toBe('open')
@@ -255,13 +255,13 @@ describe('a burn a closed page asked a wallet for', () => {
     expect((await resolveEvmIntent(intent(), new Set([HASH.toLowerCase()]))).kind).toBe('open')
   })
 
-  it('is settled when the wallet search already follows the burn it led to', async () => {
+  it('settles when the wallet search already follows the burn it led to', async () => {
     blockNumberMock.mockResolvedValue(2_000n)
     getLogsMock.mockResolvedValue([log()])
     expect((await resolveEvmIntent(intent(), new Set([HASH.toLowerCase()]))).kind).toBe('tracked')
   })
 
-  it('is given up once the wallet has sent nothing for half an hour', async () => {
+  it('gives up once the wallet has sent nothing for half an hour', async () => {
     blockNumberMock.mockResolvedValue(2_000n)
     getLogsMock.mockResolvedValue([])
     txCountMock.mockResolvedValue(7)
@@ -271,7 +271,7 @@ describe('a burn a closed page asked a wallet for', () => {
     expect((await resolveEvmIntent(intent({ startedAt: Date.now() - 40 * 60_000 }), new Set())).kind).toBe('open')
   })
 
-  it('says so when a day on the chain still cannot be read far enough back', async () => {
+  it('calls it unreadable only after a day of failed reads', async () => {
     blockNumberMock.mockResolvedValue(2_000n)
     getLogsMock.mockRejectedValue(new Error('Archive requests require a personal token'))
     expect((await resolveEvmIntent(intent({ startedAt: Date.now() - 25 * 3600_000 }), new Set())).kind).toBe('unreadable')
@@ -282,8 +282,8 @@ describe('a burn a closed page asked a wallet for', () => {
 const H1 = `0x${'01'.repeat(32)}` as const
 const H2 = `0x${'02'.repeat(32)}` as const
 
-describe('searching a wallet for transfers that never arrived', () => {
-  it('asks Circle only about burns not known to have arrived, and lists the one still on its way', async () => {
+describe('searchEvmWallet and searchStellarAccount', () => {
+  it('asks Circle only about unsettled burns and lists the one still on its way', async () => {
     blockNumberMock.mockResolvedValue(100_000n)
     getLogsMock.mockResolvedValueOnce([log({ transactionHash: H2 }), log({ transactionHash: H1 })]).mockResolvedValue([])
     markSettled('testnet', [H1])
@@ -294,7 +294,7 @@ describe('searching a wallet for transfers that never arrived', () => {
     expect(r.search.complete).toBe(true)
   })
 
-  it('lists nothing it could not check, stops asking Circle after a failure, and says the search is not done', async () => {
+  it('lists nothing unchecked and stops asking Circle after a failure', async () => {
     blockNumberMock.mockResolvedValue(100_000n)
     const hashes = ['03', '04', '05', '06'].map((b) => `0x${b.repeat(32)}` as const)
     getLogsMock.mockResolvedValueOnce(hashes.map((h) => log({ transactionHash: h }))).mockResolvedValue([])
@@ -308,7 +308,7 @@ describe('searching a wallet for transfers that never arrived', () => {
     expect(irisMock.mock.calls.length).toBeLessThanOrEqual(2)
   })
 
-  it('says the Stellar history is not read in full when the account did more than the pages hold', async () => {
+  it('marks the Stellar search incomplete when history runs past the pages read', async () => {
     const page = { records: Array.from({ length: 200 }, () => ({ type: 'payment', transaction_hash: 'x', created_at: new Date().toISOString() })), next: async () => page }
     horizonOpsMock.mockResolvedValue(page)
     expect(await searchStellarAccount('testnet', RECIPIENT, new Set())).toEqual({ found: [], complete: false })
@@ -327,7 +327,7 @@ describe('searching a wallet for transfers that never arrived', () => {
   })
 })
 
-describe('what became of a burn the page never saw confirmed', () => {
+describe('stellarBurnFate and evmBurnFate', () => {
   it('on Stellar: taken, failed, or missing from Horizon and the RPC both', async () => {
     horizonTxMock.mockResolvedValueOnce({ successful: true })
     expect(await stellarBurnFate('testnet', 'c0ffee')).toBe('landed')

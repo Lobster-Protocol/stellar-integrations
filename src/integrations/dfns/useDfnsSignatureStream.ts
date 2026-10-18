@@ -33,7 +33,7 @@ export function useDfnsSignatureStream(): DfnsEvent[] {
 
   useEffect(() => {
     if (!baseUrl) return
-    // EventSource can't set headers, so the token rides as a query param
+    // EventSource can't set headers, so the token goes as a query param
     const url = apiToken ? `${baseUrl}/sse?token=${encodeURIComponent(apiToken)}` : `${baseUrl}/sse`
     const es = new EventSource(url)
     const handler = (e: MessageEvent) => {

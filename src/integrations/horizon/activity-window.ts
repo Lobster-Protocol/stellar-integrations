@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { KIND_GROUPS, matchesQuery, type ActivityEvent, type KindGroup } from './activity'
 
 // ledger timestamps and export columns are UTC, so a picked day is a UTC day
-// too; read in local time, a Paris evening would land on the wrong day
+// too; read in local time, a Paris evening would fall on the wrong day
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 function longDay(day: string): string {
@@ -53,8 +53,7 @@ export function useActivityFilters(): ActivityFilterState {
   const query = params.get('q') ?? ''
   const vault = params.get('vault') ?? ''
   const { startMs, endMs } = windowBounds(params.get('from') ?? '', params.get('to') ?? '')
-  // a date the url carried but nothing could parse is no date at all, so the
-  // control shows it as empty rather than as a window that does not exist
+  // a url date that doesn't parse filters nothing, so the control shows it empty
   const from = startMs == null ? '' : (params.get('from') as string)
   const to = endMs == null ? '' : (params.get('to') as string)
 
@@ -79,8 +78,8 @@ export function useActivityFilters(): ActivityFilterState {
   }
 }
 
-// the date window and the search both shrink the set every count is taken from.
-// The tab is a browsing choice on top of that, which is why it is not in here
+// date, vault and search shrink the set every count is taken from. The tab is a
+// browsing choice on top of that, so it stays out of here
 export function inWindow(e: ActivityEvent, f: ActivityFilterState): boolean {
   const at = Date.parse(e.at)
   if (f.startMs != null && at < f.startMs) return false

@@ -94,7 +94,7 @@ describe('vaultFlowSeries', () => {
     { ts: at('2026-09-02T15:00:00Z'), vault: OTHER, code: 'XLM', amount: units(7) },
   ]
 
-  it('says nothing rather than drawing a flat line for a vault with no moves', () => {
+  it('returns null for a vault with no moves', () => {
     expect(vaultFlowSeries(moves, 'CNOTHING')).toBeNull()
   })
 
@@ -119,7 +119,7 @@ describe('vaultFlowSeries', () => {
 
   it('carries a token forward at a moment it did not move', () => {
     const s = vaultFlowSeries(moves, VAULT)!
-    // LOBS was untouched on 27 August and still stood at what went in in July
+    // LOBS didn't move on 27 August, so it stays at the July deposit
     expect(s.points[1].net.LOBS).toBe(1000)
     expect(s.points[1].net.XLM).toBe(0)
   })
@@ -139,15 +139,15 @@ describe('vaultFlowSeries', () => {
     expect(vaultFlowSeries(lopsided, VAULT)!.codes).toEqual(['LOBS', 'XLM'])
   })
 
-  it('follows the vault pair instead, so the panels read like the rest of the card', () => {
+  it('follows the vault pair when one is given', () => {
     expect(vaultFlowSeries(lopsided, VAULT, ['XLM', 'LOBS'])!.codes).toEqual(['XLM', 'LOBS'])
   })
 
-  it('drops a token it could not name and still orders the one it could', () => {
+  it('skips a null in prefer and still ranks the rest', () => {
     expect(vaultFlowSeries(lopsided, VAULT, [null, 'LOBS'])!.codes).toEqual(['LOBS', 'XLM'])
   })
 
-  it('leaves a code that is neither of the pair behind both', () => {
+  it('puts codes outside the pair after it', () => {
     const stray = [
       ...lopsided,
       { ts: at('2026-09-01T09:00:00Z'), vault: VAULT, code: 'EURC', amount: units(5000) },
@@ -176,9 +176,8 @@ describe('vaultFlowSeries', () => {
     expect(out.points[1].net.LOBS).toBe(-950)
   })
 
-  it('adds a long trail of fractions without drifting off the ledger figure', () => {
-    // 0.1 + 0.2 in floating point is famously not 0.3, and a vault trail is a
-    // hundred of those in a row
+  it('sums 100 x 0.1 to exactly 10', () => {
+    // a hundred 0.1s added as floats don't come to 10
     const dust = Array.from({ length: 100 }, (_, i) => ({
       ts: at('2026-07-04T09:00:00Z') + i,
       vault: VAULT,

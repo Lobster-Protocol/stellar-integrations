@@ -7,9 +7,8 @@ export interface DfnsProfile {
   relayBaseUrl: string
   // x-lobster-token, the read gate
   apiToken: string
-  // the host the operator confirmed to send tokens to. the resolver refuses to
-  // attach the operator token when the current host does not match this, so a
-  // silently-changed relay url cannot harvest it.
+  // the host the operator confirmed. the operator token is withheld once the relay
+  // url's host differs, so a silently changed url cannot harvest it.
   trustedHost?: string
 }
 
@@ -22,10 +21,10 @@ export interface ActiveRelay {
   operatorToken: string | null
 }
 
-// the two networks a dfns wallet can be on, named the way dfns names them.
+// dfns's own names for the two stellar networks.
 export type DfnsNetwork = 'Stellar' | 'StellarTestnet'
 
-// an org can hold several wallets; this is the one picked to act as custody.
+// an org can hold several wallets; this is the one picked for custody.
 export interface SelectedWallet {
   walletId: string
   address: string
@@ -162,7 +161,7 @@ export function activeProfileId(): string | null {
   const all = listProfiles()
   if (stored && all.some((p) => p.id === stored)) return stored
   // no fallback to the first profile: that is always the demo, and a client who
-  // never connected a relay would land on our dfns org. the demo is opt-in.
+  // never connected a relay would end up on our dfns org. the demo is opt-in.
   return null
 }
 
@@ -186,8 +185,7 @@ export function setActiveProfile(id: string): void {
 export function clearActiveProfile(): void {
   try {
     localStorage.removeItem(ACTIVE_KEY)
-    // the demo's operator token is the one write right that lived on disk; drop it
-    // with the connection so it can't outlive the demo it belonged to.
+    // the demo operator token is the one write right kept on disk, so disconnecting clears it.
     localStorage.removeItem(DEMO_OPERATOR_KEY)
   } catch {
     // storage off
@@ -205,15 +203,14 @@ export function addClientProfile(input: Omit<DfnsProfile, 'id' | 'kind'>): DfnsP
     trustedHost: input.trustedHost ?? relayHost(input.relayBaseUrl),
   }
   write(PROFILES_KEY, [...clientProfiles(), profile])
-  // a freshly connected profile becomes the active one: connecting your dfns is
-  // how you switch to it.
+  // connecting a dfns is how you switch to it.
   setActiveProfile(id)
   return profile
 }
 
 export function removeClientProfile(id: string): void {
-  // read before the write: afterwards the id no longer resolves. removing the active
-  // profile deselects to nothing, never to another profile and never to the demo.
+  // read before the write, which stops the id resolving. the active profile
+  // deselects to nothing, never to another profile or the demo.
   const wasActive = activeProfileId() === id
   write(
     PROFILES_KEY,
@@ -268,7 +265,7 @@ function selectedWalletKey(id: string): string {
   return `lob_dfns_wallet_${id}`
 }
 
-// a public address, so unlike the operator token it can live in localStorage.
+// a public address, so unlike the operator token it's fine in localStorage.
 export function selectedWallet(profileId: string, network: DfnsNetwork): SelectedWallet | null {
   const map = read<Record<string, SelectedWallet>>(selectedWalletKey(profileId), {})
   const w = map[network]
