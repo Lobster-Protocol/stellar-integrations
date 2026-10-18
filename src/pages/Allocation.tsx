@@ -106,8 +106,12 @@ export default function Allocation() {
   // built here so the button knows whether there is anything to write yet, and the
   // download waits for both reads so a late vault read cannot leave it quietly short.
   const loading = balancesQ.isLoading || vaultsQ.isLoading
-  // a failed vault read leaves the totals and the file without the vaults
-  const vaultsUnread = vaultsQ.isError
+  // until the vault read answers, the totals and the file would leave the vaults out.
+  // an account that is not on-chain owns none, so its zeros are true
+  const vaultsKnown = vaultsQ.isSuccess || missing
+  const vaultsNote = vaultsQ.isError
+    ? 'The wallet alone: its vaults could not be read.'
+    : 'The wallet so far, its vaults are still being read.'
   const exportRows = holdingsRows(lines, portfolio, priceOf, unit, network)
 
   if (!address) {
@@ -156,12 +160,12 @@ export default function Allocation() {
             label="Holdings"
             name={exportName('holdings', { account: address, network })}
             hint="Wallet balances and vault legs as they stand right now"
-            disabled={loading || vaultsUnread || exportRows.length === 0}
+            disabled={loading || !vaultsKnown || exportRows.length === 0}
             disabledHint={
-              loading
-                ? 'Still reading the chain'
-                : vaultsUnread
-                  ? 'The vaults could not be read, the file would leave them out'
+              vaultsQ.isError
+                ? 'The vaults could not be read, the file would leave them out'
+                : loading || !vaultsKnown
+                  ? 'Still reading the chain'
                   : 'Nothing priced to export yet'
             }
             formats={[
@@ -183,7 +187,7 @@ export default function Allocation() {
         <Stat
           label="Total value"
           value={
-            vaultsUnread
+            !vaultsKnown
               ? '-'
               : held.length + vaults.length === 0
                 ? formatValue(0, unit)
@@ -192,8 +196,10 @@ export default function Allocation() {
                   : 'n/a'
           }
           sub={
-            vaultsUnread
-              ? "the vaults couldn't be read"
+            !vaultsKnown
+              ? vaultsQ.isError
+                ? "the vaults couldn't be read"
+                : 'reading the vaults'
               : unit === 'USDC'
                 ? 'quoted in testnet USDC'
                 : 'wallet plus vaults'
@@ -213,7 +219,7 @@ export default function Allocation() {
         <Stat
           label="In vaults"
           value={
-            vaultsUnread
+            !vaultsKnown
               ? '-'
               : vaults.length === 0
                 ? formatValue(0, unit)
@@ -222,8 +228,10 @@ export default function Allocation() {
                   : 'n/a'
           }
           sub={
-            vaultsUnread
-              ? "couldn't read them"
+            !vaultsKnown
+              ? vaultsQ.isError
+                ? "couldn't read them"
+                : undefined
               : `${vaults.length} position${vaults.length === 1 ? '' : 's'}`
           }
           tone="accent"
@@ -246,8 +254,8 @@ export default function Allocation() {
           <CardHead
             title="By asset"
             note={
-              vaultsUnread
-                ? 'The wallet alone: its vaults could not be read.'
+              !vaultsKnown
+                ? vaultsNote
                 : 'Share of value per token. Tokens with no market pool are left out rather than counted at a made-up price.'
             }
           />
@@ -269,8 +277,8 @@ export default function Allocation() {
           <CardHead
             title="By exchange"
             note={
-              vaultsUnread
-                ? 'The wallet alone: its vaults could not be read.'
+              !vaultsKnown
+                ? vaultsNote
                 : 'Where that value actually sits. A vault shows as held until its liquidity is put to work on an exchange.'
             }
           />

@@ -10,6 +10,7 @@ const { settled } = vi.hoisted(() => ({
   settled: (data: unknown) => ({
     data,
     isLoading: false,
+    isSuccess: true,
     isError: false,
     isFetching: false,
     dataUpdatedAt: 0,

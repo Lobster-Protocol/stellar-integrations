@@ -11,7 +11,7 @@ import {
   partitionHidden,
   showAllVaults,
 } from '../integrations/lobster/hidden-vaults'
-import { useAccountBalances } from '../integrations/horizon/account'
+import { useAccountBalances, useAccountExists } from '../integrations/horizon/account'
 import { useXlmPrice, valueBalances, priceUnit, tokenPricer } from '../integrations/pricing/price'
 import { buildPortfolio } from '../integrations/pricing/portfolio'
 import { CONTRACTS } from '../config/contracts'
@@ -41,6 +41,7 @@ export default function Positions() {
   const activityQ = useActivity(network, address)
   const balancesQ = useAccountBalances(network, address)
   const priceQ = useXlmPrice(network)
+  const missing = useAccountExists(network, address) === 'missing'
 
   const unit = priceUnit(network)
   const price = priceQ.data ?? null
@@ -50,8 +51,9 @@ export default function Positions() {
   const portfolio = buildPortfolio(lines, vaults, priceOf, network)
 
   const factoryId = CONTRACTS[network].lobster.factory
-  // until the vault read lands, a zero in the tiles would be a claim the chain never made
-  const known = !!address && vaultsQ.isSuccess
+  // a count or a value only says something once the vault read answered. an account
+  // that is not on-chain owns no vault, so its zeros are true
+  const known = !!address && (vaultsQ.isSuccess || missing)
   const deployed = vaults.filter((v) => v.venue !== 'idle').length
   // tokens we cannot price count nowhere, so say so when there are any
   const inVaults =

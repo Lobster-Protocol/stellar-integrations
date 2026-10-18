@@ -121,6 +121,8 @@ export default function Overview() {
               ? `Nothing to value until this wallet is funded on ${network}.`
               : vaultsQ.isError
               ? 'The wallet alone for now: its vaults could not be read.'
+              : !vaultsQ.isSuccess
+              ? 'The wallet so far, its vaults are still being read.'
               : usdTotal != null
               ? `Wallet plus vaults, quoted in ${unit === 'USD' ? 'US dollars' : 'testnet USDC'}.`
               : price == null
@@ -163,9 +165,9 @@ export default function Overview() {
               In vaults <InfoTip term="vault" label="a vault" />
             </>
           }
-          value={vaultsQ.isSuccess ? formatValue(portfolio.vaultValue, unit) : '-'}
+          value={vaultsQ.isSuccess || missing ? formatValue(portfolio.vaultValue, unit) : '-'}
           sub={
-            vaultsQ.isSuccess
+            vaultsQ.isSuccess || missing
               ? `${vaults.length} position${vaults.length === 1 ? '' : 's'}`
               : vaultsQ.isError
                 ? "couldn't read them"
@@ -261,7 +263,13 @@ export default function Overview() {
         <Card>
           <CardHead
             title="Allocation"
-            note={vaultsQ.isError ? 'The wallet alone: its vaults could not be read.' : undefined}
+            note={
+              vaultsQ.isError
+                ? 'The wallet alone: its vaults could not be read.'
+                : !vaultsQ.isSuccess && !missing
+                  ? 'The wallet so far, its vaults are still being read.'
+                  : undefined
+            }
             meta={
               <Link to="/allocation" className="text-xs text-primary hover:underline">
                 Detail

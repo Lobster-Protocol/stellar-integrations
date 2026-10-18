@@ -83,8 +83,10 @@ export default function Performance() {
   const { lines, usdTotal } = valueBalances(balancesQ.data ?? [], price, network)
   // the same total Overview leads with: wallet plus vaults, not wallet alone
   const portfolio = buildPortfolio(lines, vaultsQ.data ?? [], tokenPricer(network, price), network)
-  // a failed vault read would leave the vaults out of a figure that says it has them
-  const total = usdTotal != null && !vaultsQ.isError ? portfolio.total : null
+  // until the vault read answers, the figure would leave out the vaults it says it has.
+  // an account that is not on-chain owns none
+  const vaultsKnown = vaultsQ.isSuccess || missing
+  const total = usdTotal != null && vaultsKnown ? portfolio.total : null
 
   // only assets whose identity we can pin down get a price, so a look-alike
   // token can never lift the curve
@@ -203,11 +205,13 @@ export default function Performance() {
       <div className="grid grid-cols-2 gap-3">
         <Stat
           label="Value now"
-          value={total != null ? formatValue(total, unit) : 'n/a'}
+          value={total != null ? formatValue(total, unit) : vaultsKnown ? 'n/a' : '-'}
           sub={
             vaultsQ.isError
               ? "the vaults couldn't be read"
-              : `wallet plus vaults${unit === 'USDC' ? ', in testnet USDC' : ''}`
+              : !vaultsKnown
+                ? 'reading the vaults'
+                : `wallet plus vaults${unit === 'USDC' ? ', in testnet USDC' : ''}`
           }
         />
         <Stat
