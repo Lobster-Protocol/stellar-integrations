@@ -106,6 +106,8 @@ export default function Allocation() {
   // built here so the button knows whether there is anything to write yet, and the
   // download waits for both reads so a late vault read cannot leave it quietly short.
   const loading = balancesQ.isLoading || vaultsQ.isLoading
+  // a failed vault read leaves the totals and the file without the vaults
+  const vaultsUnread = vaultsQ.isError
   const exportRows = holdingsRows(lines, portfolio, priceOf, unit, network)
 
   if (!address) {
@@ -154,8 +156,14 @@ export default function Allocation() {
             label="Holdings"
             name={exportName('holdings', { account: address, network })}
             hint="Wallet balances and vault legs as they stand right now"
-            disabled={loading || exportRows.length === 0}
-            disabledHint={loading ? 'Still reading the chain' : 'Nothing priced to export yet'}
+            disabled={loading || vaultsUnread || exportRows.length === 0}
+            disabledHint={
+              loading
+                ? 'Still reading the chain'
+                : vaultsUnread
+                  ? 'The vaults could not be read, the file would leave them out'
+                  : 'Nothing priced to export yet'
+            }
             formats={[
               {
                 label: 'CSV',
@@ -175,13 +183,21 @@ export default function Allocation() {
         <Stat
           label="Total value"
           value={
-            held.length + vaults.length === 0
-              ? formatValue(0, unit)
-              : total > 0
-                ? formatValue(total, unit)
-                : 'n/a'
+            vaultsUnread
+              ? '-'
+              : held.length + vaults.length === 0
+                ? formatValue(0, unit)
+                : total > 0
+                  ? formatValue(total, unit)
+                  : 'n/a'
           }
-          sub={unit === 'USDC' ? 'quoted in testnet USDC' : 'wallet plus vaults'}
+          sub={
+            vaultsUnread
+              ? "the vaults couldn't be read"
+              : unit === 'USDC'
+                ? 'quoted in testnet USDC'
+                : 'wallet plus vaults'
+          }
         />
         <Stat
           label="In wallet"
@@ -197,13 +213,19 @@ export default function Allocation() {
         <Stat
           label="In vaults"
           value={
-            vaults.length === 0
-              ? formatValue(0, unit)
-              : vaultValue > 0
-                ? formatValue(vaultValue, unit)
-                : 'n/a'
+            vaultsUnread
+              ? '-'
+              : vaults.length === 0
+                ? formatValue(0, unit)
+                : vaultValue > 0
+                  ? formatValue(vaultValue, unit)
+                  : 'n/a'
           }
-          sub={`${vaults.length} position${vaults.length === 1 ? '' : 's'}`}
+          sub={
+            vaultsUnread
+              ? "couldn't read them"
+              : `${vaults.length} position${vaults.length === 1 ? '' : 's'}`
+          }
           tone="accent"
         />
         <Stat
@@ -223,7 +245,11 @@ export default function Allocation() {
         <Card>
           <CardHead
             title="By asset"
-            note="Share of value per token. Tokens with no market pool are left out rather than counted at a made-up price."
+            note={
+              vaultsUnread
+                ? 'The wallet alone: its vaults could not be read.'
+                : 'Share of value per token. Tokens with no market pool are left out rather than counted at a made-up price.'
+            }
           />
           {byAsset.length === 0 ? (
             <Empty>
@@ -242,7 +268,11 @@ export default function Allocation() {
         <Card>
           <CardHead
             title="By exchange"
-            note="Where that value actually sits. A vault shows as held until its liquidity is put to work on an exchange."
+            note={
+              vaultsUnread
+                ? 'The wallet alone: its vaults could not be read.'
+                : 'Where that value actually sits. A vault shows as held until its liquidity is put to work on an exchange.'
+            }
           />
           {byVenue.length === 0 ? (
             <Empty>No priced value to place yet.</Empty>

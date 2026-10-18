@@ -119,6 +119,8 @@ export default function Overview() {
                 market when the wallet is simply empty reads as a broken feed */}
             {missing
               ? `Nothing to value until this wallet is funded on ${network}.`
+              : vaultsQ.isError
+              ? 'The wallet alone for now: its vaults could not be read.'
               : usdTotal != null
               ? `Wallet plus vaults, quoted in ${unit === 'USD' ? 'US dollars' : 'testnet USDC'}.`
               : price == null
@@ -161,8 +163,14 @@ export default function Overview() {
               In vaults <InfoTip term="vault" label="a vault" />
             </>
           }
-          value={formatValue(portfolio.vaultValue, unit)}
-          sub={`${vaults.length} position${vaults.length === 1 ? '' : 's'}`}
+          value={vaultsQ.isSuccess ? formatValue(portfolio.vaultValue, unit) : '-'}
+          sub={
+            vaultsQ.isSuccess
+              ? `${vaults.length} position${vaults.length === 1 ? '' : 's'}`
+              : vaultsQ.isError
+                ? "couldn't read them"
+                : undefined
+          }
           tone="accent"
         />
         <Stat
@@ -253,6 +261,7 @@ export default function Overview() {
         <Card>
           <CardHead
             title="Allocation"
+            note={vaultsQ.isError ? 'The wallet alone: its vaults could not be read.' : undefined}
             meta={
               <Link to="/allocation" className="text-xs text-primary hover:underline">
                 Detail

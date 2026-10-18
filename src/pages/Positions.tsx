@@ -50,6 +50,8 @@ export default function Positions() {
   const portfolio = buildPortfolio(lines, vaults, priceOf, network)
 
   const factoryId = CONTRACTS[network].lobster.factory
+  // until the vault read lands, a zero in the tiles would be a claim the chain never made
+  const known = !!address && vaultsQ.isSuccess
   const deployed = vaults.filter((v) => v.venue !== 'idle').length
   // tokens we cannot price count nowhere, so say so when there are any
   const inVaults =
@@ -130,25 +132,25 @@ export default function Positions() {
               Vaults <InfoTip term="vault" label="a vault" />
             </>
           }
-          value={address ? String(vaults.length) : '-'}
+          value={known ? String(vaults.length) : '-'}
           sub="owned by this wallet"
         />
         <Stat
           label="Value held"
-          value={address ? formatValue(portfolio.vaultValue, unit) : '-'}
+          value={known ? formatValue(portfolio.vaultValue, unit) : '-'}
           sub={unit === 'USDC' ? 'quoted in testnet USDC' : undefined}
           tone="accent"
         />
         <Stat
           label="Active on an exchange"
-          value={address ? `${deployed} of ${vaults.length}` : '-'}
-          sub={vaults.length > 0 && deployed === 0 ? 'the rest sit in the vault' : undefined}
+          value={known ? `${deployed} of ${vaults.length}` : '-'}
+          sub={known && vaults.length > 0 && deployed === 0 ? 'the rest sit in the vault' : undefined}
         />
         <Stat
           label="Share in vaults"
-          value={address && inVaults != null ? `${inVaults}%` : '-'}
+          value={known && inVaults != null ? `${inVaults}%` : '-'}
           sub={
-            inVaults == null
+            !known || inVaults == null
               ? undefined
               : portfolio.unpriced.length > 0
                 ? 'of the part we can price'
