@@ -6,6 +6,7 @@ import TopBar from './components/TopBar'
 import Footer from './components/Footer'
 import AccountMissingNotice from './components/AccountMissingNotice'
 import PendingTransfersNotice from './components/PendingTransfersNotice'
+import { newBuildState } from './utils/new-build'
 
 // route-level code split keeps the initial bundle to the chrome only
 const Overview = lazy(() => import('./pages/Overview'))
@@ -19,6 +20,8 @@ const NotFound = lazy(() => import('./pages/NotFound'))
 // follows bridge transfers on every page; loaded after the chrome, it holds the CCTP code
 const BridgeWatcher = lazy(() => import('./components/BridgeWatcher'))
 
+const pageLoading = <div className="flex items-center justify-center py-20 text-sm text-text-muted">Loading...</div>
+
 class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }, { error: Error | null }> {
   state = { error: null as Error | null }
   static getDerivedStateFromError(error: Error) { return { error } }
@@ -29,11 +32,17 @@ class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }
   }
   render() {
     if (this.state.error) {
+      // a tab left open across a deploy is loading the new version, or asks for a reload when it
+      // already loaded again less than a minute ago
+      const build = newBuildState()
+      if (build === 'reloading') return pageLoading
       return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center p-8">
-            <h2 className="text-lg font-semibold text-text mb-2">Something went wrong</h2>
-            <p className="text-sm text-text-secondary mb-4">{this.state.error.message}</p>
+            <h2 className="text-lg font-semibold text-text mb-2">{build === 'stale' ? 'This page was updated' : 'Something went wrong'}</h2>
+            <p className="text-sm text-text-secondary mb-4">
+              {build === 'stale' ? 'A new version went live while this tab was open. Reload to use it.' : this.state.error.message}
+            </p>
             <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-full bg-primary text-white text-sm">
               Reload
             </button>
@@ -116,7 +125,7 @@ export default function App() {
               <AccountMissingNotice />
               <PendingTransfersNotice />
               <ErrorBoundary resetKey={pathname}>
-                <Suspense fallback={<div className="flex items-center justify-center py-20 text-sm text-text-muted">Loading...</div>}>
+                <Suspense fallback={pageLoading}>
                   <Routes>
                     <Route path="/" element={<Overview />} />
                     <Route path="/performance" element={<Performance />} />

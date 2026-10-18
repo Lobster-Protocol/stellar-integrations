@@ -14,7 +14,11 @@ import { NetworkProvider } from './contexts/NetworkContext'
 import { CustodyProvider } from './contexts/CustodyContext'
 import { ToastProvider } from './contexts/ToastContext'
 import App from './App'
+import { watchForNewBuild } from './utils/new-build'
 import './index.css'
+
+// a tab left open across a deploy loads the new version instead of failing on a page it had not opened
+watchForNewBuild()
 
 // the EVM wallet window in the site's colour and type, taken from the stylesheet
 const walletWindowTheme = lightTheme({ accentColor: 'var(--color-primary)', accentColorForeground: 'white', borderRadius: 'large' })
