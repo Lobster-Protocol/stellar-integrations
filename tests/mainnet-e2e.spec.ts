@@ -82,6 +82,9 @@ async function openCustodyOnMainnet(page: import('@playwright/test').Page) {
 
 test.describe('Live mainnet Factory reads match the /audit DOM', () => {
   test.skip(!ready, 'set PLAYWRIGHT_MAINNET_FACTORY and _SOURCE once the mainnet deploy lands')
+  // the public rpc turns a busy ip away for up to 15 s and the page waits that out
+  // before reading again, so a test gets room for one such wait
+  test.describe.configure({ timeout: 60_000 })
 
   let truth: Truth
 
