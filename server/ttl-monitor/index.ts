@@ -28,6 +28,12 @@ const DEFAULT_FEE_CAP_XLM = 20
 // the account that pays the rent.
 const EXTEND_COOLDOWN_MS = 24 * 3600 * 1000
 
+// an http failure is told in one line; the client's error would print its whole
+// request config. anything else keeps its stack
+export function why(err: unknown): unknown {
+  return (err as { isAxiosError?: boolean } | null)?.isAxiosError ? (err as Error).message : err
+}
+
 function rpcUrlFor(network: Network, env: NodeJS.ProcessEnv = process.env): string {
   const override = network === 'mainnet' ? env.SOROBAN_RPC_MAINNET : env.SOROBAN_RPC_TESTNET
   return override || STELLAR_RPC_FALLBACK[network].soroban
@@ -308,7 +314,7 @@ export async function extendKeys(
         console.error(`[ttl-monitor:${network}] extend did not land for ${s.keyXdr}: tx ${sent.hash} ${res.status}`)
       }
     } catch (err) {
-      console.error(`[ttl-monitor:${network}] extend failed for ${s.keyXdr}`, err)
+      console.error(`[ttl-monitor:${network}] extend failed for ${s.keyXdr}`, why(err))
     }
   }
   return landed
@@ -325,7 +331,7 @@ async function recordsOrNone(config: MonitorConfig): Promise<KeyStatus[]> {
   try {
     return (await scanFactoryRecords(CONTRACTS[config.network].lobster.factory, rpcServer(config.rpcUrl))).statuses
   } catch (err) {
-    console.error(`[ttl-monitor:${config.network}] factory records not read`, err)
+    console.error(`[ttl-monitor:${config.network}] factory records not read`, why(err))
     return []
   }
 }
@@ -378,7 +384,7 @@ export async function startLoop(
     try {
       await runOnce(config, signer, extendedAt)
     } catch (err) {
-      console.error('[ttl-monitor] pass failed', err)
+      console.error(`[ttl-monitor:${config.network}] pass failed`, why(err))
     }
     await new Promise((r) => setTimeout(r, config.intervalMs))
   }

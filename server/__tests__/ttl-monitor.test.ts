@@ -8,7 +8,7 @@ import {
 import { buildExtendTtlTx, clampExtendTo } from '../ttl-monitor/extend'
 import { scanTtl, keysNeedingExtend } from '../ttl-monitor/monitor'
 import {
-  readConfigs, executableCodeKey, storedCodeKey, scanFactoryRecords, dueForExtend, formatMetrics,
+  readConfigs, executableCodeKey, storedCodeKey, scanFactoryRecords, dueForExtend, formatMetrics, why,
 } from '../ttl-monitor/index'
 import { xdr, Address, Account, Networks, StrKey } from '@stellar/stellar-sdk'
 import { CONTRACTS, INCLUSION_FEE_STROOPS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
@@ -302,5 +302,15 @@ describe('scanFactoryRecords', () => {
     expect(out).toContain('lobster_ttl_remaining_ledgers{network="mainnet",kind="factory-settings"} 3000000')
     expect(out.match(/kind="factory-index"/g)).toHaveLength(2)
     for (const s of records.statuses) expect(out).not.toContain(s.keyXdr)
+  })
+})
+
+describe('why', () => {
+  it('tells an http failure in one line and keeps anything else whole', () => {
+    const http = Object.assign(new Error('timeout of 15000ms exceeded'), { isAxiosError: true, config: { url: 'https://rpc.example' } })
+    expect(why(http)).toBe('timeout of 15000ms exceeded')
+    const bug = new TypeError('x is undefined')
+    expect(why(bug)).toBe(bug)
+    expect(why(undefined)).toBeUndefined()
   })
 })
