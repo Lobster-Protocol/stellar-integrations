@@ -39,10 +39,16 @@ const EVM_TIMEOUT_MS = 5_000
 // an evm endpoint serving a block older than this has stopped following the
 // chain, and the bridge would miss the burns and mints after it
 const EVM_STALE_SECONDS = 600
-// a failed check is tried once more after this pause before it counts. the free
-// status page answers an error for a second every few hours and public endpoints
-// drop the odd request; a user who reloads never sees either.
+// a failed check is tried once more after this pause before it counts. public
+// endpoints drop the odd request, and a user who reloads never sees it.
 const CONFIRM_AFTER_MS = 2_000
+// the free status page turns the relay away with a fast error for longer than
+// that, every few hours. what its check is for is a page that stays down.
+const PAGE_CONFIRM_AFTER_MS = 15_000
+
+export function confirmPause(t: Pick<HttpTarget, 'probe'>): number {
+  return t.probe === 'page' ? PAGE_CONFIRM_AFTER_MS : CONFIRM_AFTER_MS
+}
 
 async function timed<T>(fn: () => Promise<T>): Promise<{ ok: boolean; value?: T; seconds: number }> {
   const start = Date.now()
@@ -126,7 +132,10 @@ async function probeOne(t: HttpTarget): Promise<ProbeResult> {
       const body: unknown = await res.json()
       return { up: res.ok && Array.isArray(body) && body.length > 0 }
     }
-    if (t.probe === 'page') return { up: res.ok }
+    if (t.probe === 'page') {
+      if (!res.ok) console.warn(`[probe] ${t.name} answered ${res.status}`)
+      return { up: res.ok }
+    }
     // a 404 at a root or a 401 from an api still proves the host answered;
     // only a network error or a 5xx is down
     const up = res.status > 0 && res.status < 500
@@ -209,7 +218,7 @@ async function readAccount(a: AccountTarget): Promise<AccountReading | null> {
 
 export async function scan(): Promise<ScanResult> {
   const [probes, accounts, soroswap, vendors] = await Promise.all([
-    Promise.all(httpTargets().map((t) => confirmed(() => probeOne(t)))),
+    Promise.all(httpTargets().map((t) => confirmed(() => probeOne(t), confirmPause(t)))),
     Promise.all(accountTargets().map(readAccount)),
     confirmed(probeSoroswap),
     vendorStatus(),

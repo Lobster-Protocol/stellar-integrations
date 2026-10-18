@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
-  hasFeeReserve, formatMetrics, rpcLedgerClose, horizonLedgerClose, evmBlockFresh, confirmed, type ScanResult,
+  hasFeeReserve, formatMetrics, rpcLedgerClose, horizonLedgerClose, evmBlockFresh, confirmed, confirmPause, type ScanResult,
 } from '../probe/index'
 import { accountTargets, httpTargets } from '../probe/targets'
 import { CCTP_SOURCE_CHAINS, STELLAR_CCTP_DOMAIN } from '../../src/config/contracts'
@@ -202,6 +202,11 @@ describe('confirmed', () => {
     const none = vi.fn(async () => null)
     expect(await confirmed(none, 0)).toBeNull()
     expect(none).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits longer before trying the status page again than any other check', () => {
+    expect(confirmPause({ probe: 'page' })).toBe(15_000)
+    for (const probe of ['rpc', 'horizon', 'cctp', 'http', 'evm'] as const) expect(confirmPause({ probe })).toBe(2_000)
   })
 
   it('reports down when the second try fails too', async () => {
