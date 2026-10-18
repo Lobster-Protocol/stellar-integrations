@@ -26,6 +26,7 @@ import { autoApproveArmed, autoApproveHeldForWallet } from './dfns/auto-approve'
 import { buildMcaRecords, toEsmaJson, verifyChain, type StellarTxSnapshot, type ExportContext } from './mica-export'
 import { lookupDti } from './dfns/dti-codes'
 import { scanNetwork } from './ttl-monitor/index'
+import { scanCache } from './ttl-monitor/cache'
 import type { ScanResult } from './ttl-monitor/monitor'
 import type { Network } from '../src/config/contracts'
 import { stroopsToDecimal } from '../src/integrations/stellar/amount'
@@ -148,26 +149,18 @@ registerAllbridgeRoutes(app)
 registerCctpRoutes(app, { rateLimit, tokenGuard, operatorGuard })
 
 // public: it only reads ledger state. 503 until a first scan works (no factory on
-// that network, or rpc down). cached because ttls move one ledger at a time and an
-// open route must not cost an rpc call per request.
-const TTL_CACHE_MS = 60_000
-const ttlCache = new Map<Network, { at: number; scan: ScanResult }>()
+// that network, or rpc down). ttls move one ledger at a time and an open route must
+// not cost an rpc call per request, nor make a reader wait on one.
+const ttlScans = scanCache(scanNetwork)
 
 app.get('/ttl', async (c) => {
   const network: Network = c.req.query('network') === 'mainnet' ? 'mainnet' : 'testnet'
-  let entry = ttlCache.get(network)
-  if (!entry || Date.now() - entry.at >= TTL_CACHE_MS) {
-    try {
-      entry = { at: Date.now(), scan: await scanNetwork(network) }
-      ttlCache.set(network, entry)
-    } catch (err) {
-      // keep serving the last good scan and wait a full window before the next try,
-      // so an outage does not turn every request into an rpc call.
-      if (!entry) return c.json({ error: (err as Error).message }, 503)
-      entry.at = Date.now()
-    }
+  let scan: ScanResult
+  try {
+    scan = await ttlScans(network)
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 503)
   }
-  const scan = entry.scan
   return c.json({
     network,
     latestLedger: scan.latestLedger,
