@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+// transfers.ts, which the power cut test loads twice, brings the Stellar SDK with it. Loaded
+// cold inside the test it can take more than the 5 s a test gets on a busy machine, so it
+// loads here, before the clock starts
+import '@stellar/stellar-sdk'
 
 // just what durable.ts uses of IndexedDB, in memory; answers come back on a later tick
 function fakeIndexedDB() {
