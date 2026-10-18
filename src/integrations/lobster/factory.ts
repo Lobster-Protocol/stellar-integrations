@@ -13,6 +13,7 @@ import {
 import { INCLUSION_FEE_STROOPS, CONTRACTS } from '../../config/contracts'
 import { getSorobanServer, networkPassphrase, loadFunded } from './client'
 import { assertAccountId } from '../stellar/strkey-guards'
+import { txLanded } from '../stellar/landed'
 import type { FactoryInfo, LobsterPool, Network } from './types'
 
 const POLL_INTERVAL_MS = 3_000
@@ -237,7 +238,10 @@ export async function waitForTx(network: Network, hash: string): Promise<rpc.Api
   while (Date.now() - start < POLL_TIMEOUT_MS) {
     try {
       const res = await server.getTransaction(hash)
-      if (res.status !== 'NOT_FOUND') return res
+      if (res.status !== 'NOT_FOUND') {
+        if (res.status === 'SUCCESS') txLanded(network, hash)
+        return res
+      }
       lost = false
     } catch {
       lost = true

@@ -16,6 +16,7 @@ import { useAccountSigning } from '../integrations/stellar/use-account-signing'
 import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
 import { overWalletConnect, validitySecs } from '../integrations/signer/validity'
 import { walletAnswerText } from '../integrations/signer/wallet-errors'
+import { txLanded } from '../integrations/stellar/landed'
 import CoSignPanel from './CoSignPanel'
 import TokenRef from './TokenRef'
 
@@ -145,6 +146,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         return
       }
       if (signed.broadcastHash) {
+        txLanded(network, signed.broadcastHash)
         setPhase({ k: 'done', hash: signed.broadcastHash })
         onDone()
         return

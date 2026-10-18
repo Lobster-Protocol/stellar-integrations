@@ -2,6 +2,7 @@ import { Asset, Operation, TransactionBuilder, NotFoundError } from '@stellar/st
 import { useQuery } from '@tanstack/react-query'
 import { getHorizonServer } from '../horizon/client'
 import { useAccountBalances, useAccountExists } from '../horizon/account'
+import { txLanded } from './landed'
 import { networkPassphrase } from '../lobster/client'
 import type { Network } from '../lobster/types'
 import { INCLUSION_FEE_STROOPS } from '../../config/contracts'
@@ -62,6 +63,7 @@ export async function submitTrustlineTx(signedXdr: string, network: Network): Pr
   const server = getHorizonServer(network)
   const tx = TransactionBuilder.fromXDR(signedXdr, networkPassphrase(network))
   const res = await server.submitTransaction(tx)
+  txLanded(network, res.hash)
   return res.hash
 }
 

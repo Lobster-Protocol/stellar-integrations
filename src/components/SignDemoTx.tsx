@@ -8,6 +8,7 @@ import { awaitDfnsSignature } from '../integrations/dfns/await-signature'
 import { pollSignatureStatus, requestTransfer } from '../integrations/dfns/relay'
 import { readableDfnsError } from '../integrations/dfns/errors'
 import { networkPassphrase } from '../integrations/lobster/client'
+import { txLanded } from '../integrations/stellar/landed'
 import { stellarExplorer, cn } from '../utils/format'
 import { InfoTip } from './InfoTip'
 import { WALLET_CONNECT_ID } from '@creit-tech/stellar-wallets-kit/modules/wallet-connect'
@@ -58,7 +59,10 @@ export default function SignDemoTx() {
         // approval rules can read. the destination is the treasury and it is on
         // the list, so the rule lets it through with nobody in the loop.
         const out = await requestTransfer(source, '100000')
-        if (out.txHash) setState({ phase: 'confirmed', txHash: out.txHash })
+        if (out.txHash) {
+          txLanded(network, out.txHash)
+          setState({ phase: 'confirmed', txHash: out.txHash })
+        }
         // a transfer cannot be polled from here: the relay credential is not
         // allowed to read transfers back, so say where it went rather than
         // promising a hash that will never arrive on its own.
@@ -94,6 +98,7 @@ export default function SignDemoTx() {
           kind === 'payment'
             ? await pollSignatureStatus(pendingId, { signal: ac.signal })
             : await awaitDfnsSignature(pendingId, network, ac.signal)
+        if (kind === 'payment') txLanded(network, hash)
         setState({ phase: 'confirmed', txHash: hash })
         return
       }
@@ -101,6 +106,7 @@ export default function SignDemoTx() {
       // dfns broadcasts a classic tx itself, so the hash is the whole artifact;
       // the wallet kit hands back an envelope to submit and poll.
       if (broadcastHash) {
+        txLanded(network, broadcastHash)
         setState({ phase: 'confirmed', txHash: broadcastHash })
         return
       }

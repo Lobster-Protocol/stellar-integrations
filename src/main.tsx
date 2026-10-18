@@ -15,6 +15,7 @@ import { CustodyProvider } from './contexts/CustodyContext'
 import { ToastProvider } from './contexts/ToastContext'
 import App from './App'
 import { watchForNewBuild } from './utils/new-build'
+import { refreshBalancesOnLanded } from './integrations/stellar/landed'
 import './index.css'
 
 // a tab left open across a deploy loads the new version instead of failing on a page it had not opened
@@ -40,6 +41,9 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// a confirmed transaction refreshes the balances it changed, on whatever screen is open
+refreshBalancesOnLanded(queryClient)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
