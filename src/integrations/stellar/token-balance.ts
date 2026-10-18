@@ -21,7 +21,7 @@ export async function getSorobanTokenBalance(
   if (!isContractId(tokenId) || !isAccountId(account)) return null
 
   try {
-    const server = getSorobanServer(network)
+    const server = getSorobanServer(network, 'read')
     const source = await server.getAccount(account)
     const tx = new TransactionBuilder(source, {
       fee: BASE_FEE,

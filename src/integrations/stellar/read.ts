@@ -29,7 +29,7 @@ export async function simulateRead<T>(
   method: string,
   args: xdr.ScVal[] = [],
 ): Promise<T> {
-  const server = getSorobanServer(network)
+  const server = getSorobanServer(network, 'read')
   const account = new Account(source, '0')
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,

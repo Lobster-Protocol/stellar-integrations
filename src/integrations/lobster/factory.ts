@@ -34,7 +34,7 @@ async function readContract<T = unknown>(
   method: string,
   args: xdr.ScVal[] = [],
 ): Promise<T> {
-  const server = getSorobanServer(network)
+  const server = getSorobanServer(network, 'read')
   const factory = new Contract(getFactoryId(network))
   // read-only sim: fabricated source so an unfunded caller can still read.
   const sourceAccount = new Account(account, '0')
