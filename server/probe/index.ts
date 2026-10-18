@@ -3,6 +3,7 @@ import {
   nativeToScVal, scValToNative, xdr,
 } from '@stellar/stellar-sdk'
 import { CONTRACTS, STELLAR_RPC_FALLBACK } from '../../src/config/contracts'
+import { rpcServer } from '../stellar-client'
 import { httpTargets, accountTargets, type HttpTarget, type AccountTarget } from './targets'
 import { vendorStatus, type VendorReading } from './vendors'
 
@@ -158,7 +159,7 @@ async function probeSoroswap(): Promise<ProbeResult | null> {
   if (!caller || !tokens.xlmSac || !tokens.usdcSac || !routerId) return null
   const rpcUrl = process.env.SOROBAN_RPC_MAINNET || STELLAR_RPC_FALLBACK.mainnet.soroban
   const r = await timed(async () => {
-    const server = new rpc.Server(rpcUrl, { allowHttp: rpcUrl.startsWith('http://'), timeout: TIMEOUT_MS })
+    const server = rpcServer(rpcUrl, TIMEOUT_MS)
     const source = await server.getAccount(caller)
     const path = xdr.ScVal.scvVec([
       Address.fromString(tokens.xlmSac).toScVal(),

@@ -1,9 +1,16 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Hono } from 'hono'
-import { Keypair } from '@stellar/stellar-sdk'
+import { Account, Keypair, Networks, Operation, TransactionBuilder, type rpc } from '@stellar/stellar-sdk'
 
-import { deliver, relayKeypair, takeDailySlot, resetDailySlotsForTest, RelayRefused } from '../cctp/relay'
+import {
+  deliver,
+  landDelivery,
+  relayKeypair,
+  takeDailySlot,
+  resetDailySlotsForTest,
+  RelayRefused,
+} from '../cctp/relay'
 import { registerCctpRoutes } from '../cctp/routes'
 import { CONTRACTS } from '../../src/config/contracts'
 
@@ -265,5 +272,69 @@ describe('cctp routes', () => {
       expect((await appWith().request('/cctp/fees?network=mainnet&domain=27')).status).toBe(400)
       expect((await appWith().request('/cctp/fees?network=mainnet&domain=27&destination=27')).status).toBe(400)
     })
+  })
+})
+
+describe('landing a delivery', () => {
+  const envelope = () =>
+    new TransactionBuilder(new Account(Keypair.random().publicKey(), '1'), {
+      fee: '100',
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(Operation.bumpSequence({ bumpTo: '2' }))
+      .setTimeout(180)
+      .build()
+
+  // answers getTransaction from the list in order, then keeps giving the last one
+  function server(send: () => Promise<{ status: string }>, reads: Array<{ status: string } | Error>) {
+    let i = 0
+    const getTransaction = vi.fn(async () => {
+      const r = reads[Math.min(i++, reads.length - 1)]
+      if (r instanceof Error) throw r
+      return r
+    })
+    return {
+      getTransaction,
+      api: { sendTransaction: vi.fn(send), getTransaction } as unknown as Pick<
+        rpc.Server,
+        'sendTransaction' | 'getTransaction'
+      >,
+    }
+  }
+
+  it('reports a delivery that landed even when the send itself timed out', async () => {
+    const tx = envelope()
+    const s = server(() => Promise.reject(new Error('timeout of 15000ms exceeded')), [
+      { status: 'NOT_FOUND' },
+      { status: 'SUCCESS' },
+    ])
+    await expect(landDelivery(s.api, tx, 1_000, 1)).resolves.toBe(tx.hash().toString('hex'))
+  })
+
+  it('keeps reading through a rate limit or a read that timed out', async () => {
+    const s = server(() => Promise.resolve({ status: 'PENDING' }), [
+      new Error('Request failed with status code 429'),
+      new Error('timeout of 15000ms exceeded'),
+      { status: 'SUCCESS' },
+    ])
+    await expect(landDelivery(s.api, envelope(), 1_000, 1)).resolves.toMatch(/^[0-9a-f]{64}$/)
+    expect(s.getTransaction).toHaveBeenCalledTimes(3)
+  })
+
+  it('stops at once when the network refuses the envelope', async () => {
+    const s = server(() => Promise.resolve({ status: 'ERROR' }), [{ status: 'NOT_FOUND' }])
+    await expect(landDelivery(s.api, envelope(), 1_000, 1)).rejects.toThrow(/did not accept the delivery \(ERROR\)/)
+    expect(s.getTransaction).not.toHaveBeenCalled()
+  })
+
+  it('reports a delivery that failed on chain', async () => {
+    const s = server(() => Promise.resolve({ status: 'PENDING' }), [{ status: 'FAILED' }])
+    await expect(landDelivery(s.api, envelope(), 1_000, 1)).rejects.toThrow(/failed on chain/)
+  })
+
+  it('gives up with the hash to check once the wait is over', async () => {
+    const tx = envelope()
+    const s = server(() => Promise.resolve({ status: 'PENDING' }), [{ status: 'NOT_FOUND' }])
+    await expect(landDelivery(s.api, tx, 30, 1)).rejects.toThrow(`no result for ${tx.hash().toString('hex')} yet`)
   })
 })

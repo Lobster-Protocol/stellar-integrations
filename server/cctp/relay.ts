@@ -1,12 +1,12 @@
 import {
   Account,
   Contract,
-  Horizon,
   Keypair,
   Networks,
   NotFoundError,
   StrKey,
   TransactionBuilder,
+  type Transaction,
   nativeToScVal,
   rpc,
   scValToNative,
@@ -29,6 +29,7 @@ import {
   hexToBytes,
   type CctpMessage,
 } from '../../src/integrations/cctp/message'
+import { horizonServer, rpcServer } from '../stellar-client'
 
 export class RelayRefused extends Error {
   readonly status: 400 | 404 | 409 | 503
@@ -83,7 +84,7 @@ export function resetDailySlotsForTest(): void {
 }
 
 async function readOnly(network: Network, contractId: string, fn: string, args: xdr.ScVal[] = []) {
-  const server = new rpc.Server(sorobanUrl(network))
+  const server = rpcServer(sorobanUrl(network))
   const tx = new TransactionBuilder(new Account(READ_SOURCE, '0'), {
     fee: INCLUSION_FEE_STROOPS,
     networkPassphrase: passphrase(network),
@@ -102,7 +103,7 @@ async function hasUsdcTrustline(network: Network, account: string): Promise<bool
     (network === 'mainnet' ? process.env.HORIZON_MAINNET : process.env.HORIZON_TESTNET) ||
     STELLAR_RPC_FALLBACK[network].horizon
   try {
-    const acct = await new Horizon.Server(horizonUrl).loadAccount(account)
+    const acct = await horizonServer(horizonUrl).loadAccount(account)
     return acct.balances.some(
       (b) => 'asset_code' in b && b.asset_code === 'USDC' && b.asset_issuer === usdcIssuer,
     )
@@ -171,7 +172,9 @@ export async function deliver(req: ClaimRequest): Promise<ClaimOutcome> {
   const kp = relayKeypair(network)
   takeDailySlot()
 
-  const server = new rpc.Server(sorobanUrl(network))
+  // past takeDailySlot a stalled read would keep a slot it never used, so every call here has
+  // the client's deadline, and the send is settled by its hash below
+  const server = rpcServer(sorobanUrl(network))
   const source = await server.getAccount(kp.publicKey())
   const tx = new TransactionBuilder(source, { fee: INCLUSION_FEE_STROOPS, networkPassphrase: passphrase(network) })
     .addOperation(
@@ -189,17 +192,30 @@ export async function deliver(req: ClaimRequest): Promise<ClaimOutcome> {
   const prepared = rpc.assembleTransaction(tx, sim).build()
   prepared.sign(kp)
 
-  const sent = await server.sendTransaction(prepared)
-  if (sent.status === 'ERROR' || sent.status === 'TRY_AGAIN_LATER') {
+  const hash = await landDelivery(server, prepared)
+  return { status: 'delivered', hash, amount: usdc(amountToLand(msg)) }
+}
+
+// A send that timed out or dropped may still have reached the network, so the outcome is read
+// from the envelope's own hash. The envelope is valid for 180s; wait that long before calling it lost.
+export async function landDelivery(
+  server: Pick<rpc.Server, 'sendTransaction' | 'getTransaction'>,
+  prepared: Transaction,
+  waitMs = 190_000,
+  everyMs = 3_000,
+): Promise<string> {
+  const hash = prepared.hash().toString('hex')
+  const sent = await server.sendTransaction(prepared).catch(() => null)
+  if (sent && (sent.status === 'ERROR' || sent.status === 'TRY_AGAIN_LATER')) {
     throw new Error(`Stellar did not accept the delivery (${sent.status})`)
   }
-  // the envelope is valid for 180s; wait that long before calling it lost
-  const deadline = Date.now() + 190_000
+  const deadline = Date.now() + waitMs
   while (Date.now() < deadline) {
-    const res = await server.getTransaction(sent.hash)
-    if (res.status === 'SUCCESS') return { status: 'delivered', hash: sent.hash, amount: usdc(amountToLand(msg)) }
-    if (res.status === 'FAILED') throw new Error(`the delivery failed on chain (${sent.hash})`)
-    await new Promise((r) => setTimeout(r, 3_000))
+    // a read that timed out or was rate limited says nothing about the delivery
+    const res = await server.getTransaction(hash).catch(() => null)
+    if (res?.status === 'SUCCESS') return hash
+    if (res?.status === 'FAILED') throw new Error(`the delivery failed on chain (${hash})`)
+    await new Promise((r) => setTimeout(r, everyMs))
   }
-  throw new Error(`no result for ${sent.hash} yet, check the explorer before trying again`)
+  throw new Error(`no result for ${hash} yet, check the explorer before trying again`)
 }
