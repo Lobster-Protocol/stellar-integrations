@@ -7,8 +7,7 @@ import LiveDataMeta from './LiveDataMeta'
 import { Failed } from './ui'
 import { InfoTip } from './InfoTip'
 
-// Amber and red read as the same hue under deuteranopia whatever lightness we
-// pick, so the level is carried by the icon and the word as well as the colour.
+// amber and red look alike under deuteranopia, so the icon and word carry the level too
 const LEVEL_STYLE: Record<TtlLevel, { text: string; label: string; icon: LucideIcon }> = {
   ok: { text: 'text-ok', label: 'healthy', icon: CheckCircle2 },
   warn: { text: 'text-warn', label: 'extend soon', icon: AlertTriangle },
@@ -16,16 +15,13 @@ const LEVEL_STYLE: Record<TtlLevel, { text: string; label: string; icon: LucideI
   archived: { text: 'text-text-muted', label: 'archived', icon: Archive },
 }
 
-// the relay names what each watched entry is. the configured wasm hash can't tell
-// the two code entries apart: on testnet it is the factory's own code.
+// the relay sends the kind because the wasm hash alone can't tell the two code entries apart
 const KIND_LABEL: Record<string, string> = {
   instance: 'Factory instance',
   'factory-code': 'Factory code',
   'vault-code': 'Vault code',
 }
 
-// no thresholds here; the bands that drive the colour are decided server-side
-// and arrive as the level.
 function formatRemaining(seconds: number): string {
   if (seconds <= 0) return 'expired'
   const d = Math.floor(seconds / 86_400)
@@ -40,20 +36,16 @@ export default function TtlCountdownCard() {
   const { network } = useNetwork()
   const ttl = useTtlStatus(network)
 
-  // there is only something to watch where the Factory is deployed. asking the
-  // feed about a network we never deployed to earns a 503, and the reader is
-  // better served by the reason than by the relay's refusal.
+  // without a Factory the feed answers 503
   const deployed = !!CONTRACTS[network].lobster.factory
   const other = network === 'mainnet' ? 'testnet' : 'mainnet'
   const otherDeployed = !!CONTRACTS[other].lobster.factory
 
-  // the hook is gated on the same variable, so with no feed address the query
-  // never fires and sits pending. that is a build nobody pointed at the feed,
-  // not a ledger with nothing on it, and the card has to tell the two apart.
+  // with no feed address the gated query sits pending forever, which must not
+  // read as an empty ledger
   const feedConfigured = !!import.meta.env.VITE_LOBSTER_API_URL
 
-  // fetch rejects with a TypeError when it cannot reach the host at all (wrong port,
-  // service down, origin not allowed); the relay's own explanations are plain Errors.
+  // an unreachable host makes fetch throw TypeError, unlike the relay's own errors
   const unreachable = ttl.error instanceof TypeError
 
   const reading = deployed && feedConfigured
@@ -66,7 +58,6 @@ export default function TtlCountdownCard() {
           Contract storage lease <InfoTip term="ttl" label="the storage lease" />
         </h3>
         <div className="flex items-center gap-3">
-          {/* a failed read is not a live one, so the badge goes with the data */}
           {live && <span className="text-[11px] text-text-muted">live | on-chain | {network}</span>}
           {reading && (
             <LiveDataMeta
@@ -120,7 +111,8 @@ export default function TtlCountdownCard() {
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`text-[10px] ${style.text}`}>{style.label}</span>
                   <span className="text-text font-medium tabular-nums">
-                    {formatRemaining(s.remainingSeconds)} left
+                    {formatRemaining(s.remainingSeconds)}
+                    {s.remainingSeconds > 0 && ' left'}
                   </span>
                 </div>
               </li>

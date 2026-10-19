@@ -45,7 +45,7 @@ export default function MpcSignatureFeed() {
   if (!hasRelay) {
     return (
       <NotConfigured title="Signing activity" needs="a DFNS organization">
-        Signing activity from your DFNS organization, streamed live as it happens.
+        Signing activity from your DFNS organization, streamed live.
       </NotConfigured>
     )
   }
@@ -56,7 +56,9 @@ export default function MpcSignatureFeed() {
         <h3 className="text-sm font-semibold text-text">
           Signing activity <InfoTip term="mpc" label="MPC signing" />
         </h3>
-        <span className="text-xs text-text-muted">{events.length} events</span>
+        <span className="text-xs text-text-muted">
+          {events.length} event{events.length === 1 ? '' : 's'}
+        </span>
       </div>
 
       {events.length === 0 ? (

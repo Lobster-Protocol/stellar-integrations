@@ -18,7 +18,7 @@ export default function SharedControl() {
   const [building, setBuilding] = useState(false)
 
   const data = signing.data
-  // single-sig accounts have nothing to see: this is only an off-ramp for an existing quorum
+  // only an off-ramp for an existing quorum, single-sig accounts see nothing
   if (!address || signing.isLoading || !data || !isMultisig(data)) return null
 
   async function turnOff() {
@@ -26,8 +26,7 @@ export default function SharedControl() {
     setErr(null)
     setBuilding(true)
     try {
-      // weight 0 removes a signer; master and every threshold go back to 1 so one
-      // signature authorises again
+      // weight 0 removes a signer, thresholds back to 1 so one signature is enough
       const drop = data.signers.filter((s) => s.key !== address).map((s) => ({ key: s.key, weight: 0 }))
       const xdr = await buildSetOptionsTx(network, address, {
         addSigners: drop,
@@ -65,14 +64,14 @@ export default function SharedControl() {
     <Card>
       <CardHead
         title="Shared control is on"
-        note={`This account needs ${requiredWeight(data, 'med')} signatures for every move. If you did not mean to set up a native quorum, turn it back off here: multisig belongs in DFNS custody, not on your own key.`}
+        note={`This account needs a signing weight of ${requiredWeight(data, 'med')} for every move. If you didn't mean to set up a native quorum, turn it back off here: multisig belongs in DFNS custody, not on your own key.`}
       />
 
       <div className="rounded-2xl bg-bg px-3 py-3 text-xs space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-text-secondary">Signatures required</span>
+          <span className="text-text-secondary">Signing weight needed</span>
           <span className="font-semibold text-text">
-            {requiredWeight(data, 'med')} of {data.signers.length}
+            {requiredWeight(data, 'med')}
           </span>
         </div>
         <ul className="space-y-0.5">
@@ -98,10 +97,9 @@ export default function SharedControl() {
             {building ? 'Building the change...' : 'Turn off shared control'}
           </button>
           <p className="text-[11px] text-text-muted mt-2">
-            Turning it off changes the account's signers, which needs its high threshold, so every
-            signer may have to sign: start with this wallet, then gather the other signatures (or paste
-            their signed copies). Once it lands, the account is single-sig again and the co-sign step
-            disappears from swaps and deposits.
+            Turning it off changes the signers, which takes the high threshold, so every signer may
+            have to sign. Sign with this wallet first, then collect the others or paste their signed
+            copies. After that the account is single-sig again.
           </p>
           {err && <p className="text-xs text-coral break-words mt-2">{err}</p>}
         </>

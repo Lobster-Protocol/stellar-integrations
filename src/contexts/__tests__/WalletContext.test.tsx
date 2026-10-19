@@ -69,7 +69,7 @@ afterEach(() => {
 })
 
 describe('read-only view', () => {
-  it('reads the account a link names, over the connected wallet, and keeps the kit from signing', async () => {
+  it('a view link wins over the wallet and blocks signing', async () => {
     localStorage.setItem('lob_addr', OWN)
     window.history.replaceState(null, '', `/positions?view=${VIEWED}`)
     mount()
@@ -81,7 +81,7 @@ describe('read-only view', () => {
     expect(kitSign).not.toHaveBeenCalled()
   })
 
-  it('goes back to the wallet when the view is left, and a reload of the same url stays out of it', () => {
+  it('leaving the view goes back to the wallet for good', () => {
     localStorage.setItem('lob_addr', OWN)
     window.history.replaceState(null, '', `/?network=mainnet&view=${VIEWED}`)
     mount()

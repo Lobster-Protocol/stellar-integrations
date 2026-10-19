@@ -12,8 +12,7 @@ function usePendingCount(): number {
   return pending + orphanIntents(useBurnIntents(network)).length
 }
 
-// custody closes the list: it is the account-settings page, everything above it
-// is something you look at.
+// custody is account settings and goes after the pages you look at
 const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/performance', label: 'Performance', icon: TrendingUp },

@@ -40,7 +40,6 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
   const inFlight = useRef(false)
   const signingQ = useAccountSigning(network, caller)
   const multi = signingQ.data ? isMultisig(signingQ.data) : false
-  // a DFNS treasury reached over WalletConnect holds the signature for its own approval
   const { walletId } = useWallet()
   const overWc = overWalletConnect(walletId)
 
@@ -76,8 +75,6 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
         return
       }
       if (multi) {
-        // a quorum account signs the frozen envelope together, so hand off to the
-        // co-sign panel rather than signing once here. never rebuild after this.
         setPhase({ k: 'collecting', xdr: built.xdr })
         return
       }
@@ -86,7 +83,7 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
         networkPassphrase: networkPassphrase(network),
         address: caller,
       })
-      if (!signedTxXdr) throw new Error('the wallet did not return a signed transaction')
+      if (!signedTxXdr) throw new Error("The wallet didn't return a signed transaction.")
       setPhase({ k: 'submitting' })
       const hash = await submitSignedXdr(network, signedTxXdr)
       const final = await waitForTx(network, hash)
@@ -165,7 +162,7 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
                 submit={async (xdr) => {
                   const hash = await submitSignedXdr(network, xdr)
                   const final = await waitForTx(network, hash)
-                  if (final.status !== 'SUCCESS') throw new Error(`the network reported ${final.status}`)
+                  if (final.status !== 'SUCCESS') throw new Error(`The network reported ${final.status}.`)
                   return hash
                 }}
                 onSubmitted={(hash) => {
@@ -179,7 +176,8 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
           <div className="space-y-3">
             {multi && signingQ.data && (
               <div className="rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-[11px]">
-                This account uses shared control. Creating a vault needs {requiredWeight(signingQ.data, 'med')} signatures.
+                This account uses shared control. Creating a vault needs a signing weight
+                of {requiredWeight(signingQ.data, 'med')}.
               </div>
             )}
             {overWc && (

@@ -17,14 +17,14 @@ function wrap(node: React.ReactNode) {
   )
 }
 
-describe('CustodyModeToggle (DFNS custody panel)', () => {
-  it('is titled DFNS custody and leads with connecting your own DFNS', () => {
+describe('CustodyModeToggle', () => {
+  it('leads with connecting your own DFNS', () => {
     wrap(<CustodyModeToggle />)
     expect(screen.getByText('DFNS custody')).toBeInTheDocument()
     expect(screen.getByText(/Connect your own DFNS organization/)).toBeInTheDocument()
   })
 
-  it('does not show the browser-wallet-vs-DFNS mode toggle', () => {
+  it('shows no signer buttons', () => {
     wrap(<CustodyModeToggle />)
     expect(screen.queryByRole('button', { name: /^Browser wallet/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /DFNS \(Lobster demo\)/ })).not.toBeInTheDocument()

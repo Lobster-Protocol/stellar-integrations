@@ -14,7 +14,7 @@ const TONE_CLASS: Record<Tone, string> = {
   warn: 'bg-coral/10 text-coral',
 }
 
-// Circle's view of one transfer, shared with the background watcher through the query cache
+// same query key as BridgeWatcher
 function useTransferStatus(network: Network, t: TrackedTransfer) {
   const out = directionOf(t) === 'from-stellar'
   const chain = cctpChainsFor(network).find((c) => c.key === t.chainKey) ?? null
@@ -73,8 +73,7 @@ export function InProgressRow({
   )
 }
 
-// what the page looked at on chain for transfers that never arrived, and when: shown so a
-// person back on another device knows the list is not only this browser's memory
+// tells someone on a new device the list comes from the chain, not this browser's memory
 export function SearchSummary({ network, stellar }: { network: Network; stellar: string | null }) {
   const connectedEvm = useAccount().address
   const searches = useSearches(network)
@@ -93,7 +92,7 @@ export function SearchSummary({ network, stellar }: { network: Network; stellar:
   const last = Math.max(0, ...[...stellarRecs, ...evmRecs].map((x) => x.r?.at ?? 0))
   const names = (xs: string[]) => xs.map((a) => shortenAddress(a, 6, 4)).join(', ')
   const once = (xs: string[]) => [...new Set(xs)]
-  // only what has been read so far; the rest is said to be under way
+  // only what's been read; the rest goes in the "Reading ..." sentence
   const stellarRead = stellarRecs.filter((x) => x.r).map((x) => x.a)
   const evmRead = evmRecs.filter((x) => x.r)
   const parts = [
@@ -114,7 +113,7 @@ export function SearchSummary({ network, stellar }: { network: Network; stellar:
         {parts.length > 0 && `Looked on chain ${elapsed(last, now)} ago for ${parts.join(', and for ')}.`}
         {reading.length > 0 && `${parts.length > 0 ? ' ' : ''}Reading ${reading.join(', ')} for transfers that have not arrived.`}
         {partial.length > 0 &&
-          ` ${partial.join(', ')} could not be read in full just now; an older transfer is finished from its burn hash below.`}
+          ` ${partial.join(', ')} couldn't be read in full just now. Finish an older transfer from its burn hash below.`}
         {notConnected && ' A wallet that bridged from this browser is searched even when it is not connected.'}
         {wallets.evm.length === 0 && ' A transfer into Stellar shows up once the EVM wallet that sent it is connected.'}
       </p>

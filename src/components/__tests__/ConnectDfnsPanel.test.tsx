@@ -10,20 +10,20 @@ beforeEach(() => {
 })
 
 describe('ConnectDfnsPanel', () => {
-  it('lists the demo profile as a testnet sandbox, not active by default', () => {
+  it('lists the demo as an inactive testnet sandbox', () => {
     render(<ConnectDfnsPanel />)
     expect(screen.getByText('Testnet sandbox')).toBeInTheDocument()
     // the demo is opt-in, so a client is never silently on our org.
     expect(screen.queryByText(/shared sandbox, not your custody/)).not.toBeInTheDocument()
   })
 
-  it('shows the demo note only after the operator explicitly picks the demo', () => {
+  it('shows the demo note once the demo is picked', () => {
     render(<ConnectDfnsPanel />)
     fireEvent.click(screen.getByRole('button', { name: /Lobster demo/ }))
     expect(screen.getByText(/shared sandbox, not your custody/)).toBeInTheDocument()
   })
 
-  it('opens the connect form with the trust warning and a save that waits on a check', () => {
+  it('connect form warns first and only saves after a check', () => {
     render(<ConnectDfnsPanel />)
     fireEvent.click(screen.getByRole('button', { name: /Connect a DFNS relay/ }))
     expect(screen.getByText(/Enter only a relay you run/)).toBeInTheDocument()

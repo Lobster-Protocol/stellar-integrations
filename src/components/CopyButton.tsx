@@ -20,8 +20,7 @@ export default function CopyButton({
     return () => clearTimeout(t)
   }, [copied])
 
-  // No clipboard outside a secure context, and a button that silently does
-  // nothing is worse than one that isn't there.
+  // no clipboard outside a secure context, and a dead button is worse than none
   if (typeof navigator === 'undefined' || !navigator.clipboard) return null
 
   return (
@@ -35,7 +34,7 @@ export default function CopyButton({
           await navigator.clipboard.writeText(value)
           setCopied(true)
         } catch {
-          // the browser refused, so say nothing rather than claim a copy
+          // the browser said no; don't claim a copy
         }
       }}
       className={cn(

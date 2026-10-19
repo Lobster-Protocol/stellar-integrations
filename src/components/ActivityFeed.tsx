@@ -152,7 +152,7 @@ function useCoverRange(
   q: ReturnType<typeof useActivity>,
 ) {
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = q
-  // react-query already counts the pages it holds, so the budget needs no state
+  // react-query already counts the pages
   const { covering, capped, shouldFetch } = feedPaging({
     startMs: filters.startMs,
     oldestAt: events.length > 0 ? events[events.length - 1].at : null,
@@ -188,7 +188,7 @@ export default function ActivityFeed() {
     [events, filters.startMs, filters.endMs, filters.query, filters.vault, filters.reversed],
   )
 
-  // counts follow the window, so a tab never promises rows the window hides
+  // counts follow the window, so a tab's count matches the rows it shows
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: found.length }
     for (const e of found) {
@@ -200,7 +200,7 @@ export default function ActivityFeed() {
 
   const shown = filters.group === 'all' ? found : found.filter((e) => groupOf(e.kind) === filters.group)
 
-  // day headers, in the order the events already arrive (newest first)
+  // events come newest first; grouping neighbours is enough
   const days: Array<[string, ActivityEvent[]]> = []
   for (const e of shown) {
     const k = dayKey(e.at)
@@ -274,9 +274,8 @@ export default function ActivityFeed() {
 
         {capped && (
           <p className="text-[11px] text-text-muted mt-3 text-center">
-            These are the newest {events.length} operations, which do not yet reach{' '}
-            {filters.from}. Keep loading to go further back, or download the file, which reads
-            the whole range on its own.
+            Only the newest {events.length} operations are loaded and they stop short of the
+            start date. Load older ones below, or download the file for the whole range.
           </p>
         )}
 
@@ -300,8 +299,8 @@ export default function ActivityFeed() {
         title="On-chain activity"
         note={
           filters.windowed
-            ? `Every operation this wallet signed ${describeWindow(filters)}.`
-            : 'Every operation this wallet signed, labelled by what each transaction did.'
+            ? `Every operation on this wallet ${describeWindow(filters)}.`
+            : 'Every operation on this wallet, labelled by what each transaction did.'
         }
         meta={<span className="text-[11px] text-text-muted">live | on-chain | {network}</span>}
       />

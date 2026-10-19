@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { seedDfnsDemo, seedWallet } from './fixtures'
 
-// the button only has a relay to ask when the api url is inlined into the
-// bundle at build. the export is mocked, the real one needs the dfns relay up
+// the api url is baked in at build. the export is mocked; the real one needs the relay
 const apiUrl = process.env.VITE_LOBSTER_API_URL
 
 type ExportedRecord = { prevRecordHash: string | null; recordHash: string; transactionReference: string }
@@ -28,8 +27,7 @@ test.describe('MiCA audit export download', () => {
 
     await seedDfnsDemo(page)
     await seedWallet(page)
-    // not networkidle: with the api url set the MpcSignatureFeed holds an SSE
-    // connection open, so the network never goes idle.
+    // not networkidle: the signature feed keeps an SSE connection open
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
     const downloadPromise = page.waitForEvent('download')
@@ -47,8 +45,7 @@ test.describe('MiCA audit export download', () => {
     expect(parsed.records[0].prevRecordHash).toBeNull()
     expect(parsed.records[1].prevRecordHash).toBe(parsed.records[0].recordHash)
 
-    // the bundle token is fixed at build and a local .env.local can make it differ
-    // from this process's env, so only check that one is sent
+    // the build's token can differ from this env. just check one is sent
     expect(tokenHeader).toBeTruthy()
   })
 })

@@ -10,7 +10,6 @@ type Phase =
   | { k: 'failed'; msg: string }
 
 interface Props {
-  // called with the new profile id once it is saved and made active.
   onSaved?: (profileId: string) => void
   onCancel?: () => void
 }
@@ -58,8 +57,8 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
     <div className="rounded-2xl bg-bg px-3 py-3 space-y-3 text-xs">
       <div className="space-y-2">
         <p className="text-text-secondary">
-          A relay is a small backend you host that talks to your own DFNS. The dashboard only ever
-          sees its address and a read token, never your DFNS key: there is no key to paste here.
+          A relay is a small backend you host that talks to your own DFNS. The dashboard only sees
+          its address and tokens, never your DFNS key. There&apos;s no key to paste here.
         </p>
         <ol className="space-y-1.5">
           <Step n={1}>
@@ -131,7 +130,7 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
               className="mt-1 w-full bg-bg-card rounded-lg px-3 py-2 font-mono outline-none focus:ring-1 focus:ring-primary/30"
             />
             <span className="block text-[10px] text-text-muted mt-0.5">
-              Your relay&apos;s LOBSTER_OPERATOR_TOKEN, kept in this tab only, never written to disk.
+              Your relay&apos;s LOBSTER_OPERATOR_TOKEN, kept in this tab&apos;s session storage only.
               Approvals happen in your own DFNS console, so you usually do not need it.
             </span>
           </label>
@@ -171,12 +170,14 @@ export default function ConnectRelayForm({ onSaved, onCancel }: Props) {
       </div>
 
       {phase.k === 'verified' && (
-        <p className="text-green">Your relay answered. Read {phase.wallets} wallet(s).</p>
+        <p className="text-green">
+          Your relay answered with {phase.wallets} wallet{phase.wallets === 1 ? '' : 's'}.
+        </p>
       )}
       {phase.k === 'failed' && <p className="text-coral break-words">{phase.msg}</p>}
       <p className="text-[10px] text-text-muted">
-        An amount cap or approval rule on your DFNS protects its API transfers only. A swap or a
-        vault move goes as a raw signature that any policy holds for approval, never a dollar cap.
+        An amount or recipient rule on your DFNS is only checked on its API transfers. A swap or a
+        vault move is a raw signature, which any active policy holds for approval whatever the amount.
       </p>
     </div>
   )

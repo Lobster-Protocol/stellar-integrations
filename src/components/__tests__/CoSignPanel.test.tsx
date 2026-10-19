@@ -2,8 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { Account, TransactionBuilder, Operation, StrKey, Networks } from '@stellar/stellar-sdk'
 
-// the ed25519 lib rejects jsdom's Uint8Array, so nothing is signed for real here:
-// the quorum check reports every signer as signed instead
+// ed25519 rejects jsdom's Uint8Array, so the quorum check just reports everyone signed
 vi.mock('../../integrations/stellar/multisig', async () => {
   const actual = await vi.importActual<typeof import('../../integrations/stellar/multisig')>(
     '../../integrations/stellar/multisig',
@@ -77,12 +76,12 @@ function horizonRejection(code: string): Error {
 afterEach(cleanup)
 
 describe('CoSignPanel', () => {
-  it('explains a used sequence number when horizon answers tx_bad_seq', async () => {
+  it('explains tx_bad_seq from horizon', async () => {
     submitAndFail(horizonRejection('tx_bad_seq'))
     expect(await screen.findByText(USED_SEQUENCE)).toBeInTheDocument()
   })
 
-  it('explains a used sequence number when soroban rpc answers txBadSeq', async () => {
+  it('explains txBadSeq from soroban rpc', async () => {
     submitAndFail(new Error('sendTransaction rejected: {"result":{"_switch":{"name":"txBadSeq","value":-5}}}'))
     expect(await screen.findByText(USED_SEQUENCE)).toBeInTheDocument()
   })

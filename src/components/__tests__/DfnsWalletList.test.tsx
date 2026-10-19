@@ -38,14 +38,14 @@ function wrap(node: React.ReactNode) {
 }
 
 describe('DfnsWalletList', () => {
-  it('names the missing configuration instead of disappearing when the api url is unset', () => {
+  it('says what is missing without an api url', () => {
     Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', '')
     wrap(<DfnsWalletList />)
     expect(screen.getByText(/DFNS wallets/)).toBeInTheDocument()
     expect(screen.getByText(/Connect a DFNS organization/)).toBeInTheDocument()
   })
 
-  it('reads the list without offering to create anything by default', async () => {
+  it('is read only by default', async () => {
     fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) })
     wrap(<DfnsWalletList />)
     await waitFor(() => expect(screen.getByText(/No wallets yet/i)).toBeInTheDocument())
@@ -63,7 +63,7 @@ describe('DfnsWalletList', () => {
     expect(screen.getByLabelText('New wallet name')).toBeInTheDocument()
   })
 
-  it('renders a wallet row with a friendbot button for testnet wallets', async () => {
+  it('offers friendbot on a testnet wallet', async () => {
     fetchSpy.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -82,7 +82,7 @@ describe('DfnsWalletList', () => {
     expect(screen.getByRole('button', { name: 'fund' })).toBeInTheDocument()
   })
 
-  it('does not show the friendbot button for mainnet wallets', async () => {
+  it('hides friendbot on mainnet', async () => {
     fetchSpy.mockResolvedValueOnce({
       ok: true,
       json: async () => ({

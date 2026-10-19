@@ -20,9 +20,6 @@ import { txLanded } from '../integrations/stellar/landed'
 import CoSignPanel from './CoSignPanel'
 import TokenRef from './TokenRef'
 
-// a quorum call has to gather signatures across people, so its envelope needs a
-// timebound wide enough to survive that instead of the 60s single-sig default.
-
 type Phase =
   | { k: 'form' }
   | { k: 'building' }
@@ -50,8 +47,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   const inFlight = useRef(false)
   const titleId = useId()
   const { signer, dfnsAddress, mode } = useCustody()
-  // in dfns mode the treasury signs, so the tx sources from it, not the connected
-  // wallet, and dfns supplies the approval in place of any on-chain quorum.
+  // in dfns mode the treasury signs and dfns approval replaces any on-chain quorum
   const isDfns = mode === 'dfns' && !!dfnsAddress
   const source = isDfns ? (dfnsAddress as string) : caller
   const signingQ = useAccountSigning(network, source)
@@ -60,8 +56,8 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   const { walletId } = useWallet()
   const overWc = !isDfns && overWalletConnect(walletId)
 
-  // SAC balance() covers XLM and USDC alike, and the dfns treasury too. deposit
-  // only, since a withdraw caps against the vault's idle holdings instead.
+  // SAC balance() covers XLM and USDC, on the wallet or the dfns treasury.
+  // deposits only; a withdraw is capped by the vault's idle balance
   const walletHeld = useQuery({
     queryKey: ['vault-wallet-held', network, source, vault.token0, vault.token1],
     queryFn: async () => {
@@ -93,8 +89,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   if (!open) return null
 
   const isWithdraw = action === 'withdraw'
-  // a null cap (still loading, or getSorobanTokenBalance's null for a zero
-  // balance) never blocks the form on its own.
+  // a null cap never blocks the form, and a zero balance also reads back as null
   const held0 = isWithdraw ? vault.amount0 : walletHeld.data?.[0] ?? null
   const held1 = isWithdraw ? vault.amount1 : walletHeld.data?.[1] ?? null
   const over0 = held0 != null && amount0 !== '' && Number(amount0) > Number(held0)
@@ -106,8 +101,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
   async function run() {
     if (inFlight.current || nothing || over0 || over1) return
     inFlight.current = true
-    // clear any controller from a previous attempt: a stale, already-aborted one
-    // would make the catch below read a fresh real error as a Stop-waiting abort.
+    // a leftover aborted controller would turn a real error into a silent Stop waiting
     abortRef.current = null
     try {
       setPhase({ k: 'building' })
@@ -121,12 +115,11 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         validitySecs({ quorum: multi || isDfns, walletId }),
       )
       if (!built.xdr) {
-        setPhase({ k: 'failed', msg: "This vault's storage has expired on-chain and needs restoring before this call." })
+        setPhase({ k: 'failed', msg: "This vault's storage has expired on-chain and needs restoring first." })
         return
       }
       if (multi) {
-        // the co-sign panel collects the other signatures on this exact envelope.
-        // never rebuild it after this point or they stop matching.
+        // every signer signs this same envelope
         setPhase({ k: 'collecting', xdr: built.xdr })
         return
       }
@@ -151,7 +144,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         onDone()
         return
       }
-      if (!signed.signedTxXdr) throw new Error('the wallet did not return a signed transaction')
+      if (!signed.signedTxXdr) throw new Error("The wallet didn't return a signed transaction.")
       setPhase({ k: 'submitting' })
       const hash = await submitSignedXdr(network, signed.signedTxXdr)
       const final = await waitForTx(network, hash)
@@ -162,8 +155,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         setPhase({ k: 'failed', msg: `The network reported ${final.status}.` })
       }
     } catch (err) {
-      // a Stop-waiting click aborts the held-approval poll; that comes back as an
-      // abort here, not a real failure, so drop back to the form quietly.
+      // Stop waiting isn't an error
       if (abortRef.current?.signal.aborted) {
         setPhase({ k: 'form' })
         return
@@ -203,7 +195,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
         <p className="text-xs text-text-secondary mb-4">
           {isWithdraw
             ? 'Send the two tokens sitting idle in this vault back to your wallet.'
-            : 'Move the two tokens from your wallet into this vault, ready to be put to work.'}
+            : 'Move the two tokens from your wallet into this vault.'}
         </p>
 
         {phase.k === 'done' ? (
@@ -238,7 +230,7 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
                 submit={async (xdr) => {
                   const hash = await submitSignedXdr(network, xdr)
                   const final = await waitForTx(network, hash)
-                  if (final.status !== 'SUCCESS') throw new Error(`the network reported ${final.status}`)
+                  if (final.status !== 'SUCCESS') throw new Error(`The network reported ${final.status}.`)
                   return hash
                 }}
                 onSubmitted={(hash) => {
@@ -252,8 +244,8 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
           <div className="space-y-3">
             {multi && signingQ.data && (
               <div className="rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-[11px]">
-                This account uses shared control. {requiredWeight(signingQ.data, 'med')} signatures
-                approve each move.
+                This account uses shared control. Each move needs a signing weight
+                of {requiredWeight(signingQ.data, 'med')}.
               </div>
             )}
             {isDfns && (
@@ -303,8 +295,8 @@ export default function VaultActionModal({ open, onClose, onDone, network, calle
                   {over && (
                     <p className="text-[11px] text-coral mt-1">
                       {isWithdraw
-                        ? `More than the vault holds (${formatBalance(held!)}).`
-                        : `More than your ${formatBalance(held!)} balance.`}
+                        ? `More than sits idle in the vault (${formatBalance(held!)}).`
+                        : `More than your balance (${formatBalance(held!)}).`}
                     </p>
                   )}
                 </div>

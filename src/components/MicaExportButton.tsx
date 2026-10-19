@@ -7,7 +7,7 @@ import { downloadText } from '../utils/download'
 export default function MicaExportButton() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // an export with no records is not a failure, so it never renders in coral
+  // an empty export isn't an error, keep it out of coral
   const [note, setNote] = useState<string | null>(null)
 
   const relay = useActiveRelay()
@@ -24,7 +24,7 @@ export default function MicaExportButton() {
       const parsed = JSON.parse(text) as { records?: unknown[] }
       if (!parsed.records || parsed.records.length === 0) {
         setNote(
-          'The export ran and came back with no records. Every record is built from a DFNS webhook event, and this relay instance has received none since it last started.',
+          'The export ran and came back with no records. Records are built only from confirmed DFNS transaction and transfer events, and this relay has received none since it last started.',
         )
         return
       }

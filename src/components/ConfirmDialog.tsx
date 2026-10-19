@@ -3,9 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { cn } from '../utils/format'
 
-// a styled replacement for window.confirm so a mainnet "this moves real funds" gate
-// looks like the rest of the app instead of a bare browser dialog. Rendered through a
-// portal so it never nests inside another modal's focus trap, and keeps Tab to itself.
+// in-app window.confirm, portaled out of any other modal's focus trap
 export default function ConfirmDialog({
   open,
   title,
@@ -28,8 +26,7 @@ export default function ConfirmDialog({
   const cardRef = useRef<HTMLDivElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
 
-  // Escape cancels, like the native dialog it stands in for; focus the confirm button on
-  // open and hand focus back to wherever it was when the dialog closes
+  // Escape cancels, as the native confirm would
   useEffect(() => {
     if (!open) return
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -46,7 +43,7 @@ export default function ConfirmDialog({
 
   if (!open) return null
 
-  // Tab stays on the two buttons, so it never lands on the form behind the overlay
+  // Tab cycles between the two buttons so focus can't reach the form behind
   const keepTabInside = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Tab' || !cardRef.current) return
     const items = cardRef.current.querySelectorAll<HTMLElement>('button:not([disabled])')

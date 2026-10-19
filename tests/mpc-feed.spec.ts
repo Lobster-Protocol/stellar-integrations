@@ -7,13 +7,12 @@ test.describe('the custody page', () => {
     await seedWallet(page)
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
-    // these render regardless of api wiring
+    // these render with or without a relay
     await expect(page.getByText('Institutional custody through DFNS')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'DFNS custody' })).toBeVisible()
     await expect(page.getByRole('heading', { name: /Signing activity/ })).toBeVisible()
 
-    // titles show in both states, so read the marker only the off state prints,
-    // and only once a title is up: the panels settle when the relay answers
+    // only the off state prints this marker; count it once a panel title is up
     await expect(page.getByText('DFNS wallets')).toBeVisible()
     const off = page.getByText(/Connect a DFNS organization to see this/)
     const wired = (await off.count()) === 0
@@ -23,13 +22,11 @@ test.describe('the custody page', () => {
     await expect(page.getByText('MiCA audit export')).toBeVisible()
 
     if (wired) {
-      // live panels carry their own controls and counts
       await expect(page.getByRole('button', { name: /Download JSON/i })).toBeVisible()
       await expect(page.getByText(/^\d+ total$/)).toBeVisible()
     } else {
       await expect(off.first()).toBeVisible()
-      // the MiCA panel keeps its button in both states and explains the gap
-      // itself, so its absence is not what marks an unwired page
+      // the MiCA button shows either way. its sentence is what differs
       await expect(page.getByText(/no relay to ask for the records/i).first()).toBeVisible()
     }
   })
@@ -38,18 +35,17 @@ test.describe('the custody page', () => {
     await seedWallet(page)
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
-    // the panels settle when the relay answers, so wait for a title before counting
+    // the page loads lazily, so wait for a panel title before counting
     await expect(page.getByText('DFNS wallets')).toBeVisible()
     const off = page.getByText(/Connect a DFNS organization to see this/)
     if ((await off.count()) > 0) {
-      // no relay to stream from, and the feed says exactly that
+      // no relay, no event count
       await expect(page.getByRole('heading', { name: /Signing activity/ })).toBeVisible()
       await expect(page.getByText('0 events')).toHaveCount(0)
       return
     }
 
-    // nothing has been signed in this browser, so the feed sits at zero. hold it
-    // to the count, the empty-state wording is the component's to change
+    // nothing was signed in this browser. check the count, not the empty-state copy
     await expect(page.getByText('0 events')).toBeVisible()
     await expect(page.getByRole('heading', { name: /Signing activity/ })).toBeVisible()
   })

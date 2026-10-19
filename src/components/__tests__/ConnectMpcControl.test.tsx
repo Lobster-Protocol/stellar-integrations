@@ -47,7 +47,7 @@ describe('ConnectMpcControl', () => {
     expect(screen.getByText('Connect your DFNS MPC wallet')).toBeInTheDocument()
   })
 
-  it('leads with WalletConnect and switches to the wallet-kit signer once it connects', async () => {
+  it('switches to wallet-kit once WalletConnect connects', async () => {
     connectWalletConnect.mockResolvedValue('GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2')
     render(<ConnectMpcControl />)
     openPanel()
@@ -66,7 +66,7 @@ describe('ConnectMpcControl', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('falls back to the relay, expanded, when WalletConnect is off', () => {
+  it('shows the relay form when WalletConnect is off', () => {
     mockWallet.mockReturnValue({ connectWalletConnect, walletConnectEnabled: false })
     render(<ConnectMpcControl />)
     openPanel()

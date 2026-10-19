@@ -9,11 +9,11 @@ const OURS = [
   // deployer / demo wallets
   'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU',
   'GCVFDROZF3D565FAURFQBXQEOHT4BPQK2P66JUCL5XQWNWQBOGXMRVQA',
-  // the mainnet deployer, which also handed the factory admin to the treasury
+  // mainnet deployer
   'GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS',
-  // the browser-wallet test account, one key imported into both Freighter and xBull
+  // browser-wallet test account, in Freighter and xBull
   'GC6QPGCOCI2FTQYTLVHNWC6I6MQYZPGCLJOO5X7KV2Z4ZMIY67I6JKDY',
-  // the bridge test account that receives and delivers the USDC bridged in
+  // bridge test account
   'GCC5G4MUAFQIGKJSMGBVVXM63KK4PGBCXD4CR4VPYQKBYGPXLDR4HA74',
 ]
 
@@ -34,7 +34,7 @@ function readLinks(): Link[] {
       line,
       net: m[1] as 'public' | 'testnet',
       hash: m[2],
-      // a line that says the transaction is not ours is held to a weaker promise
+      // a line can disown its tx, and is then only checked for not being ours
       disowned: /not our transaction/i.test(line),
     })
   }
@@ -50,7 +50,7 @@ async function horizon(net: string, hash: string) {
 const links = readLinks()
 
 test.describe('the hashes the README publishes', () => {
-  test('there are some, and every one carries its network', () => {
+  test('finds links that each name a network', () => {
     expect(links.length).toBeGreaterThan(5)
     for (const l of links) expect(['public', 'testnet']).toContain(l.net)
   })

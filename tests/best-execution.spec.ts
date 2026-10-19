@@ -11,8 +11,7 @@ interface Quote {
   profit?: string
 }
 
-// the ground truth comes from a third party, so a slow or missing broker skips
-// the spec instead of failing it
+// the broker is a third party. when it's slow or down the spec skips
 async function liveQuote(): Promise<Quote> {
   const url =
     `${BROKER_ENDPOINT}/quote?sellingAsset=XLM&buyingAsset=USDC-${MAINNET_USDC_ISSUER}` +
@@ -44,15 +43,12 @@ function shown(body: string, label: string): number | null {
 }
 
 test.describe('best execution', () => {
-  test('shows the broker quote beside the direct route, and it matches the live quote', async ({
-    page,
-  }) => {
+  test('broker quote matches the live one', async ({ page }) => {
     const truth = await liveQuote()
     test.skip(truth.status !== 'success', `broker has no quote right now: ${truth.status}`)
 
     await openSwapWithAmount(page, String(PROBE_XLM))
-    // the price tile also carries the words "via Stellar Broker" and getByText
-    // ignores case, so wait on a line only the quote block has
+    // getByText ignores case and the price tile also says "via Stellar Broker"
     await expect(page.getByText('Direct route, same size')).toBeVisible({ timeout: 45000 })
     await expect(page.getByText(/^Via Stellar Broker$/)).toBeVisible()
     await expect(page.getByText('Extra vs direct route')).toBeVisible()
@@ -78,8 +74,6 @@ test.describe('best execution', () => {
     await expect(page.getByText('Direct route, same size')).toBeVisible({ timeout: 45000 })
     await expect(page.getByText(/^Via Stellar Broker$/)).toBeVisible()
 
-    // exactly one of three endings: the broker leg (needs a partner key in the
-    // bundle), the soroswap fallback, or nothing signable on the pair
     const legs = {
       'broker leg': page.getByText('Live best-execution quote from Stellar Broker'),
       'soroswap leg': page.getByRole('button', { name: 'Confirm Soroswap swap' }),
@@ -91,7 +85,6 @@ test.describe('best execution', () => {
     }
     expect(named, 'the swap has to name exactly one route it would use').toHaveLength(1)
 
-    // and the named leg has to be complete, not just labelled
     if (named[0] === 'soroswap leg') {
       await expect(page.getByText('Direct via Soroswap')).toBeVisible()
       await expect(page.getByText('Price comparison from Stellar Broker')).toBeVisible()
@@ -112,8 +105,7 @@ test.describe('best execution', () => {
     await expect(page.getByText('XLM price')).toBeVisible({ timeout: 20000 })
     await page.waitForTimeout(6000)
 
-    // one XLM is worth cents and the broker refuses anything under a dollar, so
-    // a probe that size would leave the whole mainnet view priceless
+    // the broker refuses anything under a dollar, and one XLM is worth cents
     expect(asked.length).toBeGreaterThan(0)
     expect(asked).not.toContain('1')
   })

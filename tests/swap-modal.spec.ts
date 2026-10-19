@@ -13,21 +13,21 @@ test.describe('the swap form', () => {
     await expect(page.getByPlaceholder('0.0')).toBeVisible()
   })
 
-  test('shows the differ message when selling and buying are identical', async ({ page }) => {
+  test('refuses the same asset on both sides', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Swap' }).click()
 
-    // form has two <select>s; flip buying to XLM so it matches selling
+    // the second select is buying, and selling is already XLM
     await page.locator('select').nth(1).selectOption('XLM')
 
     await expect(page.getByText('Selling and buying must differ.')).toBeVisible()
-    await expect(page.getByRole('button', { name: /Confirm (broker|Soroswap) swap/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Confirm Soroswap swap/ })).toHaveCount(0)
   })
 
   test('does not show a confirm button without an amount', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Swap' }).click()
 
-    await expect(page.getByRole('button', { name: /Confirm (broker|Soroswap) swap/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Confirm Soroswap swap/ })).toHaveCount(0)
   })
 })

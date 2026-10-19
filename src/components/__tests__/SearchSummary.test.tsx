@@ -16,13 +16,13 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-describe('what the page says it searched', () => {
+describe('SearchSummary', () => {
   it('asks for the wallets when none is connected', () => {
     render(<SearchSummary network="testnet" stellar={null} />)
     expect(screen.getByText(/Connect the wallets you bridged with/)).toBeInTheDocument()
   })
 
-  it('names only what has been read, and what is still being read', () => {
+  it('splits finished searches from running ones', () => {
     account.address = EVM
     recordSearch('testnet', `stellar:${STELLAR}`, { at: Date.now(), complete: true })
     recordSearch('testnet', `evm:BASE:${EVM.toLowerCase()}`, { at: Date.now(), head: '10', reachedFrom: '1', complete: true })
@@ -33,13 +33,13 @@ describe('what the page says it searched', () => {
     expect(text).not.toMatch(/once the EVM wallet that sent it is connected/)
   })
 
-  it('says a transfer into Stellar needs the EVM wallet that sent it', () => {
+  it('asks for the EVM wallet behind inbound transfers', () => {
     recordSearch('testnet', `stellar:${STELLAR}`, { at: Date.now(), complete: true })
     render(<SearchSummary network="testnet" stellar={STELLAR} />)
     expect(screen.getByText(/A transfer into Stellar shows up once the EVM wallet that sent it is connected\./)).toBeInTheDocument()
   })
 
-  it('searches a wallet that bridged from this browser even when it is not connected, and says so', () => {
+  it('lists a remembered wallet that is not connected', () => {
     rememberWallet('testnet', 'evm', EVM)
     recordSearch('testnet', `stellar:${STELLAR}`, { at: Date.now(), complete: true })
     recordSearch('testnet', `evm:BASE:${EVM.toLowerCase()}`, { at: Date.now(), head: '10', reachedFrom: '1', complete: true })

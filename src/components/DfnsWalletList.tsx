@@ -12,8 +12,6 @@ import { InfoTip } from './InfoTip'
 
 type FundState = 'pending' | 'done' | { error: string }
 
-// DFNS names the chains itself; a wallet's own chain decides which explorer it
-// links to, not whichever network the dashboard toggle happens to be on.
 const DFNS_NETWORKS = ['Stellar', 'StellarTestnet'] as const
 type DfnsNetwork = (typeof DFNS_NETWORKS)[number]
 
@@ -28,15 +26,14 @@ export default function DfnsWalletList() {
   const { network } = useNetwork()
   const [name, setName] = useState('')
   const [funding, setFunding] = useState<Record<string, FundState>>({})
-  // creating a wallet writes to the live custody org, so the form belongs to an
-  // operator. everybody else gets the same list, read only.
+  // creating a wallet adds it to the live custody org: operators only
   const operator = isOperator()
   const hasRelay = useHasActiveRelay()
 
   if (!hasRelay) {
     return (
       <NotConfigured title="DFNS wallets" needs="a DFNS organization">
-        The wallets whose keys DFNS custody holds, grouped by network. This build has no relay to
+        The wallets whose keys DFNS custody holds, grouped by network. No DFNS relay is selected to
         read them from.
       </NotConfigured>
     )
@@ -136,6 +133,7 @@ export default function DfnsWalletList() {
                           {w.name || 'unnamed'}
                         </span>
                         {valid ? (
+                          // the wallet's own chain picks the explorer, not the dashboard toggle
                           <a
                             href={stellarExplorer(w.network === 'Stellar' ? 'mainnet' : 'testnet', 'account', w.address)}
                             target="_blank"

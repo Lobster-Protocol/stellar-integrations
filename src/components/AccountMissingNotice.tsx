@@ -12,8 +12,7 @@ import CopyButton from './CopyButton'
 
 type Fund = 'idle' | 'pending' | 'done' | { error: string }
 
-// a wallet is not on the ledger until it is funded, so say that once, above every
-// page, rather than let each empty state blame the price or an empty history
+// said once here instead of in every empty panel
 export default function AccountMissingNotice() {
   const { address } = useWallet()
   const { network } = useNetwork()
@@ -51,8 +50,7 @@ export default function AccountMissingNotice() {
       </div>
       <p className="text-xs text-text-secondary mt-1 max-w-2xl">
         A Stellar account only exists once it has received some XLM. Until then there is nothing to
-        read for it, which is why the panels below are empty. Fund this address on {network} to get
-        started.
+        read for it, which is why the panels below are empty. Fund this address on {network}.
       </p>
       {network === 'testnet' && (
         <div className="mt-3 flex items-center gap-3 flex-wrap">

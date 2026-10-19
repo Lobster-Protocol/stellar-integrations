@@ -15,12 +15,12 @@ test.describe('what the deploy serves before anyone logs in', () => {
     expect(html).toMatch(/name="robots"\s+content="noindex/)
     const robots = await (await request.get(`${BASE}/robots.txt`)).text()
     expect(robots).toMatch(/Disallow:\s*\//)
-    // No social / OG leakage while the dashboard is still in dev
+    // no og or twitter cards while the site is noindex
     expect(html).not.toMatch(/property="og:title"/)
     expect(html).not.toMatch(/name="twitter:site"/)
   })
 
-  test('a dead route gets our own 404, with a way back', async ({ page }) => {
+  test('a dead route gets our 404 page', async ({ page }) => {
     await page.goto(`${BASE}/this-route-does-not-exist`)
     await expect(page.getByRole('heading', { name: '404' })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('link', { name: /Go to Overview/i })).toBeVisible()
@@ -32,7 +32,6 @@ test.describe('what the deploy serves before anyone logs in', () => {
     const footer = page.locator('footer')
     await expect(footer).toBeVisible({ timeout: 15_000 })
     await expect(footer).toContainText(/MIT/)
-    // factory link present when testnet contract is configured
     await expect(footer.getByRole('link', { name: /Factory/i })).toBeVisible()
   })
 
@@ -43,17 +42,17 @@ test.describe('what the deploy serves before anyone logs in', () => {
     await expect(page.locator('#main-content')).toBeVisible()
   })
 
-  test('custody comes back with the factory card and its refresh', async ({ page }) => {
+  test('custody shows the factory card and its refresh button', async ({ page }) => {
     await page.goto(`${BASE}/audit`)
     await expect(page.getByRole('heading', { name: /Factory contract/i })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(/updated /).first()).toBeVisible()
     await expect(page.getByRole('button', { name: /Refresh/i }).first()).toBeVisible()
   })
 
-  test('the trustline tile reads the wallet, never a hardcoded Active', async ({ page }) => {
+  test('the trustline tile asks for a wallet', async ({ page }) => {
     await page.goto(`${BASE}/bridges`)
     await expect(page.getByText('Connect wallet').first()).toBeVisible({ timeout: 15_000 })
-    // the label carries a help tip beside it, so anchor on the tile, not the word
+    // the label has a help tip beside it. anchor on the tile, not the word
     const trustline = page
       .getByText('Trustline', { exact: false })
       .first()
@@ -62,7 +61,7 @@ test.describe('what the deploy serves before anyone logs in', () => {
     await expect(trustline).not.toContainText('Active')
   })
 
-  test('the drawer toggle names the drawer it opens, and Escape closes it', async ({ page }) => {
+  test('the menu button controls the drawer and Escape closes it', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 })
     await page.goto(BASE)
     const menuBtn = page.getByRole('button', { name: /Open menu/i })

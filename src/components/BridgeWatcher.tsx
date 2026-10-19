@@ -34,36 +34,27 @@ import {
   type TrackedTransfer,
 } from '../integrations/cctp/transfers'
 
-// a transfer left this long is not watched in the background any more; the
-// Bridges page still lists it and can finish it
 const WATCH_FOR_MS = 7 * 24 * 3600_000
-// how often the connected wallets are searched again for burns that never arrived, and how
-// soon after a search that could not check everything
+// an unfinished Stellar search is retried sooner. An unfinished EVM one records an error,
+// and searchPaused holds it back until the pause ends
 const SEARCH_EVERY_MS = 10 * 60_000
 const SEARCH_AGAIN_MS = 2 * 60_000
-// a burn made seconds before the page opened (a tab that crashed and came straight back,
-// another computer) may not be on Horizon or in the logs yet: one more look this long after
+// Horizon and logs lag fresh burns
 const SEARCH_SETTLE_MS = 30_000
-// a burn out of Stellar tracked from its signature that Circle has never seen this long
-// after is checked against the ledger; its three minutes to land ran out long before.
-// Only for a month: past that a public Horizon may no longer hold the history, and a
-// missing record would no longer mean the burn never happened
+// a burn out of Stellar that Circle never saw is looked up on the ledger once it can no
+// longer land, for a month at most: a public Horizon may drop older history
 const UNSEEN_AFTER_MS = 5 * 60_000
 const UNSEEN_UNTIL_MS = 30 * 24 * 3600_000
-// a burn into Stellar that Circle has not signed this long after is checked for a revert:
-// the page saw it leave the wallet but never read its receipt, the PC off in between
+// a burn into Stellar still unsigned after this may have reverted, its receipt never read
 const UNSIGNED_AFTER_MS = 10 * 60_000
-// how often a burn whose fate could not be read is asked about again
 const FATE_EVERY_MS = 2 * 60_000
 
-// Follows every transfer still on its way, on any page: records when Circle signed
-// and when the USDC landed, and says so once. A delivery made from somewhere else,
-// another tab, the relay, Circle's own mint, is picked up here too.
+// follows each transfer from any page, and notices one finished elsewhere
 export default function BridgeWatcher() {
   const { network } = useNetwork()
   const tracked = useTrackedTransfers(network)
   const now = useNow(true, 60_000)
-  // still on its way, or arrived through Circle's mint before Circle named that mint
+  // a forwarded one stays watched until Circle gives its mint hash, even once delivered
   const live = tracked.filter(
     (t) => now - t.createdAt < WATCH_FOR_MS && (t.stage === 'burned' || (!!t.forwarded && !t.deliveredHash)),
   )
@@ -83,11 +74,7 @@ function shortError(err: unknown): string {
   return (err instanceof Error ? err.message : String(err)).split('\n')[0].slice(0, 120)
 }
 
-// Finds again what this browser lost track of, so a PC switched off mid-transfer, a closed
-// tab or another device loses nothing: EVM burns a page asked for and never heard back
-// about, every unfinished burn of the wallets connected or bridged with here lately (the
-// Stellar accounts' history, the EVM chains' logs), and burns tracked before their chain
-// confirmed them that never landed or failed there
+// what this browser lost track of, found again on chain
 function Recovery({ network }: { network: Network }) {
   const toast = useToast()
   const { address: stellarAddr } = useWallet()
@@ -109,7 +96,7 @@ function Recovery({ network }: { network: Network }) {
     const run = async () => {
       if (running) return
       running = true
-      // read afresh each round: one settled by another tab is gone from the store
+      // another tab may have settled one since
       for (const i of orphanIntents(listIntents(network))) {
         if (stop) return
         try {
@@ -118,12 +105,12 @@ function Recovery({ network }: { network: Network }) {
           if (r.kind === 'found') {
             trackTransfer(r.transfer)
             dropIntent(network, i.id)
-            toast.info(`The ${i.amount} USDC burn from ${i.chainName} went out while the page was away. It is waiting on the Bridges page.`)
+            toast.info(`The ${i.amount} USDC burn from ${i.chainName} went out after the page that asked for it closed. It's waiting on the Bridges page.`)
           } else if (r.kind === 'tracked') {
             dropIntent(network, i.id)
           } else if (r.kind === 'none') {
             dropIntent(network, i.id)
-            toast.info(`The ${i.amount} USDC burn from ${i.chainName} asked at ${clock(i.startedAt)} never left your wallet. Nothing moved.`)
+            toast.info(`The ${i.amount} USDC burn from ${i.chainName} requested at ${clock(i.startedAt)} never left your wallet. Nothing moved.`)
           } else if (r.kind === 'unreadable') {
             dropIntent(network, i.id)
             toast.info(
@@ -144,14 +131,11 @@ function Recovery({ network }: { network: Network }) {
     }
   }, [intentKey, network, toast])
 
-  // One search per wallet and chain, each on its own: an EVM wallet connected while the
-  // Stellar account's history is still being read is searched at once, not ten minutes on.
-  // A search already running for the same wallet is left to finish
+  // one search per wallet and chain; a wallet that just connected never waits behind a slow one
   const run = useCallback(
     async (key: string, job: SearchJob) => {
       const busyKey = `${network}|${key}`
-      // asked again while it runs (the look half a minute after load on a fresh device, a
-      // wallet that connects, Search again): run once more when it ends, not dropped
+      // queued, not dropped, when asked again mid-run
       if (busy.current.has(busyKey)) {
         queued.current.set(busyKey, job)
         return
@@ -188,13 +172,11 @@ function Recovery({ network }: { network: Network }) {
     [network, toast],
   )
 
-  // an EVM wallet is only connected here to bridge: noted the moment it is, so a later visit
-  // searches it even while it is locked
+  // an EVM wallet only connects here to bridge. Remembered, it's searched later even while locked
   useEffect(() => {
     if (evmAddr) rememberWallet(network, 'evm', evmAddr)
   }, [network, evmAddr])
 
-  // every wallet connected now or bridged with from this browser lately, each on its own
   const search = useCallback(() => {
     const wallets = walletsToSearch(network, stellarAddr, evmAddr)
     for (const account of wallets.stellar) {
@@ -237,8 +219,6 @@ function Recovery({ network }: { network: Network }) {
     }
   }, [network, stellarAddr, evmAddr, run])
 
-  // on load and half a minute later, when a wallet connects, every few minutes, when the tab
-  // comes back, and on demand
   useEffect(() => {
     search()
     const soon = setTimeout(search, SEARCH_SETTLE_MS)
@@ -259,13 +239,12 @@ function Recovery({ network }: { network: Network }) {
     }
   }, [search])
 
-  // Burns tracked before their chain confirmed them that Circle has still not signed: out of
-  // Stellar from the signature, into Stellar from the hash the wallet returned. One that never
-  // reached Stellar, or reached a chain and failed there, moved nothing and stops being shown
+  // burns tracked before their chain confirmed them, still unsigned by Circle. One that
+  // never reached Stellar, or failed on chain, moved nothing and is dropped
   const doubtful = tracked.filter((t) => {
     if (t.stage !== 'burned' || t.attestedAt || landed.current.has(t.id)) return false
     const age = now - t.createdAt
-    // a signed burn Stellar could still take is not missing yet, however long it has waited
+    // a burn out of Stellar that can still land isn't missing yet
     return directionOf(t) === 'from-stellar'
       ? age > UNSEEN_AFTER_MS && age < UNSEEN_UNTIL_MS && (!t.validUntil || now > t.validUntil + 60_000)
       : age > UNSIGNED_AFTER_MS && age < WATCH_FOR_MS
@@ -296,10 +275,10 @@ function Recovery({ network }: { network: Network }) {
             toast.info(
               out
                 ? `The ${t.amount} USDC burn to ${t.chainName} failed on Stellar. Nothing moved.`
-                : `The ${t.amount} USDC burn on ${t.chainName} failed on chain. Nothing moved.`,
+                : `The ${t.amount} USDC burn on ${t.chainName} failed. Nothing moved.`,
             )
           }
-          // an EVM burn not mined yet, or a read that failed: asked again in a while
+          // not mined yet, or the read failed: asked again next round
         }
       } finally {
         checking = false
@@ -326,8 +305,7 @@ function Watch({ network, transfer: t }: { network: Network; transfer: TrackedTr
     untilForwarded: out && !!t.forwarded,
   })
   const data = att.data
-  // signed but not yet arrived: asked again every half minute, since a delivery made
-  // elsewhere (another device, the relay, Circle) changes nothing this page would hear
+  // a delivery made elsewhere doesn't reach this page by itself
   const tick = useNow(data?.state === 'complete' && t.stage === 'burned', 30_000)
 
   useEffect(() => {
@@ -345,7 +323,7 @@ function Watch({ network, transfer: t }: { network: Network; transfer: TrackedTr
     let cancelled = false
     void (async () => {
       try {
-        // Circle's own mint: its labels first, then the chain, which knows even when they lag
+        // for Circle's own mint, its forward state first, then the chain, which can be ahead of it
         const minted =
           out && t.forwarded && chain
             ? circleMinted(data.forwardState) ||
@@ -384,7 +362,7 @@ function Watch({ network, transfer: t }: { network: Network; transfer: TrackedTr
           ),
         )
       } catch {
-        // a read that fails says nothing; the next poll or the page settles it
+        // the next poll retries
       }
     })()
     return () => {

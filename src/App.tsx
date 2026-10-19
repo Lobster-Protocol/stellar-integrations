@@ -17,7 +17,7 @@ const Allocation = lazy(() => import('./pages/Allocation'))
 const Bridges = lazy(() => import('./pages/Bridges'))
 const Positions = lazy(() => import('./pages/Positions'))
 const NotFound = lazy(() => import('./pages/NotFound'))
-// follows bridge transfers on every page; loaded after the chrome, it holds the CCTP code
+// watches bridge transfers on every page, lazy since it carries the CCTP code
 const BridgeWatcher = lazy(() => import('./components/BridgeWatcher'))
 
 const pageLoading = <div className="flex items-center justify-center py-20 text-sm text-text-muted">Loading...</div>
@@ -25,15 +25,13 @@ const pageLoading = <div className="flex items-center justify-center py-20 text-
 class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }, { error: Error | null }> {
   state = { error: null as Error | null }
   static getDerivedStateFromError(error: Error) { return { error } }
-  // clear the caught error when the route changes, so a throw on one page doesn't
-  // wedge the whole app until a manual reload - navigating away recovers it.
+  // cleared on route change; one page's throw shouldn't need a full reload
   componentDidUpdate(prev: { resetKey?: string }) {
     if (this.state.error && prev.resetKey !== this.props.resetKey) this.setState({ error: null })
   }
   render() {
     if (this.state.error) {
-      // a tab left open across a deploy is loading the new version, or asks for a reload when it
-      // already loaded again less than a minute ago
+      // a tab open across a deploy reloads itself, or asks if it already did in the last minute
       const build = newBuildState()
       if (build === 'reloading') return pageLoading
       return (
@@ -154,7 +152,7 @@ export default function App() {
   )
 }
 
-// a background helper that fails, a stale chunk after a deploy say, takes nothing else down with it
+// a background helper that throws renders nothing instead of taking the app down
 class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
   static getDerivedStateFromError() {

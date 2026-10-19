@@ -3,12 +3,10 @@ import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
 import { Card, CardHead, Disclosure, Empty, NotConfigured } from './ui'
 import { InfoTip } from './InfoTip'
 
-// a policy that is not Active cannot hold anything back, so the live ones lead
-// and the retired ones go behind a fold.
+// only Active can hold a request; the rest fold away
 const LIVE = 'Active'
 
-// the over/under direction of an amount rule is left out on purpose: it depends
-// on the paired action and is easy to state wrong.
+// over/under is left out because it depends on the action and is easy to misstate
 function ruleSummary(rule: DfnsPolicySummary['rule']): string {
   const c = rule.configuration
   if (rule.kind === 'TransactionAmountLimit' && c && c.limit != null) {
@@ -45,7 +43,7 @@ export default function PoliciesPanel() {
   if (!hasRelay) {
     return (
       <NotConfigured title="Signing policies" needs="a DFNS organization">
-        The rules DFNS checks before a custody key is allowed to sign. This build has no relay to
+        The rules DFNS checks before a custody key is allowed to sign. No DFNS relay is selected to
         read them from.
       </NotConfigured>
     )
@@ -125,7 +123,7 @@ export default function PoliciesPanel() {
           )}
 
           <p className="text-[10px] text-text-muted">
-            These rules live in your DFNS console. The dashboard reads them, it does not change them.
+            These rules are set in your DFNS console. The dashboard only reads them.
           </p>
         </div>
       )}

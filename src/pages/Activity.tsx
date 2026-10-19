@@ -20,8 +20,7 @@ import RoutingEngineCard from '../components/RoutingEngineCard'
 import { Card, CardHead, ChartFrame, Empty, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
-// kinds that represent something the owner did, as opposed to the rent and
-// read calls a soroban account accumulates on its own
+// the moves, trading and liquidity groups, everything but housekeeping
 const DELIBERATE: ActivityKind[] = [
   'swap',
   'liquidity-add',
@@ -37,17 +36,15 @@ export default function Activity() {
   const { address } = useWallet()
   const { network } = useNetwork()
   const q = useActivity(network, address)
-  // a wallet that is not on-chain yet has no history to export, so the download
-  // must not hand back a file that asserts a confirmed empty ledger.
+  // an unfunded wallet must not export a file that claims a confirmed empty history
   const accountExists = useAccountExists(network, address)
-  // the same dates, search and tab the feed below reads, so the tiles, the chart
-  // and the download can never describe different sets of operations
+  // every figure here counts what the feed shows
   const filters = useActivityFilters()
 
   const loaded = useMemo(() => (q.data?.pages ?? []).flatMap((p) => p.events), [q.data])
   const events = useMemo(
     () => (filters.reversed ? [] : loaded.filter((e) => inWindow(e, filters))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filters is rebuilt each render, the fields read are listed
     [loaded, filters.startMs, filters.endMs, filters.query, filters.vault, filters.reversed],
   )
 
@@ -59,8 +56,8 @@ export default function Activity() {
       .sort((a, b) => b.count - a.count)
   }, [events])
 
-  // the feed only holds the pages loaded so far, so the export reads Horizon itself.
-  // the dates scope the file; the search and the tab are browsing aids and do not.
+  // the feed holds loaded pages only. the export reads Horizon itself.
+  // only the dates scope the file, search and tab don't
   const read = (report: (m: string) => void) =>
     fetchAllActivity(network, address!, {
       since: filters.startMs,
@@ -107,8 +104,7 @@ export default function Activity() {
   const oldest = events.at(-1)?.at
   const windowSub = oldest ? `back to ${new Date(oldest).toLocaleDateString('en-GB')}` : undefined
 
-  // zero is a finding about a wallet we read. with no wallet, or a read that
-  // failed, there is no number to give, so the tiles show a dash and say why.
+  // zero only means something for a wallet we read, otherwise a dash and the reason
   const counted = !!address && q.isSuccess
   const noCount = !address
     ? 'no wallet connected'
@@ -122,8 +118,7 @@ export default function Activity() {
         <div>
           <h2 className="text-lg font-semibold text-text">Activity</h2>
           <p className="text-xs text-text-secondary mt-1">
-            What this wallet has actually done, read live from Stellar and labelled by what each
-            transaction did.
+            What this wallet has done, read live from Stellar and labelled by type.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -193,8 +188,8 @@ export default function Activity() {
           title="Breakdown by type"
           note={
             <>
-              How this wallet's operations split. Maintenance covers storage rent{' '}
-              <InfoTip term="storageRent" label="storage rent" /> and background reads.
+              How this wallet's operations split. The muted bars are maintenance: storage rent{' '}
+              <InfoTip term="storageRent" label="storage rent" />, reads, trustlines and other contract calls.
             </>
           }
         />

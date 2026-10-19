@@ -103,15 +103,13 @@ export default function Allocation() {
   const portfolio = buildPortfolio(lines, vaults, priceOf, network)
   const { walletValue, vaultValue, total, byAsset, byVenue, unpriced, vaults: vaultValues } =
     portfolio
-  // built here so the button knows whether there is anything to write yet, and the
-  // download waits for both reads so a late vault read cannot leave it quietly short.
+  // a late vault read would leave the file short
   const loading = balancesQ.isLoading || vaultsQ.isLoading
-  // until the vault read answers, the totals and the file would leave the vaults out.
-  // an account that is not on-chain owns none, so its zeros are true
+  // totals would miss the vaults until that read answers. an unfunded account owns none
   const vaultsKnown = vaultsQ.isSuccess || missing
   const vaultsNote = vaultsQ.isError
-    ? 'The wallet alone: its vaults could not be read.'
-    : 'The wallet so far, its vaults are still being read.'
+    ? "The wallet alone. Its vaults couldn't be read."
+    : 'The wallet so far. Its vaults are still being read.'
   const exportRows = holdingsRows(lines, portfolio, priceOf, unit, network)
 
   if (!address) {
@@ -163,10 +161,10 @@ export default function Allocation() {
             disabled={loading || !vaultsKnown || exportRows.length === 0}
             disabledHint={
               vaultsQ.isError
-                ? 'The vaults could not be read, the file would leave them out'
+                ? "The vaults couldn't be read; the file would leave them out"
                 : loading || !vaultsKnown
                   ? 'Still reading the chain'
-                  : 'Nothing priced to export yet'
+                  : 'Nothing held to export yet'
             }
             formats={[
               {
@@ -214,7 +212,7 @@ export default function Allocation() {
                 ? formatValue(walletValue, unit)
                 : 'n/a'
           }
-          sub={`${held.length} assets`}
+          sub={`${held.length} asset${held.length === 1 ? '' : 's'}`}
         />
         <Stat
           label="In vaults"
@@ -256,7 +254,7 @@ export default function Allocation() {
             note={
               !vaultsKnown
                 ? vaultsNote
-                : 'Share of value per token. Tokens with no market pool are left out rather than counted at a made-up price.'
+                : 'Share of value per token. Tokens with no market pool are left out.'
             }
           />
           {byAsset.length === 0 ? (
@@ -279,7 +277,7 @@ export default function Allocation() {
             note={
               !vaultsKnown
                 ? vaultsNote
-                : 'Where that value actually sits. A vault shows as held until its liquidity is put to work on an exchange.'
+                : 'Where that value sits. A vault shows as held until its liquidity goes into a pool.'
             }
           />
           {byVenue.length === 0 ? (
@@ -324,7 +322,7 @@ export default function Allocation() {
       <Card>
         <CardHead
           title="Vault positions"
-          note="Each Lobster vault, what it holds token by token, and the exchange its liquidity is on."
+          note="What each Lobster vault holds, token by token, and which exchange its liquidity is on."
         />
         {vaultsQ.isLoading ? (
           <p className="text-xs text-text-muted py-4">Loading vaults...</p>

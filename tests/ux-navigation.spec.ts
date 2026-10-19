@@ -19,7 +19,7 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await sidebar(page).getByRole('link', { name: 'Performance' }).click()
     await expect(page).toHaveURL(/\/performance$/)
-    // the card frame renders either way; only the plotted series shows the history came back
+    // the card frame renders either way; only the plotted curve shows the history loaded
     await expect(page.getByRole('heading', { name: 'Wallet balance over time' })).toBeVisible()
     await expect(page.locator('.recharts-area-curve').first()).toBeVisible({ timeout: 25_000 })
   })
@@ -31,7 +31,7 @@ test.describe('Cross-page navigation', () => {
     await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
   })
 
-  test('allocation is a real route, not a tab that leaves the url alone', async ({ page }) => {
+  test('allocation has its own url', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /Allocation/ }).click()
     await expect(page).toHaveURL(/\/allocation$/)
@@ -41,7 +41,7 @@ test.describe('Cross-page navigation', () => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
     await expect(page).toHaveURL(/\/bridges$/)
-    // anchored on the tile so a stray mention of the name elsewhere cannot stand in for it
+    // anchored on the tile so a mention elsewhere can't pass for it
     const provider = page
       .getByText('Carried by', { exact: true })
       .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]')
@@ -102,7 +102,7 @@ test.describe('Mobile responsiveness', () => {
     await expect(page.locator('aside').first()).toBeHidden()
   })
 
-  test('the drawer carries every nav item, not a subset', async ({ page }) => {
+  test('the drawer has every nav item', async ({ page }) => {
     await gotoNoWallet(page)
     const hamburger = page.getByRole('button', { name: /Open menu/i })
     await hamburger.click()
@@ -138,8 +138,7 @@ test.describe('Network toggle', () => {
     })
     await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
-    // both buttons are always visible; until something writes the value back, the
-    // raised pill class on the selected one is the only place the fallback shows
+    // both buttons always show. the raised pill class marks the fallback
     await expect(page.getByRole('button', { name: 'Testnet' })).toHaveClass(/bg-bg-card/)
     await expect(page.getByRole('button', { name: 'Mainnet' })).not.toHaveClass(/bg-bg-card/)
     // the footer names the network the app is actually reading
@@ -162,13 +161,13 @@ test.describe('controls that are icons still have names', () => {
     await expect(page.getByRole('button', { name: 'Close bridge' })).toBeVisible()
   })
 
-  test('the disconnect control names itself', async ({ page }) => {
+  test('the disconnect control has an accessible name', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('button', { name: 'Connected wallet' }).click()
     await expect(page.getByRole('menuitem', { name: /Disconnect/i })).toBeVisible()
   })
 
-  test('no route lands without a heading to jump to', async ({ page }) => {
+  test('every route has a heading to jump to', async ({ page }) => {
     await gotoWithWallet(page)
     for (const path of ['/', '/performance', '/activity', '/allocation', '/bridges', '/positions']) {
       await page.goto(`${BASE}${path}`)

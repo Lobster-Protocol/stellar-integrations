@@ -1,8 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { gotoWithWallet } from './fixtures'
 
-// the relay answers in prod, so the dead feed is made here: every /ttl read gets cut.
-// the query still retries once before the card gives up
+// cut every /ttl read, since the relay answers in prod. it retries once before failing
 test.describe('TTL countdown card', () => {
   const card = (page: Page) =>
     page.locator('div.card').filter({ hasText: 'Contract storage lease' }).first()

@@ -18,9 +18,7 @@ function byUrgency(a: TrackedTransfer, b: TrackedTransfer): number {
   return act !== 0 ? act : a.createdAt - b.createdAt
 }
 
-// Above every page but Bridges, which lists them itself: transfers that left one chain and
-// have not reached the other, and burns a closed page asked for and never heard back about,
-// until each arrives. A PC switched off mid-transfer comes back to this.
+// shown on every page but Bridges, which has its own list
 export default function PendingTransfersNotice() {
   const { network } = useNetwork()
   const { pathname } = useLocation()
@@ -42,18 +40,18 @@ export default function PendingTransfersNotice() {
           {line && first && (
             <p className="text-xs text-text-secondary mt-1">
               {line.text}
-              {directionOf(first) === 'to-stellar' && <span className="text-text-muted">, to {shortenAddress(first.recipient, 6, 4)}</span>}.
+              {directionOf(first) === 'to-stellar' && <span className="text-text-muted">, for {shortenAddress(first.recipient, 6, 4)}</span>}.
             </p>
           )}
           {lost.length > 0 && (
             <p className="text-xs text-text-secondary mt-1">
               {lost.length === 1
-                ? `Looking on ${lost[0].chainName} for the ${lost[0].amount} USDC burn a closed page asked your wallet for.`
-                : `Looking on chain for ${lost.length} burns a closed page asked your wallet for.`}
+                ? `Looking on ${lost[0].chainName} for the ${lost[0].amount} USDC burn your wallet was asked to sign before the page closed.`
+                : `Looking on chain for ${lost.length} burns your wallet was asked to sign before the page closed.`}
             </p>
           )}
           <p className="text-[11px] text-text-muted mt-1">
-            Nothing is lost while it waits: the burn is on chain, and this page finds it again on any device once the wallet that sent it is connected.
+            A burn already on chain isn't lost while it waits. On another device, connect the wallet that sent it or paste its hash on the Bridges page.
           </p>
         </div>
         <Link

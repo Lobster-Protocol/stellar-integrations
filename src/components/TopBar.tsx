@@ -17,8 +17,7 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
   const { address, viewing, stopViewing, connecting, connect } = useWallet()
   const { network, setNetwork } = useNetwork()
 
-  // z-30 keeps the bar under the mobile drawer and the connect popover, which both
-  // have to cover it
+  // z-30 so the mobile drawer and the connect popover can cover the bar
   return (
     <div
       className="h-14 flex items-center justify-between px-4 sm:px-6 bg-bg-card/60 backdrop-blur-sm sticky top-0 z-30"
@@ -35,7 +34,7 @@ export default function TopBar({ onMenuToggle, menuButtonRef, menuOpen }: Props)
         >
           <Menu size={20} />
         </button>
-        {/* on a phone the drawer carries the logo; here it would push the controls off a 375px screen */}
+        {/* hidden on phones, where it would push the controls off a 375px screen */}
         <div className="hidden sm:flex lg:hidden items-center gap-1.5">
           <img src={lobsterIcon} alt="Lobster" className="h-6 w-6" />
           <span className="text-sm font-semibold text-text">Lobster</span>

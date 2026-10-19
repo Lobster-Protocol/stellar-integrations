@@ -9,8 +9,7 @@ import type { Network } from '../config/contracts'
 import { shortenAddress, stellarExplorer, cn } from '../utils/format'
 import CopyButton from './CopyButton'
 
-// the "Signs" tag marks the active signer, so this chip never competes silently
-// with the dfns relay chip.
+// the "Signs" badge shows whether this wallet or DFNS signs right now
 export default function WalletChip({ address, network }: { address: string; network: Network }) {
   const { walletName, walletId, disconnect } = useWallet()
   const { mode } = useCustody()

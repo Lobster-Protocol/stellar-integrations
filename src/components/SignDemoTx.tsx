@@ -39,33 +39,27 @@ export default function SignDemoTx() {
   useEffect(() => () => abortRef.current?.abort(), [])
 
   const isDfns = signer.name === 'dfns'
-  // a DFNS wallet connected over WalletConnect signs on the left tab (it is the
-  // connected wallet); the right tab is the separate relay-treasury demo.
+  // DFNS over WalletConnect signs on the left tab
   const isWc = walletId === WALLET_CONNECT_ID
-  // dfns signs from the mpc treasury, so the tx must source from that account and
-  // not the connected browser wallet; the relay guard rejects any other source.
+  // dfns signs as the treasury, and the relay guard rejects any other tx source
   const source = isDfns ? dfnsAddress : address
 
   async function handleAction(kind: 'ping' | 'transfer' | 'payment') {
     if (!source || inFlight.current) return
     inFlight.current = true
-    // reset any controller from a previous attempt so a stale aborted one can't
-    // make the catch treat a fresh real error as a Stop-waiting abort.
+    // a stale aborted controller would make the catch read a real error as Stop waiting
     abortRef.current = null
     try {
       setState({ phase: 'building' })
       if (kind === 'transfer') {
-        // dfns builds this payment itself, which is the only request shape its
-        // approval rules can read. the destination is the treasury and it is on
-        // the list, so the rule lets it through with nobody in the loop.
+        // dfns can only read a payment it builds itself, and the treasury is
+        // whitelisted, so this clears with no approver
         const out = await requestTransfer(source, '100000')
         if (out.txHash) {
           txLanded(network, out.txHash)
           setState({ phase: 'confirmed', txHash: out.txHash })
         }
-        // a transfer cannot be polled from here: the relay credential is not
-        // allowed to read transfers back, so say where it went rather than
-        // promising a hash that will never arrive on its own.
+        // the relay token can't read transfers back, so show the ref instead of waiting for a hash
         else setState({ phase: 'cleared', ref: out.id, held: out.held })
         return
       }
@@ -87,13 +81,12 @@ export default function SignDemoTx() {
         address: source,
       })
 
-      // held in dfns for a second approver, so the hash only comes back from polling.
+      // held for approval; only the poll gets a hash
       if (pendingId) {
         setState({ phase: 'pending' })
         const ac = new AbortController()
         abortRef.current = ac
-        // dfns broadcasts the classic payment itself but only signs the soroban
-        // factory call, so its envelope is submitted from here.
+        // dfns broadcasts a classic payment itself but only signs a soroban call
         const hash =
           kind === 'payment'
             ? await pollSignatureStatus(pendingId, { signal: ac.signal })
@@ -103,8 +96,6 @@ export default function SignDemoTx() {
         return
       }
 
-      // dfns broadcasts a classic tx itself, so the hash is the whole artifact;
-      // the wallet kit hands back an envelope to submit and poll.
       if (broadcastHash) {
         txLanded(network, broadcastHash)
         setState({ phase: 'confirmed', txHash: broadcastHash })
@@ -117,11 +108,10 @@ export default function SignDemoTx() {
       if (status === 'SUCCESS') {
         setState({ phase: 'confirmed', txHash: hash })
       } else {
-        setState({ phase: 'failed', errorMsg: `Tx final status: ${status}` })
+        setState({ phase: 'failed', errorMsg: `The network reported ${status}.` })
       }
     } catch (err: unknown) {
-      // a Stop-waiting click aborts the approval poll; treat that as backing out,
-      // not as a failed transaction.
+      // Stop waiting isn't a failure
       if (abortRef.current?.signal.aborted) {
         setState({ phase: 'idle' })
         return
@@ -146,7 +136,7 @@ export default function SignDemoTx() {
   }
   const phaseText: Partial<Record<State['phase'], string>> = {
     building: 'Building...',
-    signing: 'Signing (MPC)...',
+    signing: 'Signing...',
     submitting: 'Submitting...',
   }
 
@@ -156,24 +146,19 @@ export default function SignDemoTx() {
       <p className="text-xs text-text-secondary mb-4">
         {isDfns ? (
           <>
-            The treasury wallet is held by DFNS and signed by its MPC network{' '}
-            <InfoTip term="mpc" label="MPC signing" />. Every request is checked against the treasury
-            rule first, and the buttons deliberately land on both sides of it. The rule allows a
-            payment to an address on the treasury list and holds everything else for a named
-            approver. The first payment button asks DFNS to build the payment, so it can read the
-            recipient, see our own address and let it through: the hash comes back in seconds with nobody
-            in the loop. The other buttons hand DFNS a signed envelope instead, which it cannot read
-            a recipient out of, so the policy holds those for approval; on this demo the relay
-            approves them automatically, so they finish here too. Every one of them pays the treasury
-            itself, so the balance never moves. The rule itself is listed above, next to the live
-            wallets, the policies and the audit export, which already prove the integration with no
-            transaction at all.
+            The testnet treasury signs through DFNS with MPC <InfoTip term="mpc" label="MPC signing" />.
+            Its policy, listed under Signing policies above, lets a payment to an address on the
+            treasury list straight through and holds anything else for an approver. With the first
+            button DFNS builds the payment itself, so the policy sees the recipient is the treasury and
+            clears it. The other two send DFNS an unsigned transaction to sign, which the policy can't
+            read, so it holds them; on the Lobster demo the relay approves them automatically. Each one
+            costs only the network fee: both payments go from the treasury to itself, and the Factory
+            call only asks the contract for its admin.
           </>
         ) : (
           <>
             Sends a harmless test call to the Lobster Factory <InfoTip term="factory" label="the Factory" />{' '}
-            through your wallet: it builds the transaction, your wallet signs it, and it goes to the
-            Stellar network. It only costs the network fee.
+            from your wallet. It only costs the network fee.
           </>
         )}
       </p>
@@ -204,12 +189,12 @@ export default function SignDemoTx() {
       {!source ? (
         <p className="text-xs text-text-muted">
           {isDfns
-            ? 'This is the advanced DFNS relay demo - a server you run and connect from + MPC. Your own connected DFNS wallet signs under the other tab, no relay needed.'
+            ? "This tab signs through a DFNS relay, the Lobster testnet demo or one you run yourself. A DFNS wallet you've connected signs under the other tab, no relay needed."
             : 'Connect a Stellar wallet to try this.'}
         </p>
       ) : network === 'mainnet' ? (
         <p className="text-xs text-coral">
-          This demo only sends on testnet. Switch to testnet to send a real transaction.
+          This demo only sends on testnet. Switch to testnet to send one.
         </p>
       ) : (
         <div className="space-y-3">
@@ -224,13 +209,10 @@ export default function SignDemoTx() {
               </button>
               <div>
                 <p className="text-[11px] text-text-muted mb-2">
-                  Approval demo: these hit the approval side of the treasury rule, so the policy
-                  holds them. On this Lobster demo the relay approves them automatically, so they
-                  finish here; in your own deployment a designated approver releases them in your
-                  DFNS console.
+                  These two are held for approval before DFNS signs them.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {/* dfns cannot price a contract call, so its policy holds this one for approval */}
+                  {/* both go to /dfns/sign as raw xdr, which no policy rule can read */}
                   <button
                     onClick={() => handleAction('ping')}
                     disabled={busy}
@@ -272,10 +254,8 @@ export default function SignDemoTx() {
           {state.phase === 'pending' && (
             <div className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2 space-y-2">
               <p>
-                Held for approval by the DFNS policy engine (four-eyes: the initiator can't approve
-                their own request). On this demo the relay approves it automatically, so it completes
-                in a moment; in your own deployment your designated approver releases it in your DFNS
-                console.
+                Held for approval by the DFNS policy. Whoever asked for it can't approve it, so it
+                waits until an approver releases it in the DFNS console.
               </p>
               <button
                 type="button"

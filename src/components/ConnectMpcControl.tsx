@@ -28,8 +28,7 @@ export default function ConnectMpcControl() {
   const triggerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // the popover renders through a portal on document.body, so the top bar's
-  // backdrop-blur (which traps a z-index) can never let page content paint over it
+  // portaled to body because the top bar's backdrop-blur traps z-index
   useLayoutEffect(() => {
     if (!open) return
     function place() {
@@ -63,8 +62,7 @@ export default function ConnectMpcControl() {
     }
   }, [open])
 
-  // move focus into the panel when it opens: it is portaled to the end of the body,
-  // so without this a keyboard user would have to tab through the whole page to reach it.
+  // without this a keyboard user tabs the whole page to reach the portal
   useEffect(() => {
     if (open && pos) panelRef.current?.focus()
   }, [open, pos])
@@ -81,8 +79,7 @@ export default function ConnectMpcControl() {
     setOpen((v) => !v)
   }
 
-  // a DFNS wallet connected over WalletConnect already shows in the wallet chip, so a
-  // second "+ MPC" invite beside it only confuses
+  // already shown in the wallet chip
   if (isWcConnected && !showClientChip && !showDemoChip && pickable.length === 0) return null
 
   return (
@@ -165,8 +162,8 @@ export default function ConnectMpcControl() {
           ) : active?.kind === 'demo' && !adding ? (
             <div className="space-y-2">
               <p className="text-xs text-text-secondary">
-                You are viewing Lobster's testnet demo custody, not your own DFNS. Connect the relay
-                you run for your own DFNS to use your own MPC.
+                You're on Lobster's testnet demo custody, not your DFNS. Connect a relay you run
+                to sign with your own DFNS.
               </p>
               <button
                 type="button"
@@ -195,7 +192,7 @@ export default function ConnectMpcControl() {
                   onClick={() => setAdding(false)}
                   className="text-[11px] text-text-muted hover:text-text"
                 >
-                  &larr; Back
+                  Back
                 </button>
               )}
               {!adding && pickable.length > 0 && (
@@ -250,8 +247,7 @@ export default function ConnectMpcControl() {
                   type="button"
                   disabled={connecting}
                   onClick={async () => {
-                    // flip to the wallet-kit signer only once the wallet actually
-                    // connects, so a dismissed modal does not drop the current mode.
+                    // switch signer only once connected so a dismissed modal keeps the mode
                     const addr = await connectWalletConnect()
                     if (addr) {
                       setMode('wallet-kit')

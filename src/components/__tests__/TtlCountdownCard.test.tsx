@@ -20,7 +20,6 @@ import { NetworkProvider } from '../../contexts/NetworkContext'
 
 const ORIG_API = import.meta.env.VITE_LOBSTER_API_URL
 
-// the three keys the relay watches on mainnet: factory instance, factory code, vault code
 const FACTORY_INSTANCE = 'AAAABgAAAAEKaFVFFlE2/omjkJeyizZjSP43N4YMJ1UJkGLY5ymj5gAAABQAAAAB'
 const FACTORY_CODE = 'AAAAB80SFCpYBkHvkqmflGSmZ75YUejCIcYyzlD5npZFU6cy'
 const VAULT_CODE = 'AAAAB6cqZ6xLn6CtVhAy2NQz1NoAJBAM2yf5CYy4mZckO4OC'
@@ -38,7 +37,7 @@ afterEach(() => {
 const row = (key: string, kind?: string) => ({ key, kind, remainingLedgers: 3_070_625, remainingSeconds: 15_353_125, level: 'ok' })
 
 describe('TtlCountdownCard', () => {
-  it('names each entry the way the relay does, the vault code apart from the factory code', () => {
+  it('labels each entry by the kind the relay sends', () => {
     ttlState.data = {
       network: 'mainnet',
       latestLedger: 64_717_078,
@@ -50,7 +49,7 @@ describe('TtlCountdownCard', () => {
     expect(screen.getByText('Vault code')).toBeInTheDocument()
   })
 
-  it('falls back to a plain name for an entry the relay does not name', () => {
+  it('falls back for an unlabelled entry', () => {
     ttlState.data = { network: 'mainnet', latestLedger: 64_717_078, statuses: [row(FACTORY_INSTANCE)] }
     render(<NetworkProvider><TtlCountdownCard /></NetworkProvider>)
     expect(screen.getByText('Storage entry')).toBeInTheDocument()

@@ -28,7 +28,7 @@ describe('RoutingEngineCard', () => {
     }
   })
 
-  it('calls the broker configured on mainnet, with no partner-key jargon, when the key is unset', () => {
+  it('mainnet broker reads configured with no partner key', () => {
     localStorage.setItem('lob_network', 'mainnet')
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', '')
     wrap(<RoutingEngineCard />)
@@ -36,36 +36,34 @@ describe('RoutingEngineCard', () => {
     expect(screen.queryByText(/partner key/i)).not.toBeInTheDocument()
   })
 
-  it('still reads configured on mainnet when the partner key is set', () => {
+  it('mainnet broker reads configured with a partner key', () => {
     localStorage.setItem('lob_network', 'mainnet')
     Reflect.set(import.meta.env, 'VITE_STELLAR_BROKER_PARTNER_KEY', 'test-key')
     wrap(<RoutingEngineCard />)
     expect(screen.getByText('configured', { exact: true })).toBeInTheDocument()
   })
 
-  it('never claims a state it did not measure', () => {
+  it('uses no green for routes it never called', () => {
     localStorage.setItem('lob_network', 'mainnet')
     const { container } = wrap(<RoutingEngineCard />)
-    // green is reserved for something actually called, and this card calls nothing
     expect(container.querySelectorAll('.bg-green')).toHaveLength(0)
     expect(screen.getByText(/Neither has been called/i)).toBeInTheDocument()
   })
 
-  it('shows the broker as mainnet only when on testnet', () => {
+  it('broker is mainnet only on testnet', () => {
     localStorage.setItem('lob_network', 'testnet')
     wrap(<RoutingEngineCard />)
     expect(screen.getByText(/mainnet only/i)).toBeInTheDocument()
   })
 
-  it('says where a swap comes from when no route is in localStorage', () => {
+  it('empty log points at the swap button', () => {
     wrap(<RoutingEngineCard />)
     expect(screen.getByText(/Routes taken/i)).toBeInTheDocument()
-    // the empty state has to name something a reader can actually go and press
     expect(screen.getByText(/No swap routed from this browser yet/i)).toBeInTheDocument()
     expect(screen.getByText(/Swap button on the Overview page/i)).toBeInTheDocument()
   })
 
-  it('renders the most recent route entry when localStorage has one', () => {
+  it('renders a logged route', () => {
     localStorage.setItem(
       'lob_routing_log',
       JSON.stringify([

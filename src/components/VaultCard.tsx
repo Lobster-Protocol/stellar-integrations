@@ -70,8 +70,7 @@ export default function VaultCard({
   account: string
   priceOf: (tokenId: string) => number | null
   share: number
-  // when the owner last moved anything on it, if that is in the activity read
-  // so far. absent means unknown, never "never".
+  // absent means not in the activity read so far, never "never moved"
   lastMove?: string
   onAction: (action: VaultAction) => void
   onHide: () => void
@@ -91,8 +90,6 @@ export default function VaultCard({
     [flowsQ.data, v.address, v.token0, v.token1, network],
   )
 
-  // a working vault holds tokens in the pool and can keep some in itself, so the
-  // headline per token is the two added together
   const total = (idle: string, pooled: string | null) => Number(idle) + Number(pooled ?? 0)
   const held0 = total(v.amount0, v.pooled0)
   const held1 = total(v.amount1, v.pooled1)
@@ -104,8 +101,7 @@ export default function VaultCard({
   }
   const value0 = legValue(v.token0, held0)
   const value1 = legValue(v.token1, held1)
-  // withdraw_contract only moves what sits in the vault, so the button follows
-  // the idle balance rather than the total
+  // withdraw_contract only moves the idle balance
   const empty = Number(v.amount0) === 0 && Number(v.amount1) === 0
 
   return (
@@ -165,7 +161,7 @@ export default function VaultCard({
             {partial && <span className="text-text-muted"> +</span>}
           </div>
           <div className="text-[10px] text-text-muted tabular-nums">
-            {share > 0 ? `${share.toFixed(1)}% of portfolio` : 'nothing to weigh'}
+            {share > 0 ? `${share.toFixed(1)}% of value held` : '-'}
           </div>
         </div>
       </div>
@@ -191,7 +187,7 @@ export default function VaultCard({
 
       {!v.complete && (
         <p className="text-xs text-coral mt-3">
-          This vault reports a deployed position but would not return its pool.
+          Part of this vault couldn't be read, so it may hold more than shown here.
         </p>
       )}
 
@@ -255,7 +251,7 @@ export default function VaultCard({
                     {formatBalance(v.pooled0)} / {formatBalance(v.pooled1)}
                   </span>
                 ) : (
-                  <span className="text-text-muted">the pool would not say</span>
+                  <span className="text-text-muted">not reported</span>
                 )}
               </Row>
             )}
@@ -299,14 +295,13 @@ export default function VaultCard({
             </Row>
 
             <p className="text-text-muted pt-2">
-              No return figure here on purpose. This vault records what it holds, not what it cost,
-              so any yield number would be a guess. The trail below is what actually moved.
+              No return figure here. The vault records what it holds, not what it cost, so a yield
+              number would be a guess. The operations linked below show what moved.
             </p>
 
             <p className="text-text-muted pt-2">
-              A vault cannot be deleted. The Factory has no call to unregister one and the vault has
-              no call to close itself, so withdrawing everything and hiding the card is as far as it
-              goes. Hiding is local to this browser.
+              A vault cannot be deleted. Withdraw everything and hide the card instead; hiding is
+              local to this browser.
             </p>
 
             <div className="pt-2 flex flex-wrap gap-3">
@@ -345,7 +340,7 @@ export default function VaultCard({
             type="button"
             onClick={() => onAction('withdraw')}
             disabled={empty}
-            title={empty ? 'This vault holds nothing to take out' : undefined}
+            title={empty ? 'Nothing idle in this vault to take out' : undefined}
             className="px-3 py-1.5 rounded-full bg-bg text-text text-xs font-semibold ring-1 ring-primary/20 hover:bg-bg/70 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Withdraw

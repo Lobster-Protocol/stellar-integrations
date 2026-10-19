@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { gotoWithWallet } from './fixtures'
 
-// multisig is DFNS custody. the one native path is a revert shown only to an
-// account that already carries a quorum, which the single-sig test wallet does not
+// multisig goes through DFNS. the native revert only shows to an account with a quorum
 
 test.describe('shared control', () => {
   test('the custody page does not offer to set up a native multisig', async ({ page }) => {

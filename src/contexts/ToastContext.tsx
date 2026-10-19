@@ -20,7 +20,7 @@ interface ToastApi {
 
 const Ctx = createContext<ToastApi | null>(null)
 
-// no dependency: a portal on document.body, above the +MPC popover (z-1000)
+// portal on body, z-index above the +MPC popover (z-1000)
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const idRef = useRef(1)
@@ -45,7 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const push = useCallback(
     (kind: ToastKind, message: string) => {
       const id = idRef.current++
-      // an error is worth reading, so it lingers longer than a success or an info
+      // errors take longer to read
       const ms = kind === 'error' ? 9000 : 4500
       // keep at most a few on screen; the newest is what matters
       setToasts((t) => [...t.slice(-3), { id, kind, message, ms }])
@@ -110,7 +110,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   )
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
+// eslint-disable-next-line react-refresh/only-export-components -- kept with ToastProvider on purpose
 export function useToast(): ToastApi {
   const v = useContext(Ctx)
   if (!v) throw new Error('useToast must be used inside <ToastProvider>')

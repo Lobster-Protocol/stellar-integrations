@@ -25,8 +25,7 @@ import type { BrokerQuoteParams } from '../integrations/broker/types'
 import { InfoTip } from './InfoTip'
 import CoSignPanel from './CoSignPanel'
 
-// a quorum swap widens both the tx timebound and the in-contract deadline so the
-// frozen envelope survives while the signers sign, past the 180s single-sig value.
+// timebound and swap deadline both get an hour so a quorum can finish signing
 const MULTISIG_WINDOW_SECS = 3600
 
 interface Props {
@@ -34,21 +33,18 @@ interface Props {
   onClose: () => void
 }
 
-// a soroban sim error comes back as a wall of diagnostic events. pull out the
-// cases a trader can actually act on and drop the raw trace.
 function readableSwapError(message: string): string {
   const unanswered = walletAnswerText(message)
   if (unanswered) return unanswered
-  // wallets refuse to sign when their own network toggle does not match the tx
-  // network (Freighter: "set to Main Net ... not possible at the moment").
+  // wallets refuse to sign when their own network toggle differs from the tx
   if (/set to (main|test)\s?net|not possible at the moment|different network|network mismatch/i.test(message)) {
     return "Your wallet is on a different network than the app. Switch the wallet's network to match, then try again."
   }
   if (/resulting balance is not within the allowed range/i.test(message)) {
-    return 'Not enough spendable XLM. An account keeps 1 XLM in reserve, so it cannot send its whole balance. Add funds or lower the amount.'
+    return "Not enough spendable XLM. An account has to keep a minimum XLM reserve, more with each trustline, so it can't send its whole balance. Add funds or lower the amount."
   }
   if (/Error\(Contract, ?#10\)/i.test(message)) {
-    return 'Soroswap turned this route down, the pool could not fill it. Try a different amount.'
+    return "This wallet doesn't hold enough of the token you're selling. Lower the amount."
   }
   if (/trustline|op_no_trust|not authorized/i.test(message)) {
     return "This wallet hasn't turned on a trustline for this asset yet (a one-time approval needed to hold it)."
@@ -65,8 +61,7 @@ export default function SwapModal({ open, onClose }: Props) {
   const [amount, setAmount] = useState('')
 
   const tokens = useMemo(() => swapTokensFor(network), [network])
-  // switching network can drop a token (an XTAR pick on testnet, gone on mainnet),
-  // so fall back rather than render an empty select.
+  // the picked token may not exist after a network switch
   const selling = tokens.find((t) => t.code === sellingCode) ?? tokens[0]
   const buying =
     tokens.find((t) => t.code === buyingCode) ??
@@ -74,15 +69,13 @@ export default function SwapModal({ open, onClose }: Props) {
     tokens[0]
   const sameToken = selling.code === buying.code
 
-  // useAccountBalances already folds testnet's soroban-only USDC into a code:'USDC'
-  // line. a full-XLM max still runs into the reserve, and the swap error covers that.
+  // testnet's soroban-only USDC already comes back here as a 'USDC' line.
+  // Max on XLM still hits the reserve; readableSwapError explains that one.
   const balancesQ = useAccountBalances(network, address)
   const classicSell = useMemo(() => {
     const lines = balancesQ.data
     if (!lines) return null
-    // selling.asset is "CODE-ISSUER" for a credit asset, a bare C... SAC on testnet,
-    // or plain XLM. match a credit line on BOTH code and issuer so a same-code line
-    // from another issuer cannot stand in for it.
+    // match code AND issuer, or a same-code asset from another issuer could stand in
     const dash = selling.asset.indexOf('-')
     if (dash > 0) {
       const issuer = selling.asset.slice(dash + 1)
@@ -93,8 +86,7 @@ export default function SwapModal({ open, onClose }: Props) {
     }
     return lines.find((b) => b.code === selling.code && !b.issuer)?.balance ?? null
   }, [balancesQ.data, selling.code, selling.asset])
-  // testnet swap tokens are bare SAC ids Horizon does not list; read the SAC
-  // balance() for those, and only when the classic lookup found nothing.
+  // Horizon doesn't list bare SAC ids, so ask the contract's balance() instead
   const sellSac = isContractId(selling.asset) ? selling.asset : null
   const sacSell = useQuery({
     queryKey: ['swap-sac-balance', network, address, sellSac],
@@ -123,15 +115,12 @@ export default function SwapModal({ open, onClose }: Props) {
   const confirmFallback = useSoroswapConfirm()
   const signingQ = useAccountSigning(network, address)
   const multi = signingQ.data ? isMultisig(signingQ.data) : false
-  // multisig swap runs as build-once then gather a quorum, so it needs its own
-  // local state rather than the one-shot mutation the single-sig path uses.
   const [coSign, setCoSign] = useState<{ baseXdr: string } | null>(null)
   const [multiHash, setMultiHash] = useState<string | null>(null)
   const [multiErr, setMultiErr] = useState<string | null>(null)
   const [multiBuilding, setMultiBuilding] = useState(false)
 
-  // the wallet keeps its own network selection, separate from the app toggle.
-  // if they differ the wallet refuses to sign, so read it and warn up front.
+  // warn before the wallet refuses to sign
   const walletNetwork = useQuery({
     queryKey: ['wallet-network', address],
     queryFn: getWalletNetworkPassphrase,
@@ -142,12 +131,11 @@ export default function SwapModal({ open, onClose }: Props) {
     !!address && !!walletNetwork.data && walletNetwork.data !== networkPassphrase(network)
 
   const titleId = useId()
-  // building the envelope or awaiting the wallet signature is the one moment a
-  // stray close would strand an in-progress sign, so gate every dismissal on it.
+  // closing mid-sign would strand the wallet prompt
   const busy = confirmFallback.isPending || multiBuilding
 
-  // the parent keeps this mounted while closed: reset on close or a reopen shows a
-  // stale "Swap confirmed". only open is a dep, the mutation object changes each render.
+  // still mounted when closed; a reopen would otherwise show the old "Swap confirmed".
+  // only open is a dep because the mutation object changes every render.
   useEffect(() => {
     if (open) return
     setAmount('')
@@ -181,19 +169,16 @@ export default function SwapModal({ open, onClose }: Props) {
     !!params &&
     !networkMismatch &&
     !overBalance &&
-    // don't send a multisig account down the one-shot path while its signers are
-    // still being read, and don't restart once a quorum collection is underway.
+    // wait for the signer list before picking a path, and never restart a quorum round
     !signingQ.isLoading &&
     !multiBuilding &&
     !coSign
 
   async function handleConfirmFallback() {
     if (!canConfirmFallback || !soroswap || !params) return
-    // a swap spends the connected wallet's own funds, so it always signs with the
-    // wallet kit, never the dfns relay (which only signs treasury ops).
+    // a swap spends the wallet's own funds and signs with the wallet kit, never the dfns relay
     if (multi) {
-      // build the envelope once with widened clocks, then hand it to the co-sign
-      // panel. never rebuild after this, or the gathered signatures stop matching.
+      // build it once; a rebuilt envelope wouldn't match the signatures already gathered
       setMultiErr(null)
       setMultiBuilding(true)
       try {
@@ -237,8 +222,7 @@ export default function SwapModal({ open, onClose }: Props) {
         network,
       })
     } catch {
-      // the mutation's error state drives the inline message below; swallow the
-      // rejection here so the click handler doesn't raise an unhandled promise.
+      // the isError branch below shows it
     }
   }
 
@@ -251,8 +235,8 @@ export default function SwapModal({ open, onClose }: Props) {
           <h2 id={titleId} className="text-lg font-semibold text-text flex items-center gap-1.5">
             Best-execution swap
             <InfoTip label="best execution">
-              Compares several exchanges and routes your swap through whichever gives you the most,
-              automatically.
+              On mainnet it shows the Stellar Broker price next to the direct Soroswap one. The swap
+              itself runs on Soroswap.
             </InfoTip>
           </h2>
           <button onClick={onClose} disabled={busy} className="p-1 rounded-full hover:bg-bg disabled:opacity-40 disabled:cursor-not-allowed">
@@ -340,7 +324,8 @@ export default function SwapModal({ open, onClose }: Props) {
 
           {!amount && !sameToken && (
             <p className="text-xs text-text-muted">
-              Enter an amount to compare the best route across Stellar Broker and Soroswap.
+              Enter an amount to see the Soroswap quote, with the Stellar Broker price next to it on
+              mainnet.
             </p>
           )}
 
@@ -361,8 +346,7 @@ export default function SwapModal({ open, onClose }: Props) {
             </div>
           )}
 
-          {/* shown even when nothing here can sign it: the broker quote next to the
-              direct route is the whole point of routing through it */}
+          {/* shown even when nothing can be signed; the comparison is the point */}
           {broker && (
             <div className="bg-bg rounded-lg p-3 text-xs space-y-1">
               <div className="flex justify-between">
@@ -434,9 +418,10 @@ export default function SwapModal({ open, onClose }: Props) {
             <>
               {multi && signingQ.data && !coSign && (
                 <div className="rounded-2xl bg-amber-500/10 text-amber-600 px-3 py-2.5 text-[11px]">
-                  This account uses shared control. This swap needs {requiredWeight(signingQ.data, 'med')}{' '}
-                  signatures. The quoted rate is locked in when you start. If the market moves more than 1%
-                  before every signer approves, the swap is declined on-chain and you start over.
+                  This account uses shared control. This swap needs a signing weight
+                  of {requiredWeight(signingQ.data, 'med')}. The minimum you receive is fixed when
+                  you start. If the rate moves more than {SOROSWAP_SLIPPAGE * 100}% against you
+                  before the last signature, the swap is declined on-chain and you start over.
                 </div>
               )}
               {!coSign && (
@@ -461,7 +446,7 @@ export default function SwapModal({ open, onClose }: Props) {
                   submit={async (xdr) => {
                     const hash = await submitSignedXdr(network, xdr)
                     const final = await waitForTx(network, hash)
-                    if (final.status !== 'SUCCESS') throw new Error(`the network reported ${final.status}`)
+                    if (final.status !== 'SUCCESS') throw new Error(`The network reported ${final.status}.`)
                     return hash
                   }}
                   onSubmitted={(hash) => {

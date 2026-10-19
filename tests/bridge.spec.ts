@@ -2,8 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 import { gotoWithWallet, TEST_WALLET } from './fixtures'
 
-// Everything up to the first signature. Signing needs a funded EVM wallet, so
-// that part is checked on chain rather than here.
+// stops short of the first signature, which needs a funded EVM wallet
 
 // a burn that never got delivered, the way the page stores one
 async function seedPendingTransfer(page: Page) {
@@ -28,7 +27,7 @@ async function seedPendingTransfer(page: Page) {
   }, TEST_WALLET.address)
 }
 
-// a burn out of Stellar that Circle has not signed yet, as the page stores one
+// a burn out of Stellar that Circle hasn't signed yet, as the page stores one
 async function seedTransferOut(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem(
@@ -56,7 +55,7 @@ async function seedTransferOut(page: Page) {
 async function openBridge(page: Page) {
   await gotoWithWallet(page)
   await page.getByRole('button', { name: '+ Deposit' }).click()
-  // the window's code loads on that first click: keys pressed before it is up reach the page
+  // the window loads lazily on first click, and keys pressed before that reach the page
   await expect(page.getByRole('heading', { name: 'Bridge USDC to Stellar' })).toBeVisible()
 }
 
@@ -89,7 +88,7 @@ test.describe('the bridge form', () => {
     await expect(page.getByText('Trustline', { exact: false }).first()).toBeVisible()
   })
 
-  test('stays locked without an EVM wallet, even with an amount', async ({ page }) => {
+  test('stays locked without an EVM wallet', async ({ page }) => {
     await openBridge(page)
 
     await page.getByPlaceholder('0.00').fill('5')
@@ -147,10 +146,10 @@ test.describe('the Bridges page', () => {
 
     const route = page.getByText('The route').locator('xpath=ancestor::div[contains(@class,"rounded")][1]')
     await expect(route).toContainText('Circle CCTP')
-    await expect(page.getByText(/every step is real/)).toBeVisible()
+    await expect(page.getByText(/try it there first/)).toBeVisible()
   })
 
-  test('offers other routes that open outside, with no opener handed over', async ({ page }) => {
+  test('opens the other routes in a new tab with noopener', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
 
@@ -234,7 +233,7 @@ test.describe('the Bridges page', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 
-  test('forgets a tracked transfer once asked twice', async ({ page }) => {
+  test('forgets a tracked transfer once confirmed', async ({ page }) => {
     await seedPendingTransfer(page)
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
@@ -244,7 +243,7 @@ test.describe('the Bridges page', () => {
     await expect(page.getByText('Waiting to be delivered')).toHaveCount(0)
   })
 
-  test('shows both wallets, each with its own way to connect', async ({ page }) => {
+  test('shows the EVM and Stellar wallets', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
 
@@ -270,7 +269,7 @@ test.describe('the Bridges page', () => {
     await expect(page.getByText('Burned on Stellar')).toBeVisible()
   })
 
-  test('refuses a Stellar hash of the wrong shape when finishing elsewhere', async ({ page }) => {
+  test('refuses a malformed Stellar hash', async ({ page }) => {
     await gotoWithWallet(page)
     await page.getByRole('link', { name: /^Bridges$/ }).click()
 
@@ -296,7 +295,7 @@ test.describe('the way out of Stellar', () => {
     await expect(page.getByRole('button', { name: /I receive it myself/ })).toBeVisible()
   })
 
-  test('switches direction from the bridge window, and back', async ({ page }) => {
+  test('switches direction and back', async ({ page }) => {
     await openBridge(page)
     await page.getByRole('button', { name: 'Out of Stellar' }).click()
     await expect(page.getByRole('heading', { name: 'Bridge USDC from Stellar' })).toBeVisible()

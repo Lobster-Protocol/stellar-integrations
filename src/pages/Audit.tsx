@@ -28,8 +28,7 @@ import TokenRef from '../components/TokenRef'
 import { Card, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
-// a 401 proves the relay answered and only the read was turned down; calling that
-// unreachable sends a reader off hunting for a service that is running.
+// a 401 or 503 still means the relay is up
 function readFailure(err: unknown): string {
   if (err instanceof RelayError && err.status === 401) {
     return 'relay answered, no valid API token'
@@ -50,8 +49,7 @@ export default function Audit() {
   const navigate = useNavigate()
   const factoryInfo = useFactoryInfo(network)
   const vaults = useLatestVaults(network, factoryInfo.data?.poolCount)
-  // vaults that hold nothing (often a test that was emptied) go below a toggle, so the
-  // list opens on the ones worth reading; until the reads land, every vault shows
+  // empty vaults fold under a toggle, but every vault shows until the reads come back
   const holding = useVaultsHolding(network, vaults.data)
   const [showEmpty, setShowEmpty] = useState(false)
   const listed = vaults.data ?? []
@@ -74,8 +72,8 @@ export default function Audit() {
       {!configured ? (
         <Card>
           <Empty>
-            No DFNS organization is connected yet, so there is nothing to show here. Connect your
-            own DFNS in the panel above, or pick the Lobster testnet demo to see the flow.
+            No DFNS organization is connected yet. Connect your own DFNS in the panel above, or
+            pick the Lobster testnet demo.
           </Empty>
         </Card>
       ) : (
@@ -99,8 +97,7 @@ export default function Audit() {
                 : readFailure(wallets.error)
             }
           />
-          {/* a failed read is not a finding: only call signing ungated once we
-              have actually seen the policy list */}
+          {/* only say nothing needs approval once the policy list was actually read */}
           <Stat
             label={
               <>
@@ -278,9 +275,8 @@ export default function Audit() {
       <div>
         <h2 className="text-lg font-semibold text-text">Try it on testnet</h2>
         <p className="text-sm text-text-secondary mt-1 max-w-2xl leading-relaxed">
-          Nothing above needed a transaction to be true. If you want to watch a signature happen
-          anyway, this sends a harmless call on testnet, either from your own wallet or from the
-          DFNS treasury.
+          Everything above is a live read. To watch a signature happen, send a harmless testnet
+          call below, from your own wallet or from the DFNS treasury.
         </p>
       </div>
 

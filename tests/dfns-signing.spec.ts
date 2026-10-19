@@ -3,8 +3,7 @@ import { TransactionBuilder, Networks } from '@stellar/stellar-sdk'
 
 import { seedDfnsDemo, seedWallet, TEST_SOURCE_TESTNET } from './fixtures'
 
-// the dfns endpoints are mocked since the real flow needs the sandbox and relay,
-// but building the tx still hits live testnet rpc
+// dfns is mocked, but building the tx still hits live testnet rpc
 const apiUrl = process.env.VITE_LOBSTER_API_URL
 
 test.describe('DFNS MPC signing path', () => {
@@ -22,9 +21,6 @@ test.describe('DFNS MPC signing path', () => {
       }),
     )
 
-    // the cross-origin POST is preceded by a preflight OPTIONS (custom header +
-    // credentials), which has no body, so fulfill that too and only assert on
-    // the POST.
     await page.route('**/dfns/sign', (route) => {
       const req = route.request()
       route.fulfill({
@@ -35,7 +31,7 @@ test.describe('DFNS MPC signing path', () => {
           'access-control-allow-methods': 'POST,OPTIONS',
           'access-control-allow-headers': 'content-type,x-lobster-token',
         },
-        // a classic tx: dfns broadcasts it and the relay reports the hash.
+        // dfns broadcasts a classic tx itself and the relay reports the hash
         body: req.method() === 'OPTIONS' ? '' : JSON.stringify({ txHash: 'a'.repeat(64) }),
       })
     })
@@ -43,12 +39,10 @@ test.describe('DFNS MPC signing path', () => {
     await seedDfnsDemo(page)
     await seedWallet(page)
     await page.addInitScript(() => localStorage.setItem('lob_custody_mode', 'dfns'))
-    // domcontentloaded, not networkidle: the dfns wallet poll and any feed keep
-    // the network busy, so idle never fires.
+    // the wallet poll never lets the network go idle
     await page.goto('/audit', { waitUntil: 'domcontentloaded' })
 
-    // only the raw-xdr payment reaches /dfns/sign. its neighbour of the same
-    // amount has the relay build and send the transfer itself
+    // only the raw-xdr payment reaches /dfns/sign. its twin has the relay build the tx
     const btn = page.getByRole('button', { name: /raw XDR/i })
     await expect(btn).toBeVisible()
 
@@ -58,12 +52,10 @@ test.describe('DFNS MPC signing path', () => {
 
     expect(typeof signBody.xdr).toBe('string')
     expect(signBody.xdr!.length).toBeGreaterThan(0)
-    // the passphrase the server checks against its own env to refuse a tx built
-    // for the wrong network
+    // the relay refuses a passphrase that doesn't match its own network
     expect(signBody.networkPassphrase).toContain('Test SDF Network')
 
-    // the built tx must source from the dfns treasury wallet the relay guard
-    // requires, not whatever browser account happens to be connected
+    // the relay guard only signs txs sourced from the treasury, not the browser wallet
     const built = TransactionBuilder.fromXDR(signBody.xdr!, Networks.TESTNET)
     expect(built.source).toBe(TEST_SOURCE_TESTNET)
   })

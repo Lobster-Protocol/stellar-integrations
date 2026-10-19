@@ -16,8 +16,7 @@ import { ChartFrame } from './ui'
 const day = (ts: number) =>
   new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
-// one panel per token, since two tokens rarely share a scale and a single axis
-// flattens the smaller of them.
+// one panel per token; a shared axis would flatten the smaller one
 export default function VaultFlowChart({
   series,
   complete,
@@ -76,8 +75,7 @@ export default function VaultFlowChart({
                       labelFormatter={(v) => new Date(Number(v)).toLocaleString('en-GB')}
                       formatter={(v) => [formatBalance(String(v)), `Net ${code}`]}
                     />
-                    {/* one move draws no segment, so the dot is what makes a
-                        single deposit visible at all */}
+                    {/* a lone move is just a dot */}
                     <Line
                       type="stepAfter"
                       dataKey="v"
@@ -98,8 +96,8 @@ export default function VaultFlowChart({
       </div>
 
       <p className="text-[11px] text-text-muted mt-2">
-        This is not a return. What the position earns or loses inside the pool stays in the vault, so
-        it never crosses your wallet and cannot show up on this line.
+        This is not a return. What the position earns or loses in the pool stays in the vault and
+        only shows up on this line once you withdraw.
       </p>
       {!complete && (
         <p className="text-[11px] text-text-muted mt-1">

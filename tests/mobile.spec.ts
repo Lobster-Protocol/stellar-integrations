@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { BASE } from './fixtures'
 
-// doubles as the screenshot pass for the phone layout, hence the overlap with
-// ux-navigation
+// also the phone screenshot pass, so it overlaps ux-navigation
 test.use({ viewport: { width: 375, height: 812 } }) // iPhone X
 
 test('trades the sidebar for a menu button at phone width', async ({ page }) => {
@@ -13,8 +12,7 @@ test('trades the sidebar for a menu button at phone width', async ({ page }) => 
   const sidebar = page.locator('aside')
   await expect(sidebar).toBeHidden()
 
-  // TopBar labels it, so ask for it by name rather than taking whichever icon
-  // button sits first in the DOM
+  // by name, not whichever icon button comes first in the DOM
   const menuBtn = page.getByRole('button', { name: /Open menu/i })
   await expect(menuBtn).toBeVisible()
 })
@@ -47,7 +45,6 @@ test('brings the wallets kit up at phone width', async ({ page }) => {
   await expect(connectBtn).toBeVisible()
   await connectBtn.click()
 
-  // a screenshot alone passes whether or not the modal came up
   const modal = page.locator('section.stellar-wallets-kit')
   await expect(modal).toBeVisible()
   await expect(modal.getByRole('heading', { name: 'Connect Wallet' })).toBeVisible()

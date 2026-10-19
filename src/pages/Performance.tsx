@@ -81,15 +81,13 @@ export default function Performance() {
   const unit = priceUnit(network)
   const price = priceQ.data ?? null
   const { lines, usdTotal } = valueBalances(balancesQ.data ?? [], price, network)
-  // the same total Overview leads with: wallet plus vaults, not wallet alone
+  // same total as the Overview headline
   const portfolio = buildPortfolio(lines, vaultsQ.data ?? [], tokenPricer(network, price), network)
-  // until the vault read answers, the figure would leave out the vaults it says it has.
-  // an account that is not on-chain owns none
+  // unfunded means no vaults to wait for
   const vaultsKnown = vaultsQ.isSuccess || missing
   const total = usdTotal != null && vaultsKnown ? portfolio.total : null
 
-  // only assets whose identity we can pin down get a price, so a look-alike
-  // token can never lift the curve
+  // exact asset ids only, or a look-alike token could lift the curve
   const priceByKey = useMemo(() => {
     const m: Record<string, number> = {}
     if (price != null) m.XLM = price
@@ -99,7 +97,7 @@ export default function Performance() {
 
   const history = historyQ.data
 
-  // biggest holding first, so the download opens on the column the reader came for
+  // export columns, biggest holding first
   const assetKeys = useMemo(() => {
     if (!history || history.points.length === 0) return []
     const last = history.points.at(-1)!.held
@@ -109,23 +107,21 @@ export default function Performance() {
   const toRows = (pts: BalancePoint[]): Row[] =>
     pts.map((p) => ({ ts: p.ts, value: valueAtCurrentPrice(p, priceByKey) }))
 
-  // the chart wants a point everywhere the cursor can land; the table wants only
-  // the moments something actually happened
+  // the chart needs a point wherever the cursor lands, the table only real moves
   const series = useMemo(
     () => (history ? toRows(densify(history.points)) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- toRows only reads priceByKey
     [history, priceByKey],
   )
   const changes = useMemo(
     () => (history ? toRows(history.points) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- same as series
     [history, priceByKey],
   )
 
   const flows = history?.flows
 
-  // carry the running value to the window's left edge so the curve starts at the
-  // right height instead of mid-air; the table only lists real moves, no synthetic anchor
+  // anchor the running value at the left edge so the curve doesn't start mid-air
   const cutoffMs = range === 'all' ? null : Date.now() - RANGE_DAYS[range] * 86_400_000
   const viewSeries: Row[] =
     cutoffMs == null
@@ -154,8 +150,8 @@ export default function Performance() {
         <div>
           <h2 className="text-lg font-semibold text-text">Performance</h2>
           <p className="text-xs text-text-secondary mt-1">
-            Rebuilt from every credit, debit and fee this account has paid, so the last point
-            matches the live balance exactly.
+            Rebuilt from every credit, debit and fee on this account, so the last point matches
+            the live balance exactly.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -341,7 +337,7 @@ export default function Performance() {
             note={
               <>
                 Every stroop <InfoTip term="stroop" label="a stroop" /> this account has ever
-                received, accounted for. The lines add up to the balance on-chain right now.
+                received, accounted for.
               </>
             }
           />
@@ -359,13 +355,12 @@ export default function Performance() {
               label="Prepaid storage rent"
               amount={flows.storageRent}
               sign="-"
-              note="one-off, buys months of contract storage"
+              note="each payment buys months of contract storage"
             />
             <FlowRow
               label="Transaction fees"
               amount={flows.txFees}
               sign="-"
-              note="the per-transaction cost"
             />
             <li className="flex items-center justify-between gap-3 py-2.5 font-medium">
               <span className="text-text">Held in the wallet now</span>
@@ -375,7 +370,7 @@ export default function Performance() {
           <p className="text-xs text-text-secondary mt-3">
             {flows.reconciles
               ? 'These figures match the live balance to the stroop.'
-              : 'This account has more history than one read covers, so the lines below do not close.'}
+              : "This account has more history than one read covers, so the lines above don't add up."}
           </p>
         </Card>
       )}

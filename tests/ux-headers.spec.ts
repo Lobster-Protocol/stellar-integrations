@@ -4,15 +4,13 @@ import { resolve } from 'node:path'
 
 import { BASE } from './fixtures'
 
-// these headers come from vercel.json, which `vite preview` never reads, so a local
-// run checks the declared rule and only a run against a deploy checks the wire too
+// `vite preview` ignores vercel.json, so a local run only checks the declared rule
 const isLocal = /localhost|127\.0\.0\.1/.test(BASE)
 
 interface VercelConfig {
   headers?: Array<{ source: string; headers: Array<{ key: string; value: string }> }>
 }
 
-// what vercel.json tells Vercel to send on every path, by header name
 function declared(name: string): string | undefined {
   const cfg = JSON.parse(
     readFileSync(resolve(process.cwd(), 'vercel.json'), 'utf8'),
@@ -26,7 +24,7 @@ function declared(name: string): string | undefined {
 }
 
 test.describe('HTTP security headers (Vercel config)', () => {
-  test('HSTS is configured with max-age >= 1 year, and served', async ({ request }) => {
+  test('HSTS max-age is at least a year', async ({ request }) => {
     const configured = declared('strict-transport-security')
     expect(configured, 'vercel.json must declare Strict-Transport-Security').toBeTruthy()
     const declaredAge = /max-age=(\d+)/.exec(configured!)
@@ -41,14 +39,14 @@ test.describe('HTTP security headers (Vercel config)', () => {
     expect(Number(servedAge![1])).toBeGreaterThanOrEqual(31_536_000)
   })
 
-  test('X-Frame-Options is configured DENY, and served', async ({ request }) => {
+  test('X-Frame-Options is DENY', async ({ request }) => {
     expect(declared('x-frame-options')).toBe('DENY')
 
     if (isLocal) return
     expect((await request.get(BASE)).headers()['x-frame-options']).toBe('DENY')
   })
 
-  test('X-Content-Type-Options is configured nosniff, and served', async ({ request }) => {
+  test('X-Content-Type-Options is nosniff', async ({ request }) => {
     expect(declared('x-content-type-options')).toBe('nosniff')
 
     if (isLocal) return

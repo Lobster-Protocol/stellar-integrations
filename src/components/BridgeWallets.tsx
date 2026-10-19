@@ -19,8 +19,7 @@ import {
 import CopyButton from './CopyButton'
 import { InfoTip } from './InfoTip'
 
-// one button, one window listing every EVM wallet; the window says itself when a wallet
-// is missing or turns the connection down
+// no error UI here: RainbowKit's window reports a missing or refusing wallet itself
 export function EvmConnectButtons({ small }: { small?: boolean }) {
   const { openConnectModal, connectModalOpen } = useConnectModal()
   return (
@@ -183,7 +182,7 @@ function StellarWalletCard({ network }: { network: Network }) {
             </p>
           ) : (
             <>
-              {/* Horizon down is not an empty account: no "none" or "off" until it has answered */}
+              {/* Horizon down isn't an empty account */}
               <Line label="USDC">{balances.isPending ? '...' : balances.isError ? 'unreadable' : usdc ? formatBalance(usdc.balance) : 'none'}</Line>
               <Line label="XLM">{balances.isPending ? '...' : balances.isError ? 'unreadable' : xlm ? formatBalance(xlm.balance) : '?'}</Line>
               <Line label="Trustline">
@@ -207,7 +206,6 @@ function StellarWalletCard({ network }: { network: Network }) {
   )
 }
 
-// both ends of the bridge side by side, each connected on its own
 export default function BridgeWallets({ network }: { network: Network }) {
   const chains = cctpChainsFor(network)
   return (

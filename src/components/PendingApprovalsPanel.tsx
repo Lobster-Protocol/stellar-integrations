@@ -10,8 +10,7 @@ export default function PendingApprovalsPanel() {
   const approvals = useDfnsPendingApprovals()
   const decide = useDfnsApprove()
   const [reason, setReason] = useState<Record<string, string>>({})
-  // deciding an approval releases a treasury signature, so the buttons belong to
-  // an operator. everybody else reads what is waiting.
+  // a decision can release a treasury signature
   const operator = isOperator()
   // a version-skewed relay can answer 200 with a body that has no `items`
   const items = approvals.data?.items ?? []
@@ -20,7 +19,7 @@ export default function PendingApprovalsPanel() {
   if (!hasRelay) {
     return (
       <NotConfigured title="Pending approvals" needs="a DFNS organization">
-        Payments a signing policy is holding back until a person signs off. This build has no relay
+        Payments a signing policy is holding back until a person signs off. No DFNS relay is selected
         to read them from.
       </NotConfigured>
     )

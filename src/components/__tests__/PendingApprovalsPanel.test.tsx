@@ -14,7 +14,7 @@ beforeEach(() => {
   globalThis.fetch = fetchSpy as unknown as typeof fetch
   Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'http://localhost:8787')
   localStorage.clear()
-  // the demo is opt-in and this panel reads the active profile, so select it.
+  // the demo is opt-in
   setActiveProfile(DEMO_PROFILE_ID)
 })
 
@@ -34,20 +34,20 @@ function wrap(node: React.ReactNode) {
 }
 
 describe('PendingApprovalsPanel', () => {
-  it('names the missing configuration instead of disappearing when the api url is unset', () => {
+  it('still renders with no api url', () => {
     Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', '')
     wrap(<PendingApprovalsPanel />)
     expect(screen.getByText(/Pending approvals/)).toBeInTheDocument()
     expect(screen.getByText(/Connect a DFNS organization/)).toBeInTheDocument()
   })
 
-  it('shows the empty state when no approvals are returned', async () => {
+  it('shows the empty state', async () => {
     fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) })
     wrap(<PendingApprovalsPanel />)
     await waitFor(() => expect(screen.getByText(/Nothing is waiting for approval/i)).toBeInTheDocument())
   })
 
-  it('renders an approval row read-only, with no decision buttons, by default', async () => {
+  it('shows a held approval read only by default', async () => {
     fetchSpy.mockResolvedValueOnce(ONE_PENDING)
     wrap(<PendingApprovalsPanel />)
     await waitFor(() => expect(screen.getByText('app-1')).toBeInTheDocument())

@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-// noindex until launch. DOCS_BASE_URL points at a served build, `npm run serve`
-// in lobster-docs or the hosted site
+// the docs are noindex. DOCS_BASE_URL is any served build of lobster-docs
 const DOCS_BASE = process.env.DOCS_BASE_URL ?? ''
 
 const PAGES = [
@@ -30,8 +29,7 @@ test.describe('Docs site', () => {
   }
 
   test('publishes the generated API reference', async ({ request }) => {
-    // the openapi plugin emits the bff under /api, and the intro page it names
-    // after the spec title is the stable entry the sidebar links to
+    // the openapi plugin names the intro page after the spec title
     const res = await request.get(`${DOCS_BASE}/api/lobster-bff`)
     expect([200, 301, 302]).toContain(res.status())
   })

@@ -7,12 +7,12 @@ const ready = MAINNET_FACTORY !== '' && MAINNET_SOURCE !== ''
 interface Truth {
   admin: string
   poolCount: number
-  // the newest vault, the one the Factory card lists first
+  // the newest vault
   vault: string
   owner: string
-  // whether the newest vault holds anything; an empty one is folded below the list
+  // an empty newest vault is folded below the list
   newestHolds: boolean
-  // the newest vault whose tokens sit in Soroswap; a fresh vault can be empty
+  // the newest vault with its tokens in Soroswap (a fresh one can be empty)
   placed: { vault: string; owner: string }
 }
 
@@ -66,8 +66,7 @@ async function readFactory(): Promise<Truth> {
   }
 }
 
-// anchor on the Factory card through its heading; the stat labels each carry a
-// help tip of their own, so the h3 is the reliable handle
+// the Contract ID and Admin labels carry help tips, so go through the h3
 function factoryCard(page: import('@playwright/test').Page) {
   return page
     .getByRole('heading', { name: /Factory contract/ })
@@ -81,9 +80,8 @@ async function openCustodyOnMainnet(page: import('@playwright/test').Page) {
 }
 
 test.describe('Live mainnet Factory reads match the /audit DOM', () => {
-  test.skip(!ready, 'set PLAYWRIGHT_MAINNET_FACTORY and _SOURCE once the mainnet deploy lands')
-  // the public rpc turns a busy ip away for up to 15 s and the page waits that out
-  // before reading again, so a test gets room for one such wait
+  test.skip(!ready, 'set PLAYWRIGHT_MAINNET_FACTORY and PLAYWRIGHT_MAINNET_SOURCE to run against mainnet')
+  // the public rpc can turn a busy ip away for 15 s, and the page waits that out
   test.describe.configure({ timeout: 60_000 })
 
   let truth: Truth
@@ -118,7 +116,7 @@ test.describe('Live mainnet Factory reads match the /audit DOM', () => {
     )
   })
 
-  test('lists the vaults with no wallet, folds the empty ones, and opens an owner read-only', async ({ page }) => {
+  test('lists vaults without a wallet and opens an owner read-only', async ({ page }) => {
     await openCustodyOnMainnet(page)
     const card = factoryCard(page)
     await expect(card.locator(`a[href$="/contract/${truth.placed.vault}"]`)).toBeVisible({ timeout: 30_000 })
@@ -146,7 +144,7 @@ test.describe('Live mainnet Factory reads match the /audit DOM', () => {
     await expect(page.getByText('Soroswap', { exact: true }).first()).toBeVisible()
   })
 
-  test('a mainnet swap routes through soroswap, the broker only quotes', async ({ page }) => {
+  test('a mainnet swap routes through soroswap', async ({ page }) => {
     await page.goto(`${BASE}/?network=mainnet&view=${truth.placed.owner}`)
     await page.getByRole('button', { name: 'Swap', exact: true }).click()
     await page.getByPlaceholder('0.0').fill('1')

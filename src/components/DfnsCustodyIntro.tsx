@@ -1,15 +1,15 @@
-const BEATS = [
+const POINTS = [
   {
-    head: 'No one holds the whole key',
+    head: 'Split key (MPC)',
     body: 'The treasury is a DFNS wallet. Its signing key is split across DFNS servers with multi-party computation, so no single machine or person can sign on its own.',
   },
   {
-    head: 'A rule runs before every signature',
-    body: 'A small transfer can go through by itself. A larger one waits for a named approver, and whoever asked for it is not allowed to approve it.',
+    head: 'Approval policy',
+    body: "On the testnet demo, a transfer to an address on the treasury list goes through by itself. Anything else waits for a named approver, and whoever asked for it can't approve it.",
   },
   {
-    head: 'The trail is exportable',
-    body: 'Signatures, approvals and transfers land below as they happen. The whole record downloads as a hash-chained file in the MiCA record shape.',
+    head: 'Exportable log',
+    body: 'Signatures, approvals and transfers show up below as they happen. Confirmed transactions and transfers download as a hash-chained JSON file in the MiCA record format.',
   },
 ]
 
@@ -18,10 +18,10 @@ export default function DfnsCustodyIntro() {
     <div>
       <h2 className="text-lg font-semibold text-text">Institutional custody through DFNS</h2>
       <p className="text-sm text-text-secondary mt-1 max-w-2xl leading-relaxed">
-        Custody that an institution can sign off on, without the dashboard ever holding a key.
+        DFNS holds the treasury key and signs with it; the dashboard never holds one.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        {BEATS.map((b) => (
+        {POINTS.map((b) => (
           <div key={b.head} className="rounded-2xl bg-primary/5 px-3 py-3">
             <p className="text-xs font-medium text-text">{b.head}</p>
             <p className="text-[11px] text-text-secondary mt-1 leading-relaxed">{b.body}</p>

@@ -16,8 +16,7 @@ export default function RoutingEngineCard() {
   const entries = useRoutingLog()
   const health = getRoutingHealth(network)
 
-  // read off this build's config, never probed, so the two tiles below never go
-  // green: green is for something we measured.
+  // both tiles only read config and are never probed, so neither dot is green
   const brokerStatus = health.brokerQuoteEnabled
     ? 'configured'
     : network === 'mainnet'
@@ -31,8 +30,8 @@ export default function RoutingEngineCard() {
           <span className="inline-flex items-center gap-1.5">
             Routing engine
             <InfoTip label="the routing engine">
-              Where your swap gets sent. Lobster checks several exchanges and picks the one that
-              gives you the best price.
+              Where your swap goes. It always runs on Soroswap; on mainnet the Stellar Broker
+              quote is shown next to it for comparison.
             </InfoTip>
           </span>
         }
@@ -99,8 +98,8 @@ export default function RoutingEngineCard() {
           </span>
         </div>
         <p className="text-xs text-text-secondary mt-1 mb-1">
-          Which exchange each swap actually went through, most recent first. Kept in this browser,
-          so it is a trace and not an on-chain record.
+          The route each swap from this browser took, newest first. It&apos;s only kept here, not
+          on-chain.
         </p>
         {entries.length === 0 ? (
           <Empty>

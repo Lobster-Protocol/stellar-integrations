@@ -15,8 +15,7 @@ interface CustodyCtx {
   mode: CustodyMode
   setMode: (m: CustodyMode) => void
   signer: Signer
-  // first dfns wallet that matches the active network, null when in
-  // wallet-kit mode or when no matching wallet is configured yet.
+  // null unless dfns mode has a usable wallet on this network
   dfnsAddress: string | null
 }
 
@@ -41,13 +40,11 @@ export function CustodyProvider({ children }: { children: ReactNode }) {
 
   const dfnsAddress = useMemo(() => {
     if (mode !== 'dfns') return null
-    // no dfns custody until a profile is connected. connecting a client relay
-    // selects it; the demo is opt-in and never acts as custody on mainnet.
     if (!activeProfile) return null
+    // the demo is testnet-only
     if (activeProfile.kind === 'demo' && network === 'mainnet') return null
     const items = wallets.data?.items ?? []
-    // the operator's explicit pick wins, as long as the relay still reports it on
-    // this network. otherwise fall back to the one wallet that matches.
+    // the operator's pick wins only while the relay still lists it on this network
     if (picked && items.some((w) => w.address === picked.address && w.network === target)) {
       return picked.address
     }
@@ -59,9 +56,8 @@ export function CustodyProvider({ children }: { children: ReactNode }) {
     () => ({
       mode,
       setMode,
-      // dfns signs only when a dfns wallet is actually resolved. a stale 'dfns' mode left in
-      // localStorage with no dfns wallet must not send a connected wallet-kit account's tx to
-      // the dfns relay, which cannot sign for it.
+      // a stale 'dfns' mode with no dfns wallet must not route a wallet-kit account's tx
+      // to the relay, which can't sign for it
       signer: mode === 'dfns' && dfnsAddress ? dfnsSigner : walletKitSigner,
       dfnsAddress,
     }),
@@ -71,7 +67,7 @@ export function CustodyProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
+// eslint-disable-next-line react-refresh/only-export-components -- the hook stays next to its provider
 export function useCustody() {
   const v = useContext(Ctx)
   if (!v) throw new Error('useCustody must be used inside <CustodyProvider>')

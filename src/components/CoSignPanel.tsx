@@ -17,8 +17,7 @@ import CopyButton from './CopyButton'
 interface Props {
   network: Network
   signing: AccountSigning
-  // the frozen transaction everyone signs. never rebuild it once signing starts,
-  // or the hash changes and the signatures already gathered stop matching.
+  // frozen tx everyone signs. a rebuild changes the hash and voids the signatures
   baseXdr: string
   connected: string
   submit: (fullySignedXdr: string) => Promise<string>
@@ -30,9 +29,7 @@ function short(key: string): string {
 }
 
 export default function CoSignPanel({ network, signing, baseXdr, connected, submit, onSubmitted }: Props) {
-  // the canonical envelope: starts as the base, grows one verified signature at a
-  // time. combine() only ever adds signatures to it, so a wallet that drops the
-  // ones already there cannot lose the quorum.
+  // combine() only adds signatures. a wallet that drops some can't lose the quorum
   const [working, setWorking] = useState(baseXdr)
   const [busy, setBusy] = useState<'idle' | 'signing' | 'submitting'>('idle')
   const [err, setErr] = useState<string | null>(null)
@@ -40,10 +37,8 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
   const [pasteVal, setPasteVal] = useState('')
   const [ack, setAck] = useState(false)
 
-  // decode what is actually being signed from the frozen base, so a co-signer
-  // sees the operations instead of an opaque blob. dangers are an op sourced off
-  // this account (the multi-source hijack) or an account-control op; those gate
-  // the sign and submit buttons behind an explicit acknowledgement.
+  // a co-signer sees the decoded ops, not a blob, and any danger summarizeTx flags
+  // needs an ack before sign or submit
   const summary = useMemo<TxSummary | null>(() => {
     try {
       return summarizeTx(baseXdr, network, signing.accountId)
@@ -54,9 +49,8 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
   const hasDangers = (summary?.dangers.length ?? 0) > 0
   const blocked = hasDangers && !ack
 
-  // account_merge and any signer or threshold change need the high threshold, and
-  // every set_options op this app builds is such a change. on a 2-of-3 (high 3,
-  // med 2) a med gate would call 2 signatures enough and the chain would reject it.
+  // account_merge and signer or threshold changes need the high threshold, and every
+  // set_options this app builds is one. a med gate undercounts whenever high is above med
   const tier: 'med' | 'high' =
     summary?.operations.some((o) => o.type === 'setOptions' || o.type === 'accountMerge')
       ? 'high'
@@ -79,8 +73,7 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
     setErr(null)
     setBusy('signing')
     try {
-      // sign the frozen base, not the growing envelope, and merge the result, so
-      // nothing relies on a wallet keeping the signatures already gathered.
+      // signing the base means no wallet has to carry earlier signatures
       const { signedTxXdr } = await walletKitSigner.signTransaction(baseXdr, {
         networkPassphrase: networkPassphrase(network),
         address: connected,
@@ -124,15 +117,13 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
       onSubmitted(hash)
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'submit failed'
-      // horizon rejects with the axios error, whose message is just the http status.
-      // the tx result code is in the response body.
+      // horizon throws the axios error. the result code sits in its body
       const code = (e as { response?: { data?: { extras?: { result_codes?: { transaction?: string } } } } } | null)
         ?.response?.data?.extras?.result_codes?.transaction
-      // the signatures cover one sequence number. if another tx from this account
-      // used it meanwhile, this envelope is dead and has to be built again.
+      // the signatures cover one sequence number, so once another tx uses it this one is dead
       setErr(
         code === 'tx_bad_seq' || /bad.?seq|tx_bad_seq|sequence/i.test(raw)
-          ? 'Another transaction already used this account sequence number while this one was being signed. This one cannot go through. Build it again from a fresh transaction.'
+          ? "Another transaction already used this account sequence number while this one was being signed, so it can't go through. Start again from a fresh transaction."
           : raw.split('\n')[0].slice(0, 180),
       )
     } finally {

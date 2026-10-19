@@ -21,7 +21,6 @@ import {
 import { Card, CardHead, Empty, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
-// the bridge pulls in viem and the CCTP code, so keep it out of the page chunk
 const BridgeModal = lazy(() => import('../components/BridgeModal'))
 const BridgeWallets = lazy(() => import('../components/BridgeWallets'))
 const InProgressRow = lazy(() => import('../components/BridgeTransfers').then((m) => ({ default: m.InProgressRow })))
@@ -130,19 +129,16 @@ export default function Bridges() {
   const [resume, setResume] = useState<TrackedTransfer | null>(null)
   const [direction, setDirection] = useState<TransferDirection>('to-stellar')
 
-  // every transfer still on its way, whoever it pays: any wallet can finish a delivery,
-  // mint_and_forward needs no signature from the account paid, and a person who comes
-  // back with another wallet connected must still see what is waiting
+  // not filtered by payee. mint_and_forward needs no signature from the account paid,
+  // so any connected wallet can finish a delivery
   const pending = tracked.filter((t) => t.stage === 'burned')
   const history = tracked.filter((t) => t.stage === 'delivered').slice(0, 10)
 
-  // the notice on other pages links here to finish one transfer: the bridge opens on it
-  // for as long as the link says so, and closing it drops the link. The transfer is read
-  // once: each later change to its record (Circle signing, the delivery landing) would
-  // otherwise start the window over and wipe what it shows
+  // ?finish= opens the bridge on one transfer, read once. re-reading on every change to
+  // its record would restart the window and wipe what it shows
   const [params, setParams] = useSearchParams()
   const finishId = params.get('finish')
-  // read again only when the transfer first shows up, after the copy on disk is put back say
+  // re-read only when the transfer first shows up in the tracked list
   const finishKnown = !!finishId && tracked.some((x) => x.id === finishId)
   const finishing = useMemo(
     () => (finishId && finishKnown ? (listTransfers(network).find((x) => x.id === finishId) ?? null) : null),
@@ -169,8 +165,7 @@ export default function Bridges() {
     trustlineClass = trustlineQuery.data ? 'text-green' : 'text-coral'
   }
 
-  // a delivery is a transfer out of Circle's forwarder, so filtering on it keeps
-  // ordinary USDC payments out of this list
+  // Circle's forwarder only. a plain USDC payment isn't a bridge arrival
   const arrivals = useMemo(() => {
     const events = (activityQ.data?.pages ?? []).flatMap((p) => p.events)
     return events
@@ -229,7 +224,7 @@ export default function Bridges() {
       <Card>
         <CardHead
           title="Your wallets"
-          note="Both ends of the bridge. The EVM wallet holds the USDC on the other chains, the Stellar wallet holds it on Stellar; each signs on its own chain."
+          note="Both ends of the bridge. Each wallet holds the USDC and signs on its own chain."
         />
         <Suspense fallback={<p className="text-xs text-text-muted">Loading wallets...</p>}>
           <BridgeWallets network={network} />
@@ -247,7 +242,7 @@ export default function Bridges() {
         <Card>
           <CardHead
             title="Waiting to be delivered"
-            note="Burned on one side, not yet arrived on the other. The USDC is safe; each line says whose move it is, and Finish opens it."
+            note="Burned on one side, not yet arrived on the other. Each line says who acts next."
           />
           <ul className="divide-y divide-border">
             <Suspense fallback={null}>
@@ -295,7 +290,7 @@ export default function Bridges() {
       <Card>
         <CardHead
           title="The route"
-          note="USDC is burned on the chain it leaves, Circle signs that burn, and the same amount, less Circle's fee when there is one, is minted as native USDC on the other side. No wrapped token, no pool in between."
+          note="USDC is burned on the chain it leaves and, once Circle signs the burn, minted as native USDC on the other side, less Circle's fee if any."
         />
         <div className="space-y-3">
           <Corridor from={names} to={['Stellar']} burned="USDC is burned" minted="native USDC is minted to you" />
@@ -308,8 +303,7 @@ export default function Bridges() {
         </div>
         {network === 'testnet' && (
           <p className="text-xs text-text-secondary mt-3">
-            On testnet every step is real, on Circle's test networks with test USDC that has no value. That is
-            where to try it first.
+            Testnet runs on Circle's test networks with test USDC that has no value, so try it there first.
           </p>
         )}
       </Card>
@@ -363,7 +357,7 @@ export default function Bridges() {
                   the way out
                 </button>
                 . Your Stellar wallet approves the exact amount and burns it; Circle then mints it on the EVM chain for a
-                small fee, or your EVM wallet receives it and pays the gas.
+                small fee, or your EVM wallet mints it and pays the gas.
               </Step>
             </ol>
           </div>
@@ -372,7 +366,7 @@ export default function Bridges() {
 
       {history.length > 0 && (
         <Card>
-          <CardHead title="Finished here" note="Transfers this browser saw through, both ways, with each side's transaction." />
+          <CardHead title="Finished here" note="Transfers finished in this browser, both ways, with each side's transaction." />
           <ul className="divide-y divide-border">
             <Suspense fallback={null}>
               {history.map((t) => (
@@ -467,7 +461,7 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
   )
 }
 
-// a source chain to pick for a burn made elsewhere: one of the EVM chains, or Stellar
+// picker key for a burn made on Stellar itself
 const STELLAR_KEY = 'STELLAR'
 
 function FinishElsewhere({
@@ -551,12 +545,11 @@ async function readEvmBurn(
   raw: string,
   forwarder: string,
 ): Promise<TrackedTransfer> {
-  // loaded on demand: the page chunk stays free of the EVM code
   const [{ readBurnToStellar }, { formatUnits }] = await Promise.all([
     import('../integrations/cctp/evm-burn'),
     import('viem'),
   ])
-  // lower case, so a hash pasted in capitals matches the one already tracked here
+  // a hash pasted in capitals must match the tracked one
   const id = raw.trim().toLowerCase() as `0x${string}`
   const burn = await readBurnToStellar(chain, id, forwarder)
   return {
@@ -574,8 +567,7 @@ async function readEvmBurn(
   }
 }
 
-// A burn out of Stellar is read back from Circle, which has signed it within seconds:
-// the message names the EVM chain, the wallet it pays and whether Circle mints it
+// Circle signs a Stellar burn within a minute, and its message names the chain, payee and amount
 async function readStellarBurn(network: Network, chains: CctpSourceChain[], raw: string): Promise<TrackedTransfer> {
   const [{ fetchAttestation }, { decodeCctpMessage, evmRecipientOf, hexToBytes }, { formatUnits }] = await Promise.all([
     import('../integrations/cctp/iris'),

@@ -8,8 +8,8 @@ export default function CustodyModeToggle() {
         DFNS custody <InfoTip term="custody" label="custody" />
       </h3>
       <p className="text-xs text-text-secondary mb-3">
-        Connect your own DFNS organization: its keys sign and every approval happens in your own
-        DFNS console. Connect it over WalletConnect from the wallet menu at the top right, or point
+        Connect your own DFNS organization: its keys sign and every approval happens in its
+        console. Use WalletConnect from the wallet menu at the top right, or point
         the dashboard at a relay you run. There is no key to paste here. To see the flow without
         your own DFNS, pick the Lobster testnet demo below.
       </p>

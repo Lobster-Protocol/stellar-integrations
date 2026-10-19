@@ -4,7 +4,8 @@ import { test, expect, type Download, type Locator, type Page } from '@playwrigh
 
 import { gotoWithWallet, TEST_WALLET } from './fixtures'
 
-// runs against live testnet horizon, like the other on-chain specs
+// reads live testnet horizon
+
 const DAY = '\\d{4}-\\d{2}-\\d{2}'
 const ACCOUNT = TEST_WALLET.address.slice(0, 6)
 const BOM = '\ufeff'
@@ -27,7 +28,7 @@ test.describe('history export', () => {
     await gotoWithWallet(page, '/activity')
     await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
 
-    // the tab counts what the feed holds, so it is the floor the file must clear
+    // the tab counts what the feed holds. the file can't have fewer rows
     const tab = page.getByRole('button', { name: /^Everything \d+$/ })
     await expect(tab).toBeVisible({ timeout: 20000 })
     const onScreen = await tabCount(tab)
@@ -51,11 +52,10 @@ test.describe('history export', () => {
     expect(lines[0]).toContain('Explorer')
     expect(lines.length - 1).toBeGreaterThanOrEqual(onScreen)
 
-    // the status line has to say how far back the file goes
     await expect(page.getByText(/\d+ operations, back to the first one\./)).toBeVisible()
   })
 
-  test('downloads the same history as JSON, with its own provenance', async ({ page }) => {
+  test('downloads the history as JSON', async ({ page }) => {
     await gotoWithWallet(page, '/activity')
     await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible()
 
@@ -94,7 +94,7 @@ test.describe('history export', () => {
 })
 
 test.describe('activity search', () => {
-  test('puts the search in the address bar so the view can be shared', async ({ page }) => {
+  test('keeps the search in the url', async ({ page }) => {
     await gotoWithWallet(page, '/activity')
     await expect(page.getByRole('button', { name: /^Everything \d+$/ })).toBeVisible({
       timeout: 20000,
@@ -105,8 +105,7 @@ test.describe('activity search', () => {
     await expect(page).toHaveURL(/q=zznothinghere/)
     await expect(page.getByRole('button', { name: 'Clear the filters' })).toBeVisible()
 
-    // a reload rebuilds the same filtered view from the url alone. the filters only
-    // render once the history is back from horizon, so wait for it like above
+    // the filters wait for horizon, like above
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('button', { name: /^Everything \d+$/ })).toBeVisible({
       timeout: 20000,
@@ -135,7 +134,7 @@ test.describe('activity date range', () => {
   const START = (p: Page) => p.getByLabel('Start date, UTC')
   const END = (p: Page) => p.getByLabel('End date, UTC')
 
-  test('a window that holds nothing shows nothing, and downloads nothing', async ({ page }) => {
+  test('an empty window shows and downloads nothing', async ({ page }) => {
     await gotoWithWallet(page, '/activity')
     const tab = page.getByRole('button', { name: /^Everything \d+$/ })
     await expect(tab).toBeVisible({ timeout: 20000 })
@@ -148,7 +147,7 @@ test.describe('activity date range', () => {
       page.getByText('Nothing on this account matches what you asked for.').first(),
     ).toBeVisible()
 
-    // the file has to agree with the screen, header and no rows
+    // just the header row
     const [download] = await Promise.all([
       page.waitForEvent('download'),
       page.getByRole('button', { name: 'CSV' }).click(),
@@ -163,8 +162,6 @@ test.describe('activity date range', () => {
     await expect(tab).toBeVisible({ timeout: 20000 })
     const all = await tabCount(tab)
 
-    // the same file, once unbounded and once inside a window that predates the
-    // account, has to come out the same length
     const [whole] = await Promise.all([
       page.waitForEvent('download'),
       page.getByRole('button', { name: 'CSV' }).click(),
@@ -202,7 +199,7 @@ test.describe('activity date range', () => {
     await expect(page).not.toHaveURL(/from=/)
   })
 
-  test('ignores a date the url carries that nothing can parse', async ({ page }) => {
+  test('ignores an unparseable date in the url', async ({ page }) => {
     await gotoWithWallet(page, '/activity')
     const tab = page.getByRole('button', { name: /^Everything \d+$/ })
     await expect(tab).toBeVisible({ timeout: 20000 })
@@ -210,7 +207,6 @@ test.describe('activity date range', () => {
 
     await page.goto('/activity?from=2026-13-45', { waitUntil: 'domcontentloaded' })
     await expect(tab).toBeVisible({ timeout: 20000 })
-    // a bound nothing can read must not silently pass every row through
     await expect.poll(() => tabCount(tab)).toBe(all)
     await expect(page.getByText('Full history')).toBeVisible()
     await expect(START(page)).toHaveValue('')

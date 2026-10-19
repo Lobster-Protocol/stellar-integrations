@@ -11,7 +11,6 @@ export default function LiveDataMeta({
   isFetching: boolean
   onRefresh: () => void
 }) {
-  // tick once a second so the age label stays fresh
   const [, tick] = useState(0)
 
   useEffect(() => {

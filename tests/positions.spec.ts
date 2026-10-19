@@ -13,15 +13,14 @@ test.describe('positions', () => {
   test('is about this wallet and nothing else', async ({ page }) => {
     await gotoWithWallet(page, '/positions')
     await expect(page.getByRole('heading', { name: 'Positions' })).toBeVisible()
-    // the custody demo and the protocol cards live on Custody. someone opening
-    // their own positions should never be asked to test the DFNS relay here.
+    // the custody demo and protocol cards belong on Custody, not here
     await expect(page.getByRole('heading', { name: /Sign a testnet transaction/i })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Factory contract' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: /Contract storage lease/ })).toHaveCount(0)
     await expect(page.getByText('Routing engine')).toHaveCount(0)
   })
 
-  test('without a connected wallet, the page prompts to connect', async ({ page }) => {
+  test('asks for a wallet when none is connected', async ({ page }) => {
     await page.goto('/positions', { waitUntil: 'domcontentloaded' })
     await expect(
       page.getByText(/Connect a wallet to see the vaults it owns/i),
@@ -29,17 +28,15 @@ test.describe('positions', () => {
   })
 })
 
-// the factory card and the sign demo sit under the custody panels on /audit.
-test.describe('custody page', () => {
+test.describe('the factory and sign cards on custody', () => {
   test('shows the Factory card with a Stellar Expert link on testnet', async ({ page }) => {
     await gotoWithWallet(page, '/audit')
     await expect(page.getByRole('heading', { name: 'Factory contract' })).toBeVisible()
-    // public RPC can rate-limit a headless runner, so we only assert the
-    // static UI elements that show up once the Factory id is configured.
+    // static parts only. the public rpc can rate-limit a headless runner
     await expect(page.getByText(/Stellar Expert/).first()).toBeVisible()
   })
 
-  test('shows the Sign demo card with the wallet name in the button label', async ({ page }) => {
+  test('names the wallet on the sign demo button', async ({ page }) => {
     await gotoWithWallet(page, '/audit')
     await expect(page.getByRole('heading', { name: /Sign a testnet transaction/i })).toBeVisible()
     await expect(page.getByRole('button', { name: /Call the Factory with Freighter/i })).toBeVisible()

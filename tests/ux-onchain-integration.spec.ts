@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test'
 
 import { BASE, SOROBAN_RPC, TEST_FACTORY_TESTNET, TEST_SOURCE_TESTNET, shorten } from './fixtures'
 
-// e2e against live testnet. each test reads the ground truth from
-// soroban rpc, then asserts the prod dashboard renders the same value.
+// reads ground truth from testnet soroban rpc and expects the page to show the same
 const FACTORY = TEST_FACTORY_TESTNET
 const SOURCE = TEST_SOURCE_TESTNET
 const RPC_URL = SOROBAN_RPC
@@ -15,7 +14,6 @@ interface GroundTruth {
 }
 
 async function readGroundTruth(): Promise<GroundTruth> {
-  // imported dynamically because the SDK is heavy and only this function needs it
   const sdk = await import('@stellar/stellar-sdk')
   const { Contract, TransactionBuilder, BASE_FEE, Networks, rpc, scValToNative } = sdk
   const server = new rpc.Server(RPC_URL)
@@ -58,7 +56,7 @@ test.describe('Live Factory reads match the /audit DOM', () => {
     await page.goto(`${BASE}/audit`)
     // "Pools created" only shows once the simulation resolves
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
-    // anchor on the card's h3: every stat label carries a help tip of its own
+    // anchor on the card's h3. Contract ID and Admin have help tips in their labels
     const card = page
       .getByRole('heading', { name: /Factory contract/ })
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
@@ -68,7 +66,7 @@ test.describe('Live Factory reads match the /audit DOM', () => {
   test('Factory pool_count from on-chain matches the rendered Pools created', async ({ page }) => {
     await page.goto(`${BASE}/audit`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
-    // the label and the value share a Stat block, so read the block
+    // label and value share one Stat block
     const stat = page.getByText(/^Pools created$/i).locator('..')
     await expect(stat).toContainText(String(truth.poolCount))
   })
@@ -92,7 +90,7 @@ test.describe('Live Factory reads match the /audit DOM', () => {
     )
   })
 
-  test('refreshing the factory card really goes back to the chain', async ({ page }) => {
+  test('refresh goes back to the chain', async ({ page }) => {
     let sorobanCalls = 0
     page.on('request', (req) => {
       if (req.url().includes('soroban-testnet.stellar.org')) sorobanCalls++
@@ -108,16 +106,16 @@ test.describe('Live Factory reads match the /audit DOM', () => {
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
     await factoryCard.getByRole('button', { name: /Refresh/i }).click()
 
-    // Give react-query a tick to dispatch the refetch.
+    // give react-query a tick to send the refetch
     await page.waitForTimeout(800)
     expect(sorobanCalls).toBeGreaterThan(callsBefore)
   })
 
-  test('the age label keeps counting rather than freezing at "just now"', async ({ page }) => {
+  test('the age label keeps counting', async ({ page }) => {
     await page.goto(`${BASE}/audit`)
     await expect(page.getByText(/Pools created/i)).toBeVisible({ timeout: 30_000 })
 
-    // the label re-renders once a second, so "just now" has moved on by the second read
+    // the label re-renders once a second, so the seconds have moved on by the second read
     const factoryCard = page
       .getByRole('heading', { name: 'Factory contract' })
       .locator('xpath=ancestor::div[contains(@class,"rounded-3xl")][1]')
@@ -160,7 +158,6 @@ test.describe('Live Factory reads match the /audit DOM', () => {
     const mainnetBtn = page.getByRole('button', { name: 'Mainnet' })
     await expect(mainnetBtn).toHaveClass(/text-green/)
 
-    // the toggle writes to a shared origin, so put it back for whoever runs next
     await context.clearCookies()
     await page.evaluate(() => localStorage.removeItem('lob_network'))
   })
@@ -174,7 +171,7 @@ test.describe('Activity with no wallet connected', () => {
     })
 
     await page.goto(`${BASE}/activity`, { waitUntil: 'domcontentloaded' })
-    // a fixed wait for mount effects: networkidle never settles with the live polling
+    // networkidle never settles here because the page keeps polling
     await page.waitForTimeout(1500)
 
     expect(horizonCalls).toBe(0)

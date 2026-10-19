@@ -32,8 +32,7 @@ export default function Positions() {
   const { network } = useNetwork()
   const [vaultAction, setVaultAction] = useState<{ vault: VaultPosition; action: VaultAction } | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  // hiding writes straight to localStorage, so a counter is all it takes to
-  // read the list back after a change
+  // hiding writes to localStorage, a counter bump re-reads the list
   const [, refreshHidden] = useReducer((n: number) => n + 1, 0)
   const [showAll, setShowAll] = useState(false)
 
@@ -51,17 +50,15 @@ export default function Positions() {
   const portfolio = buildPortfolio(lines, vaults, priceOf, network)
 
   const factoryId = CONTRACTS[network].lobster.factory
-  // a count or a value only says something once the vault read answered. an account
-  // that is not on-chain owns no vault, so its zeros are true
+  // an unfunded wallet's zeros are real
   const known = !!address && (vaultsQ.isSuccess || missing)
   const deployed = vaults.filter((v) => v.venue !== 'idle').length
-  // tokens we cannot price count nowhere, so say so when there are any
+  // share of the priced value only; unpriced tokens are in neither total
   const inVaults =
     portfolio.total > 0 ? Math.round((portfolio.vaultValue / portfolio.total) * 100) : null
 
   const hidden = address ? hiddenVaults(network, address) : []
-  // biggest first, and a vault holding nothing sinks below one that does even
-  // when neither can be priced
+  // biggest first, empty vaults last even when nothing can be priced
   const ordered = [...portfolio.vaults].sort((a, b) => {
     const ea = isVaultEmpty(a.vault)
     const eb = isVaultEmpty(b.vault)
@@ -146,7 +143,7 @@ export default function Positions() {
         <Stat
           label="Active on an exchange"
           value={known ? `${deployed} of ${vaults.length}` : '-'}
-          sub={known && vaults.length > 0 && deployed === 0 ? 'the rest sit in the vault' : undefined}
+          sub={known && vaults.length > 0 && deployed === 0 ? 'all held in the vault' : undefined}
         />
         <Stat
           label="Share in vaults"
@@ -218,7 +215,7 @@ export default function Positions() {
             </div>
           )}
 
-          {/* items-start: an open detail must not stretch the card beside it */}
+          {/* so an open detail doesn't stretch the card beside it */}
           <div className="grid lg:grid-cols-2 gap-4 items-start">
             {listed.map(({ vault: v, value, partial }) => (
               <VaultCard

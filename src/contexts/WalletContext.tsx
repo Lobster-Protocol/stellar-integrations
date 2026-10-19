@@ -13,18 +13,16 @@ import { isAccountId } from '../integrations/stellar/strkey-guards'
 interface WalletCtx {
   // the account every page reads: the connected wallet, or the one being viewed
   address: string | null
-  // someone else's account opened read-only (?view=G...). nothing signs while it is set
+  // someone else's account opened read-only (?view=G...). the wallet kit refuses to sign while it's set
   viewing: string | null
   view: (account: string) => void
   stopViewing: () => void
   walletName: string | null
-  // the connected wallet's module id (e.g. WALLET_CONNECT_ID), so the UI can tell a
-  // DFNS-over-WalletConnect wallet apart from a browser extension wallet.
+  // module id, which tells a WalletConnect session from an extension
   walletId: string | null
   connecting: boolean
   connect: () => Promise<void>
-  // open WalletConnect straight away, for a DFNS MPC wallet the client pairs from
-  // their own DFNS console.
+  // straight to WalletConnect, for a DFNS wallet paired from the client's own console
   connectWalletConnect: () => Promise<string | null>
   walletConnectEnabled: boolean
   disconnect: () => void
@@ -32,7 +30,7 @@ interface WalletCtx {
 
 const Ctx = createContext<WalletCtx | null>(null)
 
-// module-level: kit is a static singleton, hot-reload would double-init
+// module-level, so a remount or StrictMode's second run doesn't init the static kit again
 let kitInitialised = false
 
 // a link can open an account read-only; the tab keeps it across reloads until left
@@ -48,8 +46,7 @@ function linkedView(): string | null {
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { network } = useNetwork()
-  // Rehydrated from localStorage to avoid the "Connect" flash between page
-  // loads. The effect below is what actually re-attaches the kit session.
+  // rehydrated to skip the "Connect" flash; the fetchAddress effect re-attaches the session
   const [address, setAddress] = useState<string | null>(() => localStorage.getItem('lob_addr'))
   const [walletName, setWalletName] = useState<string | null>(() => localStorage.getItem('lob_wname'))
   const [walletId, setWalletId] = useState<string | null>(() => localStorage.getItem('lob_wid'))
@@ -101,9 +98,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             url: window.location.origin,
             icons: [`${window.location.origin}/lobster-icon.png`],
           },
-          // both chains, so one session survives a testnet/mainnet toggle: the kit
-          // freezes allowedChains at init and never re-scopes the session on
-          // setNetwork, so a single-chain session would reject the other network.
+          // both chains, since setNetwork never re-scopes the chains fixed at init
           allowedChains: [WalletConnectTargetChain.PUBLIC, WalletConnectTargetChain.TESTNET],
         }),
       )
@@ -116,21 +111,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       })
       kitInitialised = true
     } catch (err) {
-      // kit throws if init is called twice - swallow that exact case,
-      // anything else logs
       const msg = err instanceof Error ? err.message.toLowerCase() : ''
       if (!msg.includes('init') && !msg.includes('already')) {
         console.error('Stellar Wallets Kit init failed:', err)
       }
       kitInitialised = true
     }
-    // intentionally not depending on `network` - re-init is unsafe on the
-    // static kit, we use setNetwork below instead
+    // the static kit is set up once; the setNetwork effect below follows network changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // sync the kit's selected network with our context every toggle, else
-  // signTransaction silently uses the kit's initial passphrase
+  // without this, signTransaction silently keeps the kit's initial passphrase
   useEffect(() => {
     if (!kitInitialised) return
     try {
@@ -140,13 +131,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [network])
 
-  // the rehydrated address looks connected, but the wallet refuses to sign until the site
-  // has access this session. setWallet + fetchAddress asks for it, silent once approved.
+  // a rehydrated address can't sign until the site has access again this session.
+  // fetchAddress asks for it, silently once approved
   useEffect(() => {
     if (!kitInitialised) return
     const wid = localStorage.getItem('lob_wid')
-    // Albedo prompts on every getAddress, so it is left to ask at sign time. WalletConnect
-    // restores its own session, and getAddress would start a fresh pairing and pop the QR.
+    // Albedo prompts on every fetchAddress; it asks at sign time instead. WalletConnect
+    // restores its own session, and fetchAddress would pop a new QR.
     if (!wid || wid === ALBEDO_ID || wid === WALLET_CONNECT_ID || !localStorage.getItem('lob_addr'))
       return
     let cancelled = false
@@ -159,8 +150,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('lob_addr', fresh)
         }
       } catch {
-        // wallet locked, access denied, or extension missing: keep the
-        // rehydrated address, the user can reconnect from the header.
+        // keep the rehydrated address, the user can reconnect from the header
       }
     })()
     return () => {
@@ -168,40 +158,37 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // kept internal so a button's onClick event can never arrive here as a bogus wallet id
+  // connect wraps this, or onClick={connect} would pass its click event in as openId
   const runConnect = useCallback(
     async (openId?: string): Promise<string | null> => {
       setConnecting(true)
       try {
         if (openId) StellarWalletsKit.setWallet(openId)
-        // fetchAddress delegates to the module and opens its modal (the WalletConnect
-        // QR); the static getAddress only returns whatever is already in memory.
+        // fetchAddress opens the module's modal (the WC QR), getAddress only reads memory
         const { address: addr } = openId
           ? await StellarWalletsKit.fetchAddress()
           : await StellarWalletsKit.authModal()
         const mod = StellarWalletsKit.selectedModule
         const picked = mod?.productName || 'Stellar Wallet'
-        // connecting a wallet ends any read-only view, so the pages show that wallet
         stopViewing()
         setAddress(addr)
         setWalletName(picked)
         localStorage.setItem('lob_addr', addr)
         localStorage.setItem('lob_wname', picked)
-        // remember which module so we can re-attach the session on the next load
+        // read back on the next load to re-attach the session
         if (mod?.productId) {
           localStorage.setItem('lob_wid', mod.productId)
           setWalletId(mod.productId)
         }
         toast.success(
           mod?.productId === WALLET_CONNECT_ID
-            ? 'DFNS wallet connected over WalletConnect'
-            : `${picked} connected`,
+            ? 'Wallet connected over WalletConnect.'
+            : `${picked} connected.`,
         )
         return addr
       } catch (err: unknown) {
         console.error('wallet connect failed:', err)
-        // the kit rejects on both a real failure and the user just closing the
-        // wallet/QR modal - keep a dismissal quiet, shout only on a real error.
+        // the kit also rejects when the modal is just closed, keep that one quiet
         const m = err instanceof Error ? err.message.toLowerCase() : ''
         if (/reject|declin|cancel|close|dismiss|expired|abort|user/.test(m)) {
           toast.info('Connection cancelled.')
@@ -228,13 +215,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('lob_addr')
     localStorage.removeItem('lob_wname')
     localStorage.removeItem('lob_wid')
-    // kit may throw if nothing was connected; tearing down anyway, ignore
+    // rejects when nothing was connected, harmless on teardown
     StellarWalletsKit.disconnect().catch(() => {})
-    toast.info('Wallet disconnected')
+    toast.info('Wallet disconnected.')
   }, [toast])
 
-  // the WC module is only registered when the project id is set (see the init
-  // effect above), so the UI hides the WalletConnect path when it is not.
+  // no project id, no WC module
   const walletConnectEnabled = !!(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined)
 
   return (
@@ -258,7 +244,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   )
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
+// eslint-disable-next-line react-refresh/only-export-components -- hook lives beside its provider
 export function useWallet() {
   const ctx = useContext(Ctx)
   if (!ctx) throw new Error('useWallet must be used inside <WalletProvider>')

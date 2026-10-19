@@ -1,8 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
-// After a deploy the host only serves the new build. A tab opened before asks for one of the
-// old files when it opens a page it had not shown, and gets the site's HTML back with a 200,
-// the way Vercel answers it
+// after a deploy, Vercel answers a request for an old chunk with the site's HTML and a 200
 
 const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Main' }).first()
 const positionsFile = /\/assets\/Positions-[\w-]+\.js$/
@@ -36,10 +34,10 @@ test.describe('a tab left open across a deploy', () => {
     await expect(page.getByText('Something went wrong')).toHaveCount(0)
   })
 
-  test('says the page was updated when loading it again did not help, and does not loop', async ({ page }) => {
+  test('says the page was updated instead of reloading forever', async ({ page }) => {
     const deploy = await openBeforeTheDeploy(page)
     await sidebar(page).getByRole('link', { name: 'Positions', exact: true }).click()
-    // loaded once more, still without the file: it stops there and says what to do
+    // the reload still lacks the file. the page stops there and says so
     await expect(page.locator('html[data-opened-before]')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'This page was updated' })).toBeVisible()
     await expect(page.getByText(/new version went live while this tab was open/)).toBeVisible()

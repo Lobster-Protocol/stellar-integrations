@@ -65,7 +65,6 @@ import ConfirmDialog from './ConfirmDialog'
 interface Props {
   open: boolean
   onClose: () => void
-  // open straight on a transfer that was burned earlier and never delivered
   resume?: TrackedTransfer | null
   initialDirection?: TransferDirection
 }
@@ -92,15 +91,14 @@ function errorText(err: unknown): string {
 export default function BridgeModal({ open, onClose, resume, initialDirection = 'to-stellar' }: Props) {
   const { network } = useNetwork()
   const [direction, setDirection] = useState<TransferDirection>(initialDirection)
-  // the way out is a component of its own, which says whether it may be left
+  // BridgeFromStellar reports its stage so the modal knows when it may close
   const [outStage, setOutStage] = useState<OutStage>('form')
   const onOutStage = useCallback((s: OutStage) => setOutStage(s), [])
   // Escape closes the wallet window on top first, not the bridge under it
   const { connectModalOpen } = useConnectModal()
   const { address: stellarAddr, connect: connectStellar, connecting: stellarConnecting, walletId } = useWallet()
   const { mode: custodyMode, dfnsAddress, signer: custodySigner } = useCustody()
-  // under DFNS custody the USDC goes to the treasury. The delivery needs no
-  // signature from it, so a connected browser wallet pays that fee instead
+  // under DFNS custody the USDC goes to the treasury and a browser wallet pays the network fee to deliver it
   const treasury = custodyMode === 'dfns' ? dfnsAddress : null
   const receiving = treasury ?? stellarAddr
   const qc = useQueryClient()
@@ -111,11 +109,11 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   const [finality, setFinality] = useState<CctpFinality>('fast')
   const [phase, setPhase] = useState<Phase>({ kind: 'form' })
   const [tl, setTl] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null })
-  // a declined signature is not an error, but landing back on the form without a word reads like nothing happened
+  // a decline isn't an error, but a silent return to the form looks like nothing happened
   const [declined, setDeclined] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const tlInFlight = useRef(false)
-  // a double click lands twice before the phase change disables the button, and would ask the wallet for two burns
+  // a double click fires twice before the button disables, asking the wallet for two burns
   const bridgeInFlight = useRef(false)
   const deliverInFlight = useRef(false)
 
@@ -130,7 +128,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
 
   const { usdcIssuer } = CONTRACTS[network].cctp
   const trustline = useTrustline(receiving, USDC, usdcIssuer, network)
-  // fail closed: only a check that came back true unlocks the burn
+  // fail closed
   const trustlineOk = trustline.isSuccess && trustline.data === true
 
   const transfer = phase.kind === 'waiting' || phase.kind === 'delivering' ? phase.transfer : null
@@ -139,7 +137,6 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   const titleId = useId()
   const inBusy = phase.kind === 'approving' || phase.kind === 'burning' || phase.kind === 'delivering'
   const busy = direction === 'to-stellar' ? inBusy : outStage === 'busy'
-  // the direction only changes from a blank form, never under a transfer
   const canSwitch = phase.kind === 'form' && outStage === 'form' && !resume
 
   useEffect(() => {
@@ -159,8 +156,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
     }
   }, [open, resume, initialDirection])
 
-  // another network means other contracts, so start over. not on mount, where
-  // it would drop a transfer the page asked to resume
+  // other network, other contracts. Never on mount, or a resume is lost
   const lastNetwork = useRef(network)
   useEffect(() => {
     if (lastNetwork.current === network) return
@@ -172,11 +168,10 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      // when the confirm is up, let it take Escape; don't close the bridge under it
+      // the confirm takes Escape while it's up
       if (e.key === 'Escape' && !busy && !connectModalOpen && !confirmOpen) onClose()
     }
-    // heard on the way down, before the wallet window's own listener closes it: by the time
-    // the key got back up here, the page would already have that window down as closed
+    // capture phase beats RainbowKit, which closes its window on the same key
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [open, busy, onClose, connectModalOpen, confirmOpen])
@@ -190,8 +185,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
     return () => before?.focus()
   }, [open])
 
-  // aria-modal tells a screen reader the page behind is out of reach, so Tab wraps
-  // around the dialog instead of wandering onto that page
+  // with aria-modal set, Tab has to wrap inside the dialog
   const keepTabInside = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Tab' || !dialogRef.current) return
     const items = dialogRef.current.querySelectorAll<HTMLElement>(
@@ -215,16 +209,15 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
   try {
     units = amount ? toEvmUsdcUnits(amount) : null
   } catch (err) {
-    // "0" and a 7th decimal each get their own reason, not a generic hint
     amountError = errorText(err)
   }
 
   const bps = finality === 'fast' ? (fees.data?.fastBps ?? null) : (fees.data?.standardBps ?? 0)
-  // no fast tier offered: block it and ask for standard rather than guess a fee
+  // blocked rather than guessing a fee Circle never quoted
   const fastUnavailable = finality === 'fast' && fees.isSuccess && fees.data.fastBps === null
   const maxFee = units !== null && bps !== null ? maxFeeFor(units, bps) : null
   const expectedFee = units !== null && bps !== null ? (units * BigInt(Math.ceil(bps * 100))) / 1_000_000n : null
-  // the burn refuses a max fee that is not below the amount; caught here, before an approval is paid for
+  // the burn reverts unless maxFee < amount; catch it before an approval is paid for
   const feeSwallows = units !== null && maxFee !== null && maxFee >= units
 
   const usdcBal = balances.data?.usdc ?? null
@@ -239,7 +232,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
     tlInFlight.current = true
     setTl({ busy: true, error: null })
     try {
-      // the DFNS treasury, through the relay, waits for its approver like any other signature
+      // a treasury signature waits on its DFNS approver
       const xdr = await buildTrustlineXdr(receiving, USDC, usdcIssuer, network, windowSecs({ quorum: !!treasury, walletId, base: 180 }))
       const signed = await (treasury ? custodySigner : walletKitSigner).signTransaction(xdr, {
         networkPassphrase: networkPassphrase(network),
@@ -269,7 +262,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
     try {
       setDeclined(false)
 
-      // again at the last moment, the trustline could have gone while the form sat open
+      // the trustline could have gone while the form sat open
       const fresh = await trustline.refetch()
       if (fresh.data !== true) {
         setPhase({ kind: 'failed', msg: 'Your Stellar account has no USDC trustline yet. Turn it on first.' })
@@ -277,16 +270,14 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
       }
 
       try {
-        // read now, not from the cache: after a declined burn the cached value predates the approval
-        // just made, and a stale zero would ask for a second one
+        // a declined burn leaves an approval the cache hasn't seen
         const allowance = await readAllowance(chain, evmAddr).catch(() => balances.data?.allowance ?? 0n)
         if (allowance < units) {
           setPhase({ kind: 'approving' })
           await approveUsdc(chain, units)
         }
         setPhase({ kind: 'burning' })
-        // saved before the wallet is asked: if the page goes away while the wallet signs or
-        // sends the burn, the next visit looks for it on chain from this block
+        // if the page dies while the wallet signs, the next visit searches from this block
         const [fromBlock, txCount] = await Promise.all([
           readBlockNumber(chain).catch(() => null),
           readTxCount(chain, evmAddr).catch(() => undefined),
@@ -307,10 +298,8 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
           fromBlock: fromBlock?.toString(),
           txCount,
         }
-        // on disk before the wallet is asked: the wallet may send it after the PC is off
         await saveIntent(intent)
-        // tracked the moment the burn leaves the wallet: when its receipt is slow to come back,
-        // the transfer must not vanish from the page while Circle is already on it
+        // track it from the hash, as Circle can sign before the receipt is back
         const sent: { transfer: TrackedTransfer | null } = { transfer: null }
         try {
           await burnToStellar(
@@ -341,17 +330,16 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
           )
         } catch (err) {
           if (!sent.transfer) {
-            // no hash came back: a decline sent nothing, and neither did a wallet whose count
-            // of sent transactions has not moved. Anything else stays to be looked for
+            // with no hash, a decline or an unchanged tx count means nothing went out
             if (err instanceof UserRejectedError) dropIntent(network, intent.id)
             else {
               const count = await readTxCount(chain, evmAddr).catch(() => null)
               if (count !== null && txCount !== undefined && count <= txCount) dropIntent(network, intent.id)
             }
           }
-          // a receipt nobody could read is not a failed burn: Circle's signature settles it
+          // an unread receipt isn't a failed burn; Circle's signature settles it
           if (!(err instanceof ReceiptUnreadError) || !sent.transfer) {
-            // a burn reverted on chain moved nothing; stop tracking it
+            // a reverted burn moved nothing
             if (sent.transfer) forgetTransfer(network, sent.transfer.id)
             throw err
           }
@@ -396,9 +384,9 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
           }
           const why = {
             expired:
-              "Circle's signature on this transfer has expired. Nothing is lost, the burn is on chain, but it needs a fresh attestation from Circle before it can be delivered.",
+              "Circle's signature on this transfer has expired. Nothing is lost. The burn is on chain, but Circle has to sign it again before it can be delivered.",
             'no-trustline': 'The receiving account has no USDC trustline. Turn it on, then deliver again.',
-            paused: 'Circle has paused deliveries on Stellar for now. Your transfer is saved, finish it later from the Bridges page.',
+            paused: 'Circle has paused deliveries on Stellar for now. Your transfer is saved. Finish it later from the Bridges page.',
           }[check.reason]
           setPhase({ kind: 'failed', msg: why, transfer: t })
           return
@@ -419,7 +407,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
         setPhase({
           kind: 'failed',
           msg: /declin|reject|denied|cancel/i.test(msg)
-            ? 'You declined the signature in your wallet. The transfer is saved, deliver it whenever you are ready.'
+            ? "You declined the signature in your wallet. The transfer is saved; deliver it whenever you're ready."
             : msg,
           transfer: t,
         })
@@ -437,15 +425,13 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
     maxFee !== null &&
     !fastUnavailable &&
     !feeSwallows &&
-    // the balance and gas checks only bite once the balance is in; on a slow line
-    // Circle's fee can arrive first and unlock the button without them
+    // on a slow line Circle's fee can load before the balance and unlock the button unchecked
     !balances.isLoading &&
     !overBalance &&
     !noGas &&
     trustlineOk &&
     !busy
 
-  // a mainnet bridge confirms in-app first, then runs; testnet runs straight away
   const handleBridge = () => {
     if (!canBridge) return
     if (network === 'mainnet') {
@@ -593,7 +579,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
                       disabled={stellarConnecting}
                       className="px-2 py-1 rounded-md bg-primary text-white text-[11px] font-sans font-medium disabled:opacity-50"
                     >
-                      {stellarConnecting ? 'connecting...' : 'connect a Stellar wallet'}
+                      {stellarConnecting ? 'Connecting...' : 'Connect a Stellar wallet'}
                     </button>
                   )}
                   {treasury && (
@@ -721,7 +707,7 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
 
             {evmAddr && noGas && chain && (
               <Hint>
-                This wallet has no gas on {chain.name}, so it cannot send the burn.
+                This wallet has no gas on {chain.name}, so it can't send the burn.
                 {network === 'testnet' && ' Test gas is free from a faucet for that chain.'}
               </Hint>
             )}
@@ -760,10 +746,9 @@ export default function BridgeModal({ open, onClose, resume, initialDirection = 
               </p>
             )}
             {phase.kind === 'burning' && chain && (
-              // Rabby reads the Stellar account in the hook as an EVM address and calls it unknown
               <p className="text-[11px] text-text-secondary mt-2 text-center">
                 Your wallet may flag the receiver as an unknown address: it reads the Stellar account in the burn as
-                an EVM one. The contract you sign with is Circle&apos;s, {shortenAddress(chain.tokenMessenger, 6, 4)}.
+                an EVM one. The contract you&apos;re calling is Circle&apos;s, {shortenAddress(chain.tokenMessenger, 6, 4)}.
               </p>
             )}
             <p className="text-[10px] text-text-muted mt-2 text-center">
@@ -819,15 +804,13 @@ function Hint({ children }: { children: ReactNode }) {
   return <p className="mb-3 text-xs text-text-secondary">{children}</p>
 }
 
-// Circle's reasons for holding a fast transfer. Each ends the same way: Circle
-// signs it as a standard transfer once the source chain finalises
+// why Circle holds a fast transfer; each ends as a standard one once the chain finalises
 const DELAY_REASONS: Record<string, string> = {
   insufficient_fee: 'the fast fee rose above what the burn allowed',
   amount_above_max: 'the amount is above what Circle carries fast',
   insufficient_allowance_available: "Circle's fast allowance is used up for now",
 }
 
-// past this, a fast transfer is no longer behaving like one
 const FAST_SLOW_AFTER_MS = 3 * 60_000
 
 function InFlight({
@@ -848,13 +831,11 @@ function InFlight({
   delayReason: string | null
   attestationError: string | null
   canSign: boolean
-  // the USDC goes to a DFNS treasury, and a browser wallet only pays the delivery
   toTreasury: boolean
   onDeliver: () => void
 }) {
   const chain = cctpChainsFor(network).find((c) => c.key === transfer.chainKey)
-  // which transfer has overrun its fast window; keyed by burn time so a resumed
-  // transfer never inherits the note of the one before it
+  // keyed by burn time so a resumed transfer never inherits the last one's slow note
   const [slowFor, setSlowFor] = useState<number | null>(null)
   useEffect(() => {
     if (transfer.finality !== 'fast' || ready) return
@@ -897,10 +878,7 @@ function InFlight({
       {!ready ? (
         <p className="text-xs text-text-secondary mb-4">
           Waiting for Circle to sign the burn.{' '}
-          {transfer.finality === 'fast'
-            ? 'A fast transfer usually takes under a minute.'
-            : 'A standard transfer waits for the source chain to finalise, usually 15 to 30 minutes.'}{' '}
-          You can close this, the Bridges page keeps track of it.
+          You can close this. The Bridges page keeps track of it.
           {delayReason ? (
             <span className="block mt-1 text-coral">
               Circle is holding it: {DELAY_REASONS[delayReason] ?? delayReason.replace(/_/g, ' ')}. It will sign it as
@@ -909,7 +887,7 @@ function InFlight({
           ) : (
             slow && (
               <span className="block mt-1">
-                This is taking longer than a fast transfer should. When Circle cannot carry one fast, it signs it
+                This is taking longer than a fast transfer should. When Circle can't carry one fast, it signs it
                 as a standard transfer once {transfer.chainName} finalises, usually 15 to 30 minutes. Nothing is lost.
               </span>
             )
@@ -983,7 +961,7 @@ function Done({
       <p className="text-lg font-semibold text-text mb-1">USDC delivered</p>
       <p className="text-sm text-text-secondary mb-4">
         {phase.transfer.amount} USDC from {phase.transfer.chainName}
-        {phase.transfer.finality === 'fast' ? ", net of Circle's fee" : ', no fee on a standard transfer'}
+        {phase.transfer.finality === 'fast' ? ", less Circle's fee" : ', no fee on a standard transfer'}
         {saved.deliveredAt && `, ${elapsed(phase.transfer.createdAt, saved.deliveredAt)} end to end`}
       </p>
       <div className="text-left">

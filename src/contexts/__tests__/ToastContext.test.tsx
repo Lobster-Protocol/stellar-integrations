@@ -33,7 +33,7 @@ describe('ToastProvider dwell', () => {
     expect(screen.queryByText('saved ok')).not.toBeInTheDocument()
   })
 
-  it('keeps an error toast up longer - 9s, not 4.5s - so it can be read', () => {
+  it('keeps an error toast up for 9s', () => {
     renderHarness()
     act(() => fireEvent.click(screen.getByText('err')))
     expect(screen.getByText('it failed')).toBeInTheDocument()
@@ -45,7 +45,7 @@ describe('ToastProvider dwell', () => {
 })
 
 describe('ToastProvider hover-to-pause', () => {
-  it('holds a toast while the pointer is over it, then re-arms on leave', () => {
+  it('pauses on hover and re-arms on leave', () => {
     renderHarness()
     act(() => fireEvent.click(screen.getByText('ok')))
     const toast = screen.getByRole('status')

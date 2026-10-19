@@ -4,7 +4,7 @@ import { DEMO_VAULT_OWNER, gotoWithWallet } from './fixtures'
 
 // the seeded wallet owns no vault, which is the case the create path is for
 test.describe('vault lifecycle', () => {
-  test('offers to create a vault, and says a vault cannot be deleted', async ({ page }) => {
+  test('create modal warns a vault cannot be deleted', async ({ page }) => {
     await gotoWithWallet(page, '/positions')
     await expect(page.getByRole('heading', { name: 'Positions', exact: true })).toBeVisible()
 
@@ -14,7 +14,7 @@ test.describe('vault lifecycle', () => {
 
     await expect(page.getByRole('heading', { name: 'Create a vault' })).toBeVisible()
     await expect(page.getByText(/A vault cannot be deleted afterwards/)).toBeVisible()
-    // deploying a contract is not free, and the modal has to say so before signing
+    // deploying a contract isn't free, and the modal has to say so before signing
     await expect(page.getByText(/costs a network fee/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Close' }).click()
@@ -53,10 +53,10 @@ test.describe('vault detail', () => {
     // read off the vault itself rather than assumed from the pair
     await expect(page.getByText('Approver').first()).toBeVisible({ timeout: 30000 })
     await expect(page.getByText(/A vault cannot be deleted\./).first()).toBeVisible()
-    await expect(page.getByText(/No return figure here on purpose/).first()).toBeVisible()
+    await expect(page.getByText(/No return figure here\./).first()).toBeVisible()
   })
 
-  test('sends the vault trail to activity, filtered to that vault', async ({ page }) => {
+  test('links to activity filtered to the vault', async ({ page }) => {
     await asOwner(page)
     const toggle = page.getByText('What this vault holds and where').first()
     await expect(toggle).toBeVisible({ timeout: 30000 })
@@ -79,7 +79,6 @@ test.describe('vault detail', () => {
     await expect(page.getByText(/vaults? hidden in this browser/)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Hide', exact: true })).toHaveCount(before - 1)
 
-    // the wording has to be clear that nothing left the chain
     await expect(page.getByText(/still on-chain and still yours/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Show them again' }).click()
@@ -103,7 +102,7 @@ test.describe('vault detail', () => {
 })
 
 test.describe('a crowded vault list', () => {
-  // pull the figure out of the card text; a text selector would need its own escaping
+  // parse the card text; a text selector would need its own escaping
   async function cardValues(page: import('@playwright/test').Page): Promise<number[]> {
     const texts = await page
       .locator('div.rounded-3xl')
@@ -115,7 +114,7 @@ test.describe('a crowded vault list', () => {
       .map((v) => Number(v.replace(/,/g, '')))
   }
 
-  test('puts the vault that holds something above the one that does not', async ({ page }) => {
+  test('sorts vaults by value', async ({ page }) => {
     await asOwner(page)
     await expect(page.getByRole('button', { name: 'Hide', exact: true }).first()).toBeVisible({ timeout: 30000 })
 
@@ -126,9 +125,7 @@ test.describe('a crowded vault list', () => {
     }
   })
 
-  test('clears the empty ones out of the way in one click, and brings them back', async ({
-    page,
-  }) => {
+  test('tidies away the empty ones and brings them back', async ({ page }) => {
     await asOwner(page)
     const cards = page.getByRole('button', { name: 'Hide', exact: true })
     await expect(cards.first()).toBeVisible({ timeout: 30000 })

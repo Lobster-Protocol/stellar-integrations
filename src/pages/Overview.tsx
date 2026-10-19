@@ -23,7 +23,7 @@ import TokenRef from '../components/TokenRef'
 import { Card, CardHead, ChartFrame, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
-// lazy: the bridge pulls in viem and the CCTP code, which the first paint never needs
+// viem and the CCTP code aren't needed for the first paint
 const BridgeModal = lazy(() => import('../components/BridgeModal'))
 const SwapModal = lazy(() => import('../components/SwapModal'))
 
@@ -43,7 +43,7 @@ export default function Overview() {
   const unit = priceUnit(network)
   const price = priceQ.data ?? null
   const valued = valueBalances(balancesQ.data ?? [], price, network)
-  // same computation Allocation renders, so the two pages can never disagree
+  // same computation Allocation renders
   const portfolio = buildPortfolio(
     valued.lines,
     vaultsQ.data ?? [],
@@ -57,7 +57,7 @@ export default function Overview() {
         <img src={lobsterIcon} alt="" className="w-20 h-20 opacity-70" />
         <h2 className="text-xl font-semibold text-text">Connect your wallet to get started</h2>
         <p className="text-text-secondary text-sm max-w-sm text-center">
-          Deposit funds and let Lobster optimize your liquidity positions across Stellar exchanges.
+          Deposit funds and let Lobster manage your liquidity on Soroswap.
         </p>
         <button
           onClick={connect}
@@ -76,12 +76,11 @@ export default function Overview() {
   const xlm = lines.find((l) => l.isNative)
   const vaults = vaultsQ.data ?? []
   const alloc = portfolio.byAsset
-  // the same reconstruction Performance draws, thinned to a sparkline
+  // the same reconstruction Performance draws, as a sparkline
   const priceByKey: Record<string, number> = {}
   if (price != null) priceByKey.XLM = price
   for (const id of usdcAtPar(network)) priceByKey[assetKey('USDC', id)] = 1
-  // dense enough that the cursor finds a value on any day, not just on the days
-  // something moved
+  // densified so the cursor finds a value on any day, not only on moves
   const spark = densify(historyQ.data?.points ?? []).map((p) => ({
     ts: p.ts,
     value: valueAtCurrentPrice(p, priceByKey),
@@ -115,14 +114,13 @@ export default function Overview() {
             {headline}
           </p>
           <p className="text-xs text-text-secondary mt-1">
-            {/* an unpriced total has two different causes, and blaming the
-                market when the wallet is simply empty reads as a broken feed */}
+            {/* an unfunded wallet is not a missing price, don't blame the feed for it */}
             {missing
               ? `Nothing to value until this wallet is funded on ${network}.`
               : vaultsQ.isError
-              ? 'The wallet alone for now: its vaults could not be read.'
+              ? "The wallet alone. Its vaults couldn't be read."
               : !vaultsQ.isSuccess
-              ? 'The wallet so far, its vaults are still being read.'
+              ? 'The wallet so far. Its vaults are still being read.'
               : usdTotal != null
               ? `Wallet plus vaults, quoted in ${unit === 'USD' ? 'US dollars' : 'testnet USDC'}.`
               : price == null
@@ -157,7 +155,7 @@ export default function Overview() {
                 ? formatValue(usdTotal, unit)
                 : 'n/a'
           }
-          sub={`${held.length} assets`}
+          sub={`${held.length} asset${held.length === 1 ? '' : 's'}`}
         />
         <Stat
           label={
@@ -193,7 +191,7 @@ export default function Overview() {
             </>
           }
           value={String(events.length)}
-          sub="signed by this wallet"
+          sub="in or out, loaded so far"
         />
       </div>
 
@@ -201,7 +199,7 @@ export default function Overview() {
         <Card className="lg:col-span-2 self-start">
           <CardHead
             title="Wallet balance over time"
-            note="What the wallet itself held, rebuilt from its on-chain history. Swaps and vault deposits leave this line."
+            note="What the wallet itself held, rebuilt from its on-chain history at today's prices. A vault deposit leaves this line."
             meta={
               <Link to="/performance" className="text-xs text-primary hover:underline">
                 Performance
@@ -216,8 +214,7 @@ export default function Overview() {
                 <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">
                   Now
                 </div>
-                {/* the figure the "In wallet" tile shows, so the summary can
-                    never drift from the rest of the page */}
+                {/* same figure as the "In wallet" tile */}
                 <div className="text-2xl font-semibold text-text" style={{ fontFamily: 'Outfit' }}>
                   {usdTotal != null ? formatValue(usdTotal, unit) : 'n/a'}
                 </div>
@@ -265,9 +262,9 @@ export default function Overview() {
             title="Allocation"
             note={
               vaultsQ.isError
-                ? 'The wallet alone: its vaults could not be read.'
+                ? "The wallet alone. Its vaults couldn't be read."
                 : !vaultsQ.isSuccess && !missing
-                  ? 'The wallet so far, its vaults are still being read.'
+                  ? 'The wallet so far. Its vaults are still being read.'
                   : undefined
             }
             meta={
@@ -422,10 +419,7 @@ export default function Overview() {
         ) : vaultsQ.isError ? (
           <Failed what="Couldn't read the vaults." onRetry={() => vaultsQ.refetch()} />
         ) : vaults.length === 0 ? (
-          <Empty>
-            No open position on {network}. Lobster positions are created on the network where the
-            factory is deployed.
-          </Empty>
+          <Empty>No open position on {network}.</Empty>
         ) : (
           <ul className="divide-y divide-border">
             {vaults.map((v) => {

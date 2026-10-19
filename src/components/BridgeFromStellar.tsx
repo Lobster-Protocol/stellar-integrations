@@ -59,8 +59,7 @@ function errorText(err: unknown): string {
   return walletAnswerText(text) ?? text
 }
 
-// past this with Circle's mint still pending, the wallet may take over; sooner
-// would race Circle's own transaction
+// the wallet may take over only after this; sooner would race Circle's own mint
 const FORWARD_SLOW_AFTER_MS = 5 * 60_000
 
 export default function BridgeFromStellar({
@@ -73,7 +72,7 @@ export default function BridgeFromStellar({
   onStage: (stage: OutStage) => void
 }) {
   const { address: stellarAddr, connect: connectStellar, connecting, walletId } = useWallet()
-  // three minutes when the wallet signs at once, longer when it may hold the signature for an approval
+  // longer over WalletConnect, where the wallet may hold the signature for an approval
   const stellarWindow = windowSecs({ quorum: false, walletId, base: 180 })
   const { mode: custodyMode } = useCustody()
   const chains = cctpChainsFor(network)
@@ -83,7 +82,7 @@ export default function BridgeFromStellar({
   const [phase, setPhase] = useState<Phase>(() => (resume ? { kind: 'progress', transfer: resume } : { kind: 'form' }))
   const [declined, setDeclined] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  // a double click lands twice before the phase change disables the button
+  // a double click fires twice before the phase change disables the button
   const inFlight = useRef(false)
 
   const chain = chains.find((c) => c.key === chainKey) ?? chains[0] ?? null
@@ -167,14 +166,14 @@ export default function BridgeFromStellar({
     const sent: { transfer: TrackedTransfer | null } = { transfer: null }
     try {
       setDeclined(false)
-      // read now, not from a cache: a declined burn after an approval leaves an allowance to reuse
+      // a burn declined after its approval leaves an allowance to reuse
       const allowance = await readStellarAllowance(network, stellarAddr).catch(() => 0n)
       if (allowance < units) {
         setPhase({ kind: 'approving' })
         await approveForBurn({ network, owner: stellarAddr, units, signer: walletKitSigner, validitySecs: stellarWindow })
       }
       setPhase({ kind: 'burning' })
-      // searched on chain at every visit from now on, signed in or not
+      // later visits search this account even with no wallet connected
       rememberWallet(network, 'stellar', stellarAddr)
       await burnFromStellar(
         {
@@ -190,9 +189,8 @@ export default function BridgeFromStellar({
         },
         undefined,
         (hash, validUntil) => {
-          // tracked the moment the wallet has signed, before Stellar is asked: a page that
-          // goes away while it submits, or a confirmation slow to come back, must not hide
-          // a burn Circle is already reading. One Stellar never takes is dropped later
+          // tracked once signed so a page closed mid-submit can't hide the burn;
+          // BridgeWatcher drops it if Stellar never takes it
           sent.transfer = {
             id: hash,
             direction: 'from-stellar',
@@ -221,21 +219,19 @@ export default function BridgeFromStellar({
         return
       }
       const t = sent.transfer
-      // Stellar ran it and refused, or turned it away before it reached a ledger: nothing
-      // was burned, so nothing to follow
+      // nothing burned, nothing to follow
       if (t && ((err instanceof StellarBurnError && /failed on Stellar/.test(err.message)) || err instanceof TransactionRefusedError)) {
         forgetTransfer(network, t.id)
         setPhase({ kind: 'failed', msg: errorText(err) })
         return
       }
-      // submitted, then no word back: Circle's view settles whether it burned
+      // Circle's view settles whether it burned
       setPhase({ kind: 'failed', msg: errorText(err), transfer: t ?? undefined })
     } finally {
       inFlight.current = false
     }
   }
 
-  // a mainnet send confirms in-app first, then runs; testnet runs straight away
   const handleSend = () => {
     if (!canSend) return
     if (network === 'mainnet') {
@@ -304,7 +300,7 @@ export default function BridgeFromStellar({
         </div>
         {evmAddr && chain && (
           <div className="flex justify-between text-text-secondary">
-            <span>Lands on</span>
+            <span>Arrives on</span>
             <span className="text-text">{chain.name}</span>
           </div>
         )}
@@ -408,7 +404,7 @@ export default function BridgeFromStellar({
       )}
       {custodyMode === 'dfns' && (
         <Hint>
-          The DFNS treasury cannot send from here: its relay never signs a burn out of it. This sends from the
+          The DFNS treasury can&apos;t send from here: its relay never signs a burn out of it. This sends from the
           connected browser wallet.
         </Hint>
       )}
@@ -466,7 +462,7 @@ function OutProgress({
   transfer: TrackedTransfer
   onStage: (stage: OutStage) => void
 }) {
-  // the saved copy, so the times recorded below and another tab finishing it both show
+  // the stored copy shows recorded times and a finish from another tab
   const transfer = useTrackedTransfers(network).find((t) => t.id === started.id) ?? started
   useOnScreen(transfer.id)
   const qc = useQueryClient()
@@ -490,7 +486,7 @@ function OutProgress({
       return null
     }
   })()
-  // the chain itself says when the message has been received, whatever Circle's labels say
+  // the chain has the last word on receipt, whatever Circle's labels say
   const onChain = useReceivedOnEvm(chain, transfer.stage !== 'delivered' && local === null ? nonce : null)
   const settled = transfer.stage === 'delivered' || local !== null || onChain.data === true
   const status = settled ? ({ kind: 'delivered' } as const) : statusOf(transfer, data)
@@ -498,7 +494,7 @@ function OutProgress({
 
   useEffect(() => onStage(receiving ? 'busy' : 'progress'), [receiving, onStage])
 
-  // when Circle signed and when it minted, kept on the transfer for the list and a reload
+  // stored so the list and a reload show when Circle signed and minted
   useEffect(() => {
     if (data?.state !== 'complete') return
     markAttested(network, transfer.id)
@@ -555,10 +551,10 @@ function OutProgress({
       void qc.invalidateQueries({ queryKey: ['cctp', 'holdings'] })
     } catch (err) {
       if (err instanceof UserRejectedError) {
-        setError('You declined in your wallet. The transfer is saved, receive it whenever you are ready.')
+        setError("You declined in your wallet. The transfer is saved; receive it whenever you're ready.")
       } else if (err instanceof ReceiptUnreadError) {
-        // the mint is out and its hash saved: the chain check above finishes the transfer
-        setError(`Sent (${shortenAddress(err.hash, 6, 4)}), but its confirmation could not be read yet. Check it on the explorer before sending again.`)
+        // the on-chain check finishes a mint that's already out
+        setError(`Sent (${shortenAddress(err.hash, 6, 4)}), but its confirmation couldn't be read yet. Check it on the explorer before sending again.`)
       } else {
         markSent(network, transfer.id, '')
         setError(errorText(err))
@@ -625,7 +621,7 @@ function OutProgress({
 
       {status.kind === 'waiting-circle' && (
         <p className="text-xs text-text-secondary mb-4">
-          Waiting for Circle to sign the burn. You can close this, the Bridges page keeps track of it.
+          Waiting for Circle to sign the burn. You can close this. The Bridges page keeps track of it.
           {att.isError && <span className="block mt-1 text-coral">{errorText(att.error)}</span>}
         </p>
       )}
@@ -644,7 +640,7 @@ function OutProgress({
         <p className="text-xs text-text-secondary mb-4">
           {status.circleFailed ? 'Circle could not mint it. ' : 'Circle has signed it. '}
           One signature in your EVM wallet receives the USDC on {transfer.chainName}; it pays the gas there. Any EVM
-          wallet can submit it, the USDC goes to {shortenAddress(transfer.recipient, 6, 4)} either way.
+          wallet can submit it. The USDC goes to {shortenAddress(transfer.recipient, 6, 4)} either way.
         </p>
       )}
 

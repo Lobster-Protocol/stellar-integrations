@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test'
 
 import { BASE } from './fixtures'
 
-test('serves the shell: sidebar, logo, a way to connect', async ({ page }) => {
+test('serves the shell', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
-  await page.screenshot({ path: 'screenshots/01-overview.png', fullPage: true })
+  await page.screenshot({ path: 'screenshots/overview.png', fullPage: true })
 
   const sidebar = page.locator('aside')
   await expect(sidebar).toBeVisible()
@@ -60,13 +60,13 @@ test('walks the sidebar end to end and every page answers', async ({ page }) => 
   }
 })
 
-test('writes the network choice through to storage, both ways', async ({ page }) => {
+test('stores the network choice', async ({ page }) => {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   const testnet = page.getByRole('button', { name: 'Testnet' })
   const mainnet = page.getByRole('button', { name: 'Mainnet' })
 
-  // the live network is the one wearing the raised pill class
+  // the active network gets the raised pill class
   await mainnet.click()
   await expect(mainnet).toHaveClass(/bg-bg-card/)
   await expect(testnet).not.toHaveClass(/bg-bg-card/)
@@ -90,10 +90,10 @@ test('brings up the wallets kit with wallets in it', async ({ page }) => {
   await expect(modal.getByText('Freighter', { exact: true })).toBeVisible()
   await expect(modal.getByText('xBull', { exact: true })).toBeVisible()
 
-  await page.screenshot({ path: 'screenshots/06-wallet-modal.png', fullPage: true })
+  await page.screenshot({ path: 'screenshots/wallet-modal.png', fullPage: true })
 })
 
-test('leaves no console error behind past the known browser noise', async ({ page }) => {
+test('no console errors beyond known noise', async ({ page }) => {
   const errors: string[] = []
   page.on('console', (msg) => {
     if (msg.type() === 'error') errors.push(msg.text())
@@ -104,8 +104,7 @@ test('leaves no console error behind past the known browser noise', async ({ pag
     await page.waitForTimeout(500)
   }
 
-  // not faults: a missing favicon, a 404 for an account not on the ledger, and a
-  // refused connection to a relay a test build does not have
+  // a 404 is an account not on the ledger, net::ERR the relay a test build lacks
   const critical = errors.filter(
     (e) => !e.includes('favicon') && !e.includes('404') && !e.includes('net::ERR'),
   )

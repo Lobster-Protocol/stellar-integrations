@@ -8,8 +8,7 @@ export interface ExportFormat {
   label: string
   ext: string
   mime: string
-  // `report` drives the status line while a long read is in flight; `note` is
-  // what the reader is told once the file is on their disk.
+  // report() feeds the status line during a long read; note shows once it's saved
   build: (report: (message: string) => void) => Promise<{ text: string; note?: string }>
 }
 

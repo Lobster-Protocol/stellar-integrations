@@ -16,14 +16,14 @@ afterEach(() => {
 })
 
 describe('NetworkProvider', () => {
-  it('opens on the network a link names, and keeps it like the toggle does', () => {
+  it('opens the network a link names and stores it', () => {
     window.history.replaceState(null, '', '/positions?network=mainnet')
     render(<NetworkProvider><Shows /></NetworkProvider>)
     expect(screen.getByText('mainnet')).toBeInTheDocument()
     expect(localStorage.getItem('lob_network')).toBe('mainnet')
   })
 
-  it('ignores a network it does not know and falls back to the stored choice', () => {
+  it('ignores an unknown network param', () => {
     localStorage.setItem('lob_network', 'mainnet')
     window.history.replaceState(null, '', '/?network=futurenet')
     render(<NetworkProvider><Shows /></NetworkProvider>)

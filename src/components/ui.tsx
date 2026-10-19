@@ -37,8 +37,7 @@ export function Empty({ children, action }: { children: ReactNode; action?: Reac
   )
 }
 
-// stays on the page instead of vanishing, so someone running a clone without
-// the service can see the feature exists and what it waits on
+// a clone without the service still sees the panel and what it needs
 export function NotConfigured({
   title,
   needs,
@@ -93,7 +92,7 @@ export function Stat({
   hint?: string
   href?: string
   mono?: boolean
-  // the full value behind a shortened one, so it can leave the page intact
+  // full value for the copy button when value is shortened
   copy?: string
 }) {
   const body = (
@@ -126,8 +125,7 @@ export function Stat({
   )
 }
 
-// a chart is only a picture to a screen reader or to anyone who cannot separate
-// the colours, so each one is named and can be read as numbers instead
+// a table view too, for screen readers and colour-blind eyes
 export function ChartFrame({
   label,
   columns,
@@ -203,7 +201,7 @@ export function Disclosure({
   summary: string
   children: ReactNode
   defaultOpen?: boolean
-  // lets a panel hold off on an expensive read until somebody actually looks
+  // lets a panel defer an expensive read until it's opened
   onOpenChange?: (open: boolean) => void
 }) {
   const [open, setOpen] = useState(defaultOpen)
