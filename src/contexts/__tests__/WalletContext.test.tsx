@@ -26,6 +26,7 @@ vi.mock('@creit-tech/stellar-wallets-kit/modules/wallet-connect', () => ({
   WALLET_CONNECT_ID: 'wallet_connect',
 }))
 
+import { StellarWalletsKit } from '@creit-tech/stellar-wallets-kit'
 import { WalletProvider, useWallet } from '../WalletContext'
 import { NetworkProvider } from '../NetworkContext'
 import { ToastProvider } from '../ToastContext'
@@ -35,13 +36,14 @@ const VIEWED = 'GA3FDPNGWE7T2ANXNB5LNPRLZMC2LBYJFO2VVKW7DRUZTGNIKZDKOXCS'
 const OWN = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 
 function Probe() {
-  const { address, viewing, view, stopViewing } = useWallet()
+  const { address, viewing, view, stopViewing, connect } = useWallet()
   return (
     <>
       <span data-testid="address">{address ?? 'none'}</span>
       <span data-testid="viewing">{viewing ?? 'none'}</span>
       <button onClick={() => view(VIEWED)}>view</button>
       <button onClick={stopViewing}>leave</button>
+      <button onClick={connect}>connect</button>
     </>
   )
 }
@@ -97,6 +99,15 @@ describe('read-only view', () => {
     expect(screen.getByTestId('address')).toHaveTextContent('none')
     fireEvent.click(screen.getByText('view'))
     expect(screen.getByTestId('address')).toHaveTextContent(VIEWED)
+  })
+
+  it('closing the wallet picker is a cancel, not an error', async () => {
+    // what kit 2.2.0 rejects with when the modal is closed
+    vi.mocked(StellarWalletsKit.authModal).mockRejectedValueOnce({ code: -1, message: 'The user closed the modal.' })
+    mount()
+    fireEvent.click(screen.getByText('connect'))
+    expect(await screen.findByText('Connection cancelled.')).toBeInTheDocument()
+    expect(screen.queryByText(/Could not connect/)).toBeNull()
   })
 
   it('ignores a view param that is not an account', () => {

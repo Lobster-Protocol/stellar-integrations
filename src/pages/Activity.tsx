@@ -197,9 +197,13 @@ export default function Activity() {
           <Empty>
             {!address
               ? 'Connect a wallet to see its history.'
-              : filters.windowed || filters.query
-                ? 'Nothing on this account matches what you asked for.'
-                : 'Nothing recorded on this account yet.'}
+              : q.isError
+                ? "This account's history couldn't be read."
+                : q.isLoading
+                  ? 'Reading the history...'
+                  : filters.windowed || filters.query || filters.vault
+                    ? 'Nothing on this account matches what you asked for.'
+                    : 'Nothing recorded on this account yet.'}
           </Empty>
         ) : (
           <ChartFrame

@@ -12,6 +12,7 @@ import { useAccountSigning } from '../integrations/stellar/use-account-signing'
 import { isMultisig, requiredWeight } from '../integrations/stellar/multisig'
 import { overWalletConnect, validitySecs } from '../integrations/signer/validity'
 import { walletAnswerText } from '../integrations/signer/wallet-errors'
+import { contractErrorCode } from '../integrations/stellar/read'
 import { useWallet } from '../contexts/WalletContext'
 import CoSignPanel from './CoSignPanel'
 
@@ -95,13 +96,16 @@ export default function CreateVaultModal({ open, onClose, onDone, network, calle
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
+      // the factory's AlreadyExists (3) and InvalidPoolTokens (14) panics
+      const code = contractErrorCode(err)
       setPhase({
         k: 'failed',
-        msg: /already/i.test(msg)
-          ? 'You already have a vault for this exact pair. Open it from the list instead.'
-          : /InvalidPoolTokens|same token/i.test(msg)
-            ? 'Pick two different tokens.'
-            : walletAnswerText(msg) ?? msg.split('\n')[0].slice(0, 180),
+        msg:
+          code === 3
+            ? 'You already have a vault for this exact pair. Open it from the list instead.'
+            : code === 14
+              ? 'Pick two different tokens.'
+              : walletAnswerText(msg) ?? msg.split('\n')[0].slice(0, 180),
       })
     } finally {
       inFlight.current = false

@@ -16,6 +16,16 @@ vi.mock('../../integrations/stellar/multisig', async () => {
 })
 vi.mock('../../integrations/signer/wallet-kit-signer', () => ({ walletKitSigner: { signTransaction: vi.fn() } }))
 
+const tx = vi.hoisted(() => ({ summarize: vi.fn(), real: null as null | ((...a: unknown[]) => unknown) }))
+vi.mock('../../integrations/stellar/tx-summary', async () => {
+  const actual = await vi.importActual<typeof import('../../integrations/stellar/tx-summary')>(
+    '../../integrations/stellar/tx-summary',
+  )
+  tx.real = actual.summarizeTx as (...a: unknown[]) => unknown
+  tx.summarize.mockImplementation(actual.summarizeTx)
+  return { ...actual, summarizeTx: tx.summarize }
+})
+
 import CoSignPanel from '../CoSignPanel'
 import type { AccountSigning } from '../../integrations/stellar/multisig'
 
@@ -73,7 +83,10 @@ function horizonRejection(code: string): Error {
   })
 }
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  tx.summarize.mockImplementation(tx.real!)
+})
 
 describe('CoSignPanel', () => {
   it('explains tx_bad_seq from horizon', async () => {
@@ -84,6 +97,24 @@ describe('CoSignPanel', () => {
   it('explains txBadSeq from soroban rpc', async () => {
     submitAndFail(new Error('sendTransaction rejected: {"result":{"_switch":{"name":"txBadSeq","value":-5}}}'))
     expect(await screen.findByText(USED_SEQUENCE)).toBeInTheDocument()
+  })
+
+  it('will not submit what it cannot read', () => {
+    tx.summarize.mockImplementation(() => {
+      throw new Error('unsupported operation')
+    })
+    render(
+      <CoSignPanel
+        network="testnet"
+        signing={twoOfTwo}
+        baseXdr={revertTx()}
+        connected={ACCOUNT}
+        submit={vi.fn()}
+        onSubmitted={vi.fn()}
+      />,
+    )
+    expect(screen.getByText(/couldn't be read here/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
   })
 
   it('keeps the plain error for other horizon result codes', async () => {

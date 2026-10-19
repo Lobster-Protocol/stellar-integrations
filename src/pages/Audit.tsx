@@ -30,6 +30,8 @@ import { InfoTip } from '../components/InfoTip'
 
 // a 401 or 503 still means the relay is up
 function readFailure(err: unknown): string {
+  // no error yet means the first read is still out
+  if (!err) return 'reading the relay'
   if (err instanceof RelayError && err.status === 401) {
     return 'relay answered, no valid API token'
   }

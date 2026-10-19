@@ -18,7 +18,7 @@ import {
   type CctpSourceChain,
   type Network,
 } from '../config/contracts'
-import { Card, CardHead, Empty, Stat } from '../components/ui'
+import { Card, CardHead, Empty, Failed, Stat } from '../components/ui'
 import { InfoTip } from '../components/InfoTip'
 
 const BridgeModal = lazy(() => import('../components/BridgeModal'))
@@ -389,6 +389,10 @@ export default function Bridges() {
         />
         {!address ? (
           <Empty>Connect a wallet to look for incoming USDC.</Empty>
+        ) : activityQ.isError ? (
+          <Failed what="Couldn't read this account's history." onRetry={() => activityQ.refetch()} />
+        ) : !activityQ.isSuccess ? (
+          <p className="text-xs text-text-muted py-4">Reading the history...</p>
         ) : arrivals.length === 0 ? (
           <Empty>No USDC has arrived through the bridge yet.</Empty>
         ) : (

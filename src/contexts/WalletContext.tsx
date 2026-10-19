@@ -187,12 +187,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         )
         return addr
       } catch (err: unknown) {
-        console.error('wallet connect failed:', err)
-        // the kit also rejects when the modal is just closed, keep that one quiet
-        const m = err instanceof Error ? err.message.toLowerCase() : ''
+        // a closed modal comes back as a plain { code, message }, not an Error
+        const raw = typeof err === 'string' ? err : (err as { message?: unknown } | null)?.message
+        const m = String(raw ?? '').toLowerCase()
         if (/reject|declin|cancel|close|dismiss|expired|abort|user/.test(m)) {
           toast.info('Connection cancelled.')
         } else {
+          console.error('wallet connect failed:', err)
           toast.error('Could not connect. Check your wallet and try again.')
         }
         return null

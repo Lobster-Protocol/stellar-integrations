@@ -47,12 +47,13 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
     }
   }, [baseXdr, network, signing.accountId])
   const hasDangers = (summary?.dangers.length ?? 0) > 0
-  const blocked = hasDangers && !ack
+  // nothing gets signed here without being read first
+  const blocked = summary === null || (hasDangers && !ack)
 
   // account_merge and signer or threshold changes need the high threshold, and every
   // set_options this app builds is one. a med gate undercounts whenever high is above med
   const tier: 'med' | 'high' =
-    summary?.operations.some((o) => o.type === 'setOptions' || o.type === 'accountMerge')
+    !summary || summary.operations.some((o) => o.type === 'setOptions' || o.type === 'accountMerge')
       ? 'high'
       : 'med'
   const need = requiredWeight(signing, tier)
@@ -133,6 +134,11 @@ export default function CoSignPanel({ network, signing, baseXdr, connected, subm
 
   return (
     <div className="space-y-3">
+      {!summary && (
+        <p className="text-xs text-coral">
+          This transaction couldn&apos;t be read here, so it can&apos;t be signed or submitted from this page.
+        </p>
+      )}
       {summary && (
         <div className={cn('rounded-2xl px-3 py-3 text-xs', hasDangers ? 'bg-coral/10' : 'bg-bg')}>
           <div className="flex items-center justify-between mb-1.5">

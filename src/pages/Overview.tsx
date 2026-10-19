@@ -117,6 +117,10 @@ export default function Overview() {
             {/* an unfunded wallet is not a missing price, don't blame the feed for it */}
             {missing
               ? `Nothing to value until this wallet is funded on ${network}.`
+              : balancesQ.isError
+              ? "The wallet's balances couldn't be read."
+              : balancesQ.isLoading
+              ? 'Reading the wallet...'
               : vaultsQ.isError
               ? "The wallet alone. Its vaults couldn't be read."
               : !vaultsQ.isSuccess
@@ -373,6 +377,8 @@ export default function Overview() {
           />
           {activityQ.isLoading ? (
             <p className="text-sm text-text-muted py-4">Loading activity...</p>
+          ) : activityQ.isError ? (
+            <Failed what="Couldn't load the activity." onRetry={() => activityQ.refetch()} />
           ) : recent.length === 0 ? (
             <Empty>Nothing on this account yet.</Empty>
           ) : (
