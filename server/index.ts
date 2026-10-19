@@ -24,7 +24,6 @@ if (process.env.DFNS_PRIVATE_KEY_PATH || process.env.DFNS_PRIVATE_KEY) {
   console.log('dfns ping skipped (no dfns key configured, dev mode)')
 }
 
-
 // timing has to go on the root before the routes are mounted, or hono won't wrap them.
 const root = new Hono()
 root.use('*', metricsTiming())
@@ -36,7 +35,7 @@ if ((process.env.METRICS_TOKEN || otlpEnabled()) && (process.env.DFNS_PRIVATE_KE
   startDfnsMetricsLoop()
 }
 
-// the relay never sleeps, so it runs the ttl and health scans itself.
+// the relay host is always on, so it runs the ttl and health scans itself.
 if (process.env.TTL_MONITOR_EMBEDDED === '1') {
   for (const config of ttlConfigs()) {
     startTtlLoop(config, ttlSigner(config.network)).catch((err) => console.error(`[ttl-monitor:${config.network}] loop crashed`, err))

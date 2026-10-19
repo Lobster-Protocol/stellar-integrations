@@ -27,8 +27,6 @@ export function clearPending(walletId: string): void {
   pending.delete(walletId)
 }
 
-// a status route checks a read is about the in-flight signature before it releases
-// the lock, so a terminal read of some other id cannot clear one still held.
 export function peekPending(walletId: string): string | null {
   return pending.get(walletId) ?? null
 }

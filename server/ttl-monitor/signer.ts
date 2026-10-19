@@ -2,9 +2,8 @@ import { FeeBumpTransaction, Keypair, Networks, TransactionBuilder } from '@stel
 import type { Network } from '../../src/config/contracts'
 import type { ExtendSigner } from './index'
 
-// a key that only pays storage rent. extending a ttl needs no rights on the
-// contract, so the account behind it holds fee money and nothing else, and the
-// key signs one thing: a storage extend paid from that account
+// signs only a storage extend from its own account. extending needs no rights on
+// the contract, so the account holds fee money and nothing else
 export function keySigner(secret: string, network: Network): ExtendSigner {
   const key = Keypair.fromSecret(secret)
   const own = network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET

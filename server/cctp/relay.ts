@@ -52,7 +52,7 @@ function sorobanUrl(network: Network): string {
   return env || STELLAR_RPC_FALLBACK[network].soroban
 }
 
-// shut without a key, and mainnet needs its own switch on top
+// off without CCTP_RELAY_SECRET; mainnet also needs CCTP_RELAY_MAINNET=1
 export function relayKeypair(network: Network): Keypair {
   const secret = process.env.CCTP_RELAY_SECRET ?? ''
   if (!secret || !StrKey.isValidEd25519SecretSeed(secret)) {
@@ -172,7 +172,7 @@ export async function deliver(req: ClaimRequest): Promise<ClaimOutcome> {
   const kp = relayKeypair(network)
   takeDailySlot()
 
-  // after takeDailySlot a hung read would burn the slot, hence the client deadline
+  // past takeDailySlot a hung read would burn the slot, so rpcServer has a deadline
   const server = rpcServer(sorobanUrl(network))
   const source = await server.getAccount(kp.publicKey())
   const tx = new TransactionBuilder(source, { fee: INCLUSION_FEE_STROOPS, networkPassphrase: passphrase(network) })

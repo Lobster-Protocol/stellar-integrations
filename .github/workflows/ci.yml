@@ -34,7 +34,7 @@ jobs:
       # the root tsconfig only lists project references, so a plain
       # `tsc --noEmit` type-checks nothing. build the way vercel does instead,
       # so ci fails whenever the deploy would.
-      - name: Build (tsc -b + vite build, same as Vercel)
+      - name: Build
         run: npm run build
 
       - name: ESLint
@@ -58,7 +58,7 @@ jobs:
       # no PLAYWRIGHT_BASE_URL, so the config serves the build above and the
       # specs test this commit rather than whatever is live. set it to
       # https://stellar-instit.lobster-protocol.com to smoke the real deploy.
-      - name: Playwright E2E (local build of this commit)
+      - name: Playwright E2E
         run: npx playwright test --reporter=list
         env:
           PLAYWRIGHT_HEADLESS: 'true'

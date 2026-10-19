@@ -34,7 +34,7 @@ export interface ScanResult {
 }
 
 const TIMEOUT_MS = 10_000
-// two evm endpoints are tried in turn, each gets half
+// two evm endpoints are tried in turn, so each gets half of TIMEOUT_MS
 const EVM_TIMEOUT_MS = 5_000
 const EVM_STALE_SECONDS = 600
 // one retry before a check counts as down, public endpoints drop the odd request.
@@ -151,7 +151,7 @@ async function probeOne(t: HttpTarget): Promise<ProbeResult> {
 }
 
 // the Soroswap router still quoting a mainnet XLM to USDC swap. a stale xlmSac
-// broke exactly this once (get_pair Error #205), so it gets its own watch.
+// breaks exactly this (get_pair Error #205), so it gets its own watch.
 async function probeSoroswap(): Promise<ProbeResult | null> {
   const tokens = CONTRACTS.mainnet.tokens
   const routerId = CONTRACTS.mainnet.soroswap.router
@@ -189,7 +189,6 @@ async function probeSoroswap(): Promise<ProbeResult | null> {
 // under this much XLM a tracked account can stop paying network fees
 const FEE_RESERVE_XLM = Number(process.env.MONITOR_FEE_RESERVE_XLM) || 10
 
-// split out so a test hits the check without a network call
 export function hasFeeReserve(
   payload: { balances?: Array<{ asset_type: string; balance: string }> },
   min = FEE_RESERVE_XLM,

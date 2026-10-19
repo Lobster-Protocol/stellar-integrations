@@ -17,7 +17,7 @@ async function runOnce(): Promise<void> {
 }
 
 async function startLoop(): Promise<void> {
-  console.warn(`[probe] watching service health + balances every ${INTERVAL_MS}ms`)
+  console.warn(`[probe] checking service health and accounts every ${INTERVAL_MS}ms`)
   for (;;) {
     try {
       await runOnce()

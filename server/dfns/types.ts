@@ -43,9 +43,8 @@ export type DfnsWebhookEvent = z.infer<typeof DfnsWebhookEventSchema>
 export const DfnsStellarNetworkSchema = z.enum(['Stellar', 'StellarTestnet'])
 export type DfnsStellarNetwork = z.infer<typeof DfnsStellarNetworkSchema>
 
-// transaction signing response. for a classic tx dfns signs AND broadcasts
-// natively, so the terminal response carries txHash (and no signedData). for a
-// soroban tx dfns only signs and hands back signedData for the caller to submit.
+// a classic tx is signed and broadcast by dfns, so it ends with txHash. a soroban
+// tx is only signed and comes back as signedData for the caller to submit.
 // reason explains a Failed/Rejected status.
 export const DfnsSignatureSchema = z.object({
   id: z.string(),

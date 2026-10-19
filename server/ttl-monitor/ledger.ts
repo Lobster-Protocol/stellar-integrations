@@ -6,16 +6,16 @@ const LEDGER_SECONDS = 5
 export const MAX_ENTRY_TTL = 3_110_400
 
 // alert bands in ledgers, derived from wall-clock so the intent stays readable
-export const WARN_LEDGERS = (48 * 3600) / LEDGER_SECONDS // ~34560, two days out
-export const CRIT_LEDGERS = (24 * 3600) / LEDGER_SECONDS // ~17280, one day out
+export const WARN_LEDGERS = (48 * 3600) / LEDGER_SECONDS
+export const CRIT_LEDGERS = (24 * 3600) / LEDGER_SECONDS
 
-// where an auto-extend puts the runway back. a month keeps the daemon quiet
-// without going anywhere near the rent blow-up at max_entry_ttl.
-export const EXTEND_TARGET_LEDGERS = (30 * 24 * 3600) / LEDGER_SECONDS // 518400
+// auto-extend target. a month means few extends and stays clear of the rent
+// blow-up at max_entry_ttl.
+export const EXTEND_TARGET_LEDGERS = (30 * 24 * 3600) / LEDGER_SECONDS
 
 // an auto-extend starts here, a day ahead of the 14 day notice alert, so the ttl
 // alerts only go off when an extend failed to land
-export const EXTEND_BELOW_LEDGERS = (15 * 24 * 3600) / LEDGER_SECONDS // 259200
+export const EXTEND_BELOW_LEDGERS = (15 * 24 * 3600) / LEDGER_SECONDS
 
 type TtlLevel = 'ok' | 'warn' | 'crit' | 'archived'
 

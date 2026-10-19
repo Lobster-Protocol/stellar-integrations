@@ -117,9 +117,9 @@ const MAX_FEE_STROOPS = 10_000_000n
 const MAX_SOROBAN_FEE_STROOPS = 50_000_000n
 
 // payment cap when the operator set none. with no whitelist either, the treasury
-// can only pay itself and loses nothing but the fee, so the cap can be roomy enough
-// for the custody demo to cross the approval threshold. with a whitelist the
-// destination can be somebody else, so it stays tight.
+// can only pay itself and loses nothing but the fee, so the cap can be roomy
+// enough to cross the approval threshold. with a whitelist the destination can be
+// somebody else, so it stays tight.
 const SELF_ONLY_CAP_STROOPS = 1_000_000_000n
 const FALLBACK_CAP_STROOPS = 10_000_000n
 
@@ -238,8 +238,7 @@ export function readSignGuardConfig(): SignGuardConfig | null {
   const permissive = process.env.DFNS_GUARD_PERMISSIVE === '1'
   if (!permissive && (list.length === 0 || cap <= 0n)) return null
   // permissive still can't mean unbounded. it only lets the operator leave the
-  // two variables unset, and then the treasury can pay nobody but itself, under
-  // a low cap.
+  // two variables unset, and then the treasury can pay nobody but itself.
   const selfOnly = list.length === 0
   const valueContracts = (process.env.DFNS_SOROBAN_TREASURY_CONTRACTS ?? '')
     .split(',')

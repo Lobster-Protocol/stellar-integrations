@@ -13,8 +13,8 @@ export function clampExtendTo(target: number): number {
 }
 
 // the fee set here is only the inclusion bid, the same ceiling the app's own
-// transactions use since the base fee timed out on mainnet. rent blows up near
-// the cap, so it comes from assembleTransaction after simulation, never a guess.
+// transactions use (the base fee times out on mainnet). rent blows up near the
+// cap, so it comes from assembleTransaction after simulation, never a guess.
 export function buildExtendTtlTx(
   account: Account,
   key: xdr.LedgerKey,

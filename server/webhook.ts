@@ -8,10 +8,9 @@ import { EventEmitter } from 'node:events'
 import { TransactionBuilder, Networks, Asset, type Transaction } from '@stellar/stellar-sdk'
 
 import { requireEnv } from './env'
-import { DfnsWebhookEventSchema, type DfnsWebhookEvent } from './dfns/types'
+import { DfnsWebhookEventSchema, DfnsStellarNetworkSchema, type DfnsWebhookEvent } from './dfns/types'
 import { listPolicies } from './dfns/policies'
 import { listWallets, createStellarWallet } from './dfns/wallets'
-import { DfnsStellarNetworkSchema } from './dfns/types'
 import {
   broadcastStellarTx, waitForSignatureTerminal, envelopeFromSignedData, isTerminal, getSignatureStatus, signatureReleased,
 } from './dfns/sign'
@@ -249,21 +248,17 @@ app.post('/dfns/approvals/:id/decision', rateLimit, tokenGuard, operatorGuard, a
   }
 })
 
-// passphrase is derived from server env so a caller cannot trick dfns into
-// signing the wrong network. body.networkPassphrase is only accepted when it
-// matches what the env says; mismatched values get a 400 back.
+// passphrase comes from the server env so a caller can't trick dfns into signing
+// for the wrong network
 function serverPassphrase(): string {
   const net = process.env.DFNS_STELLAR_NETWORK
   if (net === 'Stellar') return Networks.PUBLIC
   return Networks.TESTNET
 }
 
-// Testnet demo auto-approver: when a signature comes back held for approval, vote
-// it through (as the approver User) and wait for dfns to finish, returning the
-// same shape the instant path does. Armed only on testnet with an approver
-// configured (autoApproveArmed); off by default and never on mainnet. Never
-// throws - a no-op or any failure returns null and the caller falls back to the
-// normal pending/poll flow, so a human can still approve it in the console.
+// testnet only (see autoApproveArmed): vote a held signature through as the
+// approver user and wait for dfns. any failure returns null and the caller falls
+// back to pending/poll, so a human can still approve it in the console.
 async function tryAutoApprove(
   walletId: string,
   sigId: string,
@@ -374,14 +369,12 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
       }
       throw err
     }
-    // one treasury signature at a time: a second tx built while one is held for
-    // approval reuses the same sequence and would tx_bad_seq on broadcast.
     const busy = await unresolvedSignature(walletId, getSignatureStatus, (s) => signatureReleased(s, passphrase))
     if (busy) {
-      // signed but never submitted: nothing to do in the console, it frees up on its own
+      // signed but not submitted: nothing to approve, the lock clears once its time bounds pass
       const error =
         busy.status === 'Signed'
-          ? 'the last treasury signature is signed but not submitted yet; the treasury frees up once its time bounds pass'
+          ? 'the last treasury signature is signed but not submitted yet; try again once its time bounds pass'
           : 'a treasury signature is already awaiting approval; approve or deny it in the dfns console first'
       return c.json({ error, pending: true, id: busy.id }, 409)
     }
@@ -395,8 +388,6 @@ app.post('/dfns/sign', rateLimit, tokenGuard, async (c) => {
     if (final.txHash) {
       return c.json({ txHash: final.txHash })
     }
-    // soroban tx: dfns only signs, so hand back the envelope for the caller to
-    // submit through their own rpc.
     if (final.signedData) {
       const back = envelopeFromSignedData(final.signedData, passphrase)
       return c.json({ signedTxXdr: back.toXDR() })

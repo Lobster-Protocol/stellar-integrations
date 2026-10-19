@@ -40,7 +40,6 @@ async function listByStatus(client: Client, status: Status) {
   return items
 }
 
-// read-only
 export async function refreshDfnsApprovalMetrics(client: Client = getDfnsClient(), nowMs = Date.now()): Promise<void> {
   const pending = await listByStatus(client, 'Pending')
   const pastBounds = pending.filter((a) => heldPastItsBounds(a as HeldRequest, nowMs)).length
@@ -55,7 +54,6 @@ export async function refreshDfnsApprovalMetrics(client: Client = getDfnsClient(
   dfnsApprovalsReadAt.set(nowMs / 1000)
 }
 
-// unref'd so the timer never holds the process open.
 export function startDfnsMetricsLoop(intervalMs = 60_000): NodeJS.Timeout {
   const tick = () =>
     refreshDfnsApprovalMetrics().catch((err) =>

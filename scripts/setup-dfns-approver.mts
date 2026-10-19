@@ -40,11 +40,11 @@ const { publicKey, privateKey } = generateKeyPairSync('ed25519', {
   publicKeyEncoding: { type: 'spki', format: 'pem' },
   privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 })
-const outDir = '_local/dfns-approver'
+const outDir = 'dfns-approver'
 mkdirSync(outDir, { recursive: true })
 writeFileSync(`${outDir}/approver.public.pem`, publicKey)
 writeFileSync(`${outDir}/approver.key`, privateKey)
-console.log('generated the approver keypair under _local/dfns-approver/ (gitignored):')
+console.log(`generated the approver keypair under ${outDir}/ (gitignored):`)
 console.log(`  ${outDir}/approver.public.pem   register this as the User's Key credential`)
 console.log(`  ${outDir}/approver.key          becomes DFNS_APPROVER_PRIVATE_KEY on Render`)
 console.log('')

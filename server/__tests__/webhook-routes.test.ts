@@ -73,8 +73,7 @@ function sampleXdr(): string {
 
 
 const SIGN_API_TOKEN = 'test-api-token-32-chars-long-x'
-// the two custody writes (create a wallet, decide an approval) sit behind a
-// second, server-only token on top of the api token.
+// creating a wallet or deciding an approval also takes a second, server-only token
 const OPERATOR_TOKEN = 'test-operator-token-40-chars-long-value'
 const WRITE_HEADERS = {
   'content-type': 'application/json',
@@ -327,8 +326,7 @@ describe('GET /dfns/sign/:id/status', () => {
 describe('POST /dfns/approvals/:id/decision', () => {
   it('fails closed with 503 when LOBSTER_API_TOKEN is unset', async () => {
     delete process.env.LOBSTER_API_TOKEN
-    // operator token present and presented, so the 503 can only come from the
-    // missing api token rather than from the operator gate in front of it
+    // the operator token is set and sent, so this 503 can only mean the api token is missing
     process.env.LOBSTER_OPERATOR_TOKEN = OPERATOR_TOKEN
     const res = await app.fetch(
       new Request('http://localhost/dfns/approvals/ap-1/decision', {

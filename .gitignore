@@ -45,17 +45,10 @@ dist-ssr
 screenshots/
 test-results/
 
-# local-only working files, never pushed. any _local/ folder in the tree counts
+# local only
 _local/
 **/_local/
 _docs/
-notes/
-docs/*.md
-docs/*.json
-NOTES.md
-CHANGELOG.md
-# grafana provisioning + dashboards, kept local with the rest of the ops setup
-monitoring/
 
 # build artefacts not worth committing
 .vercel/

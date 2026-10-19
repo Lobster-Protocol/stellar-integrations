@@ -4,8 +4,8 @@
 //   tsx scripts/setup-dfns-policies.mts             create the policies
 //   tsx scripts/setup-dfns-policies.mts --reset     archive the active ones first
 //
-// the demo wallet gets a pair of rules so both sides of custody show: under its
-// threshold a signature clears on its own, over it an approver has to release it.
+// the demo wallet gets two rules: under its threshold a signature goes through
+// without a human, over it an approver has to release it.
 // every other wallet keeps the strict rule.
 //
 // Env:

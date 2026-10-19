@@ -1,6 +1,6 @@
 import { getDfnsClient } from './client'
 
-// per-policy thresholds sit in env so they can change without a redeploy.
+// per-policy thresholds come from env so they can change without a redeploy.
 function num(name: string, fallback: number): number {
   const v = process.env[name]
   if (!v) return fallback

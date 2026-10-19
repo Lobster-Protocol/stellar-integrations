@@ -24,8 +24,7 @@ export interface Tenant {
   kind: TenantKind
   label: string
   dfns: TenantDfnsCreds
-  // null until the tenant designates a treasury wallet on a network, the same
-  // gap the routes already answer with a 503.
+  // null until the tenant picks a treasury wallet; the routes answer 503 then.
   treasury: TenantTreasury | null
   guard: SignGuardConfig | null
 }

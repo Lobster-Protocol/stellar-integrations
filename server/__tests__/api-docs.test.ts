@@ -20,7 +20,7 @@ vi.mock('../dfns/transfer', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../dfns/transfer')>()),
   transferNative: transferMock,
 }))
-// a chain only breaks on a bug upstream, so the test breaks it itself
+// spied so the 500 case can fake a broken audit hash chain
 vi.mock('../mica-export', async (importOriginal) => {
   const real = await importOriginal<typeof import('../mica-export')>()
   return { ...real, verifyChain: vi.fn(real.verifyChain) }
@@ -212,11 +212,11 @@ interface Answer {
   route: string
   status: number
   env?: Record<string, string>
-  arrange?: () => unknown
+  setup?: () => unknown
   request: () => Request
 }
 
-// answers the relay gives without reaching DFNS, Circle or a ledger
+// answers the relay gives without any upstream call
 const ANSWERS: Answer[] = [
   {
     name: 'a webhook with a bad signature',
@@ -240,7 +240,7 @@ const ANSWERS: Answer[] = [
     name: 'an audit export whose chain breaks',
     route: 'get /dfns/audit/export',
     status: 500,
-    arrange: () => vi.mocked(verifyChain).mockReturnValueOnce(0),
+    setup: () => vi.mocked(verifyChain).mockReturnValueOnce(0),
     request: () => get('/dfns/audit/export'),
   },
   {
@@ -261,7 +261,7 @@ const ANSWERS: Answer[] = [
     route: 'post /dfns/transfer',
     status: 502,
     env: TRANSFER_ENV,
-    arrange: () => transferMock.mockRejectedValueOnce(new Error('dfns down')),
+    setup: () => transferMock.mockRejectedValueOnce(new Error('dfns down')),
     request: () => post('/dfns/transfer', { to: TREASURY, stroops: '1' }, BEARER),
   },
   {
@@ -296,7 +296,7 @@ const ANSWERS: Answer[] = [
     route: 'post /dfns/sign',
     status: 429,
     env: { RATE_LIMIT_PER_MIN: '1' },
-    arrange: () => app.fetch(post('/dfns/sign', {}, { 'x-forwarded-for': '203.0.113.7' })),
+    setup: () => app.fetch(post('/dfns/sign', {}, { 'x-forwarded-for': '203.0.113.7' })),
     request: () => post('/dfns/sign', {}, { 'x-forwarded-for': '203.0.113.7' }),
   },
 ]
@@ -349,9 +349,9 @@ describe('openapi spec', () => {
     expect(inSpec.sort()).toEqual(inRelay.sort())
   })
 
-  it.each(ANSWERS)('documents the $status for $name', async ({ route, status, env, arrange, request }) => {
+  it.each(ANSWERS)('documents the $status for $name', async ({ route, status, env, setup, request }) => {
     Object.assign(process.env, env)
-    await arrange?.()
+    await setup?.()
     const res = await app.fetch(request())
     expect(res.status).toBe(status)
     expect(documented(route)).toContain(String(status))

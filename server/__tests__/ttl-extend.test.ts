@@ -66,7 +66,7 @@ function makeSigner(): ExtendSigner {
 describe('extendKeys', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('simulates, signs the assembled xdr and submits on the happy path', async () => {
+  it('signs the assembled xdr and submits it', async () => {
     const server = makeServer()
     const signer = makeSigner()
     await extendKeys(server as never, [critStatus], 'testnet', signer)
@@ -107,10 +107,10 @@ describe('extendKeys', () => {
     expect(server.sendTransaction).toHaveBeenCalledTimes(1)
   })
 
-  it('refuses to sign when the signer is wired for the other network', async () => {
+  it('refuses to sign when the signer is set up for the other network', async () => {
     const server = makeServer()
     const signer = makeSigner() // network: 'testnet'
-    await expect(extendKeys(server as never, [critStatus], 'mainnet', signer)).rejects.toThrow(/wired for testnet/)
+    await expect(extendKeys(server as never, [critStatus], 'mainnet', signer)).rejects.toThrow(/set up for testnet/)
     expect(signer.sign).not.toHaveBeenCalled()
   })
 

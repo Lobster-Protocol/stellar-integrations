@@ -69,9 +69,8 @@ export function httpTargets(): HttpTarget[] {
       })
     }
   }
-  // the public status board: the free grafana instance behind it stops serving
-  // pages after a quiet spell and greets the next visitor with a loading notice.
-  // a check every minute keeps it up and says so when it is not.
+  // the public status board. the free grafana instance idles without traffic and
+  // serves a loading page, so a check every minute keeps it up and flags it when it's down
   if (env.MONITOR_STATUS_PAGE_URL) {
     list.push({ name: 'status-page', area: 'frontend', url: env.MONITOR_STATUS_PAGE_URL, probe: 'page' })
   }

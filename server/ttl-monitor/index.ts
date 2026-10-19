@@ -18,7 +18,7 @@ interface MonitorConfig {
 }
 
 const DEFAULT_INTERVAL_MS = 300_000
-// most one extend may cost. the dearest is the 35 KB vault code going from its
+// max fee for one extend. the priciest is the 35 KB vault code going from its
 // last day back to 30: about 10.4 XLM on mainnet in october 2026. the cap leaves
 // room for rent to climb, not for a runaway estimate near the ttl ceiling.
 const DEFAULT_FEE_CAP_XLM = 20
@@ -232,8 +232,7 @@ async function pushMetrics(url: string, body: string): Promise<void> {
 
 export interface ExtendSigner {
   sourceAddress: string
-  // asserted against the pass so a mainnet daemon can't drive a testnet-wired
-  // signer, or the reverse
+  // checked against the pass so a mainnet daemon can't use a testnet signer, or the reverse
   network: Network
   sign(xdrBase64: string, networkPassphrase: string): Promise<string>
 }
@@ -248,7 +247,7 @@ export async function extendKeys(
 ): Promise<string[]> {
   const landed: string[] = []
   if (signer.network !== network) {
-    throw new Error(`extend signer is wired for ${signer.network}, refusing to sign on ${network}`)
+    throw new Error(`extend signer is set up for ${signer.network}, refusing to sign on ${network}`)
   }
   const passphrase = network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET
   for (const s of keys) {
@@ -340,7 +339,7 @@ async function runOnce(config: MonitorConfig, signer?: ExtendSigner, extendedAt 
       }
     }
   } else if (due.length) {
-    console.warn(`[ttl-monitor:${config.network}] ${due.length} key(s) need an extend and no signer is wired`)
+    console.warn(`[ttl-monitor:${config.network}] ${due.length} key(s) need an extend and no signer is set up`)
   }
 
   const body = formatMetrics(scan, config.network, !!signer)

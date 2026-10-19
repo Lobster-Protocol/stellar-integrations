@@ -8,7 +8,7 @@ export interface DtiKey {
 }
 
 const TABLE: Array<{ key: DtiKey; dti: string }> = [
-  // real 9-char codes go here once obtained; key by asset, issuer, or contractId.
+  // TODO: no DTI codes yet. key them by asset, issuer or contractId
 ]
 
 export function lookupDti(key: DtiKey): string | null {

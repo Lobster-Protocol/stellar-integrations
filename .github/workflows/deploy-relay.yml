@@ -1,8 +1,7 @@
 name: deploy relay
 
-# redeploy the render relay when its code changes. render's own auto-deploy stays
-# off for this service: it would restart the relay on every push, readme
-# included, on top of this hook.
+# redeploy the render relay when its code changes; render's own auto-deploy is off
+# so a readme push doesn't restart it
 on:
   push:
     branches: [main]

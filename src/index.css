@@ -13,11 +13,9 @@
   --color-coral: #cf4327;
   --color-green: #10b981;
   --color-red: #ef4444;
-  /* status scale, good to critical. darker than the green above (2.5:1 on a
-     white card) and a plain yellow like #eab308 (1.9:1), which work behind a
-     filled shape but not as text. amber and red still collapse under
-     deuteranopia at any lightness, so every status also carries an icon and a
-     word. */
+  /* status scale. darker than --color-green and plain yellow so it passes
+     contrast as text; amber and red still blur under deuteranopia, so every
+     status also gets an icon and a word. */
   --color-ok: #0f9b6c;
   --color-warn: #8a6d00;
   --color-crit: #cf4327;
@@ -59,7 +57,6 @@ h1, h2, h3, h4, h5, h6 {
   display: none !important;
 }
 
-/* hide the chrome when printing */
 @media print {
   html, body { background: #fff !important; color: #000 !important; }
   aside, nav, footer, [role="dialog"], button { display: none !important; }

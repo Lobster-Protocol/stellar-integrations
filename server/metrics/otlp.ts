@@ -1,6 +1,6 @@
 // nothing scrapes the relay around the clock, so with GRAFANA_OTLP_URL set it pushes
-// to grafana cloud over otlp/http json. names and labels pass through as they are and
-// push_time_seconds is stamped like a pushgateway would, so boards and alerts don't move.
+// otlp/http json to grafana cloud. push_time_seconds is stamped like a pushgateway
+// would, since boards and alerts read it.
 
 type Sample = { name: string; labels: Record<string, string>; value: number }
 

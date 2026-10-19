@@ -45,11 +45,11 @@ export function readComponents(
   return out
 }
 
-// status pages move slowly and sit behind a cdn, so they are read every five
-// minutes and the minute probe pass reuses the last read in between. that cdn
-// throttles shared cloud ips now and then: a failed read keeps a vendor's last
-// good one for half an hour, as the pages' own stale-if-error does, then lets it
-// go so the board shows no data rather than an old green.
+// status pages move slowly and are cdn-cached, so they're read every five minutes
+// and the minute probe pass reuses the last read in between. that cdn throttles
+// shared cloud ips now and then: a failed read keeps a vendor's last good one for
+// half an hour, as the pages' own stale-if-error does, then drops it so the board
+// shows no data rather than an old green.
 const REFRESH_MS = 5 * 60_000
 const KEEP_ON_ERROR_MS = 30 * 60_000
 const USER_AGENT = `lobster-status-probe (+${FRONTEND_URL})`

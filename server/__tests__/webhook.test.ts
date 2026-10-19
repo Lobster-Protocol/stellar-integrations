@@ -251,7 +251,6 @@ describe('mica export of dfns requests', () => {
     }
   }
 
-  // posts one event and returns the exported records for its tx hash
   async function exported(id: string, kind: string, data: object, txHash: string): Promise<McaRecord[]> {
     const body = JSON.stringify({
       id,

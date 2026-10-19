@@ -1,8 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
-// Default to a locally served build so the specs run against the code in this
-// repo, not a stale deploy. Point at a deployment with PLAYWRIGHT_BASE_URL for
-// a prod smoke run (the feature specs only pass there once that work is live).
+// default to a locally served build so the specs run against the code in this
+// repo, not a stale deploy. set PLAYWRIGHT_BASE_URL to smoke-test a deployment.
 const LOCAL_URL = 'http://localhost:4188'
 const external = process.env.PLAYWRIGHT_BASE_URL
 if (!external) process.env.PLAYWRIGHT_BASE_URL = LOCAL_URL

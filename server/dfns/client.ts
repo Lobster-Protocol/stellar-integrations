@@ -7,8 +7,7 @@ export function getDfnsClient(): DfnsApiClient {
   return dfnsClientFor(requireDemoTenant())
 }
 
-// listing one wallet is the lightest authenticated call. fail-fast on
-// boot lets a bad PEM or stale token error out before traffic arrives.
+// listing one wallet is the lightest authenticated call.
 export async function pingDfns(): Promise<void> {
   await getDfnsClient().wallets.listWallets({ query: { limit: 1 } })
 }

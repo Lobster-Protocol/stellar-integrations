@@ -105,8 +105,8 @@ describe('dueForExtend', () => {
   it('holds a key back for a day after its extend landed', () => {
     const now = 100 * day
     const extendedAt = new Map([
-      ['A', now - 3600 * 1000], // an hour ago
-      ['B', now - day], // a day ago
+      ['A', now - 3600 * 1000],
+      ['B', now - day],
     ])
     expect(dueForExtend(due, extendedAt, now).map((s) => s.keyXdr)).toEqual(['B', 'C'])
     expect(dueForExtend(due, new Map(), now)).toHaveLength(3)

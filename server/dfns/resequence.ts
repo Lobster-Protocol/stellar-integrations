@@ -2,14 +2,11 @@ import { TransactionBuilder, Networks, type Transaction, type Account } from '@s
 import { STELLAR_RPC_FALLBACK, type Network } from '../../src/config/contracts'
 import { horizonServer } from '../stellar-client'
 
-// dfns signs and broadcasts a kind:Transaction envelope verbatim, with the
-// sequence baked in at build time, and only after an approval hold that can run
-// minutes. rebuild the same ops on a fresh sequence so a value that was current
-// at the click is not stale when dfns finally submits it. this closes the
-// build->broadcast window; a tx held for approval while the account is used
-// elsewhere can still race, which is why the treasury signs one tx at a time.
+// dfns broadcasts a kind:Transaction envelope verbatim, sequence included, and only
+// after an approval hold that can run minutes. rebuilding on a fresh sequence keeps
+// it valid by then; a tx held while the account is used elsewhere can still race.
 export function rebuildWithSequence(tx: Transaction, account: Account, passphrase: string): Transaction {
-  // the footprint and resource budget sit in the tx extension, not in the ops, and
+  // the footprint and resource budget are in the tx extension, not in the ops, and
   // an invokeHostFunction without them is rejected as malformed.
   const ext = tx.toEnvelope().v1().tx().ext()
   const sorobanData = ext.switch() === 1 ? ext.sorobanData() : null

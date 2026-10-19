@@ -7,7 +7,7 @@ const EVM = '0x1111111111111111111111111111111111111111'
 const STELLAR = 'GA2PK7ZWHBJOFSGLZDAE65I7GQ5PFONWKUG5SGNJZ24HGYBLVCV64MBU'
 
 describe('allbridge request schemas', () => {
-  it('quote accepts a valid usdc amount on a wired chain', () => {
+  it('quote accepts a valid usdc amount on a supported chain', () => {
     expect(QuoteSchema.safeParse({ sourceChain: 'ETH', amount: '100' }).success).toBe(true)
     expect(QuoteSchema.safeParse({ sourceChain: 'ARB', amount: '100.5' }).success).toBe(true)
   })

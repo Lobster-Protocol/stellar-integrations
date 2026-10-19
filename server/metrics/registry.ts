@@ -10,15 +10,14 @@ export const httpDuration = new Histogram({
   name: 'http_request_duration_seconds',
   help: 'relay request duration in seconds',
   labelNames: ['method', 'route', 'status_code'],
-  // 1.5 and 2 sit around the 2 s alert line, so a p99 near it reads off real
+  // 1.5 and 2 bracket the 2 s alert line, so a p99 near it reads off real
   // buckets instead of being drawn up toward 2.5
   buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 1.5, 2, 2.5, 5],
   registers: [registry],
 })
 
 // every treasury signature is held for approval, so approvals by status track the
-// signing flow. pending_expired is held for approval but its transaction has
-// run past its time bounds. refreshed by dfns-signing.ts.
+// signing flow. refreshed by dfns-signing.ts.
 export const dfnsApprovals = new Gauge({
   name: 'lobster_dfns_approvals',
   help: 'DFNS policy approvals by status; pending_expired is still held but its transaction can no longer land',

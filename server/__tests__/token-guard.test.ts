@@ -15,10 +15,10 @@ afterEach(() => {
 })
 
 describe('tokenGuard on /dfns/policies and /dfns/wallets', () => {
-  it('lets requests through when LOBSTER_API_TOKEN is unset (local dev)', async () => {
+  it('lets requests through when LOBSTER_API_TOKEN is unset, as in local dev', async () => {
     delete process.env.LOBSTER_API_TOKEN
     const res = await app.fetch(new Request('http://localhost/dfns/policies'))
-    // 502 because dfns client is not configured in tests, but NOT a 401
+    // dfns isn't configured in tests, so this 502s; it just mustn't be a 401
     expect(res.status).not.toBe(401)
   })
 
@@ -57,7 +57,7 @@ describe('tokenGuard on /dfns/policies and /dfns/wallets', () => {
     await res.body?.cancel()
   })
 
-  it('rejects a token of the right length but wrong content (timing-safe)', async () => {
+  it('rejects a token of the right length but wrong content', async () => {
     process.env.LOBSTER_API_TOKEN = TOKEN
     const wrong = TOKEN.slice(0, -1) + (TOKEN.endsWith('6') ? '7' : '6')
     const res = await app.fetch(

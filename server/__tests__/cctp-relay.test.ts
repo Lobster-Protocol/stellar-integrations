@@ -61,7 +61,7 @@ afterEach(() => {
 })
 
 describe('relayKeypair', () => {
-  it('stays shut when no key is configured', () => {
+  it('throws when no key is configured', () => {
     delete process.env.CCTP_RELAY_SECRET
     expect(() => relayKeypair('testnet')).toThrow(RelayRefused)
   })
@@ -102,7 +102,7 @@ describe('deliver', () => {
     process.env.CCTP_RELAY_SECRET = Keypair.random().secret()
   })
 
-  it('refuses a recipient that is not an account before asking anyone', async () => {
+  it('refuses a recipient that is not an account before calling Circle', async () => {
     const fn = irisAnswers(200, {})
     await expect(
       deliver({ network: 'testnet', sourceDomain: 6, burnTxHash: BURN, recipient: 'nope' }),

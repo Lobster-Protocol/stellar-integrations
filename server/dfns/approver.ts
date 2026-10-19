@@ -5,7 +5,7 @@ import { requireEnv } from '../env'
 
 // votes as a dedicated DFNS User, not the service account: a service account can
 // vote only with serviceAccountsCanApprove, which DFNS gates behind a support
-// ticket. the User's Key credential sits in the relay env, so no passkey prompt.
+// ticket. the User's Key credential is in the relay env, so no passkey prompt.
 export function approverConfigured(): boolean {
   return Boolean(
     process.env.DFNS_APPROVER_AUTH_TOKEN &&

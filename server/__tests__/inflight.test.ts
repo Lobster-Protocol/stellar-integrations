@@ -20,10 +20,10 @@ describe('single-in-flight treasury signatures', () => {
     expect(busy).toEqual({ id: 'sig-1', status: 'Pending' })
   })
 
-  it('a tracked signature that has gone terminal self-heals and frees the wallet', async () => {
+  it('a tracked signature that went terminal is cleared and stops blocking', async () => {
     trackPending(W, 'sig-1')
     expect(await unresolvedSignature(W, async () => ({ status: 'Confirmed' }), isTerminal)).toBeNull()
-    // the tracker is cleared, so a later pending check does not resurrect it
+    // that read cleared the tracker, so a later Pending answer doesn't lock again
     expect(await unresolvedSignature(W, async () => ({ status: 'Pending' }), isTerminal)).toBeNull()
   })
 
@@ -53,9 +53,6 @@ describe('single-in-flight treasury signatures', () => {
     expect(peekPending(W)).toBeNull()
     trackPending(W, 'sig-1')
     expect(peekPending(W)).toBe('sig-1')
-    // a status read of a different, already terminal id must not match, so the route
-    // that gates clearPending on this equality leaves a still-held signature locked
-    expect('sig-OTHER' === peekPending(W)).toBe(false)
     clearPending(W)
     expect(peekPending(W)).toBeNull()
   })

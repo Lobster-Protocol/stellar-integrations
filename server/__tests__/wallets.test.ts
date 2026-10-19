@@ -57,13 +57,13 @@ describe('listWallets', () => {
     expect(items[0].id).toBe('w-1')
   })
 
-  it('handles an empty items array', async () => {
+  it('returns [] for an empty items array', async () => {
     listWalletsMock.mockResolvedValueOnce({ items: [] })
     const items = await listWallets()
     expect(items).toEqual([])
   })
 
-  it('handles an undefined items field', async () => {
+  it('returns [] when items is missing', async () => {
     listWalletsMock.mockResolvedValueOnce({})
     const items = await listWallets()
     expect(items).toEqual([])

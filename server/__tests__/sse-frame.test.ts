@@ -24,7 +24,7 @@ const FULL_EVENT: DfnsWebhookEvent = {
   },
 }
 
-describe('buildSseFrame (SSE payload stripping)', () => {
+describe('buildSseFrame', () => {
   it('keeps only id, kind, timestampSent in the data field', () => {
     const frame = buildSseFrame(FULL_EVENT)
     const decoded = JSON.parse(frame.data) as Record<string, unknown>
@@ -34,7 +34,7 @@ describe('buildSseFrame (SSE payload stripping)', () => {
     expect(decoded.timestampSent).toBe(1717320000)
   })
 
-  it('strips the raw data field entirely (no signed envelope leak)', () => {
+  it('strips the raw data field, signed envelope included', () => {
     const frame = buildSseFrame(FULL_EVENT)
     expect(frame.data).not.toContain('signedEnvelopeXdr')
     expect(frame.data).not.toContain('AAAA....secret-signed-xdr')
@@ -42,7 +42,7 @@ describe('buildSseFrame (SSE payload stripping)', () => {
     expect(frame.data).not.toContain('walletId')
   })
 
-  it('strips the date field (kept server-side only)', () => {
+  it('strips the date field', () => {
     const frame = buildSseFrame(FULL_EVENT)
     expect(frame.data).not.toContain('2026-06-02T10:00:00Z')
   })
@@ -64,7 +64,7 @@ describe('buildSseFrame (SSE payload stripping)', () => {
     expect(frame.event).toBe('wallet.transaction.confirmed')
   })
 
-  it('keeps the dfns event id as the SSE id (for Last-Event-ID reconnects)', () => {
+  it('keeps the dfns event id as the SSE id, for Last-Event-ID reconnects', () => {
     const frame = buildSseFrame(FULL_EVENT)
     expect(frame.id).toBe('evt-1')
   })

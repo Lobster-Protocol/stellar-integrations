@@ -50,7 +50,7 @@ describe('autoApproveArmed (fail-closed)', () => {
     expect(autoApproveArmed()).toBe(false)
   })
 
-  it('is on only when armed AND testnet AND approver configured', () => {
+  it('is on only when armed, on testnet, with an approver configured', () => {
     arm()
     expect(autoApproveArmed()).toBe(true)
   })

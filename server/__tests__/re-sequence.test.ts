@@ -13,9 +13,10 @@ import {
 } from '@stellar/stellar-sdk'
 
 import { rebuildWithSequence } from '../dfns/resequence'
+import { CONTRACTS } from '../../src/config/contracts'
 
 const TREASURY = 'GCWEI7HVEOPEMP7YTULFH5DMGCJCHMEKZHBHTI3R66WMKX276A4W2OPB'
-const LOBS_ISSUER = 'GBYIQEC7OMW2BV4PFL4R6GCBN32ALIEAEYDV7MIWPRGJGEP5M7UMWVCB'
+const LOBS_ISSUER = CONTRACTS.testnet.lobsAsset.issuer
 
 function trustlineAt(seq: string) {
   return new TransactionBuilder(new Account(TREASURY, seq), {
@@ -92,7 +93,7 @@ describe('rebuildWithSequence', () => {
 })
 
 describe('rebuildWithSequence on a soroban envelope', () => {
-  const FACTORY = 'CACIPDGSEGB3C5FHINR3S5V6F7BMVH5IWVQ2U3BUHHTP4BVSRRPE2LXO'
+  const FACTORY = CONTRACTS.testnet.lobster.factory
   const RESOURCE_FEE = 13211
 
   function sorobanCallAt(seq: string) {

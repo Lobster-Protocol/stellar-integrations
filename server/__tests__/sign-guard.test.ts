@@ -322,8 +322,7 @@ describe('soroban views', () => {
 
   it('refuses an invocation carrying authorization entries', () => {
     const tx = buildView(FACTORY, 'get_admin')
-    // an auth entry is what lets an invocation move a token, so its presence
-    // alone disqualifies the call however harmless the method looks
+    // an auth entry is what lets a call move a token, so any entry gets it refused
     const op = tx.operations[0] as unknown as { auth: unknown[] }
     op.auth = [{}]
     expect(() => inspectSignXdr(tx, viewCfg)).toThrow(/authorization entries/i)
@@ -408,7 +407,7 @@ describe('soroban value calls', () => {
     expect(() => inspectSignXdr(buildValueCall(VAULT, 'deposit', { auth: true }), noValue)).toThrow(SignGuardRejected)
   })
 
-  it('refuses a value call an op sources away from the treasury', () => {
+  it('refuses a value call whose op source is not the treasury', () => {
     const tx = buildValueCall(VAULT, 'deposit', { auth: true, opSource: OTHER })
     expect(() => inspectSignXdr(tx, valueCfg)).toThrow(SignGuardRejected)
   })

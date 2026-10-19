@@ -124,12 +124,12 @@ describe('extension blocks (dfns / decision / execution / side)', () => {
     expect(records[0].side).toBe('sell')
   })
 
-  it('attaches the dfns block to every record built from the tx', () => {
+  it('attaches the dfns block to the record', () => {
     const records = buildMcaRecords(enriched, CTX)
     expect(records[0].dfns).toEqual({ walletId: 'wa-1', signatureId: 'sig-1', status: 'Confirmed' })
   })
 
-  it('attaches the decision block to every record built from the tx', () => {
+  it('attaches the decision block to the record', () => {
     const records = buildMcaRecords(enriched, CTX)
     expect(records[0].decision).toEqual({ policyId: 'pol-1', value: 'AutoApproved' })
   })

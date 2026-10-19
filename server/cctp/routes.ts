@@ -31,8 +31,8 @@ interface Guards {
   operatorGuard: MiddlewareHandler
 }
 
-// The browser runs the bridge without us. These follow a transfer over plain HTTP,
-// either way, and pay the delivery for an account that doesn't sign from a browser.
+// the browser bridges on its own. these let a script follow a transfer either way
+// over http, and pay the delivery for an account that can't sign in a browser.
 export function registerCctpRoutes(app: Hono, guards: Guards): void {
   app.get('/cctp/chains', (c) => {
     const network = NetworkSchema.safeParse(c.req.query('network'))

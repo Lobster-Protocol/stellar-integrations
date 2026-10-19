@@ -11,7 +11,7 @@ function toHexEnvelope(tx: Transaction | FeeBumpTransaction): string {
 }
 
 // dfns wants the unsigned envelope as hex with a 0x prefix. base64 is
-// silently rejected with a confusing error, so the hex form is enforced.
+// rejected with a confusing error, so the hex form is enforced.
 export async function broadcastStellarTx(
   walletId: string,
   tx: Transaction | FeeBumpTransaction,

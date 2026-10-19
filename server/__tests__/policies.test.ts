@@ -111,7 +111,7 @@ describe('createRecipientWhitelistPolicy', () => {
 })
 
 describe('listPolicies / archivePolicy', () => {
-  it('forwards the underlying calls without modification', async () => {
+  it('lists with a limit of 100 and archives by policy id', async () => {
     await listPolicies()
     expect(listPoliciesMock).toHaveBeenCalledWith({ query: { limit: '100' } })
 
