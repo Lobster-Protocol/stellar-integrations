@@ -6,6 +6,7 @@ import { useBuildPingTx, useSubmitAndWait } from '../integrations/lobster/hooks'
 import { buildTreasuryPaymentTx } from '../integrations/dfns/demo-tx'
 import { awaitDfnsSignature } from '../integrations/dfns/await-signature'
 import { pollSignatureStatus, requestTransfer } from '../integrations/dfns/relay'
+import { demoAvailable } from '../integrations/dfns/profiles'
 import { readableDfnsError } from '../integrations/dfns/errors'
 import { networkPassphrase } from '../integrations/lobster/client'
 import { txLanded } from '../integrations/stellar/landed'
@@ -189,7 +190,9 @@ export default function SignDemoTx() {
       {!source ? (
         <p className="text-xs text-text-muted">
           {isDfns
-            ? "This tab signs through a DFNS relay, the Lobster testnet demo or one you run yourself. A DFNS wallet you've connected signs under the other tab, no relay needed."
+            ? demoAvailable()
+              ? "This tab signs through a DFNS relay, the Lobster testnet demo or one you run yourself. A DFNS wallet you've connected signs under the other tab, no relay needed."
+              : "This tab signs through a DFNS relay you run yourself. A DFNS wallet you've connected signs under the other tab, no relay needed."
             : 'Connect a Stellar wallet to try this.'}
         </p>
       ) : network === 'mainnet' ? (

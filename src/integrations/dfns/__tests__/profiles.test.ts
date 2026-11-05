@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 import {
   DEMO_PROFILE_ID,
@@ -24,6 +24,17 @@ beforeEach(() => {
 const conn = { label: 'Acme DFNS', relayBaseUrl: 'https://relay.acme.test', apiToken: 'read-tok' }
 
 describe('dfns profiles', () => {
+  it('leaves the demo out of builds that do not turn it on', () => {
+    vi.stubEnv('VITE_DFNS_DEMO', '')
+    try {
+      expect(listProfiles().some((p) => p.id === DEMO_PROFILE_ID)).toBe(false)
+      setActiveProfile(DEMO_PROFILE_ID)
+      expect(activeProfile()).toBeNull()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('starts with no client profiles and nothing active', () => {
     expect(clientProfiles()).toEqual([])
     expect(listProfiles().some((p) => p.id === DEMO_PROFILE_ID)).toBe(true)

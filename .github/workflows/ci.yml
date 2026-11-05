@@ -19,6 +19,8 @@ jobs:
     env:
       VITE_LOBSTER_API_URL: http://127.0.0.1:8787
       VITE_LOBSTER_API_TOKEN: ci-placeholder-token
+      # the dfns specs drive the shared demo profile, which production builds leave out
+      VITE_DFNS_DEMO: 'on'
 
     steps:
       - uses: actions/checkout@v4

@@ -19,6 +19,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/setup-tests.ts'],
+    // many specs use the shared demo relay as their dfns fixture
+    env: { VITE_DFNS_DEMO: 'on' },
     include: ['src/**/*.{test,spec}.{ts,tsx}', 'server/**/*.{test,spec}.ts'],
     exclude: ['node_modules', 'dist', 'tests'],
   },

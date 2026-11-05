@@ -125,7 +125,10 @@ function write(key: string, value: unknown): void {
   }
 }
 
+// the shared demo needs a DFNS org of ours behind the relay, which only builds that
+// set VITE_DFNS_DEMO=on have (tests, ci). everywhere else only client relays show.
 function demoProfile(): DfnsProfile | null {
+  if (import.meta.env.VITE_DFNS_DEMO !== 'on') return null
   const relayBaseUrl = import.meta.env.VITE_LOBSTER_API_URL
   if (!relayBaseUrl) return null
   return {
@@ -144,6 +147,10 @@ export function clientProfiles(): DfnsProfile[] {
   return read<DfnsProfile[]>(PROFILES_KEY, []).filter(
     (p): p is DfnsProfile => !!p && typeof p.id === 'string' && p.kind === 'client',
   )
+}
+
+export function demoAvailable(): boolean {
+  return demoProfile() !== null
 }
 
 export function listProfiles(): DfnsProfile[] {
