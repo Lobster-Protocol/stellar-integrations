@@ -50,13 +50,13 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           tar -C dist -czf - . | ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes "deploy@$VM_HOST" "$GITHUB_SHA"
 
-      - name: Check the site serves this build
+      # asks the VM itself, whatever the DNS says; -k because the certificate check is not the point here
+      - name: Check the VM serves this build
+        env:
+          VM_HOST: ${{ vars.VM_HOST }}
         run: |
           host="$(grep -m 1 -E '^[a-z0-9.-]+ \{$' scripts/vm/stellar-instit.caddy | cut -d ' ' -f 1)"
           entry="$(grep -o 'assets/index-[A-Za-z0-9_-]*\.js' dist/index.html | head -n 1)"
-          for i in 1 2 3 4 5; do
-            curl -fsS "https://$host/" | grep -q "$entry" && exit 0
-            sleep 5
-          done
-          echo "https://$host/ does not reference $entry" >&2
+          curl -fsSk --resolve "$host:443:$VM_HOST" "https://$host/" | grep -q "$entry" && exit 0
+          echo "the VM does not serve $entry for $host" >&2
           exit 1

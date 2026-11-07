@@ -38,7 +38,7 @@ install -m 644 "$here/$site.caddy" "/etc/caddy/sites/$site.caddy"
 id deploy >/dev/null 2>&1 || adduser --system --group --home /var/lib/deploy --shell /bin/sh deploy
 install -m 755 "$here/site-deploy" /usr/local/bin/site-deploy
 install -d -m 755 -o deploy -g deploy "/srv/$site" "/srv/$site/releases" "/srv/$site/assets"
-# root owns the key list, so even a hostile upload running as deploy cannot lift the pin
+# root owns the key list: deploy cannot rewrite it, whatever an upload contains
 install -d -m 755 -o root -g root /var/lib/deploy/.ssh
 ak=/var/lib/deploy/.ssh/authorized_keys
 key="$(tr -d '\r' <"$pub")"
