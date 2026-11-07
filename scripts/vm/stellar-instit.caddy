@@ -1,0 +1,31 @@
+# Installed as /etc/caddy/sites/stellar-instit.caddy by setup-vm.sh.
+# The files come from .github/workflows/deploy-vm.yml through site-deploy.
+stellar-instit.lobster-protocol.com {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# hashed files of every kept release: a tab opened before a deploy still finds its chunks,
+	# and a file that really is gone answers 404 instead of the page's HTML
+	handle /assets/* {
+		root * /srv/stellar-instit
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server {
+			hide .*
+		}
+	}
+
+	handle {
+		root * /srv/stellar-instit/current
+		header Cache-Control "public, max-age=0, must-revalidate"
+		try_files {path} /index.html
+		file_server {
+			hide .*
+		}
+	}
+}

@@ -1,0 +1,62 @@
+name: Deploy front to the VM
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# one upload at a time: a newer push waits rather than cutting an upload short
+concurrency:
+  group: deploy-vm
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # vite bakes the production VITE_* values into the bundle; they sit in one repo secret
+      - name: Build
+        env:
+          PROD_ENV: ${{ secrets.VITE_PROD_ENV }}
+        run: |
+          printf '%s\n' "$PROD_ENV" > .env.production.local
+          npm run build
+
+      # the key on the VM can only run site-deploy, which takes the sha as release id
+      - name: Upload to the VM
+        env:
+          DEPLOY_KEY: ${{ secrets.VM_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
+          VM_HOST: ${{ vars.VM_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          tar -C dist -czf - . | ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes "deploy@$VM_HOST" "$GITHUB_SHA"
+
+      - name: Check the site serves this build
+        run: |
+          host="$(grep -m 1 -E '^[a-z0-9.-]+ \{$' scripts/vm/stellar-instit.caddy | cut -d ' ' -f 1)"
+          entry="$(grep -o 'assets/index-[A-Za-z0-9_-]*\.js' dist/index.html | head -n 1)"
+          for i in 1 2 3 4 5; do
+            curl -fsS "https://$host/" | grep -q "$entry" && exit 0
+            sleep 5
+          done
+          echo "https://$host/ does not reference $entry" >&2
+          exit 1

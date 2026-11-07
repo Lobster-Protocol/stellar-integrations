@@ -1,0 +1,41 @@
+#!/bin/sh
+# Forced command of the CI upload keys (authorized_keys: command="/usr/local/bin/site-deploy <site>").
+# Reads a gzipped tar of a static build on stdin and publishes it as a new release of <site>.
+# The client only picks the release id, which must be a commit sha.
+set -eu
+
+site="${1:-}"
+case "$site" in "" | *[!a-z0-9-]*) echo "site-deploy: bad site name" >&2; exit 2 ;; esac
+release="${SSH_ORIGINAL_COMMAND:-}"
+case "$release" in "" | *[!0-9a-f]*) echo "site-deploy: the release id must be a commit sha" >&2; exit 2 ;; esac
+if [ "${#release}" -lt 7 ] || [ "${#release}" -gt 40 ]; then echo "site-deploy: bad release id" >&2; exit 2; fi
+
+base="/srv/$site"
+[ -d "$base/releases" ] || { echo "site-deploy: unknown site $site" >&2; exit 2; }
+
+incoming="$base/releases/.incoming-$release-$$"
+mkdir "$incoming"
+trap 'rm -rf "$incoming"' EXIT
+tar -xzf - -C "$incoming" --no-same-owner --no-same-permissions
+[ -f "$incoming/index.html" ] || { echo "site-deploy: the upload has no index.html" >&2; exit 3; }
+
+# hashed assets pile up across releases so pages opened before this deploy keep loading
+if [ -d "$incoming/assets" ]; then
+	mkdir -p "$base/assets"
+	cp -an "$incoming/assets/." "$base/assets/"
+fi
+
+dest="$base/releases/$(date -u +%Y%m%d%H%M%S)-$release"
+mv "$incoming" "$dest"
+trap - EXIT
+ln -sfn "$dest" "$base/.current.new"
+mv -T "$base/.current.new" "$base/current"
+
+# keep five releases, and drop shared assets that no kept release ships once they are a month old
+ls -1d "$base"/releases/[0-9]* | sort | head -n -5 | xargs -r rm -rf
+find "$base/assets" -type f -mtime +30 | while read -r f; do
+	n="$(basename "$f")"
+	ls "$base"/releases/*/assets/"$n" >/dev/null 2>&1 || rm -f "$f"
+done
+
+echo "site-deploy: $site now serves $release"
