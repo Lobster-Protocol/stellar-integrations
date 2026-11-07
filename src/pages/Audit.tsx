@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useHasActiveRelay } from '../integrations/dfns/use-profiles'
+import { demoAvailable } from '../integrations/dfns/profiles'
 import { useWallet } from '../contexts/WalletContext'
 import { useNetwork } from '../contexts/NetworkContext'
 import { useFactoryInfo, useLatestVaults, useVaultsHolding } from '../integrations/lobster/hooks'
@@ -74,8 +75,8 @@ export default function Audit() {
       {!configured ? (
         <Card>
           <Empty>
-            No DFNS organization is connected yet. Connect your own DFNS in the panel above, or
-            pick the Lobster testnet demo.
+            No DFNS organization is connected yet. Connect your own DFNS in the panel above
+            {demoAvailable() ? ', or pick the Lobster testnet demo.' : '.'}
           </Empty>
         </Card>
       ) : (
@@ -278,7 +279,7 @@ export default function Audit() {
         <h2 className="text-lg font-semibold text-text">Try it on testnet</h2>
         <p className="text-sm text-text-secondary mt-1 max-w-2xl leading-relaxed">
           Everything above is a live read. To watch a signature happen, send a harmless testnet
-          call below, from your own wallet or from the DFNS treasury.
+          call below, from your own wallet or from a DFNS treasury you connect.
         </p>
       </div>
 

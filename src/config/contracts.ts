@@ -98,8 +98,8 @@ const mainnet: NetworkContracts = {
     router: '',
   },
   lobster: {
-    // admin is the DFNS treasury. wasmHash is the Soroswap-only pool the factory
-    // deploys per vault
+    // admin is the Lobster treasury account GCE75LSG...6DQP. wasmHash is the
+    // Soroswap-only pool the factory deploys per vault
     factory: 'CAFGQVKFCZITN7UJUOIJPMULGZRUR7RXG6DAYJ2VBGIGFWHHFGR6MCR5',
     wasmHash: 'a72a67ac4b9fa0ad561032d8d433d4da0024100cdb27f9098cb89997243b8382',
     // all-zero account: a read-only sim needs no funds

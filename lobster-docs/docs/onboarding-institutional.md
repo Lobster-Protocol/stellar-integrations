@@ -50,10 +50,9 @@ Every signature the treasury makes goes through that layer, and the policy is
 what decides when a human has to step in. Below a configured amount a transfer
 clears on its own. At or above it a named approver has to release it, and that
 can never be the identity that opened the request, so a held transfer always
-involves two separate identities. The amount is env config rather than code, and
-ours is set so that most transfers take the approval path. Releasing a held
-request is an operator action, taken in the dashboard panel or in the DFNS
-console; a visitor reading the dashboard can't do it.
+involves two separate identities. The amount is env config rather than code.
+Releasing a held request is an operator action, taken in the dashboard panel or
+in the DFNS console; a visitor reading the dashboard can't do it.
 
 Destinations are whitelisted independently of the key material: the relay won't
 sign a payment to an address that isn't on the list. Every signature event

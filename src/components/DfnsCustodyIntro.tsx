@@ -1,11 +1,11 @@
 const POINTS = [
   {
     head: 'Split key (MPC)',
-    body: 'The treasury is a DFNS wallet. Its signing key is split across DFNS servers with multi-party computation, so no single machine or person can sign on its own.',
+    body: 'The treasury you connect is a DFNS wallet. Its signing key is split across DFNS servers with multi-party computation, so no single machine or person can sign on its own.',
   },
   {
     head: 'Approval policy',
-    body: "On the testnet demo, a transfer to an address on the treasury list goes through by itself. Anything else waits for a named approver, and whoever asked for it can't approve it.",
+    body: 'Your DFNS policies decide which transfers go through by themselves and which wait for a named approver.',
   },
   {
     head: 'Exportable log',
@@ -18,7 +18,7 @@ export default function DfnsCustodyIntro() {
     <div>
       <h2 className="text-lg font-semibold text-text">Institutional custody through DFNS</h2>
       <p className="text-sm text-text-secondary mt-1 max-w-2xl leading-relaxed">
-        DFNS holds the treasury key and signs with it; the dashboard never holds one.
+        Your DFNS organization holds the treasury key and signs with it; the dashboard never holds one.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {POINTS.map((b) => (

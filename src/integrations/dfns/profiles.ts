@@ -102,7 +102,7 @@ export function assertRelayUrl(raw: string, kind: 'demo' | 'client'): string {
     // a client profile on our demo relay would route their ops onto our org.
     const demo = import.meta.env.VITE_LOBSTER_API_URL
     if (demo && u.host === relayHost(demo)) {
-      throw new Error('That is the Lobster demo relay, not your own. Enter the relay you run for your own DFNS.')
+      throw new Error('That is the Lobster relay, not your own. Enter the relay you run for your own DFNS.')
     }
   }
   return raw

@@ -69,9 +69,8 @@ told to pay somebody else.
 The guard reads the invocation out of the envelope rather than trusting what the
 caller says about it. On `/audit`, "Call the Factory (DFNS MPC)" signs a
 `get_admin` view from the treasury through MPC. DFNS can't price a contract call,
-so the policy holds it for an approver first, and on the testnet demo the relay
-approves it itself. DFNS then hands the signed envelope back, and the dashboard
-submits it.
+so the policy holds it for an approver first. DFNS then hands the signed envelope
+back, and the dashboard submits it.
 
 ## Policies and approval
 
@@ -83,16 +82,15 @@ approving leg are always two separate DFNS users, whatever the limit is set to.
 
 The limits themselves are configuration, not code. They're set in the env that
 `scripts/setup-dfns-policies.mts` reads, so this page doesn't quote a number
-that would rot. Ours are set so the approval path is the normal one rather than
-the exception.
+that would rot.
 
 Testnet can't run an amount rule, because DFNS has no market price for testXLM
-and would hold everything. The testnet treasury runs a recipient rule instead: a
-payment to an address on its list clears, anything else waits for an approver.
+and would hold everything. A recipient rule works there instead: a payment to an
+address on its list clears, anything else waits for an approver.
 
 Each policy is scoped to a list of wallet ids. DFNS also allows scoping by wallet
-tag, and that one fails quietly: no wallet in our org carries a tag, so a policy
-filtered on tags would match nothing and look active while covering zero wallets.
+tag, and that one fails quietly: a policy filtered on a tag no wallet carries
+matches nothing and looks active while covering zero wallets.
 
 One more thing if you go reproduce this. DFNS evaluates an amount policy against
 a transfer request, where it built the payment and knows the asset and the
@@ -101,8 +99,8 @@ recipient. It cannot evaluate one against a raw signing request.
 The approval state streams to the dashboard. Deciding a held request is an
 operator control rather than something a visitor does: the pending approvals
 panel has Approve and Deny for whoever holds the operator credential, and the
-same decision can be taken in the DFNS console. On the testnet demo the relay also
-clears its own held requests through a separate approver identity; that is off by
+same decision can be taken in the DFNS console. On testnet the relay can also
+clear its own held requests through a separate approver identity; that is off by
 default and never runs on mainnet.
 
 ## Webhooks and audit

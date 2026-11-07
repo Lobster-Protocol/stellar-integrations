@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const OURS = [
-  // DFNS treasury, testnet then mainnet
+  // treasury, testnet then mainnet
   'GCWEI7HVEOPEMP7YTULFH5DMGCJCHMEKZHBHTI3R66WMKX276A4W2OPB',
   'GCE75LSGSRWKXNZLJ2SPZ4XZS4CFSUTZBHCWQSK7RTWSMU2AJ3F36DQP',
   // deployer / demo wallets

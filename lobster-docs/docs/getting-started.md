@@ -47,11 +47,9 @@ submits the signed result to Soroban RPC, then polls until a ledger includes it.
 You pay the network fee and nothing else. On success it shows the tx hash with
 a link to stellar.expert.
 
-The same panel has a "DFNS relay (advanced)" tab. Pick the Lobster testnet demo
-in the DFNS custody panel first, and the treasury signs through DFNS MPC instead
-of your wallet: "Sign now with DFNS MPC, no approver needed" clears on its own,
-while "Call the Factory (DFNS MPC)" is held by the approval policy and released
-by the demo relay.
+The same panel has a "DFNS relay (advanced)" tab. Connect a DFNS relay you run
+in the DFNS custody panel first, and its treasury signs through DFNS MPC instead
+of your wallet.
 
 A strategy runs on that same build, sign, submit, confirm loop. The integration
 pages cover the rest. The

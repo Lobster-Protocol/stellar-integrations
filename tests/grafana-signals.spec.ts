@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 const GRAFANA_URL = process.env.GRAFANA_URL ?? ''
 const GRAFANA_TOKEN = process.env.GRAFANA_SERVICE_ACCOUNT_TOKEN ?? process.env.GRAFANA_TOKEN ?? ''
 
-const SIGNALS = ['indexer', 'api', 'ttl', 'dfns']
+const SIGNALS = ['indexer', 'api', 'ttl', 'treasury']
 
 test.describe('Grafana production signals', () => {
   test.beforeEach(() => {
@@ -21,7 +21,7 @@ test.describe('Grafana production signals', () => {
     const titles = panels.map((p: { title?: string }) => (p.title ?? '').toLowerCase()).join(' | ')
     expect(titles).toMatch(/sync/)
     expect(titles).toMatch(/ttl|storage/)
-    expect(titles).toMatch(/dfns/)
+    expect(titles).toMatch(/fee reserve/)
   })
 
   test('every signal has an alert rule provisioned', async ({ request }) => {

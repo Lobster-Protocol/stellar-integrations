@@ -152,7 +152,7 @@ export default function SignDemoTx() {
             treasury list straight through and holds anything else for an approver. With the first
             button DFNS builds the payment itself, so the policy sees the recipient is the treasury and
             clears it. The other two send DFNS an unsigned transaction to sign, which the policy can't
-            read, so it holds them; on the Lobster demo the relay approves them automatically. Each one
+            read, so it holds them{demoAvailable() && '; on the Lobster demo the relay approves them automatically'}. Each one
             costs only the network fee: both payments go from the treasury to itself, and the Factory
             call only asks the contract for its admin.
           </>

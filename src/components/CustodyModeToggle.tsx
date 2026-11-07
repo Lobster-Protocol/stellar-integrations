@@ -1,5 +1,6 @@
 import { InfoTip } from './InfoTip'
 import ConnectDfnsPanel from './ConnectDfnsPanel'
+import { demoAvailable } from '../integrations/dfns/profiles'
 
 export default function CustodyModeToggle() {
   return (
@@ -10,8 +11,8 @@ export default function CustodyModeToggle() {
       <p className="text-xs text-text-secondary mb-3">
         Connect your own DFNS organization: its keys sign and every approval happens in its
         console. Use WalletConnect from the wallet menu at the top right, or point
-        the dashboard at a relay you run. There is no key to paste here. To see the flow without
-        your own DFNS, pick the Lobster testnet demo below.
+        the dashboard at a relay you run. There is no key to paste here.
+        {demoAvailable() && ' To see the flow without your own DFNS, pick the Lobster testnet demo below.'}
       </p>
       <ConnectDfnsPanel />
     </div>

@@ -131,7 +131,7 @@ describe('assertRelayUrl', () => {
     const orig = import.meta.env.VITE_LOBSTER_API_URL
     Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', 'https://demo.lobster.example')
     try {
-      expect(() => assertRelayUrl('https://demo.lobster.example/', 'client')).toThrow(/Lobster demo relay/)
+      expect(() => assertRelayUrl('https://demo.lobster.example/', 'client')).toThrow(/Lobster relay/)
     } finally {
       Reflect.set(import.meta.env, 'VITE_LOBSTER_API_URL', orig)
     }
