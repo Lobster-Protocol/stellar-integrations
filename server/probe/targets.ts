@@ -9,8 +9,8 @@ export interface HttpTarget {
   area: 'bridge' | 'frontend' | 'swap' | 'custody' | 'mainnet' | 'shared'
   url: string
   // rpc and horizon also report ledger age. answering isn't enough for the others:
-  // cctp needs a fee table, a page has to load, an evm node a recent block
-  probe: 'rpc' | 'horizon' | 'cctp' | 'page' | 'http' | 'evm'
+  // cctp needs a fee table, a page has to load, an evm node a recent block, the relay its health body
+  probe: 'rpc' | 'horizon' | 'cctp' | 'page' | 'http' | 'evm' | 'relay'
   // evm only: where the app reads the chain when the first endpoint fails
   fallbackUrl?: string
 }
@@ -52,10 +52,11 @@ export function httpTargets(): HttpTarget[] {
   if (env.DFNS_API_URL) {
     list.push({ name: 'dfns-api', area: 'custody', url: env.DFNS_API_URL, probe: 'http' })
   }
-  // the bff is localhost in dev; only probe a real deployed relay
+  // the bff is localhost in dev; only probe a real deployed relay. it sits behind the site's
+  // proxy, where a page or a proxy error can answer too, so ask its own health route
   const bff = env.VITE_LOBSTER_API_URL || env.MONITOR_BFF_URL
   if (bff && !bff.includes('localhost')) {
-    list.push({ name: 'bff-relay', area: 'custody', url: bff, probe: 'http' })
+    list.push({ name: 'bff-relay', area: 'custody', url: `${bff.replace(/\/+$/, '')}/health`, probe: 'relay' })
   }
   // same chains and endpoints as the bridge
   for (const network of ['mainnet', 'testnet'] as const) {

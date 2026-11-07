@@ -95,6 +95,11 @@ export async function confirmed<T extends { up: boolean } | null>(check: () => P
   return check()
 }
 
+// only the relay's own /health answer counts: the site's HTML or a proxy error page is not it
+export function relayHealthy(ok: boolean, body: unknown): boolean {
+  return ok && typeof body === 'object' && body !== null && (body as { status?: unknown }).status === 'ok'
+}
+
 interface Reading {
   up: boolean
   closedAt?: number
@@ -130,6 +135,10 @@ async function probeOne(t: HttpTarget): Promise<ProbeResult> {
     if (t.probe === 'page') {
       if (!res.ok) console.warn(`[probe] ${t.name} answered ${res.status}`)
       return { up: res.ok }
+    }
+    if (t.probe === 'relay') {
+      const body: unknown = await res.json().catch(() => null)
+      return { up: relayHealthy(res.ok, body) }
     }
     // a 404 at a root or a 401 from an api still proves the host answered;
     // only a network error or a 5xx is down

@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
-  hasFeeReserve, formatMetrics, rpcLedgerClose, horizonLedgerClose, evmBlockFresh, confirmed, confirmPause, type ScanResult,
+  hasFeeReserve, formatMetrics, rpcLedgerClose, horizonLedgerClose, evmBlockFresh, confirmed, confirmPause, relayHealthy,
+  type ScanResult,
 } from '../probe/index'
 import { accountTargets, httpTargets } from '../probe/targets'
 import { CCTP_SOURCE_CHAINS, STELLAR_CCTP_DOMAIN } from '../../src/config/contracts'
@@ -120,6 +121,39 @@ describe('httpTargets', () => {
     expect(byName.get('soroban-rpc-testnet')).toBe('rpc')
     expect(byName.get('horizon-mainnet')).toBe('horizon')
     expect(byName.get('horizon-testnet')).toBe('horizon')
+  })
+
+  it('asks the deployed relay on its health route, and leaves a local one alone', () => {
+    const old = { api: process.env.VITE_LOBSTER_API_URL, bff: process.env.MONITOR_BFF_URL }
+    try {
+      delete process.env.VITE_LOBSTER_API_URL
+      process.env.MONITOR_BFF_URL = 'https://dash.example/api/'
+      expect(httpTargets().find((t) => t.name === 'bff-relay')).toMatchObject({
+        url: 'https://dash.example/api/health',
+        probe: 'relay',
+        area: 'custody',
+      })
+      process.env.MONITOR_BFF_URL = 'http://localhost:8787'
+      expect(httpTargets().some((t) => t.name === 'bff-relay')).toBe(false)
+    } finally {
+      for (const [key, value] of [['VITE_LOBSTER_API_URL', old.api], ['MONITOR_BFF_URL', old.bff]] as const) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+    }
+  })
+})
+
+describe('relayHealthy', () => {
+  it('counts only the relay health body as up', () => {
+    expect(relayHealthy(true, { status: 'ok', service: 'lobster-dfns-webhook' })).toBe(true)
+  })
+
+  it('reads the site HTML, a proxy error or a degraded body as down', () => {
+    expect(relayHealthy(true, null)).toBe(false)
+    expect(relayHealthy(false, { status: 'ok' })).toBe(false)
+    expect(relayHealthy(true, { status: 'degraded' })).toBe(false)
+    expect(relayHealthy(true, 'ok')).toBe(false)
   })
 })
 
