@@ -13,9 +13,13 @@ if [ "${#release}" -lt 7 ] || [ "${#release}" -gt 40 ]; then echo "site-deploy: 
 base="/srv/$site"
 [ -d "$base/releases" ] || { echo "site-deploy: unknown site $site" >&2; exit 2; }
 
+exec 9>"$base/.deploy.lock"
+flock -n 9 || { echo "site-deploy: another upload of $site is still running" >&2; exit 6; }
+
 incoming="$base/releases/.incoming-$release-$$"
 mkdir "$incoming"
 trap 'rm -rf "$incoming"' EXIT
+trap 'exit 1' HUP INT TERM PIPE
 tar -xzf - -C "$incoming" --no-same-owner --no-same-permissions
 [ -f "$incoming/index.html" ] || { echo "site-deploy: the upload has no index.html" >&2; exit 3; }
 
@@ -31,11 +35,13 @@ trap - EXIT
 ln -sfn "$dest" "$base/.current.new"
 mv -T "$base/.current.new" "$base/current"
 
-# keep five releases, and drop shared assets that no kept release ships once they are a month old
+# keep five releases, drop shared assets that no kept release ships once they are a month old,
+# and clear uploads that were cut off more than a day ago
 ls -1d "$base"/releases/[0-9]* | sort | head -n -5 | xargs -r rm -rf
 find "$base/assets" -type f -mtime +30 | while read -r f; do
 	n="$(basename "$f")"
 	ls "$base"/releases/*/assets/"$n" >/dev/null 2>&1 || rm -f "$f"
 done
+find "$base/releases" -maxdepth 1 -name '.incoming-*' -mmin +1440 -exec rm -rf {} +
 
 echo "site-deploy: $site now serves $release"

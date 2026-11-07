@@ -34,11 +34,13 @@ for f in env env.vm; do
 	[ -f "/etc/lobster-bff/$f" ] || install -m 640 -o root -g lobster-bff /dev/null "/etc/lobster-bff/$f"
 done
 
-# bff-deploy may restart the relay, nothing else
-sudoers=/etc/sudoers.d/60-deploy-relay
-echo 'bff-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart lobster-bff.service' >"$sudoers"
-chmod 440 "$sudoers"
-visudo -cqf "$sudoers"
+# bff-deploy may restart the relay, nothing else. Checked before it goes in: one bad file in
+# sudoers.d breaks sudo for every account
+sudo_new="$(mktemp)"
+echo 'bff-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart lobster-bff.service' >"$sudo_new"
+visudo -cqf "$sudo_new"
+install -m 440 -o root -g root "$sudo_new" /etc/sudoers.d/60-deploy-relay
+rm -f "$sudo_new"
 
 install -m 755 "$here/relay-deploy" /usr/local/bin/relay-deploy
 install -m 644 "$here/lobster-bff.service" /etc/systemd/system/lobster-bff.service
@@ -54,7 +56,15 @@ chown root:root "$ak"
 chmod 644 "$ak"
 sed -i '/relay-deploy/d' /etc/ssh/authorized_keys/deploy
 conf=/etc/ssh/sshd_config.d/00-lobster-hardening.conf
+conf_saved="$(mktemp)"
+cp -a "$conf" "$conf_saved"
 grep -Eq '^AllowUsers(.* )?bff-deploy( |$)' "$conf" || sed -i 's/^AllowUsers .*/& bff-deploy/' "$conf"
-sshd -t
+if ! sshd -t; then
+	cp -a "$conf_saved" "$conf"
+	rm -f "$conf_saved"
+	echo "setup-relay: the sshd change does not validate, the previous file is back" >&2
+	exit 1
+fi
+rm -f "$conf_saved"
 systemctl reload ssh
 echo "setup-relay: ready; the first relay-deploy upload starts the relay"

@@ -39,8 +39,11 @@ chown root:root "$ak"
 chmod 644 "$ak"
 rm -rf /var/lib/deploy/.ssh
 
-# sshd: deploy may log in, with that key list, without a terminal or any forwarding
+# sshd: deploy may log in, with that key list, without a terminal or any forwarding. The old file
+# comes back if the result does not validate, so a later restart of sshd never meets a broken one
 conf=/etc/ssh/sshd_config.d/00-lobster-hardening.conf
+conf_saved="$(mktemp)"
+cp -a "$conf" "$conf_saved"
 grep -Eq '^AllowUsers(.* )?deploy( |$)' "$conf" || sed -i 's/^AllowUsers .*/& deploy/' "$conf"
 grep -q '^Match User deploy' "$conf" || printf '\n%s\n' \
 	'# CI upload keys: each one is pinned to a single command' \
@@ -48,7 +51,13 @@ grep -q '^Match User deploy' "$conf" || printf '\n%s\n' \
 sed -i 's/^Match User deploy$/Match User deploy,bff-deploy/' "$conf"
 grep -q 'AuthorizedKeysFile /etc/ssh/authorized_keys/%u' "$conf" ||
 	sed -i $'/^Match User deploy,bff-deploy$/a\\\n\tAuthorizedKeysFile /etc/ssh/authorized_keys/%u' "$conf"
-sshd -t
+if ! sshd -t; then
+	cp -a "$conf_saved" "$conf"
+	rm -f "$conf_saved"
+	echo "setup-vm: the sshd change does not validate, the previous file is back" >&2
+	exit 1
+fi
+rm -f "$conf_saved"
 systemctl reload ssh
 
 # firewall: web ports next to SSH; reloading the ruleset drops fail2ban's table, so restart it

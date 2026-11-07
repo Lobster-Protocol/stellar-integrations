@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -43,26 +44,35 @@ jobs:
           npm run build
           grep -rqF "\"$VITE_LOBSTER_API_URL\"" dist/assets || { echo "the bundle does not call $VITE_LOBSTER_API_URL" >&2; exit 1; }
 
-      # the key on the VM can only run site-deploy, which takes the sha as release id
+      # the key on the VM can only run site-deploy, which takes the sha as release id. A re-run of an
+      # older commit uploads nothing, or it would roll the site back
       - name: Upload to the VM
+        id: upload
         env:
           DEPLOY_KEY: ${{ secrets.VM_DEPLOY_KEY }}
           KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
           VM_HOST: ${{ vars.VM_HOST }}
         run: |
+          head="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "::notice::main is now at $head, this run uploads nothing"
+            exit 0
+          fi
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          (umask 077 && printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key)
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           tar -C dist -czf - . | ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes "deploy@$VM_HOST" "$GITHUB_SHA"
+          echo "uploaded=true" >> "$GITHUB_OUTPUT"
 
       # asks the VM itself, whatever the DNS says; -k because the certificate check is not the point here
       - name: Check the VM serves this build
+        if: steps.upload.outputs.uploaded == 'true'
         env:
           VM_HOST: ${{ vars.VM_HOST }}
         run: |
           host="$(grep -m 1 -E '^[a-z0-9.-]+ \{$' scripts/vm/stellar-instit.caddy | cut -d ' ' -f 1)"
           entry="$(grep -o 'assets/index-[A-Za-z0-9_-]*\.js' dist/index.html | head -n 1)"
-          curl -fsSk --resolve "$host:443:$VM_HOST" "https://$host/" | grep -q "$entry" && exit 0
+          [ -n "$host" ] && [ -n "$entry" ] || { echo "no host or no entry file to look for" >&2; exit 1; }
+          curl -fsSk --resolve "$host:443:$VM_HOST" "https://$host/" | grep -qF "$entry" && exit 0
           echo "the VM does not serve $entry for $host" >&2
           exit 1

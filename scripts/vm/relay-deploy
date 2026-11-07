@@ -10,13 +10,26 @@ case "$release" in "" | *[!0-9a-f]*) echo "relay-deploy: the release id must be 
 if [ "${#release}" -lt 7 ] || [ "${#release}" -gt 40 ]; then echo "relay-deploy: bad release id" >&2; exit 2; fi
 
 base=/srv/lobster-bff
+unit=lobster-bff.service
 
-# up now and still up a few seconds later, so a crash just after boot counts as a failure
+exec 9>"$base/.deploy.lock"
+flock -n 9 || { echo "relay-deploy: another upload is still running" >&2; exit 6; }
+
+prop() { systemctl show -p "$1" --value "$unit"; }
+answers() { curl -fsS --connect-timeout 2 --max-time 5 http://127.0.0.1:8787/health >/dev/null 2>&1; }
+
+# up, then still the same process 8 s later without an automatic restart in between, so a release
+# that crashes and comes back in a loop is not taken for a healthy one
 healthy() {
-	for i in $(seq 1 30); do
-		if curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1; then
+	restarts="$(prop NRestarts)"
+	deadline=$(($(date +%s) + 120))
+	while [ "$(date +%s)" -lt "$deadline" ]; do
+		if answers; then
+			pid="$(prop MainPID)"
 			sleep 8
-			curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1 && return 0
+			answers && [ "$(prop ActiveState)" = active ] && [ "$pid" != 0 ] &&
+				[ "$(prop MainPID)" = "$pid" ] && [ "$(prop NRestarts)" = "$restarts" ]
+			return
 		fi
 		sleep 1
 	done
@@ -26,12 +39,13 @@ healthy() {
 switch_to() {
 	ln -sfn "$1" "$base/.current.new"
 	mv -T "$base/.current.new" "$base/current"
-	sudo -n /usr/bin/systemctl restart lobster-bff.service
+	sudo -n /usr/bin/systemctl restart "$unit"
 }
 
 incoming="$base/releases/.incoming-$release-$$"
 mkdir "$incoming"
 trap 'rm -rf "$incoming"' EXIT
+trap 'exit 1' HUP INT TERM PIPE
 tar -xzf - -C "$incoming" --no-same-owner --no-same-permissions
 [ -f "$incoming/server/index.ts" ] && [ -f "$incoming/package-lock.json" ] ||
 	{ echo "relay-deploy: the upload is not the repo" >&2; exit 3; }
@@ -42,12 +56,11 @@ if [ -L "$base/current" ]; then prev="$(readlink -f "$base/current")"; fi
 dest="$base/releases/$(date -u +%Y%m%d%H%M%S)-$release"
 mv "$incoming" "$dest"
 trap - EXIT
-switch_to "$dest"
 
-if ! healthy; then
+if ! switch_to "$dest" || ! healthy; then
 	echo "relay-deploy: $release does not stay up on /health" >&2
 	if [ -n "$prev" ] && [ -d "$prev" ]; then
-		switch_to "$prev"
+		switch_to "$prev" || true
 		rm -rf "$dest"
 		if healthy; then
 			echo "relay-deploy: the previous release is back and answers" >&2
@@ -58,9 +71,11 @@ if ! healthy; then
 	exit 5
 fi
 
-# each release carries its own node_modules: keep three, never the one in use
+# each release carries its own node_modules: keep three, never the one in use, and clear uploads
+# that were cut off more than a day ago
 cur="$(readlink -f "$base/current")"
 ls -1d "$base"/releases/[0-9]* | sort | head -n -3 | while read -r old; do
 	[ "$old" = "$cur" ] || rm -rf "$old"
 done
+find "$base/releases" -maxdepth 1 -name '.incoming-*' -mmin +1440 -exec rm -rf {} +
 echo "relay-deploy: the relay answers on $release"

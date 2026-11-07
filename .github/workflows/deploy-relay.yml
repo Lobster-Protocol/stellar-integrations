@@ -10,6 +10,7 @@ on:
       - 'src/integrations/**'
       - 'package.json'
       - 'package-lock.json'
+      - '.github/workflows/deploy-relay.yml'
   workflow_dispatch:
 
 concurrency:
@@ -21,27 +22,35 @@ permissions:
 
 jobs:
   vm:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      # the key on the VM can only run relay-deploy, which installs this tree and restarts the relay
+      # the key on the VM can only run relay-deploy, which installs this tree and restarts the relay.
+      # A re-run of an older commit uploads nothing, or it would roll the relay back
       - name: Upload the relay to the VM
         env:
           RELAY_KEY: ${{ secrets.VM_RELAY_KEY }}
           KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
           VM_HOST: ${{ vars.VM_HOST }}
         run: |
+          head="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "::notice::main is now at $head, this run uploads nothing"
+            exit 0
+          fi
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$RELAY_KEY" > ~/.ssh/relay_key
-          chmod 600 ~/.ssh/relay_key
+          (umask 077 && printf '%s\n' "$RELAY_KEY" > ~/.ssh/relay_key)
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           git archive --format=tar.gz HEAD | ssh -i ~/.ssh/relay_key -o IdentitiesOnly=yes -o BatchMode=yes "bff-deploy@$VM_HOST" "$GITHUB_SHA"
 
   # render keeps serving the dashboard until the dns moves to the VM
   render:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: trigger render deploy
         env:
@@ -51,5 +60,5 @@ jobs:
             echo "RENDER_DEPLOY_HOOK secret is not set; skipping"
             exit 0
           fi
-          curl -fsS -X POST "$HOOK"
+          curl -fsS --max-time 60 -X POST "$HOOK"
           echo "render deploy triggered"
