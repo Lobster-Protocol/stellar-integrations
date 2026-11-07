@@ -405,7 +405,7 @@ describe('rate limit', () => {
 
   it('keys on the last x-forwarded-for entry', async () => {
     process.env.RATE_LIMIT_PER_MIN = '2'
-    // the caller writes the leading entries, render appends the address it saw
+    // the caller writes the leading entries, the proxy in front appends the address it saw
     expect((await transferFrom('198.51.100.1, 203.0.113.7')).status).not.toBe(429)
     expect((await transferFrom('198.51.100.2, 203.0.113.7')).status).not.toBe(429)
     expect((await transferFrom('198.51.100.3, 203.0.113.7')).status).toBe(429)

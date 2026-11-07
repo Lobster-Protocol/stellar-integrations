@@ -45,20 +45,3 @@ jobs:
           (umask 077 && printf '%s\n' "$RELAY_KEY" > ~/.ssh/relay_key)
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           git archive --format=tar.gz HEAD | ssh -i ~/.ssh/relay_key -o IdentitiesOnly=yes -o BatchMode=yes "bff-deploy@$VM_HOST" "$GITHUB_SHA"
-
-  # render keeps serving the dashboard until the dns moves to the VM
-  render:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: trigger render deploy
-        env:
-          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: |
-          if [ -z "$HOOK" ]; then
-            echo "RENDER_DEPLOY_HOOK secret is not set; skipping"
-            exit 0
-          fi
-          curl -fsS --max-time 60 -X POST "$HOOK"
-          echo "render deploy triggered"

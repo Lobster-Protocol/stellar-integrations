@@ -11,7 +11,7 @@ info:
     approval and paying a CCTP delivery also take the operator token
     (LOBSTER_OPERATOR_TOKEN), and stay shut until it is set.
 servers:
-  - url: https://lobster-bff.onrender.com
+  - url: https://stellar-instit.lobster-protocol.com/api
     description: deployed relay
   - url: http://localhost:8787
     description: local dev (hono)

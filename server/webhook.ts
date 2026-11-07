@@ -114,7 +114,7 @@ const operatorGuard = async (c: Context, next: Next) => {
 const rlWindows = new Map<string, { count: number; resetAt: number }>()
 const rateLimit = async (c: Context, next: Next) => {
   const perMin = Number(process.env.RATE_LIMIT_PER_MIN ?? '120')
-  // render's proxy appends the address it took the request from, so the last
+  // the proxy in front of the relay appends the address it took the request from, so the last
   // x-forwarded-for entry is the caller. the ones before it are whatever the caller
   // sent, and keying on them would hand out a fresh window per request.
   const forwarded = (c.req.header('x-forwarded-for') ?? '').split(',').map((s) => s.trim()).filter(Boolean)

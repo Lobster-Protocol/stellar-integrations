@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 
-// after a deploy, Vercel answers a request for an old chunk with the site's HTML and a 200
+// some hosts answer a request for an old chunk with the site's HTML and a 200 after a deploy;
+// a tab left open through one has to recover on its own
 
 const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Main' }).first()
 const positionsFile = /\/assets\/Positions-[\w-]+\.js$/

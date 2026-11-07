@@ -35,3 +35,8 @@ stellar-instit.lobster-protocol.com {
 		}
 	}
 }
+
+# www sends visitors to the main name, so the dashboard keeps one origin: the relay's CORS and /api depend on it
+www.stellar-instit.lobster-protocol.com {
+	redir https://stellar-instit.lobster-protocol.com{uri} 308
+}

@@ -46,7 +46,7 @@ writeFileSync(`${outDir}/approver.public.pem`, publicKey)
 writeFileSync(`${outDir}/approver.key`, privateKey)
 console.log(`generated the approver keypair under ${outDir}/ (gitignored):`)
 console.log(`  ${outDir}/approver.public.pem   register this as the User's Key credential`)
-console.log(`  ${outDir}/approver.key          becomes DFNS_APPROVER_PRIVATE_KEY on Render`)
+console.log(`  ${outDir}/approver.key          becomes DFNS_APPROVER_PRIVATE_KEY in the relay env`)
 console.log('')
 
 // needs the service-account env, which this box may not have
@@ -69,6 +69,7 @@ console.log('  1. DFNS console: add a credential of kind "Key" to your approver 
 console.log('     approver.public.pem above. Note the credential id (cr-...) and the userId (us-...).')
 console.log('  2. Give that User Policies:Evaluations:Vote, add its userId to DFNS_APPROVER_USER_IDS,')
 console.log('     and re-run scripts/setup-dfns-policies.mts so the policy lists it as an approver.')
-console.log('  3. Render (Production): set DFNS_APPROVER_AUTH_TOKEN (the User token), DFNS_APPROVER_CRED_ID')
-console.log('     (cr-...), DFNS_APPROVER_PRIVATE_KEY (approver.key), DFNS_AUTO_APPROVE_TESTNET=1. Redeploy.')
+console.log('  3. Relay env (/etc/lobster-bff/env on the VM): set DFNS_APPROVER_AUTH_TOKEN (the User token),')
+console.log('     DFNS_APPROVER_CRED_ID (cr-...), DFNS_APPROVER_PRIVATE_KEY (approver.key), DFNS_AUTO_APPROVE_TESTNET=1,')
+console.log('     then restart lobster-bff.')
 console.log('  4. Check it: tsx scripts/setup-dfns-approver.mts --verify')

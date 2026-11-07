@@ -35,7 +35,7 @@ jobs:
         run: npm ci
 
       # the root tsconfig only lists project references, so a plain
-      # `tsc --noEmit` type-checks nothing. build the way vercel does instead,
+      # `tsc --noEmit` type-checks nothing. build the way the deploy does instead,
       # so ci fails whenever the deploy would.
       - name: Build
         run: npm run build
