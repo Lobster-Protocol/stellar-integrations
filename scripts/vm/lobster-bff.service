@@ -9,7 +9,7 @@ Group=lobster-bff
 WorkingDirectory=/srv/lobster-bff/current
 Environment=PORT=8787
 EnvironmentFile=/etc/lobster-bff/env
-# values that only make sense on this host, read last so they win over the copy of the Render env
+# values that only make sense on this host, read last so they win over /etc/lobster-bff/env
 EnvironmentFile=-/etc/lobster-bff/env.vm
 ExecStart=/srv/lobster-bff/current/node_modules/.bin/tsx server/index.ts
 Restart=always

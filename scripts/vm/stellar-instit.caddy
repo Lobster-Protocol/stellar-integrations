@@ -20,7 +20,9 @@ stellar-instit.lobster-protocol.com {
 	# and a file that really is gone answers 404 instead of the page's HTML
 	handle /assets/* {
 		root * /srv/stellar-instit
-		header Cache-Control "public, max-age=31536000, immutable"
+		# only a file that exists may be cached for a year
+		@present file
+		header @present Cache-Control "public, max-age=31536000, immutable"
 		file_server {
 			hide .*
 		}
@@ -33,6 +35,15 @@ stellar-instit.lobster-protocol.com {
 		file_server {
 			hide .*
 		}
+	}
+
+	# error answers (a missing asset, the relay down) skip the header block above, so set them here too
+	handle_errors {
+		header Strict-Transport-Security "max-age=31536000"
+		header X-Frame-Options "DENY"
+		header X-Content-Type-Options "nosniff"
+		header Cache-Control "no-store"
+		respond "{err.status_code} {err.status_text}" {err.status_code}
 	}
 }
 

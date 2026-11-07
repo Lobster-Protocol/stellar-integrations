@@ -9,7 +9,7 @@ test.describe('what the deploy serves before anyone logs in', () => {
     expect((await r.text()).toLowerCase()).toContain('user-agent')
   })
 
-  test('crawlers are told to skip the preview deploy', async ({ request }) => {
+  test('crawlers are told to skip the site', async ({ request }) => {
     const r = await request.get(BASE)
     const html = await r.text()
     expect(html).toMatch(/name="robots"\s+content="noindex/)
