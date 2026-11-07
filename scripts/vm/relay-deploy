@@ -1,0 +1,38 @@
+#!/bin/sh
+# Forced command of the CI relay key (authorized_keys: command="/usr/local/bin/relay-deploy").
+# Reads a gzipped tar of the repo (git archive) on stdin, installs its dependencies and restarts
+# the relay on it. The client only picks the release id, which must be a commit sha.
+set -eu
+
+release="${SSH_ORIGINAL_COMMAND:-}"
+case "$release" in "" | *[!0-9a-f]*) echo "relay-deploy: the release id must be a commit sha" >&2; exit 2 ;; esac
+if [ "${#release}" -lt 7 ] || [ "${#release}" -gt 40 ]; then echo "relay-deploy: bad release id" >&2; exit 2; fi
+
+base=/srv/lobster-bff
+incoming="$base/releases/.incoming-$release-$$"
+mkdir "$incoming"
+trap 'rm -rf "$incoming"' EXIT
+tar -xzf - -C "$incoming" --no-same-owner --no-same-permissions
+[ -f "$incoming/server/index.ts" ] && [ -f "$incoming/package-lock.json" ] ||
+	{ echo "relay-deploy: the upload is not the repo" >&2; exit 3; }
+(cd "$incoming" && npm ci --no-audit --no-fund --loglevel=error)
+
+dest="$base/releases/$(date -u +%Y%m%d%H%M%S)-$release"
+mv "$incoming" "$dest"
+trap - EXIT
+ln -sfn "$dest" "$base/.current.new"
+mv -T "$base/.current.new" "$base/current"
+sudo -n /usr/bin/systemctl restart lobster-bff.service
+
+# each release carries its own node_modules, so keep only three
+ls -1d "$base"/releases/[0-9]* | sort | head -n -3 | xargs -r rm -rf
+
+for i in $(seq 1 30); do
+	if curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1; then
+		echo "relay-deploy: the relay answers on $release"
+		exit 0
+	fi
+	sleep 1
+done
+echo "relay-deploy: the relay does not answer /health after the restart" >&2
+exit 4

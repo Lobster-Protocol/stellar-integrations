@@ -1,7 +1,6 @@
 name: deploy relay
 
-# redeploy the render relay when its code changes; render's own auto-deploy is off
-# so a readme push doesn't restart it
+# redeploy the relay when its code changes, so a readme push doesn't restart it
 on:
   push:
     branches: [main]
@@ -13,8 +12,35 @@ on:
       - 'package-lock.json'
   workflow_dispatch:
 
+concurrency:
+  group: deploy-relay
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  vm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # the key on the VM can only run relay-deploy, which installs this tree and restarts the relay
+      - name: Upload the relay to the VM
+        env:
+          RELAY_KEY: ${{ secrets.VM_RELAY_KEY }}
+          KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
+          VM_HOST: ${{ vars.VM_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$RELAY_KEY" > ~/.ssh/relay_key
+          chmod 600 ~/.ssh/relay_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          git archive --format=tar.gz HEAD | ssh -i ~/.ssh/relay_key -o IdentitiesOnly=yes -o BatchMode=yes "deploy@$VM_HOST" "$GITHUB_SHA"
+
+  # render keeps serving the dashboard until the dns moves to the VM
+  render:
     runs-on: ubuntu-latest
     steps:
       - name: trigger render deploy

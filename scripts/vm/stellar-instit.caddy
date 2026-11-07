@@ -10,6 +10,12 @@ stellar-instit.lobster-protocol.com {
 		-Server
 	}
 
+	# the relay (server/, lobster-bff.service), on the same origin so the browser needs no CORS
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy 127.0.0.1:8787
+	}
+
 	# hashed files of every kept release: a tab opened before a deploy still finds its chunks,
 	# and a file that really is gone answers 404 instead of the page's HTML
 	handle /assets/* {
