@@ -29,13 +29,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # vite bakes the production VITE_* values into the bundle; they sit in one repo secret
+      # vite bakes these into the public bundle, so they are plain repo variables, not secrets
       - name: Build
         env:
-          PROD_ENV: ${{ secrets.VITE_PROD_ENV }}
+          VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+          VITE_LOBSTER_API_URL: ${{ vars.VITE_LOBSTER_API_URL }}
+          VITE_DOCS_URL: ${{ vars.VITE_DOCS_URL }}
+          VITE_GRAFANA_URL: ${{ vars.VITE_GRAFANA_URL }}
         run: |
-          printf '%s\n' "$PROD_ENV" > .env.production.local
+          for v in VITE_WALLETCONNECT_PROJECT_ID VITE_LOBSTER_API_URL VITE_DOCS_URL VITE_GRAFANA_URL; do
+            [ -n "${!v}" ] || { echo "repo variable $v is empty" >&2; exit 1; }
+          done
           npm run build
+          grep -rqF "\"$VITE_LOBSTER_API_URL\"" dist/assets || { echo "the bundle does not call $VITE_LOBSTER_API_URL" >&2; exit 1; }
 
       # the key on the VM can only run site-deploy, which takes the sha as release id
       - name: Upload to the VM

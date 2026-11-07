@@ -22,37 +22,32 @@ uu=/etc/apt/apt.conf.d/52lobster-unattended
 grep -q 'cloudsmith/caddy' "$uu" 2>/dev/null ||
 	echo 'Unattended-Upgrade::Origins-Pattern:: "origin=cloudsmith/caddy/stable";' >>"$uu"
 
-# the VM hosts other projects: their sites stay in the main Caddyfile or in their own file,
-# this one only adds the import line (or replaces the stock welcome page on a fresh install)
-mkdir -p /etc/caddy/sites
-cf=/etc/caddy/Caddyfile
-if grep -q '/usr/share/caddy' "$cf" 2>/dev/null; then
-	printf '%s\n' '# one file per site in /etc/caddy/sites' 'import /etc/caddy/sites/*.caddy' >"$cf"
-elif ! grep -qxF 'import /etc/caddy/sites/*.caddy' "$cf"; then
-	printf '\n%s\n%s\n' '# sites kept in their own file, one per project (stellar-instit: repo stellar-integrations, scripts/vm)' \
-		'import /etc/caddy/sites/*.caddy' >>"$cf"
-fi
-install -m 644 "$here/$site.caddy" "/etc/caddy/sites/$site.caddy"
-
-# upload account: no password, and each key in authorized_keys is pinned to site-deploy
+# upload account: no password, a home it cannot write, and keys pinned to site-deploy
 id deploy >/dev/null 2>&1 || adduser --system --group --home /var/lib/deploy --shell /bin/sh deploy
+chown root:root /var/lib/deploy
+chmod 755 /var/lib/deploy
 install -m 755 "$here/site-deploy" /usr/local/bin/site-deploy
 install -d -m 755 -o deploy -g deploy "/srv/$site" "/srv/$site/releases" "/srv/$site/assets"
-# the key list belongs to root: deploy cannot rewrite it, whatever an upload contains
-install -d -m 755 -o root -g root /var/lib/deploy/.ssh
-ak=/var/lib/deploy/.ssh/authorized_keys
-key="$(tr -d '\r' <"$pub")"
+
+# key lists of the upload accounts sit outside their homes, in files that belong to root
+install -d -m 755 -o root -g root /etc/ssh/authorized_keys
+ak=/etc/ssh/authorized_keys/deploy
 touch "$ak"
+key="$(tr -d '\r' <"$pub")"
 grep -qF "$key" "$ak" || printf 'restrict,command="/usr/local/bin/site-deploy %s" %s\n' "$site" "$key" >>"$ak"
 chown root:root "$ak"
 chmod 644 "$ak"
+rm -rf /var/lib/deploy/.ssh
 
-# sshd: let deploy in, without a terminal or any forwarding
+# sshd: deploy may log in, with that key list, without a terminal or any forwarding
 conf=/etc/ssh/sshd_config.d/00-lobster-hardening.conf
-sed -i 's/^AllowUsers alexis$/AllowUsers alexis deploy/' "$conf"
+grep -Eq '^AllowUsers(.* )?deploy( |$)' "$conf" || sed -i 's/^AllowUsers .*/& deploy/' "$conf"
 grep -q '^Match User deploy' "$conf" || printf '\n%s\n' \
-	'# CI upload keys: authorized_keys pins each one to a single command' \
-	'Match User deploy' $'\tPermitTTY no' $'\tAllowTcpForwarding no' $'\tAllowAgentForwarding no' $'\tX11Forwarding no' >>"$conf"
+	'# CI upload keys: each one is pinned to a single command' \
+	'Match User deploy,bff-deploy' $'\tPermitTTY no' $'\tAllowTcpForwarding no' $'\tAllowAgentForwarding no' $'\tX11Forwarding no' >>"$conf"
+sed -i 's/^Match User deploy$/Match User deploy,bff-deploy/' "$conf"
+grep -q 'AuthorizedKeysFile /etc/ssh/authorized_keys/%u' "$conf" ||
+	sed -i $'/^Match User deploy,bff-deploy$/a\\\n\tAuthorizedKeysFile /etc/ssh/authorized_keys/%u' "$conf"
 sshd -t
 systemctl reload ssh
 
@@ -66,6 +61,30 @@ if ! grep -q 'dport { 80, 443 }' "$nft"; then
 	systemctl restart fail2ban
 fi
 
-caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+# the VM hosts other projects: their sites stay in the main Caddyfile or in their own file,
+# this one only adds the import line (or replaces the stock welcome page on a fresh install)
+mkdir -p /etc/caddy/sites
+cf=/etc/caddy/Caddyfile
+if grep -q '/usr/share/caddy' "$cf" 2>/dev/null; then
+	printf '%s\n' '# one file per site in /etc/caddy/sites' 'import /etc/caddy/sites/*.caddy' >"$cf"
+elif ! grep -qxF 'import /etc/caddy/sites/*.caddy' "$cf"; then
+	printf '\n%s\n%s\n' '# sites kept in their own file, one per project (stellar-instit: repo stellar-integrations, scripts/vm)' \
+		'import /etc/caddy/sites/*.caddy' >>"$cf"
+fi
+
+# a site file that does not validate is taken back out, or the next restart of Caddy would
+# take every site on this host down with it
+sf="/etc/caddy/sites/$site.caddy"
+saved="$(mktemp)"
+had=0
+if [ -f "$sf" ]; then cp -a "$sf" "$saved"; had=1; fi
+install -m 644 "$here/$site.caddy" "$sf"
+# as the caddy user: run as root, validate creates the site log files owned by root and the sandboxed service then fails to open them
+if ! runuser -u caddy -- caddy validate --config "$cf" --adapter caddyfile >/dev/null 2>&1; then
+	if [ "$had" = 1 ]; then mv "$saved" "$sf"; else rm -f "$sf" "$saved"; fi
+	echo "setup-vm: $site.caddy does not validate, the previous file is back" >&2
+	exit 1
+fi
+rm -f "$saved"
 systemctl reload caddy
 echo "setup-vm: ready, $site is served from /srv/$site/current"

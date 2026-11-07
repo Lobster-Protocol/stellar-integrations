@@ -37,7 +37,7 @@ jobs:
           printf '%s\n' "$RELAY_KEY" > ~/.ssh/relay_key
           chmod 600 ~/.ssh/relay_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          git archive --format=tar.gz HEAD | ssh -i ~/.ssh/relay_key -o IdentitiesOnly=yes -o BatchMode=yes "deploy@$VM_HOST" "$GITHUB_SHA"
+          git archive --format=tar.gz HEAD | ssh -i ~/.ssh/relay_key -o IdentitiesOnly=yes -o BatchMode=yes "bff-deploy@$VM_HOST" "$GITHUB_SHA"
 
   # render keeps serving the dashboard until the dns moves to the VM
   render:

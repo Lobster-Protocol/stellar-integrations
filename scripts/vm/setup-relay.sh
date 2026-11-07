@@ -20,15 +20,23 @@ uu=/etc/apt/apt.conf.d/52lobster-unattended
 grep -q 'deb.nodesource.com' "$uu" ||
 	echo 'Unattended-Upgrade::Origins-Pattern:: "site=deb.nodesource.com";' >>"$uu"
 
-# the relay runs as its own account; deploy installs the code, the relay only reads it
+# three accounts, three jobs: bff-deploy installs the relay code, lobster-bff runs it read-only,
+# and deploy (the front) has no say over either
 id lobster-bff >/dev/null 2>&1 || adduser --system --group --home /var/lib/lobster-bff --shell /usr/sbin/nologin lobster-bff
-install -d -m 755 -o deploy -g deploy /srv/lobster-bff /srv/lobster-bff/releases
+id bff-deploy >/dev/null 2>&1 || adduser --system --group --home /var/lib/bff-deploy --shell /bin/sh bff-deploy
+chown root:root /var/lib/bff-deploy
+chmod 755 /var/lib/bff-deploy
+install -d -m 755 /srv/lobster-bff
+chown -R bff-deploy:bff-deploy /srv/lobster-bff
+install -d -m 755 -o bff-deploy -g bff-deploy /srv/lobster-bff/releases /srv/lobster-bff/.npm-cache
 install -d -m 750 -o root -g lobster-bff /etc/lobster-bff
-[ -f /etc/lobster-bff/env ] || install -m 640 -o root -g lobster-bff /dev/null /etc/lobster-bff/env
+for f in env env.vm; do
+	[ -f "/etc/lobster-bff/$f" ] || install -m 640 -o root -g lobster-bff /dev/null "/etc/lobster-bff/$f"
+done
 
-# deploy may restart the relay, nothing else
+# bff-deploy may restart the relay, nothing else
 sudoers=/etc/sudoers.d/60-deploy-relay
-echo 'deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart lobster-bff.service' >"$sudoers"
+echo 'bff-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart lobster-bff.service' >"$sudoers"
 chmod 440 "$sudoers"
 visudo -cqf "$sudoers"
 
@@ -37,7 +45,16 @@ install -m 644 "$here/lobster-bff.service" /etc/systemd/system/lobster-bff.servi
 systemctl daemon-reload
 systemctl enable -q lobster-bff.service
 
-ak=/var/lib/deploy/.ssh/authorized_keys
+# the relay key goes to bff-deploy only (setup-vm.sh set up the key directory and the Match block)
+ak=/etc/ssh/authorized_keys/bff-deploy
+touch "$ak"
 key="$(tr -d '\r' <"$pub")"
 grep -qF "$key" "$ak" || printf 'restrict,command="/usr/local/bin/relay-deploy" %s\n' "$key" >>"$ak"
-echo "setup-relay: ready; the first relay-deploy upload starts it"
+chown root:root "$ak"
+chmod 644 "$ak"
+sed -i '/relay-deploy/d' /etc/ssh/authorized_keys/deploy
+conf=/etc/ssh/sshd_config.d/00-lobster-hardening.conf
+grep -Eq '^AllowUsers(.* )?bff-deploy( |$)' "$conf" || sed -i 's/^AllowUsers .*/& bff-deploy/' "$conf"
+sshd -t
+systemctl reload ssh
+echo "setup-relay: ready; the first relay-deploy upload starts the relay"
