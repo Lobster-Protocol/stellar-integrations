@@ -24,6 +24,11 @@ dist-ssr
 *.p12
 *.pfx
 *.pkcs8
+id_rsa*
+id_ecdsa*
+id_ed25519*
+*_PRIVEE
+*.pub
 
 # Local backups
 *.backup-*
